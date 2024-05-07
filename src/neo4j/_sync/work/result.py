@@ -19,6 +19,7 @@ from __future__ import annotations
 import inspect
 import typing as t
 from collections import deque
+from logging import getLogger
 from pathlib import Path
 from warnings import (
     warn,
@@ -29,19 +30,24 @@ from warnings import (
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
-from ..._api import NotificationMinimumSeverity
+from ..._api import (
+    NotificationCategory,
+    NotificationMinimumSeverity,
+    NotificationSeverity,
+)
 from ..._async_compat.util import Util
 from ..._codec.hydration import BrokenHydrationObject
 from ..._data import (
     Record,
     RecordTableRowExporter,
 )
+from ..._debug import NotificationPrinter
 from ..._work import (
     EagerResult,
     ResultSummary,
 )
+from ...addressing import Address
 from ...exceptions import (
-    Neo4jWarning,
     ResultConsumedError,
     ResultFailedError,
     ResultNotSingleError,
@@ -49,6 +55,10 @@ from ...exceptions import (
 from ...time import (
     Date,
     DateTime,
+)
+from ...warnings import (
+    Neo4jDeprecationWarning,
+    Neo4jWarning,
 )
 from .._debug import NonConcurrentMethodChecker
 from ..io import ConnectionErrorHandler
@@ -58,6 +68,9 @@ if t.TYPE_CHECKING:
     import pandas  # type: ignore[import]
 
     from ...graph import Graph
+
+
+notification_log = getLogger("neo4j.notifications")
 
 
 _driver_dir = Path(__file__)
@@ -104,6 +117,7 @@ class Result(NonConcurrentMethodChecker):
         self._on_error = on_error
         self._on_closed = on_closed
         self._metadata: dict = {}
+        self._address: Address = self._connection.unresolved_address
         self._keys: t.Tuple[str, ...] = ()
         self._record_buffer: t.Deque[Record] = deque()
         self._summary: t.Optional[ResultSummary] = None
@@ -279,45 +293,52 @@ class Result(NonConcurrentMethodChecker):
         self._streaming = True
 
     def _handle_warnings(self) -> None:
-        if self._warn_notification_severity is not None:
-            sev_filter: t.Tuple[NotificationMinimumSeverity, ...] = ()
-            if (
-                self._warn_notification_severity
-                == NotificationMinimumSeverity.WARNING
-            ):
-                sev_filter = (NotificationMinimumSeverity.WARNING,)
-            elif (
-                self._warn_notification_severity
-                == NotificationMinimumSeverity.INFORMATION
-            ):
-                sev_filter = (NotificationMinimumSeverity.INFORMATION,
-                              NotificationMinimumSeverity.WARNING)
-            if not sev_filter:
-                return
-            summary = self._obtain_summary()
-            warnings = [
-                n for n in summary.summary_notifications
-                if n.severity_level in sev_filter
-            ]
-            if not warnings:
-                return
-            for warning in warnings:
-                creation_frame = self._creation_frame
-                if creation_frame is False:
-                    warn(Neo4jWarning(warning), stacklevel=1)
-                else:
-                    globals_ = creation_frame.frame.f_globals
-                    if "__warningregistry__" not in globals_:
-                        globals_["__warningregistry__"] = {}
-                    warn_explicit(
-                        Neo4jWarning(warning),
-                        None,
-                        creation_frame.filename,
-                        creation_frame.lineno,
-                        module=globals_["__name__"],
-                        registry=globals_["__warningregistry__"],
-                        module_globals=globals_
-                    )
+        sev_filter: t.Tuple[NotificationMinimumSeverity, ...] = ()
+        if (
+            self._warn_notification_severity
+            == NotificationMinimumSeverity.WARNING
+        ):
+            sev_filter = (NotificationMinimumSeverity.WARNING,)
+        elif (
+            self._warn_notification_severity
+            == NotificationMinimumSeverity.INFORMATION
+        ):
+            sev_filter = (NotificationMinimumSeverity.INFORMATION,
+                          NotificationMinimumSeverity.WARNING)
+
+        summary = self._obtain_summary()
+        query = self._metadata.get("query")
+        for notification in summary.summary_notifications:
+            log_call = notification_log.debug
+            if notification.severity_level == NotificationSeverity.INFORMATION:
+                log_call = notification_log.info
+            elif notification.severity_level == NotificationSeverity.WARNING:
+                log_call = notification_log.warning
+            log_call(
+                "Received notification from DBMS server: %s",
+                NotificationPrinter(notification, query, one_line=True)
+            )
+
+            if notification.severity_level not in sev_filter:
+                continue
+            warning_cls: te.Type[Warning] = Neo4jWarning
+            if notification.category == NotificationCategory.DEPRECATION:
+                warning_cls = Neo4jDeprecationWarning
+            creation_frame = self._creation_frame
+            if creation_frame is False:
+                warn(warning_cls(notification), stacklevel=1)
+            else:
+                globals_ = creation_frame.frame.f_globals
+                warning_registry = globals_.get("__warningregistry__", {})
+                warn_explicit(
+                    warning_cls(notification, query),
+                    None,
+                    creation_frame.filename,
+                    creation_frame.lineno,
+                    module=globals_["__name__"],
+                    registry=warning_registry,
+                    module_globals=globals_
+                )
 
     @property
     def _creation_frame(self) -> t.Union[t.Literal[False], inspect.FrameInfo]:
@@ -418,9 +439,7 @@ class Result(NonConcurrentMethodChecker):
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self._summary is None:
-            self._summary = ResultSummary(
-                self._connection.unresolved_address, **self._metadata
-            )
+            self._summary = ResultSummary(self._address, **self._metadata)
         return self._summary
 
     def keys(self) -> t.Tuple[str, ...]:

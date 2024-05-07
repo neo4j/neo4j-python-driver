@@ -91,7 +91,6 @@ if t.TYPE_CHECKING:
         Session,
         Transaction,
     )
-    from ._work.summary import SummaryNotification
 
     _TTransaction = t.Union[AsyncManagedTransaction, AsyncTransaction,
                             ManagedTransaction, Transaction]
@@ -566,15 +565,3 @@ class CertificateConfigurationError(ConfigurationError):
 class UnsupportedServerProduct(Exception):
     """ Raised when an unsupported server product is detected.
     """
-
-
-class Neo4jWarning(Warning):
-    notification: SummaryNotification
-
-    def __init__(self, notification: SummaryNotification) -> None:
-        super().__init__(
-            f"{notification.code} (category: {notification.category}, "
-            f"severity: {notification.severity_level}): "
-            f"{notification.title} - {notification.description} - "
-        )
-        self.notification = notification

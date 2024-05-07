@@ -17,8 +17,6 @@
 from __future__ import annotations
 
 import inspect
-import os
-import sys
 import traceback
 import typing as t
 from copy import deepcopy
@@ -29,15 +27,13 @@ from ..._async_compat.concurrency import (
     AsyncRLock,
 )
 from ..._async_compat.util import AsyncUtil
+from ..._debug import ENABLED
 from ..._meta import copy_signature
 
 
 _TWrapped = t.TypeVar("_TWrapped", bound=t.Callable[..., t.Awaitable[t.Any]])
 _TWrappedIter = t.TypeVar("_TWrappedIter",
                           bound=t.Callable[..., t.AsyncIterator])
-
-
-ENABLED = sys.flags.dev_mode or bool(os.getenv("PYTHONNEO4JDEBUG"))
 
 
 class NonConcurrentMethodError(RuntimeError):

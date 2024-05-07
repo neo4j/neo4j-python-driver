@@ -276,6 +276,16 @@ class SummaryNotification:
             )
         return cls(**kwargs)
 
+    def __str__(self):
+        pos = ""
+        if self.position is not None:
+            pos = f" {{position: {self.position}}}"
+        return (
+            f"{{severity: {self.raw_severity_level}}} {{code: {self.code}}} "
+            f"{{category: {self.raw_category}}} {{title: {self.title}}} "
+            f"{{description: {self.description}}}{pos}"
+        )
+
 
 @dataclass
 class SummaryNotificationPosition:
@@ -307,3 +317,7 @@ class SummaryNotificationPosition:
             if isinstance(value, int):
                 kwargs[key] = value
         return cls(**kwargs)
+
+    def __str__(self):
+        return (f"line: {self.line}, column: {self.column}, "
+                f"offset: {self.offset}")

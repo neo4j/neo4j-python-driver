@@ -17,4 +17,6 @@
 from ._concurrency_check import NonConcurrentMethodChecker
 
 
-__all__ = ["NonConcurrentMethodChecker"]
+__all__ = [
+    "NonConcurrentMethodChecker",
+]

@@ -43,6 +43,7 @@ from .._conf import (
     TrustStore,
     WorkspaceConfig,
 )
+from .._debug import ENABLED as DEBUG_ENABLED
 from .._meta import (
     deprecation_warn,
     experimental_warn,
@@ -158,10 +159,10 @@ class AsyncGraphDatabase:
             notifications_disabled_categories: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
-            telemetry_disabled: bool = ...,
             warn_notification_severity: t.Optional[
                 T_NotificationMinimumSeverity
             ] = ...,
+            telemetry_disabled: bool = ...,
 
             # undocumented/unsupported options
             # they may be changed or removed any time without prior notice
@@ -274,11 +275,14 @@ class AsyncGraphDatabase:
             elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
-            _normalize_notifications_config(config)
+            if "warn_notification_severity" in config:
+                preview_warn("notification warnings are a preview feature.",
+                             stack_level=2)
+            _normalize_notifications_config(config, driver_level=True)
             liveness_check_timeout = config.get("liveness_check_timeout")
             if (
-                    liveness_check_timeout is not None
-                    and liveness_check_timeout < 0
+                liveness_check_timeout is not None
+                and liveness_check_timeout < 0
             ):
                 raise ConfigurationError(
                     'The config setting "liveness_check_timeout" must be '
@@ -571,9 +575,6 @@ class AsyncDriver:
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,
-            warn_notification_severity: t.Optional[
-                T_NotificationMinimumSeverity
-            ] = ...,
         ) -> AsyncSession:
             ...
 
@@ -588,6 +589,10 @@ class AsyncDriver:
 
             :returns: new :class:`neo4j.AsyncSession` object
             """
+            if "warn_notification_severity" in config:
+                # Would work just fine, but we don't want to introduce yet
+                # another undocumented/unsupported config option.
+                del config["warn_notification_severity"]
             self._check_state()
             session_config = self._read_session_config(config)
             return self._session(session_config)
@@ -1320,7 +1325,7 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
 
 
 
-def _normalize_notifications_config(config_kwargs):
+def _normalize_notifications_config(config_kwargs, *, driver_level=False):
     list_config_keys = ("notifications_disabled_categories",)
     for key in list_config_keys:
         value = config_kwargs.get(key)
@@ -1335,12 +1340,17 @@ def _normalize_notifications_config(config_kwargs):
         if value is not None:
             config_kwargs[key] = getattr(value, "value", value)
     value = config_kwargs.get("warn_notification_severity")
-    if value not in (
-        None, *NotificationMinimumSeverity
-    ):
+    if value not in (*NotificationMinimumSeverity, None):
         raise ValueError(
             f"Invalid value for configuration "
             f"warn_notification_severity: {value}. Should be None, a "
             f"NotificationMinimumSeverity, or a string representing a "
             f"NotificationMinimumSeverity."
         )
+    if driver_level:
+        if value is None:
+            if DEBUG_ENABLED:
+                config_kwargs["warn_notification_severity"] = \
+                    NotificationMinimumSeverity.INFORMATION
+        elif value == NotificationMinimumSeverity.OFF:
+            config_kwargs["warn_notification_severity"] = None

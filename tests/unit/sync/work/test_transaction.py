@@ -241,7 +241,7 @@ def test_transaction_begin_pipelining(
 ) -> None:
     noop_cb = lambda *args, **kwargs: None
     tx = Transaction(
-        fake_connection, 2, noop_cb, noop_cb, noop_cb, noop_cb
+        fake_connection, 2, None, noop_cb, noop_cb, noop_cb
     )
     database = "db"
     imp_user = None
