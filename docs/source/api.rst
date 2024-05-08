@@ -735,7 +735,7 @@ Set the minimum severity for server notifications that should cause the driver t
 Setting it to :attr:`.NotificationMinimumSeverity.OFF` disables these kind of warnings.
 Setting it to :data:`None` will be equivalent to ``OFF``, unless Python runs in development mode
 (e.g., with ``python -X dev ...``) or the environment variable ``PYTHONNEO4JDEBUG`` is set, in which case the driver
-defaults to emitting warnings on all notification (equivalent to :attr:`.NotificationMinimumSeverity.INFORMATION`).
+defaults to emitting warnings on all notification (currently equivalent to :attr:`.NotificationMinimumSeverity.INFORMATION`).
 
 **This is experimental** (see :ref:`filter-warnings-ref`).
 It might be changed or removed any time even without prior notice.
