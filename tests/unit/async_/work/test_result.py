@@ -14,14 +14,21 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import logging
+import typing as t
 import uuid
 import warnings
-from contextlib import contextmanager
 from unittest import mock
 
 import pandas as pd
 import pytest
 import pytz
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 from neo4j import (
     Address,
@@ -41,6 +48,7 @@ from neo4j._data import (
     Node,
     Relationship,
 )
+from neo4j._debug import NotificationPrinter
 from neo4j.exceptions import (
     BrokenRecordError,
     ResultNotSingleError,
@@ -49,8 +57,19 @@ from neo4j.graph import (
     EntitySetView,
     Graph,
 )
+from neo4j.warnings import (
+    Neo4jDeprecationWarning,
+    Neo4jWarning,
+)
 
 from ...._async_compat import mark_async_test
+
+
+if t.TYPE_CHECKING:
+    from ...fixtures.notifications import (
+        TNotificationFactory,
+        TRawNotificationFactory,
+    )
 
 
 class Records:
@@ -118,7 +137,7 @@ class AsyncConnectionStub:
             self._records = records
             self._use_qid = True
         else:
-            self._records = records,
+            self._records = (records,)
             self._use_qid = force_qid
         self.fetch_idx = 0
         self._qid = -1
@@ -284,7 +303,7 @@ async def fetch_and_compare_all_records(
 @mark_async_test
 async def test_result_iteration(method, records):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, 2, noop, noop)
+    result = AsyncResult(connection, 2, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     await fetch_and_compare_all_records(result, "x", records, method)
 
@@ -293,7 +312,7 @@ async def test_result_iteration(method, records):
 async def test_result_iteration_mixed_methods():
     records = [[i] for i in range(10)]
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, 4, noop, noop)
+    result = AsyncResult(connection, 4, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     iter1 = AsyncUtil.iter(result)
     iter2 = AsyncUtil.iter(result)
@@ -329,9 +348,9 @@ async def test_parallel_result_iteration(method, invert_fetch):
     connection = AsyncConnectionStub(
         records=(Records(["x"], records1), Records(["x"], records2))
     )
-    result1 = AsyncResult(connection, 2, noop, noop)
+    result1 = AsyncResult(connection, 2, None, noop, noop)
     await result1._run("CYPHER1", {}, None, None, "r", None, None, None)
-    result2 = AsyncResult(connection, 2, noop, noop)
+    result2 = AsyncResult(connection, 2, None, noop, noop)
     await result2._run("CYPHER2", {}, None, None, "r", None, None, None)
     if invert_fetch:
         await fetch_and_compare_all_records(
@@ -359,9 +378,9 @@ async def test_interwoven_result_iteration(method, invert_fetch):
     connection = AsyncConnectionStub(
         records=(Records(["x"], records1), Records(["y"], records2))
     )
-    result1 = AsyncResult(connection, 2, noop, noop)
+    result1 = AsyncResult(connection, 2, None, noop, noop)
     await result1._run("CYPHER1", {}, None, None, "r", None, None, None)
-    result2 = AsyncResult(connection, 2, noop, noop)
+    result2 = AsyncResult(connection, 2, None, noop, noop)
     await result2._run("CYPHER2", {}, None, None, "r", None, None, None)
     start = 0
     for n in (1, 2, 3, 1, None):
@@ -388,7 +407,7 @@ async def test_interwoven_result_iteration(method, invert_fetch):
 @mark_async_test
 async def test_result_peek(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     for i in range(len(records) + 1):
         record = await result.peek()
@@ -411,7 +430,7 @@ async def test_result_single_non_strict(records, fetch_size, default):
         kwargs["strict"] = False
 
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     if len(records) == 0:
         assert await result.single(**kwargs) is None
@@ -430,7 +449,7 @@ async def test_result_single_non_strict(records, fetch_size, default):
 @mark_async_test
 async def test_result_single_strict(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     try:
         record = await result.single(strict=True)
@@ -457,7 +476,7 @@ async def test_result_single_strict(records, fetch_size):
 @mark_async_test
 async def test_result_single_exhausts_records(records, fetch_size, strict):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     try:
         with warnings.catch_warnings():
@@ -479,7 +498,7 @@ async def test_result_single_exhausts_records(records, fetch_size, strict):
 @mark_async_test
 async def test_result_fetch(records, fetch_size, strict):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     assert await result.fetch(0) == []
     assert await result.fetch(-1) == []
@@ -491,7 +510,7 @@ async def test_result_fetch(records, fetch_size, strict):
 @mark_async_test
 async def test_keys_are_available_before_and_after_stream():
     connection = AsyncConnectionStub(records=Records(["x"], [[1], [2]]))
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     assert list(result.keys()) == ["x"]
     await AsyncUtil.list(result)
@@ -507,7 +526,7 @@ async def test_consume(records, consume_one, summary_meta, consume_times):
     connection = AsyncConnectionStub(
         records=Records(["x"], records), summary_meta=summary_meta
     )
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     if consume_one:
         try:
@@ -542,7 +561,7 @@ async def test_time_in_summary(t_first, t_last):
         summary_meta=summary_meta
     )
 
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     summary = await result.consume()
 
@@ -564,7 +583,7 @@ async def test_time_in_summary(t_first, t_last):
 async def test_counts_in_summary():
     connection = AsyncConnectionStub(records=Records(["n"], [[1], [2]]))
 
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     summary = await result.consume()
 
@@ -578,7 +597,7 @@ async def test_query_type(query_type):
         records=Records(["n"], [[1], [2]]), summary_meta={"type": query_type}
     )
 
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     summary = await result.consume()
 
@@ -593,7 +612,7 @@ async def test_data(num_records):
         records=Records(["n"], [[i + 1] for i in range(num_records)])
     )
 
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     await result._buffer_all()
     records = result._record_buffer.copy()
@@ -625,7 +644,7 @@ async def test_data(num_records):
 @mark_async_test
 async def test_result_graph(records):
     connection = AsyncConnectionStub(records=records)
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     graph = await result.graph()
     assert isinstance(graph, Graph)
@@ -706,7 +725,7 @@ async def test_result_graph(records):
 async def test_to_eager_result(records):
     summary = {"test_to_eager_result": uuid.uuid4()}
     connection = AsyncConnectionStub(records=records, summary_meta=summary)
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     eager_result = await result.to_eager_result()
 
@@ -766,7 +785,7 @@ async def test_to_eager_result(records):
 @mark_async_test
 async def test_to_df(keys, values, types, instances, test_default_expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     if test_default_expand:
         df = await result.to_df()
@@ -923,7 +942,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
 async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                             expected_types):
     connection = AsyncConnectionStub(records=Records(keys, values))
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     df = await result.to_df(expand=True)
 
@@ -1122,7 +1141,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
 @mark_async_test
 async def test_to_df_parse_dates(keys, values, expected_df, expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     df = await result.to_df(expand=expand, parse_dates=True)
 
@@ -1137,7 +1156,7 @@ async def test_broken_hydration(nested):
         value_in = [value_in]
     records_in = Records(["foo", "bar"], [["foobar", value_in]])
     connection = AsyncConnectionStub(records=records_in)
-    result = AsyncResult(connection, 1, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     records_out = await AsyncUtil.list(result)
     assert len(records_out) == 1
@@ -1149,3 +1168,88 @@ async def test_broken_hydration(nested):
     cause = exc.value.__cause__
     assert isinstance(cause, ValueError)
     assert repr(b"a") in str(cause)
+
+
+@pytest.mark.parametrize(
+    (
+        "notification_severity",
+        "notification_category",
+        "warn_notification_severity",
+        "expected_warning",
+    ),
+    (
+        ("WARNING", "HINT", None, None),
+        ("INFORMATION", "HINT", None, None),
+        ("INFORMATION", "HINT", "WARNING", None),
+        ("WARNING", "HINT", "WARNING", Neo4jWarning),
+        ("INFORMATION", "HINT", "INFORMATION", Neo4jWarning),
+        ("WARNING", "HINT", "INFORMATION", Neo4jWarning),
+        ("WARNING", "DEPRECATION", "WARNING", Neo4jDeprecationWarning),
+    )
+)
+@mark_async_test
+async def test_notification_warning(
+    raw_notification_factory: TRawNotificationFactory,
+    notification_severity: str,
+    notification_category: str,
+    warn_notification_severity: t.Optional[str],
+    expected_warning: t.Optional[te.Type[Warning]],
+) -> None:
+    connection = AsyncConnectionStub(
+        records=Records(["foo"], ()),
+        summary_meta={
+            "notifications": [raw_notification_factory(data_overwrite={
+                "severity": notification_severity,
+                "category": notification_category,
+            })]}
+    )
+    result = AsyncResult(connection, 1, warn_notification_severity, noop, noop)
+    if expected_warning is None:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # assert not warnings are emitted
+            await result._run("CYPHER", {}, None, None, "r", None, None, None)
+            await result.consume()
+    else:
+        with pytest.warns(expected_warning) as recording:
+            await result._run("CYPHER", {}, None, None, "r", None, None, None)
+            await result.consume()
+        assert len(recording.list) == 1
+        assert recording.list[0].category is expected_warning
+
+
+@pytest.mark.parametrize("notification_severity", ("INFORMATION", "WARNING"))
+@pytest.mark.parametrize("notification_category",
+     (
+        "HINT",
+        "DEPRECATION",
+        "UNRECOGNIZED",
+    )
+)
+@mark_async_test
+async def test_notification_logging(
+    raw_notification_factory: TRawNotificationFactory,
+    notification_factory: TNotificationFactory,
+    notification_severity: str,
+    notification_category: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    notification_data = raw_notification_factory(data_overwrite={
+        "severity": notification_severity,
+        "category": notification_category,
+    })
+    notification = notification_factory(notification_data)
+    connection = AsyncConnectionStub(
+        records=Records(["foo"], ()),
+        summary_meta={"notifications": [notification_data]}
+    )
+    result = AsyncResult(connection, 1, None, noop, noop)
+    with caplog.at_level(logging.INFO, logger="neo4j.notifications") as log:
+        await result._run("CYPHER", {}, None, None, "r", None, None, None)
+        await result.consume()
+    assert len(caplog.messages) == 1
+    formatted_notification = str(
+        NotificationPrinter(notification, "CYPHER", one_line=True)
+    )
+    expected_message = \
+        f"Received notification from DBMS server: {formatted_notification}"
+    assert caplog.messages[0] == expected_message

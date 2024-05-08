@@ -22,7 +22,10 @@ import typing as t
 import warnings
 
 import pytest
-import typing_extensions as te
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 import neo4j
 from neo4j import (
@@ -33,6 +36,7 @@ from neo4j import (
     ExperimentalWarning,
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
+    PreviewWarning,
     Query,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -49,6 +53,7 @@ from neo4j._async.io import (
     AsyncNeo4jPool,
 )
 from neo4j._conf import SessionConfig
+from neo4j._debug import ENABLED as DEBUG_ENABLED
 from neo4j.api import (
     AsyncBookmarkManager,
     BookmarkManager,
@@ -491,26 +496,27 @@ async def test_with_custom_ducktype_client_certificate_provider(
             assert driver._pool.pool_config.client_certificate is provider
 
 
-_T_NotificationMinimumSeverity = t.Union[
-    NotificationMinimumSeverity,
-    te.Literal[
-        "OFF",
-        "WARNING",
-        "INFORMATION",
+if t.TYPE_CHECKING:
+    _T_NotificationMinimumSeverity = t.Union[
+        NotificationMinimumSeverity,
+        te.Literal[
+            "OFF",
+            "WARNING",
+            "INFORMATION",
+        ]
     ]
-]
 
-_T_NotificationDisabledCategory = t.Union[
-    NotificationDisabledCategory,
-    te.Literal[
-        "HINT",
-        "UNRECOGNIZED",
-        "UNSUPPORTED",
-        "PERFORMANCE",
-        "DEPRECATION",
-        "GENERIC",
+    _T_NotificationDisabledCategory = t.Union[
+        NotificationDisabledCategory,
+        te.Literal[
+            "HINT",
+            "UNRECOGNIZED",
+            "UNSUPPORTED",
+            "PERFORMANCE",
+            "DEPRECATION",
+            "GENERIC",
+        ]
     ]
-]
 
 
 @pytest.mark.parametrize("min_sev", (
@@ -594,6 +600,83 @@ async def test_driver_factory_with_notification_filters(
         assert open_pool_conf.notifications_min_severity == expected_min_sev
         assert (open_pool_conf.notifications_disabled_categories
                 == expected_dis_cats)
+
+
+@pytest.mark.parametrize("uri", [
+    "bolt://localhost:7687",
+    "neo4j://localhost:7687",
+])
+@pytest.mark.parametrize(
+    ("min_sev", "expected"),
+    (
+        (..., "INFORMATION" if DEBUG_ENABLED else None),
+        (None, "INFORMATION" if DEBUG_ENABLED else None),
+        ("OFF", None),
+        (NotificationMinimumSeverity.OFF, None),
+        ("INFORMATION", "INFORMATION"),
+        (NotificationMinimumSeverity.INFORMATION, "INFORMATION"),
+        ("WARNING", "WARNING"),
+        (NotificationMinimumSeverity.WARNING, "WARNING"),
+        ("FOO", ValueError),
+        (NotificationDisabledCategory.GENERIC, ValueError),
+    )
+)
+@pytest.mark.parametrize(
+    "min_sev_session",
+    (
+        ...,
+        None,
+        "OFF",
+        NotificationMinimumSeverity.OFF,
+        "INFORMATION",
+        NotificationMinimumSeverity.INFORMATION,
+        "WARNING",
+        NotificationMinimumSeverity.WARNING,
+        "FOO",
+        NotificationDisabledCategory.GENERIC,
+    )
+)
+@mark_async_test
+async def test_warn_notification_severity_driver_config(
+    uri: str,
+    session_cls_mock,
+    min_sev: t.Union[
+        None, _T_NotificationMinimumSeverity
+    ],
+    min_sev_session: t.Union[
+        None, _T_NotificationMinimumSeverity
+    ],
+    expected: t.Union[None, NotificationMinimumSeverity, te.Type[Exception]],
+) -> None:
+    if inspect.isclass(expected) and issubclass(expected, Exception):
+        assert min_sev is not ...  # makes no sense to test
+        with pytest.raises(expected):
+            with pytest.warns(PreviewWarning, match="notification warnings"):
+                AsyncGraphDatabase.driver(
+                    uri, warn_notification_severity=min_sev
+                )
+        return
+    if min_sev is ...:
+        driver = AsyncGraphDatabase.driver(uri)
+    else:
+        with pytest.warns(PreviewWarning, match="notification warnings"):
+            driver = AsyncGraphDatabase.driver(
+                uri, warn_notification_severity=min_sev
+            )
+    async with driver:
+        if min_sev_session is ...:
+            session = driver.session()
+        else:
+            # Works at runtime (will be ignored), but should be rejected by
+            # type checkers.
+            # type: ignore[arg-type]
+            session = driver.session(
+                notifications_min_severity=min_sev_session
+            )
+        async with session:
+            session_cls_mock.assert_called_once()
+            (_, session_config), _ = session_cls_mock.call_args
+            assert session_config.warn_notification_severity == expected
 
 
 @pytest.mark.parametrize("min_sev", (

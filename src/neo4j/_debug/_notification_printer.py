@@ -29,7 +29,7 @@ class NotificationPrinter:
             return f"{self.notification} for query:\n{self.query}"
         s = f"{self.notification} for query:\n"
         query_lines = self.query.splitlines()
-        if pos.line > len(query_lines):
+        if pos.line <= 0 or pos.line > len(query_lines) or pos.column <= 0:
             return s + self.query
         query_lines = (
             query_lines[:pos.line]

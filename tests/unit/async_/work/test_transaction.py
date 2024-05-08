@@ -44,7 +44,7 @@ async def test_transaction_context_when_committing(
     on_closed = mocker.AsyncMock()
     on_error = mocker.AsyncMock()
     on_cancel = mocker.Mock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+    tx = AsyncTransaction(async_fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -76,7 +76,7 @@ async def test_transaction_context_with_explicit_rollback(
     on_closed = mocker.AsyncMock()
     on_error = mocker.AsyncMock()
     on_cancel = mocker.Mock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+    tx = AsyncTransaction(async_fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -107,7 +107,7 @@ async def test_transaction_context_calls_rollback_on_error(
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+    tx = AsyncTransaction(async_fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -127,7 +127,7 @@ async def test_transaction_run_takes_no_query_object(async_fake_connection):
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+    tx = AsyncTransaction(async_fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     with pytest.raises(ValueError):
         await tx.run(Query("RETURN 1"))
@@ -147,7 +147,7 @@ async def test_transaction_run_parameters(
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+    tx = AsyncTransaction(async_fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     if not as_kwargs:
         params = {"parameters": params}
@@ -166,10 +166,8 @@ async def test_transaction_run_parameters(
 async def test_transaction_rollbacks_on_open_connections(
     async_fake_connection
 ):
-    tx = AsyncTransaction(
-        async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = AsyncTransaction(async_fake_connection, 2, None, noop, noop, noop)
     async with tx as tx_:
         async_fake_connection.is_reset_mock.return_value = False
         async_fake_connection.is_reset_mock.reset_mock()
@@ -183,10 +181,8 @@ async def test_transaction_rollbacks_on_open_connections(
 async def test_transaction_no_rollback_on_reset_connections(
     async_fake_connection
 ):
-    tx = AsyncTransaction(
-        async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = AsyncTransaction(async_fake_connection, 2, None, noop, noop, noop)
     async with tx as tx_:
         async_fake_connection.is_reset_mock.return_value = True
         async_fake_connection.is_reset_mock.reset_mock()
@@ -200,10 +196,8 @@ async def test_transaction_no_rollback_on_reset_connections(
 async def test_transaction_no_rollback_on_closed_connections(
     async_fake_connection
 ):
-    tx = AsyncTransaction(
-        async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = AsyncTransaction(async_fake_connection, 2, None, noop, noop, noop)
     async with tx as tx_:
         async_fake_connection.closed.return_value = True
         async_fake_connection.closed.reset_mock()
@@ -219,10 +213,8 @@ async def test_transaction_no_rollback_on_closed_connections(
 async def test_transaction_no_rollback_on_defunct_connections(
     async_fake_connection
 ):
-    tx = AsyncTransaction(
-        async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = AsyncTransaction(async_fake_connection, 2, None, noop, noop, noop)
     async with tx as tx_:
         async_fake_connection.defunct.return_value = True
         async_fake_connection.defunct.reset_mock()
@@ -306,10 +298,8 @@ async def test_server_error_propagates(async_scripted_connection, error):
         raise ValueError(f"Unknown error type {error}")
     connection.set_script(script)
 
-    tx = AsyncTransaction(
-        connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = AsyncTransaction(connection, 2, None, noop, noop, noop)
     res1 = await tx.run("UNWIND range(1, 1000) AS n RETURN n")
     assert await res1.__anext__() == {"n": 1}
 
