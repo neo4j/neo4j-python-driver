@@ -344,6 +344,7 @@ class Result(NonConcurrentMethodChecker):
     def _creation_frame(self) -> t.Union[t.Literal[False], inspect.FrameInfo]:
         if self._creation_frame_cache is not None:
             return self._creation_frame_cache
+
         if self._creation_stack is None:
             self._creation_frame_cache = False
         else:
@@ -352,6 +353,7 @@ class Result(NonConcurrentMethodChecker):
                  if not frame.filename.startswith(str(_driver_dir))),
                 False
             )
+
         assert self._creation_frame_cache is not None  # help mypy a little
         return self._creation_frame_cache
 
