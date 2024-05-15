@@ -19,17 +19,18 @@ from __future__ import annotations
 import typing as t
 from dataclasses import dataclass
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
 from .._api import (
     NotificationCategory,
     NotificationSeverity,
 )
 from .._exceptions import BoltProtocolError
-from ..addressing import Address
-from ..api import ServerInfo
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..addressing import Address
+    from ..api import ServerInfo
 
 
 # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
@@ -275,6 +276,16 @@ class SummaryNotification:
             )
         return cls(**kwargs)
 
+    def __str__(self):
+        pos = ""
+        if self.position is not None:
+            pos = f" {{position: {self.position}}}"
+        return (
+            f"{{severity: {self.raw_severity_level}}} {{code: {self.code}}} "
+            f"{{category: {self.raw_category}}} {{title: {self.title}}} "
+            f"{{description: {self.description}}}{pos}"
+        )
+
 
 @dataclass
 class SummaryNotificationPosition:
@@ -306,3 +317,7 @@ class SummaryNotificationPosition:
             if isinstance(value, int):
                 kwargs[key] = value
         return cls(**kwargs)
+
+    def __str__(self):
+        return (f"line: {self.line}, column: {self.column}, "
+                f"offset: {self.offset}")

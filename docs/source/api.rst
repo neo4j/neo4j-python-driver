@@ -407,6 +407,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`user-agent-ref`
 + :ref:`driver-notifications-min-severity-ref`
 + :ref:`driver-notifications-disabled-categories-ref`
++ :ref:`driver-warn-notification-severity-ref`
 + :ref:`telemetry-disabled-ref`
 
 
@@ -723,6 +724,28 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 .. versionadded:: 5.7
 
 .. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`
+
+
+.. _driver-warn-notification-severity-ref:
+
+``warn_notification_severity``
+------------------------------
+Set the minimum severity for server notifications that should cause the driver to emit a :class:`.Neo4jWarning`.
+
+Setting it to :attr:`.NotificationMinimumSeverity.OFF` disables these kind of warnings.
+Setting it to :data:`None` will be equivalent to ``OFF``, unless Python runs in development mode
+(e.g., with ``python -X dev ...``) or the environment variable ``PYTHONNEO4JDEBUG`` is set, in which case the driver
+defaults to emitting warnings on all notification (currently equivalent to :attr:`.NotificationMinimumSeverity.INFORMATION`).
+
+**This is experimental** (see :ref:`filter-warnings-ref`).
+It might be changed or removed any time even without prior notice.
+
+:Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.21
+
+.. seealso:: :ref:`development-environment-ref`
 
 
 .. _telemetry-disabled-ref:
@@ -2085,6 +2108,14 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 
 .. autoclass:: neo4j.ExperimentalWarning
 
+.. autoclass:: neo4j.warnings.Neo4jWarning
+    :show-inheritance:
+    :members:
+
+.. autoclass:: neo4j.warnings.Neo4jDeprecationWarning
+    :show-inheritance:
+    :members:
+
 
 .. _filter-warnings-ref:
 
@@ -2156,6 +2187,9 @@ Currently available:
   * ``neo4j.pool``: Logs connection pool activity (including routing).
   * ``neo4j.auth_management``: Logger for provided :class:`.AuthManager`
     implementations.
+  * ``neo4j.notifications``: Logs notifications received from the server.
+    The notifications' :attr:`.SummaryNotification.severity_level` is used to
+    determine the log level.
 
 There are different ways of enabling logging as listed below.
 

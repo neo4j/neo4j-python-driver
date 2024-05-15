@@ -99,6 +99,8 @@ To deactivate the current active virtual environment, use:
     deactivate
 
 
+.. _development-environment-ref:
+
 Development Environment
 =======================
 
@@ -112,8 +114,13 @@ Specifically for this driver, this will:
    * **This is experimental**.
      It might be changed or removed any time even without prior notice.
    * the driver will raise an exception if non-concurrency-safe methods are used concurrently.
+   * the driver will emit warnings if the server sends back notification
+     (see also :ref:`driver-warn-notification-severity-ref`).
 
      .. versionadded:: 5.15
+
+     .. versionchanged:: 5.21
+         Added functionality to automatically emit warnings on server notifications.
 
 .. _development mode: https://docs.python.org/3/library/devmode.html
 

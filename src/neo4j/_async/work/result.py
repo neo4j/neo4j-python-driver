@@ -16,24 +16,37 @@
 
 from __future__ import annotations
 
+import inspect
 import typing as t
 from collections import deque
-from warnings import warn
+from logging import getLogger
+from pathlib import Path
+from warnings import (
+    warn,
+    warn_explicit,
+)
 
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
+from ..._api import (
+    NotificationCategory,
+    NotificationMinimumSeverity,
+    NotificationSeverity,
+)
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import BrokenHydrationObject
 from ..._data import (
     Record,
     RecordTableRowExporter,
 )
+from ..._debug import NotificationPrinter
 from ..._work import (
     EagerResult,
     ResultSummary,
 )
+from ...addressing import Address
 from ...exceptions import (
     ResultConsumedError,
     ResultFailedError,
@@ -42,6 +55,10 @@ from ...exceptions import (
 from ...time import (
     Date,
     DateTime,
+)
+from ...warnings import (
+    Neo4jDeprecationWarning,
+    Neo4jWarning,
 )
 from .._debug import AsyncNonConcurrentMethodChecker
 from ..io import ConnectionErrorHandler
@@ -52,6 +69,13 @@ if t.TYPE_CHECKING:
 
     from ...graph import Graph
 
+
+notification_log = getLogger("neo4j.notifications")
+
+
+_driver_dir = Path(__file__)
+for _ in range(__package__.count(".") + 1):
+    _driver_dir = _driver_dir.parent
 
 _T = t.TypeVar("_T")
 _TResultKey = t.Union[int, str]
@@ -79,21 +103,35 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
     :meth:`.AsyncSession.run` and :meth:`.AsyncTransaction.run`.
     """
 
-    def __init__(self, connection, fetch_size, on_closed, on_error):
+    _creation_stack: t.Optional[t.List[inspect.FrameInfo]]
+    _creation_frame_cache: t.Union[None, t.Literal[False], inspect.FrameInfo]
+
+    def __init__(
+        self, connection, fetch_size, warn_notification_severity,
+        on_closed, on_error
+    ) -> None:
         self._connection = ConnectionErrorHandler(
             connection, self._connection_error_handler
         )
         self._hydration_scope = connection.new_hydration_scope()
         self._on_error = on_error
         self._on_closed = on_closed
-        self._metadata = None
-        self._keys = None
-        self._record_buffer = deque()
-        self._summary = None
+        self._metadata: dict = {}
+        self._address: Address = self._connection.unresolved_address
+        self._keys: t.Tuple[str, ...] = ()
+        self._record_buffer: t.Deque[Record] = deque()
+        self._summary: t.Optional[ResultSummary] = None
         self._database = None
         self._bookmark = None
         self._raw_qid = -1
         self._fetch_size = fetch_size
+        self._warn_notification_severity = \
+            warn_notification_severity
+        if warn_notification_severity is not None:
+            self._creation_stack = inspect.stack()
+        else:
+            self._creation_stack = None
+        self._creation_frame_cache = None
 
         # states
         self._discarding = False    # discard the remainder of records
@@ -193,15 +231,14 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
                     for record in records
                 ))
 
-        async def on_summary():
+        async def _on_summary():
             self._attached = False
             await AsyncUtil.callback(self._on_closed)
 
         async def on_failure(metadata):
-            self._attached = False
-            await AsyncUtil.callback(self._on_closed)
+            await _on_summary()
 
-        def on_success(summary_metadata):
+        async def on_success(summary_metadata: dict) -> None:
             self._streaming = False
             has_more = summary_metadata.get("has_more")
             self._has_more = bool(has_more)
@@ -210,6 +247,9 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
             self._database = summary_metadata.get("db", self._database)
+            await _on_summary()
+            self._handle_warnings()
+
 
         self._connection.pull(
             n=self._fetch_size,
@@ -218,21 +258,19 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             on_records=on_records,
             on_success=on_success,
             on_failure=on_failure,
-            on_summary=on_summary,
         )
         self._streaming = True
 
     def _discard(self):
-        async def on_summary():
+        async def _on_summary():
             self._attached = False
             await AsyncUtil.callback(self._on_closed)
 
         async def on_failure(metadata):
             self._metadata.update(metadata)
-            self._attached = False
-            await AsyncUtil.callback(self._on_closed)
+            await _on_summary()
 
-        def on_success(summary_metadata):
+        async def on_success(summary_metadata):
             self._streaming = False
             has_more = summary_metadata.get("has_more")
             self._has_more = bool(has_more)
@@ -242,6 +280,8 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
             self._database = summary_metadata.get("db", self._database)
+            await _on_summary()
+            self._handle_warnings()
 
         # This was the last page received, discard the rest
         self._connection.discard(
@@ -249,9 +289,73 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             qid=self._qid,
             on_success=on_success,
             on_failure=on_failure,
-            on_summary=on_summary,
         )
         self._streaming = True
+
+    def _handle_warnings(self) -> None:
+        sev_filter: t.Tuple[NotificationMinimumSeverity, ...] = ()
+        if (
+            self._warn_notification_severity
+            == NotificationMinimumSeverity.WARNING
+        ):
+            sev_filter = (NotificationMinimumSeverity.WARNING,)
+        elif (
+            self._warn_notification_severity
+            == NotificationMinimumSeverity.INFORMATION
+        ):
+            sev_filter = (NotificationMinimumSeverity.INFORMATION,
+                          NotificationMinimumSeverity.WARNING)
+
+        summary = self._obtain_summary()
+        query = self._metadata.get("query")
+        for notification in summary.summary_notifications:
+            log_call = notification_log.debug
+            if notification.severity_level == NotificationSeverity.INFORMATION:
+                log_call = notification_log.info
+            elif notification.severity_level == NotificationSeverity.WARNING:
+                log_call = notification_log.warning
+            log_call(
+                "Received notification from DBMS server: %s",
+                NotificationPrinter(notification, query, one_line=True)
+            )
+
+            if notification.severity_level not in sev_filter:
+                continue
+            warning_cls: te.Type[Warning] = Neo4jWarning
+            if notification.category == NotificationCategory.DEPRECATION:
+                warning_cls = Neo4jDeprecationWarning
+            creation_frame = self._creation_frame
+            if creation_frame is False:
+                warn(warning_cls(notification), stacklevel=1)
+            else:
+                globals_ = creation_frame.frame.f_globals
+                warning_registry = globals_.get("__warningregistry__", {})
+                warn_explicit(
+                    warning_cls(notification, query),
+                    None,
+                    creation_frame.filename,
+                    creation_frame.lineno,
+                    module=globals_["__name__"],
+                    registry=warning_registry,
+                    module_globals=globals_
+                )
+
+    @property
+    def _creation_frame(self) -> t.Union[t.Literal[False], inspect.FrameInfo]:
+        if self._creation_frame_cache is not None:
+            return self._creation_frame_cache
+
+        if self._creation_stack is None:
+            self._creation_frame_cache = False
+        else:
+            self._creation_frame_cache = next(
+                (frame for frame in self._creation_stack
+                 if not frame.filename.startswith(str(_driver_dir))),
+                False
+            )
+
+        assert self._creation_frame_cache is not None  # help mypy a little
+        return self._creation_frame_cache
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_iter
     async def __aiter__(self) -> t.AsyncIterator[Record]:
@@ -331,22 +435,13 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         """
         await self._buffer()
 
-    def _obtain_summary(self):
-        """Obtain the summary of this result, buffering any remaining records.
+    def _obtain_summary(self) -> ResultSummary:
+        """Obtain the summary of this result.
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self._summary is None:
-            if self._metadata:
-                self._summary = ResultSummary(
-                    self._connection.unresolved_address, **self._metadata
-                )
-            elif self._connection:
-                self._summary = ResultSummary(
-                    self._connection.unresolved_address,
-                    server=self._connection.server_info
-                )
-
+            self._summary = ResultSummary(self._address, **self._metadata)
         return self._summary
 
     def keys(self) -> t.Tuple[str, ...]:

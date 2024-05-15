@@ -305,8 +305,9 @@ class Session(Workspace):
 
         cx.telemetry(TelemetryAPI.AUTO_COMMIT)
         self._auto_result = Result(
-            cx, self._config.fetch_size, self._result_closed,
-            self._result_error
+            cx, self._config.fetch_size,
+            self._config.warn_notification_severity,
+            self._result_closed, self._result_error,
         )
         bookmarks = self._get_bookmarks()
         parameters = dict(parameters or {}, **kwargs)
@@ -426,6 +427,7 @@ class Session(Workspace):
             self._connection.telemetry(api, on_success=api_success_cb)
         self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
+            self._config.warn_notification_severity,
             self._transaction_closed_handler,
             self._transaction_error_handler,
             self._transaction_cancel_handler

@@ -47,6 +47,7 @@ test_session_config = {
     "auth": None,
     "notifications_min_severity": None,
     "notifications_disabled_categories": None,
+    "warn_notification_severity": None,
 }
 
 

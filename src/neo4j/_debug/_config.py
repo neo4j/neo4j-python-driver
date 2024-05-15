@@ -14,9 +14,8 @@
 # limitations under the License.
 
 
-from ._concurrency_check import AsyncNonConcurrentMethodChecker
+import os
+import sys
 
 
-__all__ = [
-    "AsyncNonConcurrentMethodChecker",
-]
+ENABLED = sys.flags.dev_mode or bool(os.getenv("PYTHONNEO4JDEBUG"))

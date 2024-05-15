@@ -44,7 +44,7 @@ def test_transaction_context_when_committing(
     on_closed = mocker.MagicMock()
     on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error,
+    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -76,7 +76,7 @@ def test_transaction_context_with_explicit_rollback(
     on_closed = mocker.MagicMock()
     on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error,
+    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -107,7 +107,7 @@ def test_transaction_context_calls_rollback_on_error(
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error,
+    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -127,7 +127,7 @@ def test_transaction_run_takes_no_query_object(fake_connection):
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error,
+    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     with pytest.raises(ValueError):
         tx.run(Query("RETURN 1"))
@@ -147,7 +147,7 @@ def test_transaction_run_parameters(
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error,
+    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
                           on_cancel)
     if not as_kwargs:
         params = {"parameters": params}
@@ -166,10 +166,8 @@ def test_transaction_run_parameters(
 def test_transaction_rollbacks_on_open_connections(
     fake_connection
 ):
-    tx = Transaction(
-        fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = False
         fake_connection.is_reset_mock.reset_mock()
@@ -183,10 +181,8 @@ def test_transaction_rollbacks_on_open_connections(
 def test_transaction_no_rollback_on_reset_connections(
     fake_connection
 ):
-    tx = Transaction(
-        fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = True
         fake_connection.is_reset_mock.reset_mock()
@@ -200,10 +196,8 @@ def test_transaction_no_rollback_on_reset_connections(
 def test_transaction_no_rollback_on_closed_connections(
     fake_connection
 ):
-    tx = Transaction(
-        fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.closed.return_value = True
         fake_connection.closed.reset_mock()
@@ -219,10 +213,8 @@ def test_transaction_no_rollback_on_closed_connections(
 def test_transaction_no_rollback_on_defunct_connections(
     fake_connection
 ):
-    tx = Transaction(
-        fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.defunct.return_value = True
         fake_connection.defunct.reset_mock()
@@ -239,9 +231,9 @@ def test_transaction_no_rollback_on_defunct_connections(
 def test_transaction_begin_pipelining(
     fake_connection, pipeline
 ) -> None:
+    noop_cb = lambda *args, **kwargs: None
     tx = Transaction(
-        fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+        fake_connection, 2, None, noop_cb, noop_cb, noop_cb
     )
     database = "db"
     imp_user = None
@@ -306,10 +298,8 @@ def test_server_error_propagates(scripted_connection, error):
         raise ValueError(f"Unknown error type {error}")
     connection.set_script(script)
 
-    tx = Transaction(
-        connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
-    )
+    noop = lambda *args, **kwargs: None
+    tx = Transaction(connection, 2, None, noop, noop, noop)
     res1 = tx.run("UNWIND range(1, 1000) AS n RETURN n")
     assert res1.__next__() == {"n": 1}
 
