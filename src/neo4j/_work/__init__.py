@@ -20,8 +20,11 @@ from .query import (
     unit_of_work,
 )
 from .summary import (
+    GqlStatusObject,
+    NotificationClassification,
     ResultSummary,
     SummaryCounters,
+    SummaryInputPosition,
     SummaryNotification,
     SummaryNotificationPosition,
 )
@@ -29,9 +32,12 @@ from .summary import (
 
 __all__ = [
     "EagerResult",
+    "NotificationClassification",
+    "GqlStatusObject",
     "Query",
     "ResultSummary",
     "SummaryCounters",
+    "SummaryInputPosition",
     "SummaryNotification",
     "SummaryNotificationPosition",
     "unit_of_work",

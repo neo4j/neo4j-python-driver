@@ -441,11 +441,11 @@ async def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
 ))
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 def test_does_not_support_notification_filters(fake_socket, method,
@@ -462,11 +462,11 @@ def test_does_not_support_notification_filters(fake_socket, method,
 @mark_async_test
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 async def test_hello_does_not_support_notification_filters(

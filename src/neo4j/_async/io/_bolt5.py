@@ -126,7 +126,7 @@ class AsyncBolt5x0(AsyncBolt):
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
         if (
             self.notifications_min_severity is not None
-            or self.notifications_disabled_categories is not None
+            or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
 
@@ -199,11 +199,11 @@ class AsyncBolt5x0(AsyncBolt):
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
             notifications_min_severity=None,
-            notifications_disabled_categories=None, dehydration_hooks=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if (
             notifications_min_severity is not None
-            or notifications_disabled_categories is not None
+            or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         if not parameters:
@@ -262,11 +262,11 @@ class AsyncBolt5x0(AsyncBolt):
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_categories=None, dehydration_hooks=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         if (
             notifications_min_severity is not None
-            or notifications_disabled_categories is not None
+            or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         extra = {}
@@ -480,7 +480,7 @@ class AsyncBolt5x1(AsyncBolt5x0):
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
         if (
             self.notifications_min_severity is not None
-            or self.notifications_disabled_categories is not None
+            or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
 
@@ -540,9 +540,9 @@ class AsyncBolt5x2(AsyncBolt5x1):
         if self.notifications_min_severity is not None:
             headers["notifications_minimum_severity"] = \
                 self.notifications_min_severity
-        if self.notifications_disabled_categories is not None:
+        if self.notifications_disabled_classifications is not None:
             headers["notifications_disabled_categories"] = \
-                self.notifications_disabled_categories
+                self.notifications_disabled_classifications
         return headers
 
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
@@ -577,7 +577,7 @@ class AsyncBolt5x2(AsyncBolt5x1):
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
             notifications_min_severity=None,
-            notifications_disabled_categories=None, dehydration_hooks=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if not parameters:
             parameters = {}
@@ -597,9 +597,9 @@ class AsyncBolt5x2(AsyncBolt5x1):
         if notifications_min_severity is not None:
             extra["notifications_minimum_severity"] = \
                 notifications_min_severity
-        if notifications_disabled_categories is not None:
+        if notifications_disabled_classifications is not None:
             extra["notifications_disabled_categories"] = \
-                notifications_disabled_categories
+                notifications_disabled_classifications
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -621,7 +621,7 @@ class AsyncBolt5x2(AsyncBolt5x1):
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_categories=None, dehydration_hooks=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         extra = {}
         if mode in (READ_ACCESS, "r"):
@@ -647,9 +647,9 @@ class AsyncBolt5x2(AsyncBolt5x1):
         if notifications_min_severity is not None:
             extra["notifications_minimum_severity"] = \
                 notifications_min_severity
-        if notifications_disabled_categories is not None:
+        if notifications_disabled_classifications is not None:
             extra["notifications_disabled_categories"] = \
-                notifications_disabled_categories
+                notifications_disabled_classifications
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
@@ -682,4 +682,96 @@ class AsyncBolt5x4(AsyncBolt5x3):
                   self.local_port, api_raw, api)
         self._append(b"\x54", (api_raw,),
                      Response(self, "telemetry", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
+
+class AsyncBolt5x5(AsyncBolt5x4):
+
+    PROTOCOL_VERSION = Version(5, 5)
+
+    def get_base_headers(self):
+        headers = super().get_base_headers()
+        if "notifications_disabled_categories" in headers:
+            headers["notifications_disabled_classifications"] = \
+                headers.pop("notifications_disabled_categories")
+        return headers
+
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None,
+            notifications_min_severity=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
+        if not parameters:
+            parameters = {}
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if (
+            self._client_state_manager.state
+            != self.bolt_states.TX_READY_OR_TX_STREAMING
+        ):
+            self.last_database = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = \
+                notifications_min_severity
+        if notifications_disabled_classifications is not None:
+            extra["notifications_disabled_classifications"] = \
+                notifications_disabled_classifications
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided as iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout is not None:
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
+        fields = (query, parameters, extra)
+        log.debug("[#%04X]  C: RUN %s", self.local_port,
+                  " ".join(map(repr, fields)))
+        self._append(b"\x10", fields,
+                     Response(self, "run", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
+
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        self.last_database = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided as iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout is not None:
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = \
+                notifications_min_severity
+        if notifications_disabled_classifications is not None:
+            extra["notifications_disabled_classifications"] = \
+                notifications_disabled_classifications
+        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        self._append(b"\x11", (extra,),
+                     Response(self, "begin", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)

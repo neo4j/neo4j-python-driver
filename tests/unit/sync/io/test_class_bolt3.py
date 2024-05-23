@@ -233,11 +233,11 @@ def test_re_auth(auth1, auth2, fake_socket):
 ))
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 def test_does_not_support_notification_filters(fake_socket, method,
@@ -254,11 +254,11 @@ def test_does_not_support_notification_filters(fake_socket, method,
 @mark_sync_test
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 def test_hello_does_not_support_notification_filters(

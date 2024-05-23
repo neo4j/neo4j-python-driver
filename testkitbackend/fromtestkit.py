@@ -24,6 +24,7 @@ import pytz
 import neo4j
 from neo4j import (
     NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
 )
@@ -208,3 +209,7 @@ def set_notifications_config(config, data):
         config["notifications_disabled_categories"] = \
             [NotificationDisabledCategory[c]
              for c in data["notificationsDisabledCategories"]]
+    if "notificationsDisabledClassifications" in data:
+        config["notifications_disabled_classifications"] = \
+            [NotificationDisabledClassification[c]
+             for c in data["notificationsDisabledClassifications"]]

@@ -22,24 +22,33 @@ from contextlib import contextmanager
 @contextmanager
 def warning_check(category, message):
     with warnings.catch_warnings(record=True) as warn_log:
-        warnings.filterwarnings("always", category=category, message=message)
+        warnings.filterwarnings("once", category=category, message=message)
         yield
     if len(warn_log) != 1:
-        raise AssertionError("Expected 1 warning, found %d: %s"
-                             % (len(warn_log), warn_log))
+        raise AssertionError(
+            "Expected 1 warning, found %d: %s"
+            % (
+                len(warn_log),
+                ", ".join(map(str, warn_log))
+            )
+        )
 
 
 @contextmanager
 def warnings_check(category_message_pairs):
     with warnings.catch_warnings(record=True) as warn_log:
         for category, message in category_message_pairs:
-            warnings.filterwarnings("always", category=category,
+            warnings.filterwarnings("once", category=category,
                                     message=message)
         yield
     if len(warn_log) != len(category_message_pairs):
         raise AssertionError(
             "Expected %d warnings, found %d: %s"
-            % (len(category_message_pairs), len(warn_log), warn_log)
+            % (
+                len(category_message_pairs),
+                len(warn_log),
+                ", ".join(map(str, warn_log))
+            )
         )
     category_message_pairs = [
         (category, re.compile(message, re.I))

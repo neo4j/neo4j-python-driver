@@ -200,7 +200,7 @@ class AsyncBolt3(AsyncBolt):
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
         if (
             self.notifications_min_severity is not None
-            or self.notifications_disabled_categories is not None
+            or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         headers = self.get_base_headers()
@@ -274,7 +274,7 @@ class AsyncBolt3(AsyncBolt):
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
             notifications_min_severity=None,
-            notifications_disabled_categories=None, dehydration_hooks=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
@@ -292,7 +292,7 @@ class AsyncBolt3(AsyncBolt):
             )
         if (
             notifications_min_severity is not None
-            or notifications_disabled_categories is not None
+            or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         if not parameters:
@@ -336,7 +336,7 @@ class AsyncBolt3(AsyncBolt):
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_categories=None, dehydration_hooks=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
@@ -354,7 +354,7 @@ class AsyncBolt3(AsyncBolt):
             )
         if (
             notifications_min_severity is not None
-            or notifications_disabled_categories is not None
+            or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         extra = {}

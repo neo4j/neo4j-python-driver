@@ -119,6 +119,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         self._metadata: dict = {}
         self._address: Address = self._connection.unresolved_address
         self._keys: t.Tuple[str, ...] = ()
+        self._had_record = False
         self._record_buffer: t.Deque[Record] = deque()
         self._summary: t.Optional[ResultSummary] = None
         self._database = None
@@ -170,7 +171,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
     async def _run(
         self, query, parameters, db, imp_user, access_mode, bookmarks,
-        notifications_min_severity, notifications_disabled_categories
+        notifications_min_severity, notifications_disabled_classifications
     ):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
@@ -208,8 +209,8 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             db=db,
             imp_user=imp_user,
             notifications_min_severity=notifications_min_severity,
-            notifications_disabled_categories=
-                notifications_disabled_categories,
+            notifications_disabled_classifications=
+                notifications_disabled_classifications,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,
@@ -220,6 +221,8 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
     def _pull(self):
         def on_records(records):
+            if records:
+                self._had_record = True
             if not self._discarding:
                 records = (
                     record.raw_data
@@ -441,7 +444,12 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self._summary is None:
-            self._summary = ResultSummary(self._address, **self._metadata)
+            self._summary = ResultSummary(
+                self._address,
+                had_key=bool(self._keys),
+                had_record=self._had_record,
+                metadata=self._metadata
+            )
         return self._summary
 
     def keys(self) -> t.Tuple[str, ...]:

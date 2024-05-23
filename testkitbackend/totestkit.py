@@ -14,7 +14,10 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import math
+import typing as t
 
 import neo4j
 from neo4j.graph import (
@@ -44,7 +47,7 @@ def record(rec):
 
 
 def summary(summary_: neo4j.ResultSummary) -> dict:
-    def serialize_notification(n: neo4j.SummaryNotification):
+    def serialize_notification(n: neo4j.SummaryNotification) -> dict:
         res: dict = {
             "title": n.title,
             "code": n.code,
@@ -63,11 +66,40 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
             }
         return res
 
-    def serialize_notifications():
+    def serialize_notifications() -> t.Optional[t.List[dict]]:
         if summary_.notifications is None:
             return None
         return [serialize_notification(n)
                 for n in summary_.summary_notifications]
+
+    def serialize_gql_status_object(o: neo4j.GqlStatusObject) -> dict:
+        res: dict = {
+            "isNotification": o.is_notification,
+            "gqlStatus" : o.gql_status,
+            "statusDescription" : o.status_description,
+            "rawClassification" : o.raw_classification,
+            "classification" : o.classification,
+            "rawSeverity" : o.raw_severity,
+            "severity" : o.severity,
+            "diagnosticRecord" : {
+                k: field(v) for k, v in o.diagnostic_record.items()
+            },
+        }
+        position = o.position
+        if position is not None:
+            res["position"] = {
+                "column": position.column,
+                "offset": position.offset,
+                "line": position.line,
+            }
+        else:
+            res["position"] = None
+        return res
+
+    def serialize_gql_status_objects() -> t.List[dict]:
+        with warning_check(neo4j.PreviewWarning, "GQLSTATUS"):
+            return [serialize_gql_status_object(o)
+                    for o in summary_.gql_status_objects]
 
     def format_address(address: neo4j.Address):
         if len(address) == 2:
@@ -102,6 +134,7 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         },
         "database": summary_.database,
         "notifications": serialize_notifications(),
+        "gqlStatusObjects": serialize_gql_status_objects(),
         "plan": summary_.plan,
         "profile": summary_.profile,
         "query": {

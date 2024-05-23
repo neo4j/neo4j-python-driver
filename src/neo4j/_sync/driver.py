@@ -158,6 +158,9 @@ class GraphDatabase:
             notifications_disabled_categories: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
+            notifications_disabled_classifications: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
             warn_notification_severity: t.Optional[
                 T_NotificationMinimumSeverity
             ] = ...,
@@ -274,10 +277,18 @@ class GraphDatabase:
             elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
+
+            if "notifications_disabled_classifications" in config:
+                preview_warn(
+                    "notifications_disabled_classifications "
+                    "is a preview feature.",
+                    stack_level=2
+                )
             if "warn_notification_severity" in config:
                 preview_warn("notification warnings are a preview feature.",
                              stack_level=2)
-            _normalize_notifications_config(config, driver_level=True)
+            _normalize_notifications_config(config)
+
             liveness_check_timeout = config.get("liveness_check_timeout")
             if (
                 liveness_check_timeout is not None
@@ -568,6 +579,9 @@ class Driver:
             notifications_disabled_categories: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
+            notifications_disabled_classifications: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -593,6 +607,12 @@ class Driver:
                 # another undocumented/unsupported config option.
                 del config["warn_notification_severity"]
             self._check_state()
+            if "notifications_disabled_classifications" in config:
+                preview_warn(
+                    "notifications_disabled_classifications "
+                    "is a preview feature.",
+                    stack_level=2
+                )
             session_config = self._read_session_config(config)
             return self._session(session_config)
 
@@ -995,6 +1015,9 @@ class Driver:
             notifications_disabled_categories: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
+            notifications_disabled_classifications: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -1065,6 +1088,9 @@ class Driver:
                 T_NotificationMinimumSeverity
             ] = ...,
             notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
+            notifications_disabled_classifications: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
@@ -1325,11 +1351,32 @@ class Neo4jDriver(_Routing, Driver):
 
 
 def _normalize_notifications_config(config_kwargs, *, driver_level=False):
-    list_config_keys = ("notifications_disabled_categories",)
+    list_config_keys = (
+        "notifications_disabled_categories",
+        "notifications_disabled_classifications",
+    )
     for key in list_config_keys:
         value = config_kwargs.get(key)
         if value is not None:
             config_kwargs[key] = [getattr(e, "value", e) for e in value]
+
+    disabled_categories = config_kwargs.pop(
+        "notifications_disabled_categories", None
+    )
+    if disabled_categories is not None:
+        disabled_classifications = config_kwargs.get(
+            "notifications_disabled_classifications"
+        )
+        if disabled_categories is None:
+            disabled_classifications = disabled_categories
+        else:
+            disabled_classifications = list(set(
+                *disabled_categories, *disabled_classifications
+            ))
+        config_kwargs["notifications_disabled_classifications"] = \
+            disabled_classifications
+
+
     single_config_keys = (
         "notifications_min_severity",
         "warn_notification_severity",
@@ -1338,6 +1385,7 @@ def _normalize_notifications_config(config_kwargs, *, driver_level=False):
         value = config_kwargs.get(key)
         if value is not None:
             config_kwargs[key] = getattr(value, "value", value)
+
     value = config_kwargs.get("warn_notification_severity")
     if value not in (*NotificationMinimumSeverity, None):
         raise ValueError(

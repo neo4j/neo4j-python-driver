@@ -14,11 +14,13 @@
 # limitations under the License.
 
 
+import typing as _t
 from logging import getLogger as _getLogger
 
 from ._api import (
     NotificationCategory,
     NotificationDisabledCategory,
+    NotificationDisabledClassification as _NotificationDisabledClassification,
     NotificationMinimumSeverity,
     NotificationSeverity,
     RoutingControl,
@@ -49,6 +51,7 @@ from ._meta import (
     deprecation_warn as _deprecation_warn,
     ExperimentalWarning,
     get_user_agent,
+    preview_warn as _preview_warn,
     PreviewWarning,
     version as __version__,
 )
@@ -67,13 +70,24 @@ from ._sync.work import (
 )
 from ._work import (
     EagerResult,
+    GqlStatusObject as _GqlStatusObject,
+    NotificationClassification as _NotificationClassification,
     Query,
     ResultSummary,
     SummaryCounters,
+    SummaryInputPosition,
     SummaryNotification,
-    SummaryNotificationPosition,
     unit_of_work,
 )
+
+
+if _t.TYPE_CHECKING:
+    from ._work import (
+        GqlStatusObject,
+        NotificationClassification,
+        SummaryInputPosition as SummaryNotificationPosition
+    )
+
 from .addressing import (
     Address,
     IPv4Address,
@@ -122,20 +136,23 @@ __all__ = [
     "Config",
     "custom_auth",
     "DEFAULT_DATABASE",
-    "NotificationDisabledCategory",
     "Driver",
     "EagerResult",
     "ExperimentalWarning",
     "get_user_agent",
+    "NotificationClassification",
+    "GqlStatusObject",
     "GraphDatabase",
     "IPv4Address",
     "IPv6Address",
     "kerberos_auth",
     "log",
     "ManagedTransaction",
-    "NotificationMinimumSeverity",
     "Neo4jDriver",
     "NotificationCategory",
+    "NotificationDisabledCategory",
+    "NotificationDisabledClassification",
+    "NotificationMinimumSeverity",
     "NotificationSeverity",
     "PoolConfig",
     "PreviewWarning",
@@ -149,6 +166,7 @@ __all__ = [
     "Session",
     "SessionConfig",
     "SummaryCounters",
+    "SummaryInputPosition",
     "SummaryNotification",
     "SummaryNotificationPosition",
     "Transaction",
@@ -173,9 +191,26 @@ def __getattr__(name):
         "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
     ):
         _deprecation_warn(
-            "Importing {} from neo4j is deprecated without replacement. It's "
-            "internal and will be removed in a future version."
+            "Importing {} from neo4j is deprecated without replacement. "
+            "It's internal and will be removed in a future version."
             .format(name),
+            stack_level=2
+        )
+        return globals()[f"_{name}"]
+    if name == "SummaryNotificationPosition":
+        _deprecation_warn(
+            "SummaryNotificationPosition is deprecated. "
+            "Use SummaryInputPosition instead.",
+            stack_level=2
+        )
+        return SummaryInputPosition
+    if name in (
+        "NotificationClassification",
+        "GqlStatusObject",
+        "NotificationDisabledClassification",
+    ):
+        _preview_warn(
+            f"GQLSTATUS support is a preview feature.",
             stack_level=2
         )
         return globals()[f"_{name}"]

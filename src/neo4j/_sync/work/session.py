@@ -315,7 +315,7 @@ class Session(Workspace):
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
             bookmarks, self._config.notifications_min_severity,
-            self._config.notifications_disabled_categories,
+            self._config.notifications_disabled_classifications,
         )
 
         return self._auto_result
@@ -437,7 +437,7 @@ class Session(Workspace):
             self._config.database, self._config.impersonated_user,
             bookmarks, access_mode, metadata, timeout,
             self._config.notifications_min_severity,
-            self._config.notifications_disabled_categories,
+            self._config.notifications_disabled_classifications,
             pipelined=self._pipelined_begin
         )
 

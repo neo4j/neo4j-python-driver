@@ -166,9 +166,14 @@ def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
 
+    expected_warnings.append(
+        (neo4j.PreviewWarning, "notification warnings are a preview feature.")
+    )
     with warnings_check(expected_warnings):
         driver = neo4j.GraphDatabase.driver(
-            data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
+            data["uri"], auth=auth, user_agent=data["userAgent"],
+            warn_notification_severity=neo4j.NotificationMinimumSeverity.OFF,
+            **kwargs,
         )
     key = backend.next_key()
     backend.drivers[key] = driver

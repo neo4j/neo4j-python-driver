@@ -519,6 +519,7 @@ if t.TYPE_CHECKING:
     ]
 
 
+# TODO: Test merging of categories and classifications
 @pytest.mark.parametrize("min_sev", (
     ...,
     None,

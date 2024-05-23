@@ -134,7 +134,7 @@ class AsyncBolt:
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
                  auth=None, auth_manager=None, user_agent=None,
                  routing_context=None, notifications_min_severity=None,
-                 notifications_disabled_categories=None,
+                 notifications_disabled_classifications=None,
                  telemetry_disabled=False):
         self.unresolved_address = unresolved_address
         self.socket = sock
@@ -176,8 +176,8 @@ class AsyncBolt:
         self.telemetry_disabled = telemetry_disabled
 
         self.notifications_min_severity = notifications_min_severity
-        self.notifications_disabled_categories = \
-            notifications_disabled_categories
+        self.notifications_disabled_classifications = \
+            notifications_disabled_classifications
 
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
@@ -283,6 +283,7 @@ class AsyncBolt:
             AsyncBolt5x2,
             AsyncBolt5x3,
             AsyncBolt5x4,
+            AsyncBolt5x5,
         )
 
         handlers = {
@@ -297,6 +298,7 @@ class AsyncBolt:
             AsyncBolt5x2.PROTOCOL_VERSION: AsyncBolt5x2,
             AsyncBolt5x3.PROTOCOL_VERSION: AsyncBolt5x3,
             AsyncBolt5x4.PROTOCOL_VERSION: AsyncBolt5x4,
+            AsyncBolt5x5.PROTOCOL_VERSION: AsyncBolt5x5,
         }
 
         if protocol_version is None:
@@ -411,7 +413,10 @@ class AsyncBolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if protocol_version == (5, 4):
+        if protocol_version == (5, 5):
+            from ._bolt5 import AsyncBolt5x5
+            bolt_cls = AsyncBolt5x5
+        elif protocol_version == (5, 4):
             from ._bolt5 import AsyncBolt5x4
             bolt_cls = AsyncBolt5x4
         elif protocol_version == (5, 3):
@@ -477,8 +482,8 @@ class AsyncBolt:
             auth_manager=auth_manager, user_agent=pool_config.user_agent,
             routing_context=routing_context,
             notifications_min_severity=pool_config.notifications_min_severity,
-            notifications_disabled_categories=
-                pool_config.notifications_disabled_categories,
+            notifications_disabled_classifications=
+                pool_config.notifications_disabled_classifications,
             telemetry_disabled=pool_config.telemetry_disabled,
         )
 
@@ -612,7 +617,7 @@ class AsyncBolt:
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
             notifications_min_severity=None,
-            notifications_disabled_categories=None, dehydration_hooks=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         """ Appends a RUN message to the output queue.
 
@@ -629,8 +634,8 @@ class AsyncBolt:
         :param notifications_min_severity:
             minimum severity of notifications to be received.
             Requires Bolt 5.2+.
-        :param notifications_disabled_categories:
-            list of notification categories to be disabled.
+        :param notifications_disabled_classifications:
+            list of notification classifications/categories to be disabled.
             Requires Bolt 5.2+.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
@@ -685,7 +690,7 @@ class AsyncBolt:
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_categories=None, dehydration_hooks=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
@@ -700,8 +705,8 @@ class AsyncBolt:
         :param notifications_min_severity:
             minimum severity of notifications to be received.
             Requires Bolt 5.2+.
-        :param notifications_disabled_categories:
-            list of notification categories to be disabled.
+        :param notifications_disabled_classifications:
+            list of notification classifications/categories to be disabled.
             Requires Bolt 5.2+.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration

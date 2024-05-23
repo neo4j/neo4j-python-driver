@@ -159,6 +159,10 @@ def preview_warn(message, stack_level=1):
         "See also "
         "https://github.com/neo4j/neo4j-python-driver/wiki/preview-features."
     )
+    # import traceback, sys
+    # print("\n" + "=" * 80)
+    # traceback.print_stack(file=sys.stdout)
+    # print("=" * 80 + "\n")
     warn(message, category=PreviewWarning, stacklevel=stack_level + 1)
 
 
