@@ -555,14 +555,6 @@ _SUCCESS_STATUS_METADATA = {
         "OPERATION": "",
         "OPERATION_CODE": "0",
         "CURRENT_SCHEMA": "/",
-        "_status_parameters": {},
-        "_classification": "",
-        "_severity": "",
-        "_position": {
-            "line": -1,
-            "column": -1,
-            "offset": -1,
-        },
     },
 }
 _OMITTED_RESULT_STATUS_METADATA = {
