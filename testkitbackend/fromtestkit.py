@@ -24,7 +24,6 @@ import pytz
 import neo4j
 from neo4j import (
     NotificationDisabledCategory,
-    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
 )
@@ -40,6 +39,7 @@ from neo4j.time import (
     Time,
 )
 
+from ._preview_imports import NotificationDisabledClassification
 from ._warning_check import warnings_check
 
 

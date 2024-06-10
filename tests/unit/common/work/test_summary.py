@@ -180,17 +180,18 @@ def assert_is_non_notification_status(status: GqlStatusObject) -> None:
     position: t.Optional[SummaryInputPosition] = status.position
     assert position is None
 
-    raw_classification: str = status.raw_classification
-    assert raw_classification == ""
+    raw_classification: t.Optional[str] = status.raw_classification
+    assert raw_classification is None
 
-    classification: NotificationClassification = status.classification
-    assert classification == NotificationClassification.UNKNOWN
+    classification: t.Optional[NotificationClassification]
+    classification = status.classification
+    assert classification is None
 
-    raw_severity: str = status.raw_severity
-    assert raw_severity == ""
+    raw_severity: t.Optional[str] = status.raw_severity
+    assert raw_severity is None
 
-    severity: NotificationSeverity = status.severity
-    assert severity == NotificationSeverity.UNKNOWN
+    severity: t.Optional[NotificationSeverity] = status.severity
+    assert severity is None
 
     diagnostic_record: t.Dict[str, t.Any] = status.diagnostic_record
     assert diagnostic_record == {
@@ -405,7 +406,7 @@ def test_gql_statuses_keep_order(
         # severity
         #  * know severities are mapped
         #  * stays as-is in the diagnostic record
-        #  * invalid gets turned into "" (raw) / "UNKNOWN" (parsed enum)
+        #  * invalid gets turned into `None`
         (
             {("diagnostic_record", "_severity"): "INFORMATION"},
             {"severity": "INFORMATION", "raw_severity": "INFORMATION"}
@@ -414,22 +415,25 @@ def test_gql_statuses_keep_order(
             {("diagnostic_record", "_severity"): "WARNING"},
             {"severity": "WARNING", "raw_severity": "WARNING"}
         ),
-        (
-            {("diagnostic_record", "_severity"): "FOOBAR"},
-            {"severity": "UNKNOWN", "raw_severity": "FOOBAR"}
+        *(
+            (
+                {("diagnostic_record", "_severity"): sev},
+                {"severity": "UNKNOWN", "raw_severity": sev}
+            )
+            for sev in ("", "FOOBAR", "UNKNOWN")
         ),
         *(
             (
                 {("diagnostic_record", "_severity"): severity},
-                {"severity": "UNKNOWN", "raw_severity": ""}
+                {"severity": None, "raw_severity": None}
             )
-            for severity in ("", 1, None, ...)
+            for severity in (1, None, ...)
         ),
 
         # classification
         #  * know classifications are mapped to classification
         #  * stays as-is in the diagnostic record
-        #  * invalid gets turned into "" (raw) / "UNKNOWN" (parsed enum)
+        #  * invalid gets turned into `None`
         *(
             (
                 {("diagnostic_record", "_classification"): cls},
@@ -441,9 +445,16 @@ def test_gql_statuses_keep_order(
         *(
             (
                 {("diagnostic_record", "_classification"): cls},
-                {"raw_classification": "", "classification": "UNKNOWN"}
+                {"raw_classification": cls, "classification": "UNKNOWN"}
             )
-            for cls in ("", 1, None, ...)
+            for cls in ("", "FOOBAR", "UNKNOWN")
+        ),
+        *(
+            (
+                {("diagnostic_record", "_classification"): cls},
+                {"raw_classification": None, "classification": None}
+            )
+            for cls in (1, None, ...)
         ),
 
         # position
@@ -582,13 +593,15 @@ def test_status(
     assert (status.raw_classification
             == expectation_overwrite.get("raw_classification",
                                          default_classification))
-    assert isinstance(status.classification, NotificationClassification)
+    if status.classification is not None:
+        assert isinstance(status.classification, NotificationClassification)
     assert (status.classification
             == expectation_overwrite.get("classification",
                                          default_classification))
     assert (status.raw_severity
             == expectation_overwrite.get("raw_severity", default_severity))
-    assert isinstance(status.severity, NotificationSeverity)
+    if status.severity is not None:
+        assert isinstance(status.severity, NotificationSeverity)
     assert (status.severity
             == expectation_overwrite.get("severity", default_severity))
     assert status.diagnostic_record == raw_status["diagnostic_record"]
@@ -972,7 +985,7 @@ FOOBAR_SEV_OVERWRITES = {
         # severity
         #  * know severities are mapped
         #  * stays as-is in the diagnostic record
-        #  * invalid gets turned into "" (raw) / "UNKNOWN" (parsed enum)
+        #  * invalid gets turned into None
         (
             {"severity": "INFORMATION"},
             INFORMATION_SEV_OVERWRITES,
@@ -983,22 +996,29 @@ FOOBAR_SEV_OVERWRITES = {
             WARNING_SEV_OVERWRITES,
             {"_severity": "WARNING"}
         ),
-        (
-            {"severity": "FOOBAR"},
-            FOOBAR_SEV_OVERWRITES,
-            {"_severity": "FOOBAR"}
-        ),
         *(
             (
                 {"severity": severity},
                 {
                     "gql_status": "03N42",
                     "severity": "UNKNOWN",
-                    "raw_severity": "",
+                    "raw_severity": severity,
                 },
                 {"_severity": severity}
             )
-            for severity in ("", 1, None, ...)
+            for severity in ("FOOBAR", "")
+        ),
+        *(
+            (
+                {"severity": severity},
+                {
+                    "gql_status": "03N42",
+                    "severity": None,
+                    "raw_severity": None,
+                },
+                {"_severity": severity}
+            )
+            for severity in (1, None, ...)
         ),
 
         # category
@@ -1017,10 +1037,18 @@ FOOBAR_SEV_OVERWRITES = {
         *(
             (
                 {"category": cat},
-                {"raw_classification": "", "classification": "UNKNOWN"},
+                {"raw_classification": cat, "classification": "UNKNOWN"},
                 {"_classification": cat}
             )
-            for cat in ("", 1, None, ...)
+            for cat in ("", "FOOBAR")
+        ),
+        *(
+            (
+                {"category": cat},
+                {"raw_classification": None, "classification": None},
+                {"_classification": cat}
+            )
+            for cat in (1, None, ...)
         ),
 
         # position
@@ -1138,7 +1166,6 @@ def test_status_from_notifications(
             "CURRENT_SCHEMA": "/",
             "_severity": default_severity,
             "_classification": default_category,
-            "_status_parameters": {},
             "_position": {
                 "line": default_position.line,
                 "column": default_position.column,
@@ -1163,12 +1190,14 @@ def test_status_from_notifications(
     assert (status.raw_classification
             == expectation_overwrite.get("raw_classification",
                                          default_category))
-    assert isinstance(status.classification, NotificationClassification)
+    if status.classification is not None:
+        assert isinstance(status.classification, NotificationClassification)
     assert (status.classification
             == expectation_overwrite.get("classification", default_category))
     assert (status.raw_severity
             == expectation_overwrite.get("raw_severity", default_severity))
-    assert isinstance(status.severity, NotificationSeverity)
+    if status.severity is not None:
+        assert isinstance(status.severity, NotificationSeverity)
     assert (status.severity
             == expectation_overwrite.get("severity", default_severity))
     assert status.diagnostic_record == expected_diag_rec

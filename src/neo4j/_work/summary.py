@@ -36,6 +36,8 @@ if t.TYPE_CHECKING:
     from ..addressing import Address
     from ..api import ServerInfo
 
+    _T = te.TypeVar("_T")
+
 
 class ResultSummary:
     """ A summary of execution returned with a :class:`.Result` object.
@@ -569,6 +571,13 @@ _NO_DATA_STATUS_METADATA = {
 }
 
 
+DIAGNOSTIC_RECORD_DEFAULTS = (
+    ("OPERATION", ""),
+    ("OPERATION_CODE", "0"),
+    ("CURRENT_SCHEMA", "/"),
+)
+
+
 class GqlStatusObject:
     """
     Representation for GqlStatusObject found when executing a query.
@@ -596,10 +605,10 @@ class GqlStatusObject:
     _gql_status: str
     _status_description: str
     _position: t.Optional[SummaryInputPosition]
-    _raw_classification: str
-    _classification: NotificationClassification
-    _raw_severity: str
-    _severity: NotificationSeverity
+    _raw_classification: t.Optional[str]
+    _classification: t.Optional[NotificationClassification]
+    _raw_severity: t.Optional[str]
+    _severity: t.Optional[NotificationSeverity]
     _diagnostic_record: t.Dict[str, t.Any]
 
     @classmethod
@@ -646,10 +655,10 @@ class GqlStatusObject:
         )
         classification = metadata.get("category")
         if not isinstance(classification, str):
-            classification = ""
+            classification = None
         severity = metadata.get("severity")
         if not isinstance(severity, str):
-            severity = ""
+            severity = None
 
         if severity == "WARNING":
             gql_status = "01N42"
@@ -661,12 +670,7 @@ class GqlStatusObject:
             if not isinstance(description, str) or not description:
                 description = "info: informational - unknown notification"
 
-        diagnostic_record = {
-            "OPERATION": "",
-            "OPERATION_CODE": "0",
-            "CURRENT_SCHEMA": "/",
-            "_status_parameters": {},
-        }
+        diagnostic_record = dict(DIAGNOSTIC_RECORD_DEFAULTS)
         if "category" in metadata:
             diagnostic_record["_classification"] = metadata["category"]
         if "severity" in metadata:
@@ -732,12 +736,17 @@ class GqlStatusObject:
         return self._is_notification
 
     @classmethod
-    def _extract_str_field(cls, data: dict[str, t.Any], key: str) -> str:
+    def _extract_str_field(
+        cls,
+        data: dict[str, t.Any],
+        key: str,
+        default: _T = "",  # type: ignore[assignment]
+    ) -> t.Union[str, _T]:
         value = data.get(key)
         if isinstance(value, str):
             return value
         else:
-            return ""
+            return default
 
     @property
     def gql_status(self) -> str:
@@ -784,8 +793,11 @@ class GqlStatusObject:
         diag_record = self._status_metadata.get("diagnostic_record")
         if isinstance(diag_record, dict):
             self._status_diagnostic_record = diag_record
+            for key, default in DIAGNOSTIC_RECORD_DEFAULTS:
+                if key not in self._status_diagnostic_record:
+                    self._status_diagnostic_record[key] = default
         else:
-            self._status_diagnostic_record = {}
+            self._status_diagnostic_record = dict(DIAGNOSTIC_RECORD_DEFAULTS)
         return self._status_diagnostic_record
 
     @property
@@ -813,13 +825,12 @@ class GqlStatusObject:
         return self._position
 
     @property
-    def raw_classification(self) -> str:
+    def raw_classification(self) -> t.Optional[str]:
         """
         The raw (``str``) classification of the status.
 
         This is a vendor-specific classification that can be used to filter
         notifications.
-        If not provided, it defaults to ``""``.
 
         Only notifications (see :attr:`.is_notification`) have a meaningful
         classification.
@@ -829,17 +840,14 @@ class GqlStatusObject:
 
         diag_record = self._get_status_diagnostic_record()
         self._raw_classification = self._extract_str_field(
-            diag_record, "_classification"
+            diag_record, "_classification", None
         )
         return self._raw_classification
 
     @property
-    def classification(self) -> NotificationClassification:
+    def classification(self) -> t.Optional[NotificationClassification]:
         """
         Parsed version of :attr:`.raw_classification`.
-
-        If not provided or unrecognized, it defaults to
-        :data:`.NotificationClassification.UNKNOWN`.
 
         Only notifications (see :attr:`.is_notification`) have a meaningful
         classification.
@@ -847,19 +855,22 @@ class GqlStatusObject:
         if hasattr(self, "_classification"):
             return self._classification
 
-        self._classification = _CLASSIFICATION_LOOKUP.get(
-            self.raw_classification, NotificationClassification.UNKNOWN
-        )
+        raw_classification = self.raw_classification
+        if raw_classification is None:
+            self._classification = None
+        else:
+            self._classification = _CLASSIFICATION_LOOKUP.get(
+                raw_classification, NotificationClassification.UNKNOWN
+            )
         return self._classification
 
     @property
-    def raw_severity(self) -> str:
+    def raw_severity(self) -> t.Optional[str]:
         """
         The raw (``str``) severity of the status.
 
         This is a vendor-specific severity that can be used to filter
         notifications.
-        If not provided, it defaults to ``""``.
 
         Only notifications (see :attr:`.is_notification`) have a meaningful
         severity.
@@ -869,17 +880,14 @@ class GqlStatusObject:
 
         diag_record = self._get_status_diagnostic_record()
         self._raw_severity = self._extract_str_field(
-            diag_record, "_severity"
+            diag_record, "_severity", None
         )
         return self._raw_severity
 
     @property
-    def severity(self) -> NotificationSeverity:
+    def severity(self) -> t.Optional[NotificationSeverity]:
         """
         Parsed version of :attr:`.raw_severity`.
-
-        If not provided or unrecognized, it defaults to
-        :data:`.NotificationSeverity.UNKNOWN`.
 
         Only notifications (see :attr:`.is_notification`) have a meaningful
         severity.
@@ -887,9 +895,13 @@ class GqlStatusObject:
         if hasattr(self, "_severity"):
             return self._severity
 
-        self._severity = _SEVERITY_LOOKUP.get(
-            self.raw_severity, NotificationSeverity.UNKNOWN
-        )
+        raw_severity = self.raw_severity
+        if raw_severity is None:
+            self._severity = None
+        else:
+            self._severity = _SEVERITY_LOOKUP.get(
+                raw_severity, NotificationSeverity.UNKNOWN
+            )
         return self._severity
 
     @property
