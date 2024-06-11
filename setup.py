@@ -58,8 +58,7 @@ if deprecated:
 """ + readme
 
 
-@contextmanager
-def changed_package_name(new_name):
+def change_project_name(new_name):
     with open("pyproject.toml", "a+") as fd:
         fd.seek(0)
         pyproject = tomlkit.parse(fd.read())
@@ -68,16 +67,16 @@ def changed_package_name(new_name):
         fd.seek(0)
         fd.truncate()
         tomlkit.dump(pyproject, fd)
+        return old_name
 
-    yield
 
-    with open("pyproject.toml", "a+") as fd:
-        fd.seek(0)
-        pyproject = tomlkit.parse(fd.read())
-        pyproject["project"]["name"] = old_name
-        fd.seek(0)
-        fd.truncate()
-        tomlkit.dump(pyproject, fd)
+@contextmanager
+def changed_package_name(new_name):
+    old_name = change_project_name(new_name)
+    try:
+        yield
+    finally:
+        change_project_name(old_name)
 
 
 with changed_package_name(package):
