@@ -185,13 +185,13 @@ def assert_is_non_notification_status(status: GqlStatusObject) -> None:
 
     classification: t.Optional[NotificationClassification]
     classification = status.classification
-    assert classification is None
+    assert classification == NotificationClassification.UNKNOWN
 
     raw_severity: t.Optional[str] = status.raw_severity
     assert raw_severity is None
 
     severity: t.Optional[NotificationSeverity] = status.severity
-    assert severity is None
+    assert severity == NotificationSeverity.UNKNOWN
 
     diagnostic_record: t.Dict[str, t.Any] = status.diagnostic_record
     assert diagnostic_record == {
@@ -425,7 +425,7 @@ def test_gql_statuses_keep_order(
         *(
             (
                 {("diagnostic_record", "_severity"): severity},
-                {"severity": None, "raw_severity": None}
+                {"severity": "UNKNOWN", "raw_severity": None}
             )
             for severity in (1, None, ...)
         ),
@@ -452,7 +452,7 @@ def test_gql_statuses_keep_order(
         *(
             (
                 {("diagnostic_record", "_classification"): cls},
-                {"raw_classification": None, "classification": None}
+                {"classification": "UNKNOWN", "raw_classification": None}
             )
             for cls in (1, None, ...)
         ),
@@ -1013,7 +1013,7 @@ FOOBAR_SEV_OVERWRITES = {
                 {"severity": severity},
                 {
                     "gql_status": "03N42",
-                    "severity": None,
+                    "severity": "UNKNOWN",
                     "raw_severity": None,
                 },
                 {"_severity": severity}
@@ -1028,7 +1028,7 @@ FOOBAR_SEV_OVERWRITES = {
         *(
             (
                 {"category": cat},
-                {"raw_classification": cat, "classification": cat},
+                {"classification": cat, "raw_classification": cat},
                 {"_classification": cat}
             )
             for cat in NotificationCategory.__members__
@@ -1037,7 +1037,7 @@ FOOBAR_SEV_OVERWRITES = {
         *(
             (
                 {"category": cat},
-                {"raw_classification": cat, "classification": "UNKNOWN"},
+                {"classification": "UNKNOWN", "raw_classification": cat},
                 {"_classification": cat}
             )
             for cat in ("", "FOOBAR")
@@ -1045,7 +1045,7 @@ FOOBAR_SEV_OVERWRITES = {
         *(
             (
                 {"category": cat},
-                {"raw_classification": None, "classification": None},
+                {"classification": "UNKNOWN", "raw_classification": None},
                 {"_classification": cat}
             )
             for cat in (1, None, ...)

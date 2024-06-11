@@ -461,12 +461,12 @@ class SummaryInputPosition:
 SummaryNotificationPosition: te.TypeAlias = SummaryInputPosition
 
 
-_SEVERITY_LOOKUP = {
+_SEVERITY_LOOKUP: t.Dict[t.Any, NotificationSeverity] = {
    "WARNING": NotificationSeverity.WARNING,
    "INFORMATION": NotificationSeverity.INFORMATION,
 }
 
-_CATEGORY_LOOKUP = {
+_CATEGORY_LOOKUP: t.Dict[t.Any, NotificationCategory] = {
     "HINT": NotificationCategory.HINT,
     "UNRECOGNIZED": NotificationCategory.UNRECOGNIZED,
     "UNSUPPORTED": NotificationCategory.UNSUPPORTED,
@@ -477,7 +477,7 @@ _CATEGORY_LOOKUP = {
     "TOPOLOGY": NotificationCategory.TOPOLOGY,
 }
 
-_CLASSIFICATION_LOOKUP = {
+_CLASSIFICATION_LOOKUP: t.Dict[t.Any, NotificationClassification] = {
     k: NotificationClassification(v) for k, v in _CATEGORY_LOOKUP.items()
 }
 
@@ -606,9 +606,9 @@ class GqlStatusObject:
     _status_description: str
     _position: t.Optional[SummaryInputPosition]
     _raw_classification: t.Optional[str]
-    _classification: t.Optional[NotificationClassification]
+    _classification: NotificationClassification
     _raw_severity: t.Optional[str]
-    _severity: t.Optional[NotificationSeverity]
+    _severity: NotificationSeverity
     _diagnostic_record: t.Dict[str, t.Any]
 
     @classmethod
@@ -845,7 +845,7 @@ class GqlStatusObject:
         return self._raw_classification
 
     @property
-    def classification(self) -> t.Optional[NotificationClassification]:
+    def classification(self) -> NotificationClassification:
         """
         Parsed version of :attr:`.raw_classification`.
 
@@ -855,13 +855,9 @@ class GqlStatusObject:
         if hasattr(self, "_classification"):
             return self._classification
 
-        raw_classification = self.raw_classification
-        if raw_classification is None:
-            self._classification = None
-        else:
-            self._classification = _CLASSIFICATION_LOOKUP.get(
-                raw_classification, NotificationClassification.UNKNOWN
-            )
+        self._classification = _CLASSIFICATION_LOOKUP.get(
+            self.raw_classification, NotificationClassification.UNKNOWN
+        )
         return self._classification
 
     @property
@@ -885,7 +881,7 @@ class GqlStatusObject:
         return self._raw_severity
 
     @property
-    def severity(self) -> t.Optional[NotificationSeverity]:
+    def severity(self) -> NotificationSeverity:
         """
         Parsed version of :attr:`.raw_severity`.
 
@@ -895,13 +891,9 @@ class GqlStatusObject:
         if hasattr(self, "_severity"):
             return self._severity
 
-        raw_severity = self.raw_severity
-        if raw_severity is None:
-            self._severity = None
-        else:
-            self._severity = _SEVERITY_LOOKUP.get(
-                raw_severity, NotificationSeverity.UNKNOWN
-            )
+        self._severity = _SEVERITY_LOOKUP.get(
+            self.raw_severity, NotificationSeverity.UNKNOWN
+        )
         return self._severity
 
     @property
