@@ -550,32 +550,28 @@ class SummaryNotification:
         )
 
 
-_SUCCESS_STATUS_METADATA = {
-    "gql_status": "00000",
-    "status_description": "note: successful completion",
-    "diagnostic_record": {
-        "OPERATION": "",
-        "OPERATION_CODE": "0",
-        "CURRENT_SCHEMA": "/",
-    },
-}
-_OMITTED_RESULT_STATUS_METADATA = {
-    "gql_status": "00001",
-    "status_description": "note: successful completion - omitted result",
-    "diagnostic_record": _SUCCESS_STATUS_METADATA["diagnostic_record"],
-}
-_NO_DATA_STATUS_METADATA = {
-    "gql_status": "02000",
-    "status_description": "note: no data",
-    "diagnostic_record":  _SUCCESS_STATUS_METADATA["diagnostic_record"],
-}
-
-
 DIAGNOSTIC_RECORD_DEFAULTS = (
     ("OPERATION", ""),
     ("OPERATION_CODE", "0"),
     ("CURRENT_SCHEMA", "/"),
 )
+
+
+_SUCCESS_STATUS_METADATA = {
+    "gql_status": "00000",
+    "status_description": "note: successful completion",
+    "diagnostic_record": dict(DIAGNOSTIC_RECORD_DEFAULTS),
+}
+_OMITTED_RESULT_STATUS_METADATA = {
+    "gql_status": "00001",
+    "status_description": "note: successful completion - omitted result",
+    "diagnostic_record": dict(DIAGNOSTIC_RECORD_DEFAULTS),
+}
+_NO_DATA_STATUS_METADATA = {
+    "gql_status": "02000",
+    "status_description": "note: no data",
+    "diagnostic_record": dict(DIAGNOSTIC_RECORD_DEFAULTS),
+}
 
 
 class GqlStatusObject:
