@@ -659,12 +659,12 @@ class GqlStatusObject:
         if severity == "WARNING":
             gql_status = "01N42"
             if not isinstance(description, str) or not description:
-                description = "warn: warning - unknown warning"
+                description = "warn: unknown warning"
         else:
             # for "INFORMATION" or if severity is missing
             gql_status = "03N42"
             if not isinstance(description, str) or not description:
-                description = "info: informational - unknown notification"
+                description = "info: unknown notification"
 
         diagnostic_record = dict(DIAGNOSTIC_RECORD_DEFAULTS)
         if "category" in metadata:
