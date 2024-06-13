@@ -118,14 +118,14 @@ def NewDriver(backend, data):
             backend.client_cert_providers[client_cert_provider_id]
         data.mark_item_as_read_if_equals("clientCertificate", None)
         expected_warnings.append(
-            (neo4j.PreviewWarning, "Mutual TLS is a preview feature.")
+            (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\.")
         )
     else:
         client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
         if client_cert is not None:
             kwargs["client_certificate"] = client_cert
             expected_warnings.append(
-                (neo4j.PreviewWarning, "Mutual TLS is a preview feature.")
+                (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\.")
             )
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
@@ -166,9 +166,9 @@ def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
 
-    expected_warnings.append(
-        (neo4j.PreviewWarning, "notification warnings are a preview feature.")
-    )
+    expected_warnings.append((
+        neo4j.PreviewWarning, r"notification warnings are a preview feature\."
+    ))
     with warnings_check(expected_warnings):
         driver = neo4j.GraphDatabase.driver(
             data["uri"], auth=auth, user_agent=data["userAgent"],

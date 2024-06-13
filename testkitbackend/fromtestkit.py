@@ -194,7 +194,7 @@ def to_client_cert(data, key) -> t.Optional[ClientCertificate]:
     data[key].mark_item_as_read_if_equals("name", "ClientCertificate")
     cert_data = data[key]["data"]
     with warnings_check((
-        (neo4j.PreviewWarning, "Mutual TLS is a preview feature."),
+        (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\."),
     )):
         return ClientCertificate(
             cert_data["certfile"], cert_data["keyfile"], cert_data["password"]

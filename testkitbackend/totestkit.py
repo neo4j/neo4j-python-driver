@@ -97,7 +97,7 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         return res
 
     def serialize_gql_status_objects() -> t.List[dict]:
-        with warning_check(neo4j.PreviewWarning, "GQLSTATUS"):
+        with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
             return [serialize_gql_status_object(o)
                     for o in summary_.gql_status_objects]
 
