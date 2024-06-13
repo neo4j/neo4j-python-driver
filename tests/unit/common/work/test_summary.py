@@ -1623,6 +1623,116 @@ def test_notification_from_status(
             == expected_overwrite.get("position", default_position))
 
 
+def _test_status():
+    return {
+        "gql_status": "12345",
+        "status_description": "abcde",
+        "neo4j_code": "Neo.Foo.Bar.Baz",
+        "title": "title",
+        "diagnostic_record": {
+            "OPERATION": "",
+            "OPERATION_CODE": "0",
+            "CURRENT_SCHEMA": "/",
+            "_status_parameters": {},
+            "_severity": "WARNING",
+            "_classification": "HINT",
+            "_position": {"line": 1, "column": 2, "offset": 3},
+        }
+    }
+
+
+def _test_status_missing_key(key_path):
+    status = _test_status()
+    element = status
+    for key in key_path[:-1]:
+        element = element[key]
+    del element[key_path[-1]]
+    return status
+
+
+def _test_status_broken_key(key_path, value):
+    status = _test_status()
+    element = status
+    for key in key_path[:-1]:
+        element = element[key]
+    element[key_path[-1]] = value
+    return status
+
+
+@pytest.mark.parametrize(
+    "in_status",
+    (
+        None,
+        1,
+        {},
+        True,
+        _test_status_missing_key(("status_description",)),
+        _test_status_missing_key(("neo4j_code",)),
+        _test_status_missing_key(("title",)),
+        _test_status_missing_key(("diagnostic_record",)),
+        _test_status_missing_key(("diagnostic_record", "_severity")),
+        _test_status_missing_key(("diagnostic_record", "_classification")),
+        _test_status_missing_key(("diagnostic_record", "_position")),
+        _test_status_missing_key(("diagnostic_record", "_position", "line")),
+        _test_status_missing_key(("diagnostic_record", "_position", "column")),
+        _test_status_missing_key(("diagnostic_record", "_position", "offset")),
+
+        _test_status_broken_key(("status_description",),
+                                None),
+        _test_status_broken_key(("neo4j_code",),
+                                None),
+        _test_status_broken_key(("title",),
+                                None),
+        _test_status_broken_key(("diagnostic_record",),
+                                None),
+        _test_status_broken_key(("diagnostic_record", "_severity"),
+                                None),
+        _test_status_broken_key(("diagnostic_record", "_classification"),
+                                None),
+        _test_status_broken_key(("diagnostic_record", "_position"),
+                                None),
+        _test_status_broken_key(("diagnostic_record", "_position", "line"),
+                                None),
+        _test_status_broken_key(("diagnostic_record", "_position", "column"),
+                                None),
+        _test_status_broken_key(("diagnostic_record", "_position", "offset"),
+                                None),
+
+        _test_status_broken_key(("status_description",),
+                                False),
+        _test_status_broken_key(("neo4j_code",),
+                                False),
+        _test_status_broken_key(("title",),
+                                False),
+        _test_status_broken_key(("diagnostic_record",),
+                                False),
+        _test_status_broken_key(("diagnostic_record", "_severity"),
+                                False),
+        _test_status_broken_key(("diagnostic_record", "_classification"),
+                                False),
+        _test_status_broken_key(("diagnostic_record", "_position"),
+                                False),
+        _test_status_broken_key(("diagnostic_record", "_position", "line"),
+                                False),
+        _test_status_broken_key(("diagnostic_record", "_position", "column"),
+                                False),
+        _test_status_broken_key(("diagnostic_record", "_position", "offset"),
+                                False),
+    )
+)
+def test_notification_from_broken_status(
+    in_status,
+    summary_args_kwargs,
+) -> None:
+    args, kwargs = summary_args_kwargs
+    kwargs["metadata"]["statuses"] = [in_status]
+
+    summary = ResultSummary(*args, **kwargs)
+
+    notifications = summary.notifications
+    assert notifications == []
+
+
 @pytest.mark.parametrize(
     ("status_overwrite", "diagnostic_record_overwrite"),
     (

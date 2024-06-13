@@ -777,14 +777,13 @@ class Bolt5x5(Bolt5x4):
                      Response(self, "begin", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
 
-    POLYFILL_DIAGNOSTIC_RECORD = (
+    DEFAULT_DIAGNOSTIC_RECORD = (
         ("OPERATION", ""),
         ("OPERATION_CODE", "0"),
         ("CURRENT_SCHEMA", "/"),
     )
 
-    @classmethod
-    def _make_enrich_diagnostic_record_handler(cls, wrapped_handler=None):
+    def _make_enrich_diagnostic_record_handler(self, wrapped_handler=None):
         def handler(metadata):
             def enrich(metadata_):
                 if not isinstance(metadata_, dict):
@@ -797,8 +796,11 @@ class Bolt5x5(Bolt5x4):
                         continue
                     diag_record = status.setdefault("diagnostic_record", {})
                     if not isinstance(diag_record, dict):
-                        continue
-                    for key, value in cls.POLYFILL_DIAGNOSTIC_RECORD:
+                        log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                                 "invalid diagnostic record (%r).",
+                                 self.local_port, diag_record)
+                        diag_record = dict(self.DEFAULT_DIAGNOSTIC_RECORD)
+                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
                         diag_record.setdefault(key, value)
 
             enrich(metadata)

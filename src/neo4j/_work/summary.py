@@ -129,12 +129,7 @@ class ResultSummary:
             self.result_consumed_after = metadata.get("t_last")
 
     def __dir__(self):
-        if not hasattr(self, "notifications"):
-            return (
-                *super().__dir__(),
-                "notifications"
-            )
-        return super().__dir__()
+        return {*super().__dir__(), "notifications"}
 
     def __getattr__(self, key):
         if key == "notifications":
@@ -161,6 +156,8 @@ class ResultSummary:
                 return
             notifications = []
             for status in statuses:
+                if not isinstance(status, dict):
+                    continue
                 notification = {}
                 failed = False
                 for notification_key, status_key in (
@@ -789,11 +786,8 @@ class GqlStatusObject:
         if self._status_diagnostic_record is not None:
             return self._status_diagnostic_record
 
-        diag_record = self._status_metadata.get("diagnostic_record")
-        if isinstance(diag_record, dict):
-            self._status_diagnostic_record = diag_record
-        else:
-            self._status_diagnostic_record = dict(POLYFILL_DIAGNOSTIC_RECORD)
+        self._status_diagnostic_record = \
+            self._status_metadata.get("diagnostic_record", {})
         return self._status_diagnostic_record
 
     @property
@@ -893,7 +887,7 @@ class GqlStatusObject:
         return self._severity
 
     @property
-    def diagnostic_record(self) -> dict[str, t.Any]:
+    def diagnostic_record(self) -> t.Dict[str, t.Any]:
         """
         Further information about the GQLSTATUS for diagnostic purposes.
         """
