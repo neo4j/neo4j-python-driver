@@ -110,6 +110,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         self, connection, fetch_size, warn_notification_severity,
         on_closed, on_error
     ) -> None:
+        self._connection_cls = connection.__class__
         self._connection = ConnectionErrorHandler(
             connection, self._connection_error_handler
         )

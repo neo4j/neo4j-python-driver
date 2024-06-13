@@ -28,6 +28,7 @@ from neo4j._meta import USER_AGENT
 from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
+from ....iter_util import powerset
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -456,3 +457,53 @@ def raises_if_db(db):
         with pytest.raises(ConfigurationError,
                            match="selecting database is not supported"):
             yield
+
+
+@pytest.mark.parametrize(
+    "sent_diag_records",
+    powerset(
+        (
+            ...,
+            None,
+            {},
+            [],
+            "1",
+            1,
+            {"OPERATION_CODE": "0"},
+            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
+        ),
+        limit=3,
+    )
+)
+@pytest.mark.parametrize("method", ("pull", "discard"))
+@mark_async_test
+async def test_does_not_enrich_diagnostic_record(
+    sent_diag_records,
+    method,
+    fake_socket_pair,
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt3.PACKER_CLS,
+                               unpacker_cls=AsyncBolt3.UNPACKER_CLS)
+    connection = AsyncBolt3(address, sockets.client, 0)
+
+    sent_metadata = {
+        "statuses": [
+            {"diagnostic_record": r} if r is not ... else {}
+            for r in sent_diag_records
+        ]
+    }
+    await sockets.server.send_message(b"\x70", sent_metadata)
+
+    received_metadata = None
+
+    def on_success(metadata):
+        nonlocal received_metadata
+        received_metadata = metadata
+
+    getattr(connection, method)(on_success=on_success)
+    await connection.send_all()
+    await connection.fetch_all()
+
+    assert received_metadata == sent_metadata

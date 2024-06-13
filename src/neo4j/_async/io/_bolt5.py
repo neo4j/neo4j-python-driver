@@ -20,6 +20,7 @@ from logging import getLogger
 from ssl import SSLSocket
 
 from ..._api import TelemetryAPI
+from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
 from ..._meta import BOLT_AGENT_DICT
@@ -775,3 +776,46 @@ class AsyncBolt5x5(AsyncBolt5x4):
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
+
+    POLYFILL_DIAGNOSTIC_RECORD = (
+        ("OPERATION", ""),
+        ("OPERATION_CODE", "0"),
+        ("CURRENT_SCHEMA", "/"),
+    )
+
+    @classmethod
+    def _make_enrich_diagnostic_record_handler(cls, wrapped_handler=None):
+        async def handler(metadata):
+            def enrich(metadata_):
+                if not isinstance(metadata_, dict):
+                    return
+                statuses = metadata_.get("statuses")
+                if not isinstance(statuses, list):
+                    return
+                for status in statuses:
+                    if not isinstance(status, dict):
+                        continue
+                    diag_record = status.setdefault("diagnostic_record", {})
+                    if not isinstance(diag_record, dict):
+                        continue
+                    for key, value in cls.POLYFILL_DIAGNOSTIC_RECORD:
+                        diag_record.setdefault(key, value)
+
+            enrich(metadata)
+            await AsyncUtil.callback(wrapped_handler, metadata)
+
+        return handler
+
+    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
+                hydration_hooks=None, **handlers):
+        handlers["on_success"] = self._make_enrich_diagnostic_record_handler(
+            wrapped_handler=handlers.get("on_success")
+        )
+        super().discard(n, qid, dehydration_hooks, hydration_hooks, **handlers)
+
+    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
+             **handlers):
+        handlers["on_success"] = self._make_enrich_diagnostic_record_handler(
+            wrapped_handler=handlers.get("on_success")
+        )
+        super().pull(n, qid, dehydration_hooks, hydration_hooks, **handlers)

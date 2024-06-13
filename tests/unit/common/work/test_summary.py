@@ -173,6 +173,80 @@ def test_summary_notifications(summary_args_kwargs, exists) -> None:
     assert summary_out is summary_in
 
 
+def test_statuses_and_notifications_dont_mix(summary_args_kwargs) -> None:
+    raw_diag_rec = {
+        "OPERATION": "",
+        "OPERATION_CODE": "0",
+        "CURRENT_SCHEMA": "/",
+        "_status_parameters": {},
+        "_severity": "WARNING",
+        "_classification": "HINT",
+        "_position": {
+            "line": 1337,
+            "column": 42,
+            "offset": 420,
+        },
+    }
+    raw_status = {
+        "gql_status": "12345",
+        "status_description": "cool description",
+        "neo4j_code": "Neo.Foo.Bar.Baz",
+        "title": "nice title",
+        "diagnostic_record": raw_diag_rec,
+    }
+
+    raw_notification = {
+        "code": "Neo.Foo.Bar.Biz",
+        "description": "another description",
+        "title": "completely different title",
+        "severity": "INFORMATION",
+        "category": "PERFORMANCE",
+        "position": {
+            "line": 42,
+            "column": 1337,
+            "offset": 0,
+        },
+    }
+
+    args, kwargs = summary_args_kwargs
+    kwargs["metadata"]["statuses"] = [raw_status]
+    kwargs["metadata"]["notifications"] = [raw_notification]
+
+    summary = ResultSummary(*args, **kwargs)
+
+    notifications = summary.notifications
+    assert notifications == [raw_notification]
+
+    parsed_notifications = summary.summary_notifications
+    assert len(parsed_notifications) == 1
+    notification = parsed_notifications[0]
+    assert notification.code == raw_notification["code"]
+    assert notification.description == raw_notification["description"]
+    assert notification.title == raw_notification["title"]
+    assert notification.severity_level == NotificationSeverity.INFORMATION
+    assert notification.raw_severity_level == raw_notification["severity"]
+    assert notification.category == NotificationCategory.PERFORMANCE
+    assert notification.raw_category == raw_notification["category"]
+    assert notification.position == SummaryInputPosition(
+        line=42, column=1337, offset=0
+    )
+
+    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+        statuses = summary.gql_status_objects
+    assert len(statuses) == 1
+    status = statuses[0]
+    assert status.gql_status == raw_status["gql_status"]
+    assert status.status_description == raw_status["status_description"]
+    assert status.severity == NotificationSeverity.WARNING
+    assert status.raw_severity == raw_diag_rec["_severity"]
+    assert status.classification == NotificationClassification.HINT
+    assert status.raw_classification == raw_diag_rec["_classification"]
+    assert status.position == SummaryInputPosition(
+        line=1337, column=42, offset=420
+    )
+    assert status.diagnostic_record == raw_diag_rec
+
+
 def assert_is_non_notification_status(status: GqlStatusObject) -> None:
     is_notification: bool = status.is_notification
     assert not is_notification
@@ -891,22 +965,22 @@ FOOBAR_SEV_OVERWRITES = {
         # description is inferred from severity
         (
             {"description": ""},
-            {"status_description": "warn: warning - unknown warning"},
+            {"status_description": "warn: unknown warning"},
             {}
         ),
         (
             {"description": 1},
-            {"status_description": "warn: warning - unknown warning"},
+            {"status_description": "warn: unknown warning"},
             {}
         ),
         (
             {"description": None},
-            {"status_description": "warn: warning - unknown warning"},
+            {"status_description": "warn: unknown warning"},
             {}
         ),
         (
             {"description": ...},
-            {"status_description": "warn: warning - unknown warning"},
+            {"status_description": "warn: unknown warning"},
             {}
         ),
         (
@@ -914,7 +988,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **INFORMATION_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "INFORMATION"}
         ),
@@ -923,7 +997,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **INFORMATION_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "INFORMATION"}
         ),
@@ -932,7 +1006,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **INFORMATION_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "INFORMATION"}
         ),
@@ -941,7 +1015,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **INFORMATION_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "INFORMATION"}
         ),
@@ -950,7 +1024,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **FOOBAR_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "FOOBAR"}
         ),
@@ -959,7 +1033,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **FOOBAR_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "FOOBAR"}
         ),
@@ -968,7 +1042,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **FOOBAR_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "FOOBAR"}
         ),
@@ -977,7 +1051,7 @@ FOOBAR_SEV_OVERWRITES = {
             {
                 **FOOBAR_SEV_OVERWRITES,
                 "status_description":
-                    "info: informational - unknown notification",
+                    "info: unknown notification",
             },
             {"_severity": "FOOBAR"}
         ),
@@ -1300,7 +1374,7 @@ def make_notification_metadata(severity) -> t.Dict[str, t.Any]:
         ),
     )
 )
-def test_precedence(
+def test_status_precedence(
     result_type, severities, expected_statuses,
     summary_args_kwargs
 ) -> None:

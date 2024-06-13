@@ -553,7 +553,7 @@ class SummaryNotification:
         )
 
 
-DIAGNOSTIC_RECORD_DEFAULTS = (
+POLYFILL_DIAGNOSTIC_RECORD = (
     ("OPERATION", ""),
     ("OPERATION_CODE", "0"),
     ("CURRENT_SCHEMA", "/"),
@@ -563,17 +563,17 @@ DIAGNOSTIC_RECORD_DEFAULTS = (
 _SUCCESS_STATUS_METADATA = {
     "gql_status": "00000",
     "status_description": "note: successful completion",
-    "diagnostic_record": dict(DIAGNOSTIC_RECORD_DEFAULTS),
+    "diagnostic_record": dict(POLYFILL_DIAGNOSTIC_RECORD),
 }
 _OMITTED_RESULT_STATUS_METADATA = {
     "gql_status": "00001",
     "status_description": "note: successful completion - omitted result",
-    "diagnostic_record": dict(DIAGNOSTIC_RECORD_DEFAULTS),
+    "diagnostic_record": dict(POLYFILL_DIAGNOSTIC_RECORD),
 }
 _NO_DATA_STATUS_METADATA = {
     "gql_status": "02000",
     "status_description": "note: no data",
-    "diagnostic_record": dict(DIAGNOSTIC_RECORD_DEFAULTS),
+    "diagnostic_record": dict(POLYFILL_DIAGNOSTIC_RECORD),
 }
 
 
@@ -669,7 +669,7 @@ class GqlStatusObject:
             if not isinstance(description, str) or not description:
                 description = "info: unknown notification"
 
-        diagnostic_record = dict(DIAGNOSTIC_RECORD_DEFAULTS)
+        diagnostic_record = dict(POLYFILL_DIAGNOSTIC_RECORD)
         if "category" in metadata:
             diagnostic_record["_classification"] = metadata["category"]
         if "severity" in metadata:
@@ -792,11 +792,8 @@ class GqlStatusObject:
         diag_record = self._status_metadata.get("diagnostic_record")
         if isinstance(diag_record, dict):
             self._status_diagnostic_record = diag_record
-            for key, default in DIAGNOSTIC_RECORD_DEFAULTS:
-                if key not in self._status_diagnostic_record:
-                    self._status_diagnostic_record[key] = default
         else:
-            self._status_diagnostic_record = dict(DIAGNOSTIC_RECORD_DEFAULTS)
+            self._status_diagnostic_record = dict(POLYFILL_DIAGNOSTIC_RECORD)
         return self._status_diagnostic_record
 
     @property

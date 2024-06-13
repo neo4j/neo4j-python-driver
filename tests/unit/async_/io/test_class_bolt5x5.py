@@ -29,6 +29,7 @@ from neo4j._meta import (
 )
 
 from ...._async_compat import mark_async_test
+from ....iter_util import powerset
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -585,3 +586,77 @@ async def test_tracks_last_database(fake_socket_pair, actions):
         await connection.fetch_all()
 
         assert connection.last_database == db
+
+
+DEFAULT_DIAG_REC_PAIRS = (
+    ("OPERATION", ""),
+    ("OPERATION_CODE", "0"),
+    ("CURRENT_SCHEMA", "/"),
+)
+
+
+@pytest.mark.parametrize(
+    "sent_diag_records",
+    powerset(
+        (
+            ...,
+            None,
+            {},
+            [],
+            "1",
+            1,
+            {"OPERATION_CODE": "0"},
+            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
+            {"OPERATION": "Foo", "OPERATION_CODE": 1, "CURRENT_SCHEMA": False},
+            {"OPERATION": "", "OPERATION_CODE": "0", "bar": "baz"},
+        ),
+        limit=3,
+    )
+)
+@pytest.mark.parametrize("method", ("pull", "discard"))
+@mark_async_test
+async def test_enriches_diagnostic_record(
+    sent_diag_records,
+    method,
+    fake_socket_pair,
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt5x5.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x5.UNPACKER_CLS)
+    connection = AsyncBolt5x5(address, sockets.client, 0)
+
+    sent_metadata = {
+        "statuses": [
+            {"diagnostic_record": r} if r is not ... else {}
+            for r in sent_diag_records
+        ]
+    }
+    await sockets.server.send_message(b"\x70", sent_metadata)
+
+    received_metadata = None
+
+    def on_success(metadata):
+        nonlocal received_metadata
+        received_metadata = metadata
+
+    getattr(connection, method)(on_success=on_success)
+    await connection.send_all()
+    await connection.fetch_all()
+
+    def extend_diag_record(r):
+        if r is ...:
+            return dict(DEFAULT_DIAG_REC_PAIRS)
+        if isinstance(r, dict):
+            return dict((*DEFAULT_DIAG_REC_PAIRS, *r.items()))
+        return r
+
+    expected_diag_records = [extend_diag_record(r)  for r in sent_diag_records]
+    expected_metadata = {
+        "statuses": [
+            {"diagnostic_record": r} if r is not ... else {}
+            for r in expected_diag_records
+        ]
+    }
+
+    assert received_metadata == expected_metadata

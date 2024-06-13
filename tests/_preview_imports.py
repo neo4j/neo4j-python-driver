@@ -14,9 +14,15 @@
 # limitations under the License.
 
 
+import typing as t
+
 import pytest
 
 import neo4j
+
+
+if t.TYPE_CHECKING:
+    from neo4j import NotificationDisabledClassification
 
 
 with pytest.warns(neo4j.PreviewWarning, match="GQLSTATUS"):

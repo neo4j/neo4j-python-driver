@@ -82,6 +82,7 @@ from ._work import (
 
 
 if _t.TYPE_CHECKING:
+    from ._api import NotificationDisabledClassification
     from ._work import (
         GqlStatusObject,
         NotificationClassification,
