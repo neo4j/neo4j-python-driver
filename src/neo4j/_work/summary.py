@@ -140,6 +140,9 @@ class ResultSummary:
         if key == "notifications":
             self._set_notifications()
             return self.notifications
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{key}'"
+        )
 
     def _set_notifications(self):
         if "notifications" in self.metadata:
