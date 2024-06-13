@@ -287,7 +287,7 @@ class GraphDatabase:
             if "warn_notification_severity" in config:
                 preview_warn("notification warnings are a preview feature.",
                              stack_level=2)
-            _normalize_notifications_config(config)
+            _normalize_notifications_config(config, driver_level=True)
 
             liveness_check_timeout = config.get("liveness_check_timeout")
             if (
@@ -1347,7 +1347,6 @@ class Neo4jDriver(_Routing, Driver):
     def __init__(self, pool, default_workspace_config):
         _Routing.__init__(self, [pool.address])
         Driver.__init__(self, pool, default_workspace_config)
-
 
 
 def _normalize_notifications_config(config_kwargs, *, driver_level=False):

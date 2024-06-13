@@ -695,12 +695,8 @@ async def test_driver_factory_with_notification_filters(
 async def test_warn_notification_severity_driver_config(
     uri: str,
     session_cls_mock,
-    min_sev: t.Union[
-        None, _T_NotificationMinimumSeverity
-    ],
-    min_sev_session: t.Union[
-        None, _T_NotificationMinimumSeverity
-    ],
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    min_sev_session: t.Optional[_T_NotificationMinimumSeverity],
     expected: t.Union[None, NotificationMinimumSeverity, te.Type[Exception]],
 ) -> None:
     if inspect.isclass(expected) and issubclass(expected, Exception):
@@ -722,11 +718,11 @@ async def test_warn_notification_severity_driver_config(
         if min_sev_session is ...:
             session = driver.session()
         else:
-            # Works at runtime (will be ignored), but should be rejected by
-            # type checkers.
-            # type: ignore[arg-type]
             session = driver.session(
-                notifications_min_severity=min_sev_session
+                # Works at runtime (will be ignored), but should be rejected by
+                # type checkers.
+                # type: ignore[call-arg]
+                warn_notification_severity=min_sev_session
             )
         async with session:
             session_cls_mock.assert_called_once()
