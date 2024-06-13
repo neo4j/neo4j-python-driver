@@ -1368,12 +1368,12 @@ def _normalize_notifications_config(config_kwargs, *, driver_level=False):
         disabled_classifications = config_kwargs.get(
             "notifications_disabled_classifications"
         )
-        if disabled_categories is None:
+        if disabled_classifications is None:
             disabled_classifications = disabled_categories
         else:
-            disabled_classifications = list(set(
-                *disabled_categories, *disabled_classifications
-            ))
+            disabled_classifications = list(
+                {*disabled_categories, *disabled_classifications}
+            )
         config_kwargs["notifications_disabled_classifications"] = \
             disabled_classifications
 
