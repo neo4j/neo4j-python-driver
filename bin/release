@@ -24,13 +24,25 @@ for PACKAGE in "neo4j-driver" "neo4j"; do
     NORMALIZED_PACKAGE="$(normalize_dist_name "$PACKAGE")"
     if check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
     then
-      TWINE_ARGS="${TWINE_ARGS} ${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
+        TWINE_ARGS="${TWINE_ARGS} ${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
     elif check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"; then
-      TWINE_ARGS="${TWINE_ARGS} ${DIST}/${PACKAGE}-${VERSION}.tar.gz"
+        TWINE_ARGS="${TWINE_ARGS} ${DIST}/${PACKAGE}-${VERSION}.tar.gz"
     else
-      echo "Distribution file for ${PACKAGE} not found"
-      exit 1
+        echo "Source distribution file for ${PACKAGE} not found"
+        exit 1
     fi
 done
+
+NORMALIZED_PACKAGE="$(normalize_dist_name "neo4j")"
+if check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}-py3-none-any.whl"
+then
+    TWINE_ARGS="${TWINE_ARGS} ${DIST}/${NORMALIZED_PACKAGE}-${VERSION}-py3-none-any.whl"
+elif check_file "${DIST}/${PACKAGE}-${VERSION}-py3-none-any.whl"; then
+    TWINE_ARGS="${TWINE_ARGS} ${DIST}/${PACKAGE}-${VERSION}-py3-none-any.whl"
+else
+    echo "Wheel distribution file for ${PACKAGE} not found"
+    exit 1
+fi
+
 
 twine upload ${TWINE_ARGS}

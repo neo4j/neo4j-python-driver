@@ -11,5 +11,5 @@ then
     exit 1
 else
     source "${ROOT}/bin/dist-functions"
-    setup "${VERSION}" --sdist
+    setup "${VERSION}"
 fi

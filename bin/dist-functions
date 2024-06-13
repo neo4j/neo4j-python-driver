@@ -121,6 +121,6 @@ function setup
 {
     ARGS="$*"
     rm -rf ${DIST} 2> /dev/null
-    set_metadata_and_setup "neo4j-driver" "True" ${ARGS}   # Legacy package; can be removed in 2.0
+    set_metadata_and_setup "neo4j-driver" "True" ${ARGS} --sdist  # Legacy package; can be removed in 2.0
     set_metadata_and_setup "neo4j" "False" ${ARGS}
 }
