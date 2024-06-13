@@ -141,7 +141,6 @@ __all__ = [
     "EagerResult",
     "ExperimentalWarning",
     "get_user_agent",
-    "NotificationClassification",
     "GqlStatusObject",
     "GraphDatabase",
     "IPv4Address",
@@ -151,6 +150,7 @@ __all__ = [
     "ManagedTransaction",
     "Neo4jDriver",
     "NotificationCategory",
+    "NotificationClassification",
     "NotificationDisabledCategory",
     "NotificationDisabledClassification",
     "NotificationMinimumSeverity",
@@ -211,7 +211,8 @@ def __getattr__(name):
         "NotificationDisabledClassification",
     ):
         _preview_warn(
-            f"GQLSTATUS support is a preview feature.",
+            f"{name} is part of GQLSTATUS support, "
+            "which is a preview feature.",
             stack_level=2
         )
         return globals()[f"_{name}"]
