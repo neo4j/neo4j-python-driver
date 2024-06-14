@@ -255,7 +255,7 @@ class ResultSummary:
         See also
         https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
-        .. versionadded:: 5.21
+        .. versionadded:: 5.22
         """
         # if getattr(self, "_gql_status_objects", None) is not None:
         #     return self._gql_status_objects
@@ -419,7 +419,7 @@ class SummaryInputPosition:
         :attr:`.SummaryNotification.position`,
         :data:`.SummaryNotificationPosition`
 
-    .. versionadded:: 5.21
+    .. versionadded:: 5.22
     """
     #: The line number of the notification. Line numbers start at 1.
     line: int
@@ -452,7 +452,7 @@ class SummaryInputPosition:
 #
 # .. versionadded:: 5.7
 #
-# .. versionchanged:: 5.21
+# .. versionchanged:: 5.22
 #     Deprecated in favor of :class:`.SummaryInputPosition`.
 SummaryNotificationPosition: te.TypeAlias = SummaryInputPosition
 
@@ -586,7 +586,7 @@ class GqlStatusObject:
 
     .. seealso:: :attr:`.ResultSummary.gql_status_objects`
 
-    .. versionadded:: 5.21
+    .. versionadded:: 5.22
     """
 
     # internal dictionaries, never handed to assure immutability

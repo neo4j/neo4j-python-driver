@@ -187,7 +187,7 @@ class NotificationDisabledClassification(str, Enum):
         session config
         :ref:`session-notifications-disabled-classifications-ref`
 
-    .. versionadded:: 5.21
+    .. versionadded:: 5.22
     """
 
     HINT = "HINT"
@@ -269,7 +269,7 @@ class NotificationClassification(str, Enum):
 
     .. seealso:: :attr:`.GqlStatusObject.classification`
 
-    .. versionadded:: 5.21
+    .. versionadded:: 5.22
     """
 
     HINT = "HINT"

@@ -23,7 +23,7 @@ class GqlStatusObject:
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
-    .. versionadded:: 5.21
+    .. versionadded:: 5.22
     """
 
 
@@ -38,5 +38,5 @@ class DiagnosticRecord:
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
-    .. versionadded:: 5.21
+    .. versionadded:: 5.22
     """

@@ -749,7 +749,7 @@ https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledClassification` and/or :class:`str`
 :Default: :data:`None`
 
-.. versionadded:: 5.21
+.. versionadded:: 5.22
 
 .. seealso:: :class:`.NotificationDisabledClassification`, session config :ref:`session-notifications-disabled-classifications-ref`
 
@@ -1249,7 +1249,7 @@ https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledClassification` and/or :class:`str`
 :Default: :data:`None`
 
-.. versionadded:: 5.21
+.. versionadded:: 5.22
 
 .. seealso:: :class:`.NotificationDisabledClassification`
 
@@ -1630,7 +1630,7 @@ SummaryNotificationPosition
 
     .. versionadded:: 5.7
 
-    .. versionchanged:: 5.21
+    .. versionchanged:: 5.22
         Deprecated in favor of :class:`.SummaryInputPosition`.
 
 
