@@ -51,10 +51,13 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         if not initial_bookmarks:
             self._bookmarks = set()
         else:
-            self._bookmarks = set(getattr(
-                initial_bookmarks, "raw_values",
-                t.cast(t.Iterable[str], initial_bookmarks)
-            ))
+            if not hasattr(initial_bookmarks, "raw_values"):
+                initial_bookmarks = Bookmarks.from_raw_values(
+                    t.cast(t.Iterable[str], initial_bookmarks)
+                )
+            self._bookmarks = set(
+                t.cast(Bookmarks, initial_bookmarks).raw_values
+            )
         self._lock = AsyncCooperativeLock()
 
     async def update_bookmarks(
