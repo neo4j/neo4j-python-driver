@@ -3,7 +3,7 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- `SummaryNotificationPosition` has been deprecated in favor of `SummaryInputPosition`.
 
 
 ## Version 5.17 - 5.21
