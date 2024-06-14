@@ -315,10 +315,6 @@ class ResultSummary:
             reverse=True,
         )
         self._gql_status_objects = tuple(notification_status_objects)
-        print([
-            status.gql_status
-            for status in self._gql_status_objects
-        ])
 
         return self._gql_status_objects
 
