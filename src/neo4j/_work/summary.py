@@ -260,8 +260,6 @@ class ResultSummary:
 
         .. versionadded:: 5.22
         """
-        # if getattr(self, "_gql_status_objects", None) is not None:
-        #     return self._gql_status_objects
 
         raw_status_objects = self.metadata.get("statuses")
         if isinstance(raw_status_objects, list):
