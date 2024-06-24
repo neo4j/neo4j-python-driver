@@ -799,7 +799,7 @@ class AsyncBolt5x5(AsyncBolt5x4):
                         log.info("[#%04X]  _: <CONNECTION> Server supplied an "
                                  "invalid diagnostic record (%r).",
                                  self.local_port, diag_record)
-                        diag_record = dict(self.DEFAULT_DIAGNOSTIC_RECORD)
+                        continue
                     for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
                         diag_record.setdefault(key, value)
 

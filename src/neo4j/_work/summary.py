@@ -785,6 +785,8 @@ class GqlStatusObject:
 
         self._status_diagnostic_record = \
             self._status_metadata.get("diagnostic_record", {})
+        if not isinstance(self._status_diagnostic_record, dict):
+            self._status_diagnostic_record = {}
         return self._status_diagnostic_record
 
     @property

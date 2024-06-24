@@ -1734,6 +1734,36 @@ def test_notification_from_broken_status(
 
 
 @pytest.mark.parametrize(
+    "in_status",
+    (
+        _test_status_missing_key(("diagnostic_record",)),
+
+        _test_status_broken_key(("diagnostic_record",), None),
+        _test_status_broken_key(("diagnostic_record",), 1),
+        _test_status_broken_key(("diagnostic_record",), True),
+        _test_status_broken_key(("diagnostic_record",), [None]),
+    )
+)
+def test_broken_diagnostic_record(in_status, summary_args_kwargs) -> None:
+    args, kwargs = summary_args_kwargs
+    kwargs["metadata"]["statuses"] = [in_status]
+
+    summary = ResultSummary(*args, **kwargs)
+
+    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+        statuses = summary.gql_status_objects
+    assert len(statuses) == 1
+    status = statuses[0]
+
+    assert status.diagnostic_record == {}
+    assert status.position is None
+    assert status.raw_classification is None
+    assert status.classification is NotificationClassification.UNKNOWN
+    assert status.raw_severity is None
+    assert status.severity is NotificationSeverity.UNKNOWN
+
+
+@pytest.mark.parametrize(
     ("status_overwrite", "diagnostic_record_overwrite"),
     (
         *(

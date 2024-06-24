@@ -651,7 +651,7 @@ async def test_enriches_diagnostic_record(
             return dict((*DEFAULT_DIAG_REC_PAIRS, *r.items()))
         return r
 
-    expected_diag_records = [extend_diag_record(r)  for r in sent_diag_records]
+    expected_diag_records = [extend_diag_record(r) for r in sent_diag_records]
     expected_metadata = {
         "statuses": [
             {"diagnostic_record": r} if r is not ... else {}
