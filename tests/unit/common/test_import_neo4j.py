@@ -15,172 +15,164 @@
 
 
 import importlib
+import re
 
 import pytest
 
+from neo4j import PreviewWarning
+
+
+def test_import_neo4j():
+    import neo4j
+
+
+NEO4J_ATTRIBUTES = (
+    # (name, warning)
+    ("__version__", None),
+    ("Address", None),
+    ("AsyncBoltDriver", None),
+    ("AsyncDriver", None),
+    ("AsyncGraphDatabase", None),
+    ("AsyncManagedTransaction", None),
+    ("AsyncNeo4jDriver", None),
+    ("AsyncResult", None),
+    ("AsyncSession", None),
+    ("AsyncTransaction", None),
+    ("Auth", None),
+    ("AuthToken", None),
+    ("basic_auth", None),
+    ("bearer_auth", None),
+    ("BoltDriver", None),
+    ("Bookmark", None),
+    ("Bookmarks", None),
+    ("Config", DeprecationWarning),
+    ("custom_auth", None),
+    ("DEFAULT_DATABASE", None),
+    ("Driver", None),
+    ("EagerResult", None),
+    ("ExperimentalWarning", None),
+    ("get_user_agent", None),
+    ("GqlStatusObject", PreviewWarning),
+    ("GraphDatabase", None),
+    ("IPv4Address", None),
+    ("IPv6Address", None),
+    ("kerberos_auth", None),
+    ("log", DeprecationWarning),
+    ("ManagedTransaction", None),
+    ("Neo4jDriver", None),
+    ("NotificationCategory", None),
+    ("NotificationClassification", PreviewWarning),
+    ("NotificationDisabledCategory", None),
+    ("NotificationDisabledClassification", PreviewWarning),
+    ("NotificationMinimumSeverity", None),
+    ("NotificationSeverity", None),
+    ("PoolConfig", DeprecationWarning),
+    ("PreviewWarning", None),
+    ("Query", None),
+    ("READ_ACCESS", None),
+    ("Record", None),
+    ("Result", None),
+    ("ResultSummary", None),
+    ("RoutingControl", None),
+    ("ServerInfo", None),
+    ("Session", None),
+    ("SessionConfig", DeprecationWarning),
+    ("SummaryCounters", None),
+    ("SummaryInputPosition", None),
+    ("SummaryNotification", None),
+    ("SummaryNotificationPosition", DeprecationWarning),
+    ("Transaction", None),
+    ("TRUST_ALL_CERTIFICATES", None),
+    ("TRUST_SYSTEM_CA_SIGNED_CERTIFICATES", None),
+    ("TrustAll", None),
+    ("TrustCustomCAs", None),
+    ("TrustSystemCAs", None),
+    ("unit_of_work", None),
+    ("Version", None),
+    ("WorkspaceConfig", DeprecationWarning),
+    ("WRITE_ACCESS", None),
+)
+
+
+@pytest.mark.parametrize(("name", "warning"), NEO4J_ATTRIBUTES)
+def test_attribute_import(name, warning):
+    neo4j = importlib.__import__("neo4j")
+    if warning:
+        with pytest.warns(warning):
+            getattr(neo4j, name)
+    else:
+        getattr(neo4j, name)
+
+
+@pytest.mark.parametrize(("name", "warning"), NEO4J_ATTRIBUTES)
+def test_attribute_from_import(name, warning):
+    if warning:
+        with pytest.warns(warning):
+            importlib.__import__("neo4j", fromlist=(name,))
+    else:
+        importlib.__import__("neo4j", fromlist=(name,))
+
+
+def test_all():
+    import neo4j
+
+    assert sorted(neo4j.__all__) == sorted([i[0] for i in NEO4J_ATTRIBUTES])
+
+
+
+def test_dir():
+    import neo4j
 
-def test_import_dunder_version():
-    from neo4j import __version__
-
-
-def test_import_graphdatabase():
-    from neo4j import GraphDatabase
-
-
-def test_import_async_graphdatabase():
-    from neo4j import AsyncGraphDatabase
-
-
-def test_import_driver():
-    from neo4j import Driver
-
-
-def test_import_async_driver():
-    from neo4j import AsyncDriver
-
-
-def test_import_boltdriver():
-    from neo4j import BoltDriver
-
-
-def test_import_async_boltdriver():
-    from neo4j import AsyncBoltDriver
-
-
-def test_import_neo4jdriver():
-    from neo4j import Neo4jDriver
-
-
-def test_import_async_neo4jdriver():
-    from neo4j import AsyncNeo4jDriver
-
-
-def test_import_auth():
-    from neo4j import Auth
-
-
-def test_import_authtoken():
-    from neo4j import AuthToken
-
-
-def test_import_basic_auth():
-    from neo4j import basic_auth
-
-
-def test_import_bearer_auth():
-    from neo4j import bearer_auth
-
-
-def test_import_kerberos_auth():
-    from neo4j import kerberos_auth
-
-
-def test_import_custom_auth():
-    from neo4j import custom_auth
-
-
-def test_import_read_access():
-    from neo4j import READ_ACCESS
-
-
-def test_import_write_access():
-    from neo4j import WRITE_ACCESS
-
-
-def test_import_transaction():
-    from neo4j import Transaction
-
-
-def test_import_async_transaction():
-    from neo4j import AsyncTransaction
-
-
-def test_import_record():
-    from neo4j import Record
-
-
-def test_import_session():
-    from neo4j import Session
-
-
-def test_import_async_session():
-    from neo4j import AsyncSession
-
-
-def test_import_sessionconfig():
-    with pytest.warns(DeprecationWarning):
-        from neo4j import SessionConfig
-
-
-def test_import_query():
-    from neo4j import Query
-
-
-def test_import_result():
-    from neo4j import Result
-
-
-def test_import_async_result():
-    from neo4j import AsyncResult
-
-
-def test_import_resultsummary():
-    from neo4j import ResultSummary
-
-
-def test_import_unit_of_work():
-    from neo4j import unit_of_work
-
-
-def test_import_config():
-    with pytest.warns(DeprecationWarning):
-        from neo4j import Config
-
-
-def test_import_poolconfig():
-    with pytest.warns(DeprecationWarning):
-        from neo4j import PoolConfig
-
-
-def test_import_graph():
-    from neo4j import graph
-
-
-def test_import_graph_node():
-    from neo4j.graph import Node
-
-
-def test_import_graph_path():
-    from neo4j.graph import Path
-
-
-def test_import_graph_graph():
-    from neo4j.graph import Graph
-
-
-def test_import_spatial():
-    from neo4j import spatial
-
-
-def test_import_time():
-    from neo4j import time
-
-
-def test_import_exceptions():
-    from neo4j import exceptions
+    assert sorted(dir(neo4j)) == sorted([i[0] for i in NEO4J_ATTRIBUTES])
 
 
 def test_import_star():
     with pytest.warns() as warnings:
         importlib.__import__("neo4j", fromlist=("*",))
-    assert len(warnings) == 5
-    assert all(issubclass(w.category, DeprecationWarning) for w in warnings)
-    messages = {str(w.message) for w in warnings}
-    for item in (
-        "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
+    assert len(warnings) == 9
+    assert all(issubclass(w.category, (DeprecationWarning, PreviewWarning))
+               for w in warnings)
+
+    for name in (
+        "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig",
+        "SummaryNotificationPosition",
     ):
-        message = (
-            f"Importing {item} from neo4j is deprecated without replacement. "
-            f"It's internal and will be removed in a future version."
-        )
-        assert message in messages
+        assert sum(
+            bool(re.match(rf".*\b{name}\b.*", str(w.message)))
+            for w in warnings
+            if issubclass(w.category, DeprecationWarning)
+        ) == 1
+
+    for name in (
+        "NotificationClassification", "GqlStatusObject",
+        "NotificationDisabledClassification",
+    ):
+        assert sum(
+            bool(re.match(rf".*\b{name}\b.*", str(w.message)))
+            for w in warnings
+            if issubclass(w.category, PreviewWarning)
+        ) == 1
+
+
+NEO4J_MODULES = (
+    ("addressing", None),
+    ("api", None),
+    ("auth_management", None),
+    ("conf", DeprecationWarning),
+    ("data", DeprecationWarning),
+    ("debug", None),
+    ("exceptions", None),
+    ("meta", DeprecationWarning),
+    ("packstream", DeprecationWarning),
+    ("routing", DeprecationWarning),
+    ("warnings", None),
+)
+
+
+@pytest.mark.parametrize(("name", "warning"), NEO4J_MODULES)
+def test_module_import(name, warning):
+    if warning:
+        with pytest.warns(warning):
+            importlib.__import__(f"neo4j.{name}")
+    else:
+        importlib.__import__(f"neo4j.{name}")

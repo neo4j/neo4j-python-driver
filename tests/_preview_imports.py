@@ -14,31 +14,21 @@
 # limitations under the License.
 
 
-from .eager_result import EagerResult
-from .query import (
-    Query,
-    unit_of_work,
-)
-from .summary import (
-    GqlStatusObject,
-    NotificationClassification,
-    ResultSummary,
-    SummaryCounters,
-    SummaryInputPosition,
-    SummaryNotification,
-    SummaryNotificationPosition,
-)
+import typing as t
+
+import pytest
+
+import neo4j
+
+
+if t.TYPE_CHECKING:
+    from neo4j import NotificationDisabledClassification
+
+
+with pytest.warns(neo4j.PreviewWarning, match="GQLSTATUS"):
+    from neo4j import NotificationDisabledClassification
 
 
 __all__ = [
-    "EagerResult",
-    "NotificationClassification",
-    "GqlStatusObject",
-    "Query",
-    "ResultSummary",
-    "SummaryCounters",
-    "SummaryInputPosition",
-    "SummaryNotification",
-    "SummaryNotificationPosition",
-    "unit_of_work",
+    "NotificationDisabledClassification",
 ]

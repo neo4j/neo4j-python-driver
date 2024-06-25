@@ -16,14 +16,18 @@
 
 from __future__ import annotations
 
+import itertools
 import typing as t
+from copy import deepcopy
 from dataclasses import dataclass
 
 from .._api import (
     NotificationCategory,
+    NotificationClassification,
     NotificationSeverity,
 )
 from .._exceptions import BoltProtocolError
+from .._meta import preview
 
 
 if t.TYPE_CHECKING:
@@ -32,8 +36,7 @@ if t.TYPE_CHECKING:
     from ..addressing import Address
     from ..api import ServerInfo
 
-
-# TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
+    _T = te.TypeVar("_T")
 
 
 class ResultSummary:
@@ -81,10 +84,27 @@ class ResultSummary:
     #: .. seealso:: :attr:`.summary_notifications`
     notifications: t.Optional[t.List[dict]]
 
-    #: The same as ``notifications`` but in a parsed, structured form.
+    # cache for notifications
+    _notifications_set: bool = False
+
+    # cache for property `summary_notifications`
     _summary_notifications: t.List[SummaryNotification]
 
-    def __init__(self, address: Address, **metadata: t.Any) -> None:
+    # cache for property `summary_notifications`
+    _gql_status_objects: t.Tuple[GqlStatusObject, ...]
+
+    _had_key: bool
+    _had_record: bool
+
+    def __init__(
+        self,
+        address: Address,
+        had_key: bool,
+        had_record: bool,
+        metadata: t.Dict[str, t.Any],
+    ) -> None:
+        self._had_key = had_key
+        self._had_record = had_record
         self.metadata = metadata
         self.server = metadata["server"]
         self.database = metadata.get("db")
@@ -100,7 +120,6 @@ class ResultSummary:
         self.query_type = metadata.get("type")
         self.plan = metadata.get("plan")
         self.profile = metadata.get("profile")
-        self.notifications = metadata.get("notifications")
         self.counters = SummaryCounters(metadata.get("stats", {}))
         if self.server.protocol_version[0] < 3:
             self.result_available_after = metadata.get("result_available_after")
@@ -109,20 +128,196 @@ class ResultSummary:
             self.result_available_after = metadata.get("t_first")
             self.result_consumed_after = metadata.get("t_last")
 
+    def __dir__(self):
+        return {*super().__dir__(), "notifications"}
+
+    def __getattr__(self, key):
+        if key == "notifications":
+            self._set_notifications()
+            return self.notifications
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{key}'"
+        )
+
+    def _set_notifications(self):
+        if "notifications" in self.metadata:
+            notifications = self.metadata["notifications"]
+            if not isinstance(notifications, list):
+                self.notifications = None
+                return
+            self.notifications = notifications
+            return
+
+        # polyfill notifications from GqlStatusObjects
+        if "statuses" in self.metadata:
+            statuses = self.metadata["statuses"]
+            if not isinstance(statuses, list):
+                self.notifications = None
+                return
+            notifications = []
+            for status in statuses:
+                if not isinstance(status, dict):
+                    continue
+                notification = {}
+                failed = False
+                for notification_key, status_key in (
+                    ("title", "title"),
+                    ("code", "neo4j_code"),
+                    ("description", "status_description"),
+                ):
+                    value = status.get(status_key)
+                    if not isinstance(value, str) or not value:
+                        failed = True
+                        break
+                    notification[notification_key] = value
+                if failed:
+                    continue
+                diagnostic_record = status.get("diagnostic_record")
+                if not isinstance(diagnostic_record, dict):
+                    continue
+                for notification_key, diag_record_key in (
+                    ("severity", "_severity"),
+                    ("category", "_classification"),
+                ):
+                    value = diagnostic_record.get(diag_record_key)
+                    if not isinstance(value, str) or not value:
+                        failed = True
+                        break
+                    notification[notification_key] = value
+                if failed:
+                    continue
+                raw_position = diagnostic_record.get("_position")
+                if not isinstance(raw_position, dict):
+                    continue
+                position = {}
+                for pos_key, raw_pos_key in (
+                    ("line", "line"),
+                    ("column", "column"),
+                    ("offset", "offset"),
+                ):
+                    value = raw_position.get(raw_pos_key)
+                    if not isinstance(value, int) or isinstance(value, bool):
+                        failed = True
+                        break
+                    position[pos_key] = value
+                if failed:
+                    continue
+                notification["position"] = position
+                notifications.append(notification)
+            self.notifications = notifications
+            return
+
+        self.notifications = None
+
+    # TODO: 6.0 - return a tuple for immutability (annotate with Sequence)
     @property
     def summary_notifications(self) -> t.List[SummaryNotification]:
         """The same as ``notifications`` but in a parsed, structured form.
+
+        Further, if connected to a gql-aware server, this property will be
+        polyfilled from :attr:`gql_status_objects`.
 
         .. seealso:: :attr:`.notifications`, :class:`.SummaryNotification`
 
         .. versionadded:: 5.7
         """
-        if getattr(self, "_summary_notifications", None) is None:
-            self._summary_notifications = [
-                SummaryNotification._from_metadata(n)
-                for n in self.notifications or ()
-            ]
+        if getattr(self, "_summary_notifications", None) is not None:
+            return self._summary_notifications
+
+        raw_notifications = self.notifications
+        if not isinstance(raw_notifications, list):
+            self._summary_notifications = []
+            return self._summary_notifications
+        self._summary_notifications = [
+            SummaryNotification._from_metadata(n)
+            for n in raw_notifications
+        ]
         return self._summary_notifications
+
+    @property
+    @preview("GQLSTATUS support is a preview feature.")
+    def gql_status_objects(self) -> t.Sequence[GqlStatusObject]:
+        """
+        The GqlStatusObjects that arose when executing the query.
+
+        The sequence always contains at least 1 status representing the
+        Success, No Data or Omitted Result.
+        All other status are notifications like warnings about problematic
+        queries or other valuable information that can be presented in a
+        client.
+
+        The GqlStatusObjects will be presented in the following order:
+
+        * A "no data" (``02xxx``) has precedence over a warning.
+        * A "warning" (``01xxx``) has precedence over a success.
+        * A "success" (``00xxx``) has precedence over anything informational
+          (``03xxx``).
+
+        **This is a preview** (see :ref:`filter-warnings-ref`).
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+        .. versionadded:: 5.22
+        """
+
+        raw_status_objects = self.metadata.get("statuses")
+        if isinstance(raw_status_objects, list):
+            self._gql_status_objects = tuple(
+                GqlStatusObject._from_status_metadata(s)
+                for s in raw_status_objects
+            )
+            return self._gql_status_objects
+
+        raw_notifications = self.notifications
+        notification_status_objects: t.Iterable[GqlStatusObject]
+        if isinstance(raw_notifications, list):
+            notification_status_objects = list(
+                GqlStatusObject._from_notification_metadata(n)
+                for n in raw_notifications
+            )
+        else:
+            notification_status_objects = ()
+
+        if self._had_record:
+            # polyfill with a Success status
+            result_status = GqlStatusObject._success()
+        elif self._had_key:
+            # polyfill with an Omitted Result status
+            result_status = GqlStatusObject._no_data()
+        else:
+            # polyfill with a No Data status
+            result_status = GqlStatusObject._omitted_result()
+
+        notification_status_objects = itertools.chain(
+            notification_status_objects,
+            (result_status,)
+
+        )
+
+        def status_precedence(status: GqlStatusObject) -> int:
+            if status.gql_status.startswith("02"):
+                # no data
+                return 3
+            if status.gql_status.startswith("01"):
+                # warning
+                return 2
+            if status.gql_status.startswith("00"):
+                # success
+                return 1
+            if status.gql_status.startswith("03"):
+                # informational
+                return 0
+            return -1
+
+        notification_status_objects = sorted(
+            notification_status_objects,
+            key=status_precedence,
+            reverse=True,
+        )
+        self._gql_status_objects = tuple(notification_status_objects)
+
+        return self._gql_status_objects
 
 
 class SummaryCounters:
@@ -216,12 +411,59 @@ class SummaryCounters:
         return self.system_updates > 0
 
 
-_SEVERITY_LOOKUP = {
+@dataclass
+class SummaryInputPosition:
+    """Structured form of a gql status/notification position.
+
+    .. seealso::
+        :attr:`.GqlStatusObject.position`,
+        :attr:`.SummaryNotification.position`,
+        :data:`.SummaryNotificationPosition`
+
+    .. versionadded:: 5.22
+    """
+    #: The line number of the notification. Line numbers start at 1.
+    line: int
+    #: The column number of the notification. Column numbers start at 1.
+    column: int
+    #: The character offset of the notification. Offsets start at 0.
+    offset: int
+
+    @classmethod
+    def _from_metadata(cls, metadata: t.Any) -> t.Optional[te.Self]:
+        if not isinstance(metadata, dict):
+            return None
+        line = metadata.get("line")
+        if not isinstance(line, int) or isinstance(line, bool):
+            return None
+        column = metadata.get("column")
+        if not isinstance(column, int) or isinstance(column, bool):
+            return None
+        offset = metadata.get("offset")
+        if not isinstance(offset, int) or isinstance(offset, bool):
+            return None
+        return cls(line=line, column=column, offset=offset)
+
+    def __str__(self) -> str:
+        return (f"line: {self.line}, column: {self.column}, "
+                f"offset: {self.offset}")
+
+
+# Deprecated alias for :class:`.SummaryInputPosition`.
+#
+# .. versionadded:: 5.7
+#
+# .. versionchanged:: 5.22
+#     Deprecated in favor of :class:`.SummaryInputPosition`.
+SummaryNotificationPosition: te.TypeAlias = SummaryInputPosition
+
+
+_SEVERITY_LOOKUP: t.Dict[t.Any, NotificationSeverity] = {
    "WARNING": NotificationSeverity.WARNING,
    "INFORMATION": NotificationSeverity.INFORMATION,
 }
 
-_CATEGORY_LOOKUP = {
+_CATEGORY_LOOKUP: t.Dict[t.Any, NotificationCategory] = {
     "HINT": NotificationCategory.HINT,
     "UNRECOGNIZED": NotificationCategory.UNRECOGNIZED,
     "UNSUPPORTED": NotificationCategory.UNSUPPORTED,
@@ -231,6 +473,22 @@ _CATEGORY_LOOKUP = {
     "SECURITY": NotificationCategory.SECURITY,
     "TOPOLOGY": NotificationCategory.TOPOLOGY,
 }
+
+_CLASSIFICATION_LOOKUP: t.Dict[t.Any, NotificationClassification] = {
+    k: NotificationClassification(v) for k, v in _CATEGORY_LOOKUP.items()
+}
+
+
+if t.TYPE_CHECKING:
+    class _SummaryNotificationKwargs(te.TypedDict, total=False):
+        title: str
+        code: str
+        description: str
+        severity_level: NotificationSeverity
+        category: NotificationCategory
+        raw_severity_level: str
+        raw_category: str
+        position: t.Optional[SummaryInputPosition]
 
 
 @dataclass
@@ -252,13 +510,17 @@ class SummaryNotification:
     position: t.Optional[SummaryNotificationPosition] = None
 
     @classmethod
-    def _from_metadata(cls, metadata):
+    def _from_metadata(cls, metadata: t.Any) -> te.Self:
         if not isinstance(metadata, dict):
-            return SummaryNotification()
-        kwargs = {
-            "position": SummaryNotificationPosition._from_metadata(metadata)
+            return cls()
+        kwargs: _SummaryNotificationKwargs = {
+            "position":
+                SummaryInputPosition._from_metadata(metadata.get("position")),
         }
-        for key in ("title", "code", "description"):
+        str_keys: t.Tuple[te.Literal["title", "code", "description"], ...] = (
+            "title", "code", "description"
+        )
+        for key in str_keys:
             value = metadata.get(key)
             if isinstance(value, str):
                 kwargs[key] = value
@@ -276,48 +538,362 @@ class SummaryNotification:
             )
         return cls(**kwargs)
 
-    def __str__(self):
-        pos = ""
-        if self.position is not None:
-            pos = f" {{position: {self.position}}}"
+    def __str__(self) -> str:
         return (
             f"{{severity: {self.raw_severity_level}}} {{code: {self.code}}} "
             f"{{category: {self.raw_category}}} {{title: {self.title}}} "
-            f"{{description: {self.description}}}{pos}"
+            f"{{description: {self.description}}} "
+            f"{{position: {self.position}}}"
         )
 
 
-@dataclass
-class SummaryNotificationPosition:
-    """Structured form of a notification position received from the server.
+POLYFILL_DIAGNOSTIC_RECORD = (
+    ("OPERATION", ""),
+    ("OPERATION_CODE", "0"),
+    ("CURRENT_SCHEMA", "/"),
+)
 
-    .. seealso:: :class:`.SummaryNotification`
 
-    .. versionadded:: 5.7
+_SUCCESS_STATUS_METADATA = {
+    "gql_status": "00000",
+    "status_description": "note: successful completion",
+    "diagnostic_record": dict(POLYFILL_DIAGNOSTIC_RECORD),
+}
+_OMITTED_RESULT_STATUS_METADATA = {
+    "gql_status": "00001",
+    "status_description": "note: successful completion - omitted result",
+    "diagnostic_record": dict(POLYFILL_DIAGNOSTIC_RECORD),
+}
+_NO_DATA_STATUS_METADATA = {
+    "gql_status": "02000",
+    "status_description": "note: no data",
+    "diagnostic_record": dict(POLYFILL_DIAGNOSTIC_RECORD),
+}
+
+
+class GqlStatusObject:
+    """
+    Representation for GqlStatusObject found when executing a query.
+
+    GqlStatusObjects are a superset of notifications, i.e., some but not all
+    GqlStatusObjects are notifications.
+    Notifications can be filtered server-side with
+    driver config
+    :ref:`driver-notifications-disabled-classifications-ref` and
+    :ref:`driver-notifications-min-severity-ref` as well as
+    session config
+    :ref:`session-notifications-disabled-classifications-ref` and
+    :ref:`session-notifications-min-severity-ref`.
+
+    .. seealso:: :attr:`.ResultSummary.gql_status_objects`
+
+    .. versionadded:: 5.22
     """
 
-    #: The line number of the notification. Line numbers start at 1.
-    # Defaults to -1 if the server's data could not be interpreted.
-    line: int = -1
-    #: The column number of the notification. Column numbers start at 1.
-    # Defaults to -1 if the server's data could not be interpreted.
-    column: int = -1
-    #: The character offset of the notification. Offsets start at 0.
-    # Defaults to -1 if the server's data could not be interpreted.
-    offset: int = -1
+    # internal dictionaries, never handed to assure immutability
+    _status_metadata: t.Dict[str, t.Any]
+    _status_diagnostic_record: t.Optional[t.Dict[str, t.Any]] = None
+
+    _is_notification: bool
+    _gql_status: str
+    _status_description: str
+    _position: t.Optional[SummaryInputPosition]
+    _raw_classification: t.Optional[str]
+    _classification: NotificationClassification
+    _raw_severity: t.Optional[str]
+    _severity: NotificationSeverity
+    _diagnostic_record: t.Dict[str, t.Any]
 
     @classmethod
-    def _from_metadata(cls, metadata):
-        metadata = metadata.get("position")
-        if not isinstance(metadata, dict):
-            return None
-        kwargs = {}
-        for key in ("line", "column", "offset"):
-            value = metadata.get(key)
-            if isinstance(value, int):
-                kwargs[key] = value
-        return cls(**kwargs)
+    def _success(cls) -> te.Self:
+        obj = cls()
+        obj._status_metadata = _SUCCESS_STATUS_METADATA
+        return obj
 
-    def __str__(self):
-        return (f"line: {self.line}, column: {self.column}, "
-                f"offset: {self.offset}")
+    @classmethod
+    def _omitted_result(cls) -> te.Self:
+        obj = cls()
+        obj._status_metadata = _OMITTED_RESULT_STATUS_METADATA
+        return obj
+
+    @classmethod
+    def _no_data(cls) -> te.Self:
+        obj = cls()
+        obj._status_metadata = _NO_DATA_STATUS_METADATA
+        return obj
+
+    @classmethod
+    def _from_status_metadata(cls, metadata: t.Any) -> te.Self:
+        obj = cls()
+        if isinstance(metadata, dict):
+            obj._status_metadata = metadata
+        else:
+            obj._status_metadata = {}
+        return obj
+
+    @classmethod
+    def _from_notification_metadata(cls, metadata: t.Any) -> te.Self:
+        obj = cls()
+        if not isinstance(metadata, dict):
+            metadata = {}
+        description = metadata.get("description")
+        neo4j_code = metadata.get("neo4j_code")
+        if not isinstance(neo4j_code, str):
+            neo4j_code = ""
+        title = metadata.get("title")
+        if not isinstance(title, str):
+            title = ""
+        position = SummaryInputPosition._from_metadata(
+            metadata.get("position")
+        )
+        classification = metadata.get("category")
+        if not isinstance(classification, str):
+            classification = None
+        severity = metadata.get("severity")
+        if not isinstance(severity, str):
+            severity = None
+
+        if severity == "WARNING":
+            gql_status = "01N42"
+            if not isinstance(description, str) or not description:
+                description = "warn: unknown warning"
+        else:
+            # for "INFORMATION" or if severity is missing
+            gql_status = "03N42"
+            if not isinstance(description, str) or not description:
+                description = "info: unknown notification"
+
+        diagnostic_record = dict(POLYFILL_DIAGNOSTIC_RECORD)
+        if "category" in metadata:
+            diagnostic_record["_classification"] = metadata["category"]
+        if "severity" in metadata:
+            diagnostic_record["_severity"] = metadata["severity"]
+        if "position" in metadata:
+            diagnostic_record["_position"] = metadata["position"]
+
+        obj._status_metadata = {
+            "gql_status": gql_status,
+            "status_description": description,
+            "neo4j_code": neo4j_code,
+            "title": title,
+            "diagnostic_record": diagnostic_record
+        }
+        obj._gql_status = gql_status
+        obj._status_description = description
+        obj._position = position
+        obj._raw_classification = classification
+        obj._raw_severity = severity
+        obj._is_notification = True
+        return obj
+
+    def __str__(self) -> str:
+        return self.status_description
+
+    def __repr__(self) -> str:
+        return (
+            "GqlStatusObject("
+            f"gql_status={repr(self.gql_status)}, "
+            f"status_description={repr(self.status_description)}, "
+            f"position={repr(self.position)}, "
+            f"raw_classification={repr(self.raw_classification)}, "
+            f"classification={repr(self.classification)}, "
+            f"raw_severity={repr(self.raw_severity)}, "
+            f"severity={repr(self.severity)}, "
+            f"diagnostic_record={repr(self.diagnostic_record)}"
+            ")"
+        )
+
+    @property
+    def is_notification(self) -> bool:
+        """
+        Whether this GqlStatusObject is a notification.
+
+        Only some GqlStatusObjects are notifications.
+        The definition of notification is vendor-specific.
+        Notifications are those GqlStatusObjects that provide additional
+        information and can be filtered out via
+        :ref:`driver-notifications-disabled-classifications-ref` and
+        :ref:`driver-notifications-min-severity-ref` as well as.
+
+        The fields :attr:`.position`,
+        :attr:`.raw_classification`, :attr:`.classification`,
+        :attr:`.raw_severity`, and :attr:`.severity` are only meaningful
+        for notifications.
+        """
+        if hasattr(self, "_is_notification"):
+            return self._is_notification
+
+        neo4j_code = self._status_metadata.get("neo4j_code")
+        self._is_notification = bool(isinstance(neo4j_code, str)
+                                     and neo4j_code)
+        return self._is_notification
+
+    @classmethod
+    def _extract_str_field(
+        cls,
+        data: dict[str, t.Any],
+        key: str,
+        default: _T = "",  # type: ignore[assignment]
+    ) -> t.Union[str, _T]:
+        value = data.get(key)
+        if isinstance(value, str):
+            return value
+        else:
+            return default
+
+    @property
+    def gql_status(self) -> str:
+        """
+        The GQLSTATUS.
+
+        The following GQLSTATUS codes denote codes that the driver will use
+        for polyfilling (when connected to an old, non-GQL-aware server).
+        Further, they may be used by servers during the transition-phase to
+        GQLSTATUS-awareness.
+
+         * ``01N42`` (warning - unknown warning)
+         * ``02N42`` (no data - unknown subcondition)
+         * ``03N42`` (informational - unknown notification)
+         * ``05N42`` (general processing exception - unknown error)
+
+        .. note::
+            This means these codes are not guaranteed to be stable and may
+            change in future versions.
+        """
+        if hasattr(self, "_gql_status"):
+            return self._gql_status
+
+        self._gql_status = self._extract_str_field(
+            self._status_metadata, "gql_status"
+        )
+        return self._gql_status
+
+    @property
+    def status_description(self) -> str:
+        """A description of the status."""
+        if hasattr(self, "_status_description"):
+            return self._status_description
+
+        self._status_description = self._extract_str_field(
+            self._status_metadata, "status_description"
+        )
+        return self._status_description
+
+    def _get_status_diagnostic_record(self) -> t.Dict[str, t.Any]:
+        if self._status_diagnostic_record is not None:
+            return self._status_diagnostic_record
+
+        self._status_diagnostic_record = \
+            self._status_metadata.get("diagnostic_record", {})
+        if not isinstance(self._status_diagnostic_record, dict):
+            self._status_diagnostic_record = {}
+        return self._status_diagnostic_record
+
+    @property
+    def position(self) -> t.Optional[SummaryInputPosition]:
+        """
+        The position of the input that caused the status (if applicable).
+
+        This is vendor-specific information.
+        If not provided, it defaults to :class:`SummaryInputPosition`'s
+        default.
+
+        Only notifications (see :attr:`.is_notification`) have a meaningful
+        position.
+
+        The value is :data:`None` if the server's data was missing or could not
+        be interpreted.
+        """
+        if hasattr(self, "_position"):
+            return self._position
+
+        diag_record = self._get_status_diagnostic_record()
+        self._position = SummaryInputPosition._from_metadata(
+            diag_record.get("_position")
+        )
+        return self._position
+
+    @property
+    def raw_classification(self) -> t.Optional[str]:
+        """
+        The raw (``str``) classification of the status.
+
+        This is a vendor-specific classification that can be used to filter
+        notifications.
+
+        Only notifications (see :attr:`.is_notification`) have a meaningful
+        classification.
+        """
+        if hasattr(self, "_raw_classification"):
+            return self._raw_classification
+
+        diag_record = self._get_status_diagnostic_record()
+        self._raw_classification = self._extract_str_field(
+            diag_record, "_classification", None
+        )
+        return self._raw_classification
+
+    @property
+    def classification(self) -> NotificationClassification:
+        """
+        Parsed version of :attr:`.raw_classification`.
+
+        Only notifications (see :attr:`.is_notification`) have a meaningful
+        classification.
+        """
+        if hasattr(self, "_classification"):
+            return self._classification
+
+        self._classification = _CLASSIFICATION_LOOKUP.get(
+            self.raw_classification, NotificationClassification.UNKNOWN
+        )
+        return self._classification
+
+    @property
+    def raw_severity(self) -> t.Optional[str]:
+        """
+        The raw (``str``) severity of the status.
+
+        This is a vendor-specific severity that can be used to filter
+        notifications.
+
+        Only notifications (see :attr:`.is_notification`) have a meaningful
+        severity.
+        """
+        if hasattr(self, "_raw_severity"):
+            return self._raw_severity
+
+        diag_record = self._get_status_diagnostic_record()
+        self._raw_severity = self._extract_str_field(
+            diag_record, "_severity", None
+        )
+        return self._raw_severity
+
+    @property
+    def severity(self) -> NotificationSeverity:
+        """
+        Parsed version of :attr:`.raw_severity`.
+
+        Only notifications (see :attr:`.is_notification`) have a meaningful
+        severity.
+        """
+        if hasattr(self, "_severity"):
+            return self._severity
+
+        self._severity = _SEVERITY_LOOKUP.get(
+            self.raw_severity, NotificationSeverity.UNKNOWN
+        )
+        return self._severity
+
+    @property
+    def diagnostic_record(self) -> t.Dict[str, t.Any]:
+        """
+        Further information about the GQLSTATUS for diagnostic purposes.
+        """
+        if hasattr(self, "_diagnostic_record"):
+            return self._diagnostic_record
+
+        self._diagnostic_record = deepcopy(
+            self._get_status_diagnostic_record()
+        )
+        return self._diagnostic_record

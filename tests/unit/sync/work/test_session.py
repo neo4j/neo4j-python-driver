@@ -558,17 +558,17 @@ def test_run_notification_min_severity(fake_pool, routing):
 
 @pytest.mark.parametrize("routing", (True, False))
 @mark_sync_test
-def test_run_notification_disabled_categories(fake_pool, routing):
+def test_run_notification_disabled_classifications(fake_pool, routing):
     fake_pool.mock_add_spec(Neo4jPool if routing else BoltPool)
-    dis_cats = object()
-    config = SessionConfig(notifications_disabled_categories=dis_cats)
+    dis_clss = object()
+    config = SessionConfig(notifications_disabled_classifications=dis_clss)
     with Session(fake_pool, config) as session:
         session.run("RETURN 1")
         assert len(fake_pool.acquired_connection_mocks) == 1
         connection_mock = fake_pool.acquired_connection_mocks[0]
         connection_mock.run.assert_called_once()
         call_kwargs = connection_mock.run.call_args.kwargs
-        assert call_kwargs["notifications_disabled_categories"] is dis_cats
+        assert call_kwargs["notifications_disabled_classifications"] is dis_clss
 
 
 @mark_sync_test

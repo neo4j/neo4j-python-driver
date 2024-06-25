@@ -26,6 +26,7 @@ from neo4j._async.io._bolt5 import AsyncBolt5x2
 from neo4j._meta import USER_AGENT
 
 from ...._async_compat import mark_async_test
+from ....iter_util import powerset
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -437,25 +438,25 @@ def _assert_notifications_in_extra(extra, expected):
     itertools.product((None, "WARNING", "OFF"), repeat=2)
 )
 @pytest.mark.parametrize(
-    ("cls_dis_cats", "method_dis_cats"),
+    ("cls_dis_clss", "method_dis_clss"),
     itertools.product((None, [], ["HINT"], ["HINT", "DEPRECATION"]), repeat=2)
 )
 @mark_async_test
 async def test_supports_notification_filters(
     fake_socket, method, args, extra_idx, cls_min_sev, method_min_sev,
-    cls_dis_cats, method_dis_cats
+    cls_dis_clss, method_dis_clss
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x2.UNPACKER_CLS)
     connection = AsyncBolt5x2(
         address, socket, AsyncPoolConfig.max_connection_lifetime,
         notifications_min_severity=cls_min_sev,
-        notifications_disabled_categories=cls_dis_cats
+        notifications_disabled_classifications=cls_dis_clss
     )
     method = getattr(connection, method)
 
     method(*args, notifications_min_severity=method_min_sev,
-           notifications_disabled_categories=method_dis_cats)
+           notifications_disabled_classifications=method_dis_clss)
     await connection.send_all()
 
     _, fields = await socket.pop_message()
@@ -463,17 +464,17 @@ async def test_supports_notification_filters(
     expected = {}
     if method_min_sev is not None:
         expected["notifications_minimum_severity"] = method_min_sev
-    if method_dis_cats is not None:
-        expected["notifications_disabled_categories"] = method_dis_cats
+    if method_dis_clss is not None:
+        expected["notifications_disabled_categories"] = method_dis_clss
     _assert_notifications_in_extra(extra, expected)
 
 
 @pytest.mark.parametrize("min_sev", (None, "WARNING", "OFF"))
-@pytest.mark.parametrize("dis_cats",
+@pytest.mark.parametrize("dis_clss",
                          (None, [], ["HINT"], ["HINT", "DEPRECATION"]))
 @mark_async_test
 async def test_hello_supports_notification_filters(
-    fake_socket_pair, min_sev, dis_cats
+    fake_socket_pair, min_sev, dis_clss
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
@@ -484,7 +485,7 @@ async def test_hello_supports_notification_filters(
     connection = AsyncBolt5x2(
         address, sockets.client, AsyncPoolConfig.max_connection_lifetime,
         notifications_min_severity=min_sev,
-        notifications_disabled_categories=dis_cats
+        notifications_disabled_classifications=dis_clss
     )
 
     await connection.hello()
@@ -494,8 +495,8 @@ async def test_hello_supports_notification_filters(
     expected = {}
     if min_sev is not None:
         expected["notifications_minimum_severity"] = min_sev
-    if dis_cats is not None:
-        expected["notifications_disabled_categories"] = dis_cats
+    if dis_clss is not None:
+        expected["notifications_disabled_categories"] = dis_clss
     _assert_notifications_in_extra(extra, expected)
 
 
@@ -669,3 +670,53 @@ async def test_tracks_last_database(fake_socket_pair, actions):
         await connection.fetch_all()
 
         assert connection.last_database == db
+
+
+@pytest.mark.parametrize(
+    "sent_diag_records",
+    powerset(
+        (
+            ...,
+            None,
+            {},
+            [],
+            "1",
+            1,
+            {"OPERATION_CODE": "0"},
+            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
+        ),
+        limit=3,
+    )
+)
+@pytest.mark.parametrize("method", ("pull", "discard"))
+@mark_async_test
+async def test_does_not_enrich_diagnostic_record(
+    sent_diag_records,
+    method,
+    fake_socket_pair,
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt5x2.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x2.UNPACKER_CLS)
+    connection = AsyncBolt5x2(address, sockets.client, 0)
+
+    sent_metadata = {
+        "statuses": [
+            {"diagnostic_record": r} if r is not ... else {}
+            for r in sent_diag_records
+        ]
+    }
+    await sockets.server.send_message(b"\x70", sent_metadata)
+
+    received_metadata = None
+
+    def on_success(metadata):
+        nonlocal received_metadata
+        received_metadata = metadata
+
+    getattr(connection, method)(on_success=on_success)
+    await connection.send_all()
+    await connection.fetch_all()
+
+    assert received_metadata == sent_metadata

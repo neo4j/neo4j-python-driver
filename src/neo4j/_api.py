@@ -25,17 +25,23 @@ if t.TYPE_CHECKING:
 
 
 __all__ = [
-    "NotificationDisabledCategory",
-    "NotificationMinimumSeverity",
+    "NotificationClassification",
     "NotificationCategory",
+    "NotificationDisabledCategory",
+    "NotificationDisabledClassification",
+    "NotificationMinimumSeverity",
     "NotificationSeverity",
     "RoutingControl",
-    "TelemetryAPI"
+    "TelemetryAPI",
 ]
 
 
 class NotificationMinimumSeverity(str, Enum):
-    """Filter notifications returned by the server by minimum severity.
+    """
+    Filter notifications returned by the server by minimum severity.
+
+    For GQL-aware servers, notifications are a subset of GqlStatusObjects.
+    See also :attr:`.GqlStatusObject.is_notification`.
 
     Inherits from :class:`str` and :class:`enum.Enum`.
     Every driver API accepting a :class:`.NotificationMinimumSeverity` value
@@ -73,7 +79,8 @@ if t.TYPE_CHECKING:
 
 
 class NotificationSeverity(str, Enum):
-    """Server-side notification severity.
+    """
+    Server-side notification severity.
 
     Inherits from :class:`str` and :class:`enum.Enum`.
     Hence, can also be compared to its string value::
@@ -99,19 +106,19 @@ class NotificationSeverity(str, Enum):
         summary = session.run("RETURN 1").consume()
 
         for notification in summary.summary_notifications:
-            sevirity = notification.severity_level
+            severity = notification.severity_level
             if severity == NotificationSeverity.WARNING:
-                # or severity_level == "WARNING"
+                # or severity == "WARNING"
                 log.warning("%r", notification)
             elif severity == NotificationSeverity.INFORMATION:
-                # or severity_level == "INFORMATION"
+                # or severity == "INFORMATION"
                 log.info("%r", notification)
             else:
                 # assert severity == NotificationSeverity.UNKNOWN
-                # or severity_level == "UNKNOWN"
+                # or severity == "UNKNOWN"
                 log.debug("%r", notification)
 
-    .. seealso:: :attr:`SummaryNotification.severity_level`
+    .. seealso:: :attr:`.SummaryNotification.severity_level`
 
     .. versionadded:: 5.7
     """
@@ -124,7 +131,11 @@ class NotificationSeverity(str, Enum):
 
 
 class NotificationDisabledCategory(str, Enum):
-    """Filter notifications returned by the server by category.
+    """
+    Filter notifications returned by the server by category.
+
+    For GQL-aware servers, notifications are a subset of GqlStatusObjects.
+    See also :attr:`.GqlStatusObject.is_notification`.
 
     Inherits from :class:`str` and :class:`enum.Enum`.
     Every driver API accepting a :class:`.NotificationDisabledCategory` value
@@ -158,9 +169,42 @@ class NotificationDisabledCategory(str, Enum):
     TOPOLOGY = "TOPOLOGY"
 
 
+class NotificationDisabledClassification(str, Enum):
+    """
+    Identical to :class:`.NotificationDisabledCategory`.
+
+    This alternative is provided for a consistent naming with
+    :attr:`.GqlStatusObject.classification`.
+
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. seealso::
+        driver config
+        :ref:`driver-notifications-disabled-classifications-ref`,
+        session config
+        :ref:`session-notifications-disabled-classifications-ref`
+
+    .. versionadded:: 5.22
+    """
+
+    HINT = "HINT"
+    UNRECOGNIZED = "UNRECOGNIZED"
+    UNSUPPORTED = "UNSUPPORTED"
+    PERFORMANCE = "PERFORMANCE"
+    DEPRECATION = "DEPRECATION"
+    GENERIC = "GENERIC"
+    SECURITY = "SECURITY"
+    #: Requires server version 5.13 or newer.
+    TOPOLOGY = "TOPOLOGY"
+
+
 if t.TYPE_CHECKING:
     T_NotificationDisabledCategory = t.Union[
         NotificationDisabledCategory,
+        NotificationDisabledClassification,
         te.Literal[
             "HINT",
             "UNRECOGNIZED",
@@ -176,7 +220,8 @@ if t.TYPE_CHECKING:
 
 
 class NotificationCategory(str, Enum):
-    """Server-side notification category.
+    """
+    Server-side notification category.
 
     Inherits from :class:`str` and :class:`enum.Enum`.
     Hence, can also be compared to its string value::
@@ -188,12 +233,43 @@ class NotificationCategory(str, Enum):
         >>> NotificationCategory.UNKNOWN == "UNKNOWN"
         True
 
-    .. seealso:: :attr:`SummaryNotification.category`
+    .. seealso:: :attr:`.SummaryNotification.category`
 
     .. versionadded:: 5.7
 
     .. versionchanged:: 5.14
         Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
+    """
+
+    HINT = "HINT"
+    UNRECOGNIZED = "UNRECOGNIZED"
+    UNSUPPORTED = "UNSUPPORTED"
+    PERFORMANCE = "PERFORMANCE"
+    DEPRECATION = "DEPRECATION"
+    GENERIC = "GENERIC"
+    SECURITY = "SECURITY"
+    TOPOLOGY = "TOPOLOGY"
+    #: Used when the server provides a Category which the driver is unaware of.
+    #: This can happen when connecting to a server newer than the driver or
+    #: before notification categories were introduced.
+    UNKNOWN = "UNKNOWN"
+
+
+class NotificationClassification(str, Enum):
+    """
+    Identical to :class:`.NotificationCategory`.
+
+    This alternative is provided for a consistent naming with
+    :attr:`.GqlStatusObject.classification`.
+
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. seealso:: :attr:`.GqlStatusObject.classification`
+
+    .. versionadded:: 5.22
     """
 
     HINT = "HINT"

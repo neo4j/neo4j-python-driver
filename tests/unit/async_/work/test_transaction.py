@@ -242,11 +242,11 @@ async def test_transaction_begin_pipelining(
     metadata = {"key": "value"}
     timeout = 42
     notifications_min_severity = NotificationMinimumSeverity.INFORMATION
-    notifications_disabled_categories = ["cat1", "cat2"]
+    notifications_disabled_classifications = ["cls1", "cls2"]
 
     await tx._begin(
         database, imp_user, bookmarks, access_mode, metadata, timeout,
-        notifications_min_severity, notifications_disabled_categories,
+        notifications_min_severity, notifications_disabled_classifications,
         pipelined=pipeline
     )
     expected_calls: list = [
@@ -260,8 +260,8 @@ async def test_transaction_begin_pipelining(
                 "metadata": metadata,
                 "timeout": timeout,
                 "notifications_min_severity": notifications_min_severity,
-                "notifications_disabled_categories":
-                    notifications_disabled_categories,
+                "notifications_disabled_classifications":
+                    notifications_disabled_classifications,
             }
         ),
     ]
