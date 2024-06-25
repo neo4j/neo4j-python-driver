@@ -14,31 +14,15 @@
 # limitations under the License.
 
 
-from .eager_result import EagerResult
-from .query import (
-    Query,
-    unit_of_work,
-)
-from .summary import (
-    GqlStatusObject,
-    NotificationClassification,
-    ResultSummary,
-    SummaryCounters,
-    SummaryInputPosition,
-    SummaryNotification,
-    SummaryNotificationPosition,
-)
+import neo4j
+
+from ._warning_check import warning_check
+
+
+with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    from neo4j import NotificationDisabledClassification
 
 
 __all__ = [
-    "EagerResult",
-    "NotificationClassification",
-    "GqlStatusObject",
-    "Query",
-    "ResultSummary",
-    "SummaryCounters",
-    "SummaryInputPosition",
-    "SummaryNotification",
-    "SummaryNotificationPosition",
-    "unit_of_work",
+    "NotificationDisabledClassification",
 ]

@@ -46,7 +46,7 @@ test_session_config = {
     "bookmark_manager": object(),
     "auth": None,
     "notifications_min_severity": None,
-    "notifications_disabled_categories": None,
+    "notifications_disabled_classifications": None,
     "warn_notification_severity": None,
 }
 

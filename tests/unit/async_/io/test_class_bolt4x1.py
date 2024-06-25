@@ -27,6 +27,7 @@ from neo4j._meta import USER_AGENT
 from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
+from ....iter_util import powerset
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -345,11 +346,11 @@ async def test_re_auth(auth1, auth2, fake_socket):
 ))
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 def test_does_not_support_notification_filters(fake_socket, method,
@@ -366,11 +367,11 @@ def test_does_not_support_notification_filters(fake_socket, method,
 @mark_async_test
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 async def test_hello_does_not_support_notification_filters(
@@ -555,3 +556,53 @@ async def test_tracks_last_database(fake_socket_pair, actions):
         await connection.fetch_all()
 
         assert connection.last_database == db
+
+
+@pytest.mark.parametrize(
+    "sent_diag_records",
+    powerset(
+        (
+            ...,
+            None,
+            {},
+            [],
+            "1",
+            1,
+            {"OPERATION_CODE": "0"},
+            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
+        ),
+        limit=3,
+    )
+)
+@pytest.mark.parametrize("method", ("pull", "discard"))
+@mark_async_test
+async def test_does_not_enrich_diagnostic_record(
+    sent_diag_records,
+    method,
+    fake_socket_pair,
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt4x1.PACKER_CLS,
+                               unpacker_cls=AsyncBolt4x1.UNPACKER_CLS)
+    connection = AsyncBolt4x1(address, sockets.client, 0)
+
+    sent_metadata = {
+        "statuses": [
+            {"diagnostic_record": r} if r is not ... else {}
+            for r in sent_diag_records
+        ]
+    }
+    await sockets.server.send_message(b"\x70", sent_metadata)
+
+    received_metadata = None
+
+    def on_success(metadata):
+        nonlocal received_metadata
+        received_metadata = metadata
+
+    getattr(connection, method)(on_success=on_success)
+    await connection.send_all()
+    await connection.fetch_all()
+
+    assert received_metadata == sent_metadata

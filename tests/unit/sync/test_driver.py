@@ -69,6 +69,7 @@ from ..._async_compat import (
     mark_sync_test,
     TestDecorators,
 )
+from ..._preview_imports import NotificationDisabledClassification
 
 
 @pytest.fixture
@@ -517,7 +518,71 @@ if t.TYPE_CHECKING:
         ]
     ]
 
+    _T_NotificationDisabledClassification = t.Union[
+        NotificationDisabledClassification,
+        te.Literal[
+            "HINT",
+            "UNRECOGNIZED",
+            "UNSUPPORTED",
+            "PERFORMANCE",
+            "DEPRECATION",
+            "GENERIC",
+        ]
+    ]
 
+
+if t.TYPE_CHECKING:
+    class NotificationFilter(te.TypedDict):
+        notifications_min_severity: te.NotRequired[
+            t.Optional[_T_NotificationMinimumSeverity]
+        ]
+        notifications_disabled_categories: te.NotRequired[
+            t.Optional[t.Iterable[_T_NotificationDisabledCategory]]
+        ]
+        notifications_disabled_classifications: te.NotRequired[
+            t.Optional[t.Iterable[_T_NotificationDisabledClassification]]
+        ]
+
+
+def get_notification_filter_expectation(
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
+    dis_clss: t.Optional[t.Iterable[_T_NotificationDisabledClassification]],
+) -> t.Tuple[
+    t.Optional[_T_NotificationMinimumSeverity],
+    t.Optional[t.Iterable[_T_NotificationDisabledClassification]]
+]:
+    default_conf = PoolConfig()
+
+    if min_sev is None:
+        expected_min_sev = min_sev
+    elif min_sev is not ...:
+        expected_min_sev = getattr(min_sev, "value", min_sev)
+    else:
+        expected_min_sev = default_conf.notifications_min_severity
+
+    if dis_clss is None:
+        expected_dis_clss = dis_clss
+    elif dis_clss is not ...:
+        expected_dis_clss = [getattr(d, "value", d) for d in dis_clss]
+    else:
+        expected_dis_clss = \
+            default_conf.notifications_disabled_classifications
+
+    if dis_cats is not ... and dis_cats is not None:
+        expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
+        if isinstance(expected_dis_clss, list):
+            expected_dis_clss = list(
+                {*expected_dis_cats, *expected_dis_clss}
+            )
+        else:
+            expected_dis_clss = expected_dis_cats
+
+    return expected_min_sev, expected_dis_clss
+
+
+
+# TODO: Test merging of categories and classifications
 @pytest.mark.parametrize("min_sev", (
     ...,
     None,
@@ -539,6 +604,25 @@ if t.TYPE_CHECKING:
     # please no :/
     {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
 ))
+@pytest.mark.parametrize("dis_clss", (
+    ...,
+    None,
+    [],
+    ["GENERIC"],
+    [NotificationDisabledClassification.GENERIC],
+    [
+        NotificationDisabledClassification.GENERIC,
+        NotificationDisabledClassification.HINT,
+    ],
+    (
+        NotificationDisabledClassification.GENERIC,
+        NotificationDisabledClassification.HINT,
+    ),
+    (NotificationDisabledClassification.GENERIC, "HINT"),
+    {"GENERIC", "HINT"},
+    # please no :/
+    {"GENERIC": True, NotificationDisabledClassification.HINT: 0},
+))
 @pytest.mark.parametrize("uri", [
     "bolt://localhost:7687",
     "neo4j://localhost:7687",
@@ -549,6 +633,7 @@ def test_driver_factory_with_notification_filters(
     mocker,
     min_sev: t.Optional[_T_NotificationMinimumSeverity],
     dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
+    dis_clss: t.Optional[t.Iterable[_T_NotificationDisabledClassification]],
 ) -> None:
     pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
     open_mock = mocker.patch.object(
@@ -558,47 +643,33 @@ def test_driver_factory_with_notification_filters(
     open_mock.return_value.address = mocker.Mock()
     mocker.patch.object(BoltPool, "open", new=open_mock)
 
-    if min_sev is ...:
-        if dis_cats is ...:
-            driver = GraphDatabase.driver(uri, auth=None)
-        else:
-            driver = GraphDatabase.driver(
-                uri, auth=None,
-                notifications_disabled_categories=dis_cats
-            )
-    else:
-        if dis_cats is ...:
-            driver = GraphDatabase.driver(
-                uri, auth=None,
-                notifications_min_severity=min_sev
-            )
-        else:
-            driver = GraphDatabase.driver(
-                uri, auth=None,
-                notifications_min_severity=min_sev,
-                notifications_disabled_categories=dis_cats
-            )
+    filter_kwargs: NotificationFilter = {}
+    if min_sev is not ...:
+        filter_kwargs["notifications_min_severity"] = min_sev
+    if dis_cats is not ...:
+        filter_kwargs["notifications_disabled_categories"] = dis_cats
+    if dis_clss is not ...:
+        filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
-    with driver:
-        default_conf = PoolConfig()
-        if min_sev is None:
-            expected_min_sev = min_sev
-        elif min_sev is not ...:
-            expected_min_sev = getattr(min_sev, "value", min_sev)
-        else:
-            expected_min_sev = default_conf.notifications_min_severity
-        if dis_cats is None:
-            expected_dis_cats = dis_cats
-        elif dis_cats is not ...:
-            expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
-        else:
-            expected_dis_cats = default_conf.notifications_disabled_categories
+    if "notifications_disabled_classifications" in filter_kwargs:
+        with pytest.warns(PreviewWarning,
+                          match="notifications_disabled_classifications"):
+            driver = GraphDatabase.driver(uri, auth=None, **filter_kwargs)
+    else:
+        driver = GraphDatabase.driver(uri, auth=None, **filter_kwargs)
+
+    with (driver):
+        expected_min_sev, expected_dis_clss = \
+            get_notification_filter_expectation(min_sev, dis_cats, dis_clss)
 
         open_mock.assert_called_once()
         open_pool_conf = open_mock.call_args.kwargs["pool_config"]
         assert open_pool_conf.notifications_min_severity == expected_min_sev
-        assert (open_pool_conf.notifications_disabled_categories
-                == expected_dis_cats)
+        actual_dis_clss = open_pool_conf.notifications_disabled_classifications
+        if expected_dis_clss is None:
+            assert actual_dis_clss is None
+        else:
+            assert sorted(actual_dis_clss) == sorted(expected_dis_clss)
 
 
 @pytest.mark.parametrize("uri", [
@@ -639,12 +710,8 @@ def test_driver_factory_with_notification_filters(
 def test_warn_notification_severity_driver_config(
     uri: str,
     session_cls_mock,
-    min_sev: t.Union[
-        None, _T_NotificationMinimumSeverity
-    ],
-    min_sev_session: t.Union[
-        None, _T_NotificationMinimumSeverity
-    ],
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    min_sev_session: t.Optional[_T_NotificationMinimumSeverity],
     expected: t.Union[None, NotificationMinimumSeverity, te.Type[Exception]],
 ) -> None:
     if inspect.isclass(expected) and issubclass(expected, Exception):
@@ -666,11 +733,11 @@ def test_warn_notification_severity_driver_config(
         if min_sev_session is ...:
             session = driver.session()
         else:
-            # Works at runtime (will be ignored), but should be rejected by
-            # type checkers.
-            # type: ignore[arg-type]
             session = driver.session(
-                notifications_min_severity=min_sev_session
+                # Works at runtime (will be ignored), but should be rejected by
+                # type checkers.
+                # type: ignore[call-arg]
+                warn_notification_severity=min_sev_session
             )
         with session:
             session_cls_mock.assert_called_once()
@@ -699,6 +766,25 @@ def test_warn_notification_severity_driver_config(
     # please no :/
     {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
 ))
+@pytest.mark.parametrize("dis_clss", (
+    ...,
+    None,
+    [],
+    ["GENERIC"],
+    [NotificationDisabledClassification.GENERIC],
+    [
+        NotificationDisabledClassification.GENERIC,
+        NotificationDisabledClassification.HINT,
+    ],
+    (
+        NotificationDisabledClassification.GENERIC,
+        NotificationDisabledClassification.HINT,
+    ),
+    (NotificationDisabledClassification.GENERIC, "HINT"),
+    {"GENERIC", "HINT"},
+    # please no :/
+    {"GENERIC": True, NotificationDisabledClassification.HINT: 0},
+))
 @pytest.mark.parametrize("uri", [
     "bolt://localhost:7687",
     "neo4j://localhost:7687",
@@ -710,54 +796,40 @@ def test_session_factory_with_notification_filter(
     mocker,
     min_sev: t.Optional[_T_NotificationMinimumSeverity],
     dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
+    dis_clss: t.Optional[t.Iterable[_T_NotificationDisabledClassification]],
 ) -> None:
     pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
     pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
     pool_mock.address = mocker.Mock()
 
-    with GraphDatabase.driver(uri, auth=None) as driver:
-        if min_sev is ...:
-            if dis_cats is ...:
-                session = driver.session()
-            else:
-                session = driver.session(
-                    notifications_disabled_categories=dis_cats
-                )
-        else:
-            if dis_cats is ...:
-                session = driver.session(
-                    notifications_min_severity=min_sev
-                )
-            else:
-                session = driver.session(
-                    notifications_min_severity=min_sev,
-                    notifications_disabled_categories=dis_cats
-                )
+    filter_kwargs: NotificationFilter = {}
+    if min_sev is not ...:
+        filter_kwargs["notifications_min_severity"] = min_sev
+    if dis_cats is not ...:
+        filter_kwargs["notifications_disabled_categories"] = dis_cats
+    if dis_clss is not ...:
+        filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
+    with GraphDatabase.driver(uri, auth=None) as driver:
+        if "notifications_disabled_classifications" in filter_kwargs:
+            with pytest.warns(PreviewWarning,
+                              match="notifications_disabled_classifications"):
+                session = driver.session(**filter_kwargs)
+        else:
+            session = driver.session(**filter_kwargs)
         with session:
             session_cls_mock.assert_called_once()
             (_, session_config), _ = session_cls_mock.call_args
 
-            default_conf = SessionConfig()
-            if min_sev is None:
-                expected_min_sev = min_sev
-            elif min_sev is not ...:
-                expected_min_sev = getattr(min_sev, "value", min_sev)
-            else:
-                expected_min_sev = default_conf.notifications_min_severity
-            if dis_cats is None:
-                expected_dis_cats = dis_cats
-            elif dis_cats is not ...:
-                expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
-            else:
-                expected_dis_cats = \
-                    default_conf.notifications_disabled_categories
+            expected_min_sev, expected_dis_clss = \
+                get_notification_filter_expectation(min_sev,
+                                                    dis_cats, dis_clss)
 
             assert (session_config.notifications_min_severity
                     == expected_min_sev)
-            assert (session_config.notifications_disabled_categories
-                    == expected_dis_cats)
+            assert (session_config.notifications_disabled_classifications
+                    == expected_dis_clss)
 
 
 class SomeClass:

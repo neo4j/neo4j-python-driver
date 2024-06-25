@@ -686,6 +686,9 @@ Set the minimum severity for notifications the server should send to the client.
 Disabling severities allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+Further, they are surfaced through :attr:`.ResultSummary.gql_status_objects`:
+For GQL-aware servers, notifications are a subset of GqlStatusObjects.
+See also :attr:`.GqlSatusObject.is_notification`.
 
 :data:`None` will apply the server's default setting.
 
@@ -706,12 +709,16 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 
 ``notifications_disabled_categories``
 -------------------------------------
-Set categories of notifications the server should not send to the client.
+Set categories/classifications of notifications the server should not send to the client.
 Disabling categories allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
+See also :attr:`.GqlSatusObject.is_notification`.
 
 :data:`None` will apply the server's default setting.
+
+If specified together with :ref:`driver-notifications-disabled-classifications-ref`, the settings will be merged.
 
 .. Note::
     If configured, the server or all servers of the cluster need to support notifications filtering
@@ -724,6 +731,27 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 .. versionadded:: 5.7
 
 .. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`
+
+
+.. _driver-notifications-disabled-classifications-ref:
+
+``notifications_disabled_classifications``
+------------------------------------------
+Identical to :ref:`driver-notifications-disabled-categories-ref`.
+
+This alias is provided for a consistent naming with :attr:`.GqlStatusObject.classification`.
+
+**This is a preview** (see :ref:`filter-warnings-ref`).
+It might be changed without following the deprecation policy.
+See also
+https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledClassification` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.22
+
+.. seealso:: :class:`.NotificationDisabledClassification`, session config :ref:`session-notifications-disabled-classifications-ref`
 
 
 .. _driver-warn-notification-severity-ref:
@@ -1159,11 +1187,14 @@ Set the minimum severity for notifications the server should send to the client.
 Disabling severities allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
+See also :attr:`.GqlSatusObject.is_notification`.
 
 :data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
 
 .. Note::
-    If configured, the server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering
+    (server version 5.7 and newer).
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
@@ -1182,11 +1213,16 @@ Set categories of notifications the server should not send to the client.
 Disabling categories allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
+See also :attr:`.GqlSatusObject.is_notification`.
 
-:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
+:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-disabled-categories-ref`).
+
+If specified together with :ref:`session-notifications-disabled-classifications-ref`, the settings will be merged.
 
 .. Note::
-    If configured, the server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering
+    (server version 5.7 and newer).
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
@@ -1195,6 +1231,27 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 .. versionadded:: 5.7
 
 .. seealso:: :class:`.NotificationDisabledCategory`
+
+
+.. _session-notifications-disabled-classifications-ref:
+
+``notifications_disabled_classifications``
+------------------------------------------
+Identical to :ref:`session-notifications-disabled-categories-ref`.
+
+This alias is provided for a consistent naming with :attr:`.GqlStatusObject.classification`.
+
+**This is a preview** (see :ref:`filter-warnings-ref`).
+It might be changed without following the deprecation policy.
+See also
+https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledClassification` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.22
+
+.. seealso:: :class:`.NotificationDisabledClassification`
 
 
 
@@ -1521,6 +1578,20 @@ ServerInfo
    :members:
 
 
+GqlStatusObject
+===============
+
+.. autoclass:: neo4j.GqlStatusObject()
+    :members:
+
+
+NotificationClassification
+--------------------------
+
+.. autoclass:: neo4j.NotificationClassification()
+    :members:
+
+
 SummaryNotification
 ===================
 
@@ -1542,11 +1613,26 @@ NotificationCategory
     :members:
 
 
+SummaryInputPosition
+--------------------
+
+.. autoclass:: neo4j.SummaryInputPosition()
+    :members:
+
+
 SummaryNotificationPosition
 ---------------------------
 
-.. autoclass:: neo4j.SummaryNotificationPosition()
-    :members:
+.. data:: neo4j.SummaryNotificationPosition
+    :annotation: = neo4j.SummaryInputPosition
+
+    Deprecated alias for :class:`.SummaryInputPosition`.
+
+    .. versionadded:: 5.7
+
+    .. versionchanged:: 5.22
+        Deprecated in favor of :class:`.SummaryInputPosition`.
+
 
 
 
@@ -1867,6 +1953,9 @@ Constants, Enums, Helpers
 
 .. autoclass:: neo4j.NotificationDisabledCategory()
     :show-inheritance:
+    :members:
+
+.. autoclass:: neo4j.NotificationDisabledClassification()
     :members:
 
 .. autoclass:: neo4j.RoutingControl()

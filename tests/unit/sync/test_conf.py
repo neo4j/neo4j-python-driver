@@ -62,7 +62,7 @@ test_pool_config = {
     "ssl_context": None,
     "auth": None,
     "notifications_min_severity": None,
-    "notifications_disabled_categories": None,
+    "notifications_disabled_classifications": None,
     "telemetry_disabled": False,
 }
 

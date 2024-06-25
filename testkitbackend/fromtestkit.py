@@ -39,6 +39,7 @@ from neo4j.time import (
     Time,
 )
 
+from ._preview_imports import NotificationDisabledClassification
 from ._warning_check import warnings_check
 
 
@@ -193,7 +194,7 @@ def to_client_cert(data, key) -> t.Optional[ClientCertificate]:
     data[key].mark_item_as_read_if_equals("name", "ClientCertificate")
     cert_data = data[key]["data"]
     with warnings_check((
-        (neo4j.PreviewWarning, "Mutual TLS is a preview feature."),
+        (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\."),
     )):
         return ClientCertificate(
             cert_data["certfile"], cert_data["keyfile"], cert_data["password"]
@@ -208,3 +209,7 @@ def set_notifications_config(config, data):
         config["notifications_disabled_categories"] = \
             [NotificationDisabledCategory[c]
              for c in data["notificationsDisabledCategories"]]
+    if "notificationsDisabledClassifications" in data:
+        config["notifications_disabled_classifications"] = \
+            [NotificationDisabledClassification[c]
+             for c in data["notificationsDisabledClassifications"]]

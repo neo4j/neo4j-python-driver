@@ -28,6 +28,7 @@ from neo4j._sync.io._bolt3 import Bolt3
 from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_sync_test
+from ....iter_util import powerset
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -233,11 +234,11 @@ def test_re_auth(auth1, auth2, fake_socket):
 ))
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 def test_does_not_support_notification_filters(fake_socket, method,
@@ -254,11 +255,11 @@ def test_does_not_support_notification_filters(fake_socket, method,
 @mark_sync_test
 @pytest.mark.parametrize("kwargs", (
     {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_categories": ["HINT"]},
-    {"notifications_disabled_categories": []},
+    {"notifications_disabled_classifications": ["HINT"]},
+    {"notifications_disabled_classifications": []},
     {
         "notifications_min_severity": "WARNING",
-        "notifications_disabled_categories": ["HINT"]
+        "notifications_disabled_classifications": ["HINT"]
     },
 ))
 def test_hello_does_not_support_notification_filters(
@@ -456,3 +457,53 @@ def raises_if_db(db):
         with pytest.raises(ConfigurationError,
                            match="selecting database is not supported"):
             yield
+
+
+@pytest.mark.parametrize(
+    "sent_diag_records",
+    powerset(
+        (
+            ...,
+            None,
+            {},
+            [],
+            "1",
+            1,
+            {"OPERATION_CODE": "0"},
+            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
+        ),
+        limit=3,
+    )
+)
+@pytest.mark.parametrize("method", ("pull", "discard"))
+@mark_sync_test
+def test_does_not_enrich_diagnostic_record(
+    sent_diag_records,
+    method,
+    fake_socket_pair,
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt3.PACKER_CLS,
+                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    connection = Bolt3(address, sockets.client, 0)
+
+    sent_metadata = {
+        "statuses": [
+            {"diagnostic_record": r} if r is not ... else {}
+            for r in sent_diag_records
+        ]
+    }
+    sockets.server.send_message(b"\x70", sent_metadata)
+
+    received_metadata = None
+
+    def on_success(metadata):
+        nonlocal received_metadata
+        received_metadata = metadata
+
+    getattr(connection, method)(on_success=on_success)
+    connection.send_all()
+    connection.fetch_all()
+
+    assert received_metadata == sent_metadata

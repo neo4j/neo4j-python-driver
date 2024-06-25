@@ -407,8 +407,8 @@ class SessionConfig(WorkspaceConfig):
     #: Lowest notification severity for the server to return
     notifications_min_severity = None
 
-    #: List of notification categories for the server to ignore
-    notifications_disabled_categories = None
+    #: List of notification classifications/categories for the server to ignore
+    notifications_disabled_classifications = None
 
 
 class TransactionConfig(Config):

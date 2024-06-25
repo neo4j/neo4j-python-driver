@@ -20,6 +20,7 @@ from logging import getLogger
 from ssl import SSLSocket
 
 from ..._api import TelemetryAPI
+from ..._async_compat.util import Util
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
 from ..._meta import BOLT_AGENT_DICT
@@ -126,7 +127,7 @@ class Bolt5x0(Bolt):
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
         if (
             self.notifications_min_severity is not None
-            or self.notifications_disabled_categories is not None
+            or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
 
@@ -199,11 +200,11 @@ class Bolt5x0(Bolt):
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
             notifications_min_severity=None,
-            notifications_disabled_categories=None, dehydration_hooks=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if (
             notifications_min_severity is not None
-            or notifications_disabled_categories is not None
+            or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         if not parameters:
@@ -262,11 +263,11 @@ class Bolt5x0(Bolt):
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_categories=None, dehydration_hooks=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         if (
             notifications_min_severity is not None
-            or notifications_disabled_categories is not None
+            or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         extra = {}
@@ -480,7 +481,7 @@ class Bolt5x1(Bolt5x0):
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
         if (
             self.notifications_min_severity is not None
-            or self.notifications_disabled_categories is not None
+            or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
 
@@ -540,9 +541,9 @@ class Bolt5x2(Bolt5x1):
         if self.notifications_min_severity is not None:
             headers["notifications_minimum_severity"] = \
                 self.notifications_min_severity
-        if self.notifications_disabled_categories is not None:
+        if self.notifications_disabled_classifications is not None:
             headers["notifications_disabled_categories"] = \
-                self.notifications_disabled_categories
+                self.notifications_disabled_classifications
         return headers
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
@@ -577,7 +578,7 @@ class Bolt5x2(Bolt5x1):
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
             notifications_min_severity=None,
-            notifications_disabled_categories=None, dehydration_hooks=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if not parameters:
             parameters = {}
@@ -597,9 +598,9 @@ class Bolt5x2(Bolt5x1):
         if notifications_min_severity is not None:
             extra["notifications_minimum_severity"] = \
                 notifications_min_severity
-        if notifications_disabled_categories is not None:
+        if notifications_disabled_classifications is not None:
             extra["notifications_disabled_categories"] = \
-                notifications_disabled_categories
+                notifications_disabled_classifications
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -621,7 +622,7 @@ class Bolt5x2(Bolt5x1):
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_categories=None, dehydration_hooks=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         extra = {}
         if mode in (READ_ACCESS, "r"):
@@ -647,9 +648,9 @@ class Bolt5x2(Bolt5x1):
         if notifications_min_severity is not None:
             extra["notifications_minimum_severity"] = \
                 notifications_min_severity
-        if notifications_disabled_categories is not None:
+        if notifications_disabled_classifications is not None:
             extra["notifications_disabled_categories"] = \
-                notifications_disabled_categories
+                notifications_disabled_classifications
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
@@ -683,3 +684,140 @@ class Bolt5x4(Bolt5x3):
         self._append(b"\x54", (api_raw,),
                      Response(self, "telemetry", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
+
+class Bolt5x5(Bolt5x4):
+
+    PROTOCOL_VERSION = Version(5, 5)
+
+    def get_base_headers(self):
+        headers = super().get_base_headers()
+        if "notifications_disabled_categories" in headers:
+            headers["notifications_disabled_classifications"] = \
+                headers.pop("notifications_disabled_categories")
+        return headers
+
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None,
+            notifications_min_severity=None,
+            notifications_disabled_classifications=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
+        if not parameters:
+            parameters = {}
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if (
+            self._client_state_manager.state
+            != self.bolt_states.TX_READY_OR_TX_STREAMING
+        ):
+            self.last_database = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = \
+                notifications_min_severity
+        if notifications_disabled_classifications is not None:
+            extra["notifications_disabled_classifications"] = \
+                notifications_disabled_classifications
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided as iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout is not None:
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
+        fields = (query, parameters, extra)
+        log.debug("[#%04X]  C: RUN %s", self.local_port,
+                  " ".join(map(repr, fields)))
+        self._append(b"\x10", fields,
+                     Response(self, "run", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
+
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_classifications=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        self.last_database = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided as iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout is not None:
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = \
+                notifications_min_severity
+        if notifications_disabled_classifications is not None:
+            extra["notifications_disabled_classifications"] = \
+                notifications_disabled_classifications
+        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        self._append(b"\x11", (extra,),
+                     Response(self, "begin", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
+
+    DEFAULT_DIAGNOSTIC_RECORD = (
+        ("OPERATION", ""),
+        ("OPERATION_CODE", "0"),
+        ("CURRENT_SCHEMA", "/"),
+    )
+
+    def _make_enrich_diagnostic_record_handler(self, wrapped_handler=None):
+        def handler(metadata):
+            def enrich(metadata_):
+                if not isinstance(metadata_, dict):
+                    return
+                statuses = metadata_.get("statuses")
+                if not isinstance(statuses, list):
+                    return
+                for status in statuses:
+                    if not isinstance(status, dict):
+                        continue
+                    diag_record = status.setdefault("diagnostic_record", {})
+                    if not isinstance(diag_record, dict):
+                        log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                                 "invalid diagnostic record (%r).",
+                                 self.local_port, diag_record)
+                        continue
+                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
+                        diag_record.setdefault(key, value)
+
+            enrich(metadata)
+            Util.callback(wrapped_handler, metadata)
+
+        return handler
+
+    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
+                hydration_hooks=None, **handlers):
+        handlers["on_success"] = self._make_enrich_diagnostic_record_handler(
+            wrapped_handler=handlers.get("on_success")
+        )
+        super().discard(n, qid, dehydration_hooks, hydration_hooks, **handlers)
+
+    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
+             **handlers):
+        handlers["on_success"] = self._make_enrich_diagnostic_record_handler(
+            wrapped_handler=handlers.get("on_success")
+        )
+        super().pull(n, qid, dehydration_hooks, hydration_hooks, **handlers)

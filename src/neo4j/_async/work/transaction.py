@@ -77,7 +77,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout,
-        notifications_min_severity, notifications_disabled_categories,
+        notifications_min_severity, notifications_disabled_classifications,
         pipelined=False,
     ):
         self._database = database
@@ -85,7 +85,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             bookmarks=bookmarks, metadata=metadata, timeout=timeout,
             mode=access_mode, db=database, imp_user=imp_user,
             notifications_min_severity=notifications_min_severity,
-            notifications_disabled_categories=notifications_disabled_categories
+            notifications_disabled_classifications=notifications_disabled_classifications
         )
         if not pipelined:
             await self._error_handling_connection.send_all()
