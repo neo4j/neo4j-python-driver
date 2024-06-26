@@ -287,8 +287,12 @@ class Bookmarks:
         bookmarks.
 
         :param values: ASCII string values (raw bookmarks)
-        :type values: Iterable[str]
         """
+        if isinstance(values, str):
+            # Unfortunately, str itself is an iterable of str, iterating
+            # over characters. Type checkers will not catch this, so we help
+            # the user out.
+            values = values,
         obj = cls()
         bookmarks = []
         for value in values:
