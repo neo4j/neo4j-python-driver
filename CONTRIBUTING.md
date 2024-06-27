@@ -85,6 +85,16 @@ pip install . -r tests/requirements.txt
 python -m pytest tests
 ```
 
+### Running Benchmarks
+Go into `tests/benchmarks/test_benchmarks.py` and adjust the connection details to the database you want to benchmark against.
+This implies you're having a running database.
+Then run the benchmarks with:
+```bash
+python -m tox -e py312-test -- --benchmark-only --benchmark-autosave --benchmark-group-by=fullname
+# or to compare the results with the previous run
+python -m tox -e py312-test -- --benchmark-only --benchmark-autosave --benchmark-group-by=fullname --benchmark-compare
+```
+
 
 ## Got an idea for a new project?
 
