@@ -9,4 +9,4 @@ name = "neo4j_rust_ext"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.19.0"
+pyo3 = "0.22.0"
