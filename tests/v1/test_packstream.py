@@ -313,6 +313,7 @@ class TestPackStream:
             *(float(2 ** e) + 0.5 for e in range(100)),
             *(-float(2 ** e) + 0.5 for e in range(100)),
         ):
+            print(z)
             try:
                 z_typed = float_type(z)
             except FloatingPointError:
