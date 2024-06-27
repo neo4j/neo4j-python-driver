@@ -18,32 +18,36 @@ pub mod v1;
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyTuple};
+use pyo3::types::{PyBytes, PyTuple};
 
 /// A Python module implemented in Rust.
 #[pymodule]
 #[pyo3(name = "_rust")]
-fn packstream(py: Python, m: &PyModule) -> PyResult<()> {
+fn packstream(m: &Bound<PyModule>) -> PyResult<()> {
+    let py = m.py();
+
     m.add_class::<Structure>()?;
 
-    let mod_v1 = PyModule::new(py, "v1")?;
-    v1::register(py, mod_v1)?;
-    m.add_submodule(mod_v1)?;
-    register_package(py, mod_v1, "v1")?;
+    let mod_v1 = PyModule::new_bound(py, "v1")?;
+    v1::register(&mod_v1)?;
+    m.add_submodule(&mod_v1)?;
+    register_package(&mod_v1, "v1")?;
 
     Ok(())
 }
 
 // hack to make python pick up the submodule as a package
 // https://github.com/PyO3/pyo3/issues/1517#issuecomment-808664021
-fn register_package(py: Python, m: &PyModule, name: &str) -> PyResult<()> {
-    let locals = PyDict::new(py);
-    locals.set_item("module", m)?;
-    py.run(
-        &format!("import sys; sys.modules['neo4j._codec.packstream._rust.{name}'] = module"),
-        None,
-        Some(locals),
-    )
+fn register_package(m: &Bound<PyModule>, name: &str) -> PyResult<()> {
+    let py = m.py();
+    let module_name = format!("neo4j._codec.packstream._rust.{name}").into_py(py);
+
+    py.import_bound("sys")?
+        .getattr("modules")?
+        .set_item(&module_name, m)?;
+    m.setattr("__name__", &module_name)?;
+
+    Ok(())
 }
 
 #[pyclass]
@@ -68,13 +72,13 @@ impl Structure {
     }
 
     #[getter(tag)]
-    fn read_tag<'a>(&self, py: Python<'a>) -> &'a PyBytes {
-        PyBytes::new(py, &[self.tag])
+    fn read_tag<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new_bound(py, &[self.tag])
     }
 
     #[getter(fields)]
-    fn read_fields<'a>(&self, py: Python<'a>) -> &'a PyTuple {
-        PyTuple::new(py, &self.fields)
+    fn read_fields<'py>(&self, py: Python<'py>) -> Bound<'py, PyTuple> {
+        PyTuple::new_bound(py, &self.fields)
     }
 
     fn eq(&self, other: &Self, py: Python<'_>) -> PyResult<bool> {
@@ -84,8 +88,8 @@ impl Structure {
         for (a, b) in self
             .fields
             .iter()
-            .map(|e| e.as_ref(py))
-            .zip(other.fields.iter().map(|e| e.as_ref(py)))
+            .map(|e| e.bind(py))
+            .zip(other.fields.iter().map(|e| e.bind(py)))
         {
             if !a.eq(b)? {
                 return Ok(false);
@@ -105,7 +109,7 @@ impl Structure {
     fn __hash__(&self, py: Python<'_>) -> PyResult<isize> {
         let mut fields_hash = 0;
         for field in &self.fields {
-            fields_hash += field.as_ref(py).hash()?;
+            fields_hash += field.bind(py).hash()?;
         }
         Ok(fields_hash.wrapping_add(self.tag.into()))
     }

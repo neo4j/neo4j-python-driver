@@ -26,34 +26,35 @@ use super::{
 use crate::Structure;
 
 #[pyfunction]
+#[pyo3(signature = (bytes, idx, hydration_hooks=None))]
 pub(super) fn unpack(
-    py: Python,
-    bytes: &PyByteArray,
+    bytes: Bound<PyByteArray>,
     idx: usize,
-    hydration_hooks: Option<&PyDict>,
+    hydration_hooks: Option<Bound<PyDict>>,
 ) -> PyResult<(PyObject, usize)> {
-    let mut decoder = PackStreamDecoder::new(bytes, py, idx, hydration_hooks);
+    let py = bytes.py();
+    let mut decoder = PackStreamDecoder::new(py, bytes, idx, hydration_hooks);
     let result = decoder.read()?;
     Ok((result, decoder.index))
 }
 
 struct PackStreamDecoder<'a> {
-    bytes: &'a PyByteArray,
     py: Python<'a>,
+    bytes: Bound<'a, PyByteArray>,
     index: usize,
-    hydration_hooks: Option<&'a PyDict>,
+    hydration_hooks: Option<Bound<'a, PyDict>>,
 }
 
 impl<'a> PackStreamDecoder<'a> {
     fn new(
-        bytes: &'a PyByteArray,
         py: Python<'a>,
+        bytes: Bound<'a, PyByteArray>,
         idx: usize,
-        hydration_hooks: Option<&'a PyDict>,
+        hydration_hooks: Option<Bound<'a, PyDict>>,
     ) -> Self {
         Self {
-            bytes,
             py,
+            bytes,
             index: idx,
             hydration_hooks,
         }
@@ -142,7 +143,7 @@ impl<'a> PackStreamDecoder<'a> {
 
     fn read_list(&mut self, length: usize) -> PyResult<PyObject> {
         if length == 0 {
-            return Ok(PyList::empty(self.py).to_object(self.py));
+            return Ok(PyList::empty_bound(self.py).to_object(self.py));
         }
         let mut items = Vec::with_capacity(length);
         for _ in 0..length {
@@ -168,7 +169,7 @@ impl<'a> PackStreamDecoder<'a> {
 
     fn read_map(&mut self, length: usize) -> PyResult<PyObject> {
         if length == 0 {
-            return Ok(PyDict::new(self.py).to_object(self.py));
+            return Ok(PyDict::new_bound(self.py).to_object(self.py));
         }
         let mut key_value_pairs: Vec<(PyObject, PyObject)> = Vec::with_capacity(length);
         for _ in 0..length {
@@ -177,12 +178,12 @@ impl<'a> PackStreamDecoder<'a> {
             let value = self.read()?;
             key_value_pairs.push((key, value));
         }
-        Ok(key_value_pairs.into_py_dict(self.py).into())
+        Ok(key_value_pairs.into_py_dict_bound(self.py).into())
     }
 
     fn read_bytes(&mut self, length: usize) -> PyResult<PyObject> {
         if length == 0 {
-            return Ok(PyBytes::new(self.py, &[]).to_object(self.py));
+            return Ok(PyBytes::new_bound(self.py, &[]).to_object(self.py));
         }
         let data = unsafe {
             // Safety: we're holding the GIL, and don't interact with Python while using the bytes.
@@ -190,7 +191,7 @@ impl<'a> PackStreamDecoder<'a> {
             self.bytes.as_bytes()[self.index..self.index + length].to_vec()
         };
         self.index += length;
-        Ok(PyBytes::new(self.py, &data).to_object(self.py))
+        Ok(PyBytes::new_bound(self.py, &data).to_object(self.py))
     }
 
     fn read_struct(&mut self, length: usize) -> PyResult<PyObject> {
@@ -200,14 +201,14 @@ impl<'a> PackStreamDecoder<'a> {
             fields.push(self.read()?)
         }
         let mut bolt_struct = Structure { tag, fields }.into_py(self.py);
-        let Some(hooks) = self.hydration_hooks else {
+        let Some(hooks) = &self.hydration_hooks else {
             return Ok(bolt_struct);
         };
 
         let attr = bolt_struct.getattr(self.py, intern!(self.py, "__class__"))?;
-        if let Some(res) = hooks.get_item(attr) {
+        if let Some(res) = hooks.get_item(attr)? {
             bolt_struct = res
-                .call(PyTuple::new(self.py, [bolt_struct]), None)?
+                .call(PyTuple::new_bound(self.py, [bolt_struct]), None)?
                 .into_py(self.py);
         }
 

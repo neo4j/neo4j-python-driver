@@ -44,7 +44,7 @@ const BYTES_8: u8 = 0xCC;
 const BYTES_16: u8 = 0xCD;
 const BYTES_32: u8 = 0xCE;
 
-pub(crate) fn register(_py: Python, m: &PyModule) -> PyResult<()> {
+pub(crate) fn register(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(unpack::unpack, m)?)?;
     m.add_function(wrap_pyfunction!(pack::pack, m)?)?;
 

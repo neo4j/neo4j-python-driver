@@ -42,52 +42,53 @@ struct TypeMappings {
 }
 
 impl TypeMappings {
-    fn new(py: Python<'_>, locals: &PyDict) -> PyResult<Self> {
+    fn new(locals: &Bound<PyDict>) -> PyResult<Self> {
+        let py = locals.py();
         Ok(Self {
             none_values: locals
-                .get_item("NONE_VALUES")
+                .get_item("NONE_VALUES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing NONE_VALUES.")
                 })?
                 .extract()?,
             true_values: locals
-                .get_item("TRUE_VALUES")
+                .get_item("TRUE_VALUES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing TRUE_VALUES.")
                 })?
                 .extract()?,
             false_values: locals
-                .get_item("FALSE_VALUES")
+                .get_item("FALSE_VALUES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing FALSE_VALUES.")
                 })?
                 .extract()?,
             int_types: locals
-                .get_item("INT_TYPES")
+                .get_item("INT_TYPES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing INT_TYPES.")
                 })?
                 .into_py(py),
             float_types: locals
-                .get_item("FLOAT_TYPES")
+                .get_item("FLOAT_TYPES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing FLOAT_TYPES.")
                 })?
                 .into_py(py),
             sequence_types: locals
-                .get_item("SEQUENCE_TYPES")
+                .get_item("SEQUENCE_TYPES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing SEQUENCE_TYPES.")
                 })?
                 .into_py(py),
             mapping_types: locals
-                .get_item("MAPPING_TYPES")
+                .get_item("MAPPING_TYPES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing MAPPING_TYPES.")
                 })?
                 .into_py(py),
             bytes_types: locals
-                .get_item("BYTES_TYPES")
+                .get_item("BYTES_TYPES")?
                 .ok_or_else(|| {
                     PyErr::new::<PyValueError, _>("Type mappings are missing BYTES_TYPES.")
                 })?
@@ -102,13 +103,13 @@ static TYPE_MAPPINGS_INIT: AtomicBool = AtomicBool::new(false);
 fn get_type_mappings(py: Python<'_>) -> PyResult<&'static TypeMappings> {
     let mappings = TYPE_MAPPINGS.get_or_try_init(py, || {
         fn init(py: Python<'_>) -> PyResult<TypeMappings> {
-            let locals = PyDict::new(py);
-            py.run(
+            let locals = PyDict::new_bound(py);
+            py.run_bound(
                 "from neo4j._codec.packstream.v1.types import *",
                 None,
-                Some(locals),
+                Some(&locals),
             )?;
-            TypeMappings::new(py, locals)
+            TypeMappings::new(&locals)
         }
 
         if TYPE_MAPPINGS_INIT.swap(true, Ordering::SeqCst) {
@@ -122,39 +123,39 @@ fn get_type_mappings(py: Python<'_>) -> PyResult<&'static TypeMappings> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (value, dehydration_hooks=None))]
 pub(super) fn pack<'py>(
-    py: Python<'py>,
-    value: &PyAny,
-    dehydration_hooks: Option<&PyAny>,
-) -> PyResult<&'py PyBytes> {
+    value: &Bound<'py, PyAny>,
+    dehydration_hooks: Option<&Bound<'py, PyAny>>,
+) -> PyResult<Bound<'py, PyBytes>> {
+    let py = value.py();
     let type_mappings = get_type_mappings(py)?;
-    let mut encoder = PackStreamEncoder::new(py, dehydration_hooks, type_mappings);
+    let mut encoder = PackStreamEncoder::new(dehydration_hooks, type_mappings);
     encoder.write(value)?;
-    Ok(PyBytes::new(py, &encoder.buffer))
+    Ok(PyBytes::new_bound(py, &encoder.buffer))
 }
 
 struct PackStreamEncoder<'a> {
-    py: Python<'a>,
-    dehydration_hooks: Option<&'a PyAny>,
+    dehydration_hooks: Option<&'a Bound<'a, PyAny>>,
     type_mappings: &'a TypeMappings,
     buffer: Vec<u8>,
 }
 
 impl<'a> PackStreamEncoder<'a> {
     fn new(
-        py: Python<'a>,
-        dehydration_hooks: Option<&'a PyAny>,
+        dehydration_hooks: Option<&'a Bound<'a, PyAny>>,
         type_mappings: &'a TypeMappings,
     ) -> Self {
         Self {
-            py,
             dehydration_hooks,
             type_mappings,
             buffer: Default::default(),
         }
     }
 
-    fn write(&mut self, value: &PyAny) -> PyResult<()> {
+    fn write(&mut self, value: &Bound<PyAny>) -> PyResult<()> {
+        let py = value.py();
+
         if self.write_exact_value(value, &self.type_mappings.none_values, &[NULL])? {
             return Ok(());
         }
@@ -165,36 +166,36 @@ impl<'a> PackStreamEncoder<'a> {
             return Ok(());
         }
 
-        if value.is_instance(self.type_mappings.float_types.as_ref(self.py))? {
+        if value.is_instance(self.type_mappings.float_types.bind(py))? {
             let value = value.extract::<f64>()?;
             return self.write_float(value);
         }
 
-        if value.is_instance(self.type_mappings.int_types.as_ref(self.py))? {
+        if value.is_instance(self.type_mappings.int_types.bind(py))? {
             let value = value.extract::<i64>()?;
             return self.write_int(value);
         }
 
-        if value.is_instance(PyType::new::<PyString>(self.py))? {
+        if value.is_instance(&PyType::new_bound::<PyString>(py))? {
             return self.write_string(value.extract::<&str>()?);
         }
 
-        if value.is_instance(self.type_mappings.bytes_types.as_ref(self.py))? {
+        if value.is_instance(self.type_mappings.bytes_types.bind(py))? {
             return self.write_bytes(value.extract::<Cow<[u8]>>()?);
         }
 
-        if value.is_instance(self.type_mappings.sequence_types.as_ref(self.py))? {
+        if value.is_instance(self.type_mappings.sequence_types.bind(py))? {
             let size = Self::usize_to_u64(value.len()?)?;
             self.write_list_header(size)?;
-            return value.iter()?.try_for_each(|item| self.write(item?));
+            return value.iter()?.try_for_each(|item| self.write(&item?));
         }
 
-        if value.is_instance(self.type_mappings.mapping_types.as_ref(self.py))? {
-            let size = Self::usize_to_u64(value.getattr("keys")?.call0()?.len()?)?;
+        if value.is_instance(self.type_mappings.mapping_types.bind(py))? {
+            let size = Self::usize_to_u64(value.getattr(intern!(py, "keys"))?.call0()?.len()?)?;
             self.write_dict_header(size)?;
-            let items = value.getattr(intern!(self.py, "items"))?.call0()?;
+            let items = value.getattr(intern!(py, "items"))?.call0()?;
             return items.iter()?.try_for_each(|item| {
-                let (key, value) = item?.extract::<(&PyAny, &PyAny)>()?;
+                let (key, value) = item?.extract::<(Bound<PyAny>, Bound<PyAny>)>()?;
                 let key = match key.extract::<&str>() {
                     Ok(key) => key,
                     Err(_) => {
@@ -205,11 +206,11 @@ impl<'a> PackStreamEncoder<'a> {
                     }
                 };
                 self.write_string(key)?;
-                self.write(value)
+                self.write(&value)
             });
         }
 
-        if let Ok(value) = value.extract::<&PyCell<Structure>>() {
+        if let Ok(value) = value.extract::<Bound<Structure>>() {
             let value_ref = value.borrow();
             let size = value_ref.fields.len().try_into().map_err(|_| {
                 PyErr::new::<PyOverflowError, _>("Structure header size out of range")
@@ -218,15 +219,15 @@ impl<'a> PackStreamEncoder<'a> {
             return value_ref
                 .fields
                 .iter()
-                .try_for_each(|item| self.write(item.as_ref(self.py)));
+                .try_for_each(|item| self.write(item.bind(py)));
         }
 
         if let Some(dehydration_hooks) = self.dehydration_hooks {
             let transformer =
-                dehydration_hooks.call_method1(intern!(self.py, "get_transformer"), (value,))?;
+                dehydration_hooks.call_method1(intern!(py, "get_transformer"), (value,))?;
             if !transformer.is_none() {
                 let value = transformer.call1((value,))?;
-                return self.write(value);
+                return self.write(&value);
             }
         }
 
@@ -239,7 +240,7 @@ impl<'a> PackStreamEncoder<'a> {
 
     fn write_exact_value(
         &mut self,
-        value: &PyAny,
+        value: &Bound<PyAny>,
         values: &[PyObject],
         bytes: &[u8],
     ) -> PyResult<bool> {
