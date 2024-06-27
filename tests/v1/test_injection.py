@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import importlib
 import sys
 import traceback
 
@@ -22,9 +23,7 @@ import pytest
 from neo4j._codec.hydration import DehydrationHooks
 from neo4j._codec.packstream import Structure
 from neo4j._codec.packstream.v1 import (
-    PackableBuffer,
     Packer,
-    UnpackableBuffer,
     Unpacker,
 )
 
@@ -92,3 +91,20 @@ def test_unpack_injection_works(unpacker_with_buffer):
                for entry in exc.traceback)
     assert not any("_py_unpack" in str(entry.statement)
                    for entry in exc.traceback)
+
+
+@pytest.mark.parametrize(
+    ("name", "package_names"), (
+        ("neo4j._codec.packstream._rust.v1", ()),
+        ("neo4j._codec.packstream._rust", ("v1",)),
+        ("neo4j._codec.packstream", ("_rust",)),
+    )
+)
+def test_import_module(name, package_names):
+    module = importlib.import_module(name)
+
+    assert module.__name__ == name
+
+    for package_name in package_names:
+        package = getattr(module, package_name)
+        assert package.__name__ == f"{name}.{package_name}"

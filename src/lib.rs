@@ -18,7 +18,7 @@ pub mod v1;
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyTuple};
+use pyo3::types::{PyBytes, PyTuple};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -40,13 +40,14 @@ fn packstream(m: &Bound<PyModule>) -> PyResult<()> {
 // https://github.com/PyO3/pyo3/issues/1517#issuecomment-808664021
 fn register_package(m: &Bound<PyModule>, name: &str) -> PyResult<()> {
     let py = m.py();
-    let locals = PyDict::new_bound(py);
-    locals.set_item("module", m)?;
-    py.run_bound(
-        &format!("import sys; sys.modules['neo4j._codec.packstream._rust.{name}'] = module"),
-        None,
-        Some(&locals),
-    )
+    let module_name = format!("neo4j._codec.packstream._rust.{name}").into_py(py);
+
+    py.import_bound("sys")?
+        .getattr("modules")?
+        .set_item(&module_name, m)?;
+    m.setattr("__name__", &module_name)?;
+
+    Ok(())
 }
 
 #[pyclass]
