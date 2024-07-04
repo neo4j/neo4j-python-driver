@@ -34,6 +34,7 @@ from neo4j.exceptions import (
     UnsupportedServerProduct,
 )
 
+from .. import totestkit
 from .._driver_logger import (
     buffer_handler,
     log,
@@ -133,43 +134,16 @@ class AsyncBackend:
                 return True
         return None
 
-    @staticmethod
-    def _exc_msg(exc, max_depth=10):
-        if isinstance(exc, Neo4jError) and exc.message is not None:
-            return str(exc.message)
-
-        depth = 0
-        res = str(exc)
-        while getattr(exc, "__cause__", None) is not None:
-            depth += 1
-            if depth >= max_depth:
-                break
-            res += f"\nCaused by: {exc.__cause__!r}"
-            exc = exc.__cause__
-        return res
-
     async def write_driver_exc(self, exc):
-        log.debug(traceback.format_exc())
+        log.debug(exc.args)
+        log.debug("".join(traceback.format_exception(exc)))
 
         key = self.next_key()
         self.errors[key] = exc
 
-        payload = {"id": key, "msg": ""}
+        data = totestkit.driver_exc(exc, id_=key)
 
-        if isinstance(exc, MarkdAsDriverError):
-            wrapped_exc = exc.wrapped_exc
-            payload["errorType"] = str(type(wrapped_exc))
-            if wrapped_exc.args:
-                payload["msg"] = self._exc_msg(wrapped_exc.args[0])
-            payload["retryable"] = False
-        else:
-            payload["errorType"] = str(type(exc))
-            payload["msg"] = self._exc_msg(exc)
-            if isinstance(exc, Neo4jError):
-                payload["code"] = exc.code
-            payload["retryable"] = getattr(exc, "is_retryable", bool)()
-
-        await self.send_response("DriverError", payload)
+        await self.send_response(data["name"], data["data"])
 
     async def _process(self, request):
         # Process a received request.

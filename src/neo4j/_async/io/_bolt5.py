@@ -982,7 +982,7 @@ class AsyncBolt5x5(AsyncBolt5x4):
             dehydration_hooks=dehydration_hooks,
         )
 
-    DEFAULT_DIAGNOSTIC_RECORD = (
+    DEFAULT_STATUS_DIAGNOSTIC_RECORD = (
         ("OPERATION", ""),
         ("OPERATION_CODE", "0"),
         ("CURRENT_SCHEMA", "/"),
@@ -1062,15 +1062,107 @@ class AsyncBolt5x6(AsyncBolt5x5):
                     if not isinstance(diag_record, dict):
                         log.info(
                             "[#%04X]  _: <CONNECTION> Server supplied an "
-                            "invalid diagnostic record (%r).",
+                            "invalid status diagnostic record (%r).",
                             self.local_port,
                             diag_record,
                         )
                         continue
-                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
+                    for key, value in self.DEFAULT_STATUS_DIAGNOSTIC_RECORD:
                         diag_record.setdefault(key, value)
 
             enrich(metadata)
             await AsyncUtil.callback(wrapped_handler, metadata)
 
         return handler
+
+
+class AsyncBolt5x7(AsyncBolt5x6):
+    PROTOCOL_VERSION = Version(5, 7)
+
+    DEFAULT_ERROR_DIAGNOSTIC_RECORD = (
+        AsyncBolt5x5.DEFAULT_STATUS_DIAGNOSTIC_RECORD
+    )
+
+    def _enrich_error_diagnostic_record(self, metadata):
+        if not isinstance(metadata, dict):
+            return
+        diag_record = metadata.setdefault("diagnostic_record", {})
+        if not isinstance(diag_record, dict):
+            log.info(
+                "[#%04X]  _: <CONNECTION> Server supplied an "
+                "invalid error diagnostic record (%r).",
+                self.local_port,
+                diag_record,
+            )
+            return
+        for key, value in self.DEFAULT_ERROR_DIAGNOSTIC_RECORD:
+            diag_record.setdefault(key, value)
+
+    async def _process_message(self, tag, fields):
+        """Process at most one message from the server, if available.
+
+        :returns: 2-tuple of number of detail messages and number of summary
+                 messages fetched
+        """
+        details = []
+        summary_signature = summary_metadata = None
+        if tag == b"\x71":  # RECORD
+            details = fields
+        elif fields:
+            summary_signature = tag
+            summary_metadata = fields[0]
+        else:
+            summary_signature = tag
+
+        if details:
+            # Do not log any data
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
+            await self.responses[0].on_records(details)
+
+        if summary_signature is None:
+            return len(details), 0
+
+        response = self.responses.popleft()
+        response.complete = True
+        if summary_signature == b"\x70":
+            log.debug(
+                "[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata
+            )
+            self._server_state_manager.transition(
+                response.message, summary_metadata
+            )
+            await response.on_success(summary_metadata or {})
+        elif summary_signature == b"\x7e":
+            log.debug("[#%04X]  S: IGNORED", self.local_port)
+            await response.on_ignored(summary_metadata or {})
+        elif summary_signature == b"\x7f":
+            log.debug(
+                "[#%04X]  S: FAILURE %r", self.local_port, summary_metadata
+            )
+            self._server_state_manager.state = self.bolt_states.FAILED
+            self._enrich_error_diagnostic_record(summary_metadata)
+            try:
+                await response.on_failure(summary_metadata or {})
+            except (ServiceUnavailable, DatabaseUnavailable):
+                if self.pool:
+                    await self.pool.deactivate(address=self.unresolved_address)
+                raise
+            except (NotALeader, ForbiddenOnReadOnlyDatabase):
+                if self.pool:
+                    await self.pool.on_write_failure(
+                        address=self.unresolved_address,
+                        database=self.last_database,
+                    )
+                raise
+            except Neo4jError as e:
+                if self.pool:
+                    await self.pool.on_neo4j_error(e, self)
+                raise
+        else:
+            sig_int = ord(summary_signature)
+            raise BoltProtocolError(
+                f"Unexpected response message with signature {sig_int:02X}",
+                self.unresolved_address,
+            )
+
+        return len(details), 1

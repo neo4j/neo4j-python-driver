@@ -21,6 +21,7 @@ from struct import pack as struct_pack
 
 from ..._async_compat.util import Util
 from ..._exceptions import SocketDeadlineExceededError
+from ...api import Version
 from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
@@ -28,6 +29,8 @@ from ...exceptions import (
     UnsupportedServerProduct,
 )
 
+
+GQL_ERROR_AWARE_PROTOCOL = Version(5, 7)
 
 log = logging.getLogger("neo4j.io")
 
@@ -248,7 +251,7 @@ class Response:
         Util.callback(handler, metadata)
         handler = self.handlers.get("on_summary")
         Util.callback(handler)
-        raise Neo4jError.hydrate(**metadata)
+        raise self._hydrate_error(metadata)
 
     def on_ignored(self, metadata=None):
         """Handle an IGNORED message been received."""
@@ -256,6 +259,12 @@ class Response:
         Util.callback(handler, metadata)
         handler = self.handlers.get("on_summary")
         Util.callback(handler)
+
+    def _hydrate_error(self, metadata):
+        if self.connection.PROTOCOL_VERSION >= GQL_ERROR_AWARE_PROTOCOL:
+            return Neo4jError._hydrate_gql(**metadata)
+        else:
+            return Neo4jError.hydrate(**metadata)
 
 
 class InitResponse(Response):
@@ -271,7 +280,7 @@ class InitResponse(Response):
             "message",
             "Connection initialisation failed due to an unknown error",
         )
-        raise Neo4jError.hydrate(**metadata)
+        raise self._hydrate_error(metadata)
 
 
 class LogonResponse(InitResponse):
@@ -283,7 +292,7 @@ class LogonResponse(InitResponse):
         Util.callback(handler, metadata)
         handler = self.handlers.get("on_summary")
         Util.callback(handler)
-        raise Neo4jError.hydrate(**metadata)
+        raise self._hydrate_error(metadata)
 
 
 class ResetResponse(Response):

@@ -19,6 +19,7 @@ from __future__ import annotations
 import math
 
 import neo4j
+from neo4j.exceptions import Neo4jError
 from neo4j.graph import (
     Node,
     Path,
@@ -36,6 +37,7 @@ from neo4j.time import (
 )
 
 from ._warning_check import warning_check
+from .exceptions import MarkdAsDriverError
 
 
 def record(rec):
@@ -293,3 +295,50 @@ def field(v):
 
 def auth_token(auth):
     return {"name": "AuthorizationToken", "data": vars(auth)}
+
+
+def _exc_msg(exc, max_depth=10):
+    if isinstance(exc, Neo4jError) and exc.message is not None:
+        return str(exc.message)
+
+    depth = 0
+    res = str(exc)
+    while getattr(exc, "__cause__", None) is not None:
+        depth += 1
+        if depth >= max_depth:
+            break
+        res += f"\nCaused by: {exc.__cause__!r}"
+        exc = exc.__cause__
+    return res
+
+
+def driver_exc(exc, id_=None):
+    payload = {"msg": ""}
+    if id_ is not None:
+        payload["id"] = id_
+    payload["retryable"] = getattr(exc, "is_retryable", bool)()
+    if isinstance(exc, MarkdAsDriverError):
+        wrapped_exc = exc.wrapped_exc
+        payload["errorType"] = str(type(wrapped_exc))
+        if wrapped_exc.args:
+            payload["msg"] = _exc_msg(wrapped_exc.args[0])
+    else:
+        payload["errorType"] = str(type(exc))
+        payload["msg"] = _exc_msg(exc)
+        if isinstance(exc, Neo4jError):
+            payload["code"] = exc.neo4j_code
+            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+                payload["gqlStatus"] = exc.gql_status
+            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+                payload["statusDescription"] = exc.gql_status_description
+            if exc.__cause__ is not None:
+                payload["cause"] = driver_exc(exc.__cause__)
+
+            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+                payload["diagnosticRecord"] = {
+                    k: field(v) for k, v in exc.diagnostic_record.items()
+                }
+            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+                payload["classification"] = exc.gql_classification
+
+    return {"name": "DriverError", "data": payload}

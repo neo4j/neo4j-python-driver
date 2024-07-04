@@ -458,7 +458,10 @@ class AsyncBolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 6):
+        if protocol_version == (5, 7):
+            from ._bolt5 import AsyncBolt5x7
+            bolt_cls = AsyncBolt5x7
+        elif protocol_version == (5, 6):
             from ._bolt5 import AsyncBolt5x6
             bolt_cls = AsyncBolt5x6
         elif protocol_version == (5, 5):

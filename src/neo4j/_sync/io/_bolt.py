@@ -458,7 +458,10 @@ class Bolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 6):
+        if protocol_version == (5, 7):
+            from ._bolt5 import Bolt5x7
+            bolt_cls = Bolt5x7
+        elif protocol_version == (5, 6):
             from ._bolt5 import Bolt5x6
             bolt_cls = Bolt5x6
         elif protocol_version == (5, 5):
