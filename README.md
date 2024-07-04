@@ -20,6 +20,9 @@ That's it!
 You don't have to change your code but can use the driver as you normally would.
 This package will install the driver as its dependency and then inject itself in a place where the driver can find it and pick it up.
 
+If you experience issues with the driver, consider troubleshooting without the Rust extension first.
+For that, simply make sure you haven't installed `neo4j-rust-ext` but *only* `neo4j`.
+
 
 ## Requirements
 For many operating systems and architectures, the pre-built wheels will work out of the box.
