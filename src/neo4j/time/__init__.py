@@ -1656,7 +1656,7 @@ class Time(time_base_class, metaclass=TimeType):
         .. versionchanged:: 5.0
             The  property's type changed from :class:`decimal.Decimal` to
             :class:`int`. It does not longer cary sub-second information.
-            Use `attr:`nanosecond` instead.
+            Use :attr:`nanosecond` instead.
         """
         return self.__second
 
