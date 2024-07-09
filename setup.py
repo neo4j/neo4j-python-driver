@@ -49,11 +49,10 @@ with open(readme_path, mode="r", encoding="utf-8") as fr:
 
 if deprecated:
     readme = """\
-.. warning::
-
-    This package is deprecated and will stop receiving updates starting with
-    version 6.0.0. Please install ``neo4j`` instead (which is an alias, i.e.,
-    a drop-in replacement). See https://pypi.org/project/neo4j/ .
+> **Warning**
+> This package is deprecated and will stop receiving updates starting with version 6.0.0.
+> Please install ``neo4j`` instead (which is an alias, i.e., a drop-in replacement).
+> See https://pypi.org/project/neo4j/ .
 
 """ + readme
 
