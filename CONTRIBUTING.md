@@ -57,6 +57,7 @@ All code in `_sync` or `sync` folders is auto-generated. Don't change it, but
 install the pre-commit hooks as described below instead. They will take care of
 updating the code if necessary.
 
+### Setting up the Development Environment
 Setting up the development environment:
  * Install Python 3.8+
  * Install the requirements
@@ -69,6 +70,41 @@ Setting up the development environment:
    ```bash
    $ pre-commit install
    ```
+
+
+### Working with Pre-commit
+If you want to run the pre-commit checks manually, you can do so:
+```bash
+$ pre-commit run --all-files
+# or
+$ pre-commit run --file path/to/a/file
+```
+
+To commit skipping the pre-commit checks, you can do so:
+```bash
+git commit --no-verify ...
+```
+
+### Running Tests
+```bash
+# in the project root
+
+# for unit tests
+python -m tox -f unit  # more thorough but complex way; requires python 3.7 - 3.12 to be installed
+python -m pytest -W error tests/unit  # only test with current python version; no code coverage
+
+# integration tests
+# requires
+#  * running DBMS
+#  * env variables to be set for the tests to learn about the DBMS they run against
+python -m tox -f integration  # option 1
+python -m pytest -W error tests/integration  # option 2
+
+# performance tests (see requirements for integration tests)
+python -m tox -f performance  # option 1
+python -m pytest -W error --benchmark-autosave --benchmark-group-by=fullname tests/performance  # option 2
+# add --benchmark-compare to option 2 to compare with the previous run
+```
 
 
 ## Got an idea for a new project?

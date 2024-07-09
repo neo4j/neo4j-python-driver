@@ -4,12 +4,100 @@ set -e
 ROOT=$(dirname "$0")/..
 SCRIPT=$(basename "$0")
 
+function help {
+    echo "usage: ${SCRIPT} [options] VERSION"
+    echo ""
+    echo "options:"
+    echo "  --clean           Clean dist directory before building"
+    echo "  --sdist           Build source distribution"
+    echo "  --wheel           Build wheel distribution"
+    echo "  --cross           Cross compile wheels (implies --wheel)"
+    echo "  --docker-prune    Prune docker images between cross compilations"
+    echo ""
+    echo "Exactly one of --sdist or --wheel must be specified."
+}
+
+SETUP_ARGS=()
+PY_SETUP_ARGS=()
+DIST_TYPES=0
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --clean)
+            CLEAN=1
+            shift
+            ;;
+        --sdist)
+            SDIST=1
+            SETUP_ARGS+=(--sdist)
+            PY_SETUP_ARGS+=(--sdist)
+            shift
+            DIST_TYPES=$((DIST_TYPES + 1))
+            ;;
+        --wheel)
+            SETUP_ARGS+=(--wheel)
+            PY_SETUP_ARGS+=(--wheel)
+            shift
+            DIST_TYPES=$((DIST_TYPES + 1))
+            ;;
+        --cross)
+            SETUP_ARGS+=(--cross)
+            PY_SETUP_ARGS+=(--wheel)
+            shift
+            DIST_TYPES=$((DIST_TYPES + 1))
+            ;;
+         --docker-prune)
+            SETUP_ARGS+=(--docker-prune)
+            shift
+            ;;
+        -h|--help)
+            help
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo ""
+            help
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 VERSION="$1"
-if [ "${VERSION}" == "" ]
-then
-    echo "usage: ${SCRIPT} VERSION"
+shift
+
+if [ -n "$1" ]; then
+    echo "Too many arguments"
+    echo ""
+    help
     exit 1
-else
-    source "${ROOT}/bin/dist-functions"
-    setup "${VERSION}"
 fi
+if [ $DIST_TYPES -lt 1 ]; then
+    echo "Choose at least one of --sdist or --wheel"
+    echo ""
+    help
+    exit 1
+fi
+if [ "${VERSION}" == "" ]; then
+    echo "Missing VERSION argument"
+    echo ""
+    help
+    exit 1
+fi
+
+source "${ROOT}/bin/dist-functions"
+if [ -n "${CLEAN}" ]; then
+    echo "Cleaning dist directory ${DIST}"
+    rm -rf "${DIST}" 2> /dev/null
+fi
+
+if [ -n "${SDIST}" ]; then
+    # don't built a wheel for the legacy package
+    # TODO: 6.0 - *actually* remove the legacy package
+    set_metadata_and_setup --sdist --deprecated "neo4j-driver" "${VERSION}" # Legacy package; can be removed in 2.0
+fi
+set_metadata_and_setup "${SETUP_ARGS[@]}" --native-extensions-build "neo4j" "${VERSION}"
+set_metadata_and_setup "${SETUP_ARGS[@]}" --native-extensions-force "neo4j-rust-ext" "${VERSION}"
+set_metadata_and_setup "${PY_SETUP_ARGS[@]}" "neo4j-py" "${VERSION}"

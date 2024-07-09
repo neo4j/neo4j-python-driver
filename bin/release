@@ -3,46 +3,65 @@ set -e
 
 ROOT=$(dirname "$0")/..
 SCRIPT=$(basename "$0")
-TWINE_ARGS="--verbose"
+TWINE_ARGS=("--verbose")
 
-if [ "$1" == "--real" ]
-then
-    shift
-else
-    TWINE_ARGS="${TWINE_ARGS} --repository testpypi"
+
+function help {
+    echo "usage: ${SCRIPT} [options] VERSION"
+    echo ""
+    echo "options:"
+    echo "  --real     Upload to real PyPI (else, test PyPI is used)"
+}
+
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --real)
+            REAL=1
+            shift
+            ;;
+        -h|--help)
+            help
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo ""
+            help
+            exit 1
+            ;;
+        *)
+            VERSION="$1"
+            shift
+            break
+            ;;
+    esac
+done
+
+
+if [ -z "${REAL}" ]; then
+    TWINE_ARGS+=("--repository" "testpypi")
 fi
 
-VERSION="$1"
-if [ "${VERSION}" == "" ]
-then
-    echo "usage: ${SCRIPT} VERSION"
+if [ -z "${VERSION}" ]; then
+    echo "VERSION argument is required"
+    echo ""
+    help
     exit 1
 fi
 
 source "${ROOT}/bin/dist-functions"
-for PACKAGE in "neo4j-driver" "neo4j"; do
-    NORMALIZED_PACKAGE="$(normalize_dist_name "$PACKAGE")"
-    if check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
-    then
-        TWINE_ARGS="${TWINE_ARGS} ${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
-    elif check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"; then
-        TWINE_ARGS="${TWINE_ARGS} ${DIST}/${PACKAGE}-${VERSION}.tar.gz"
-    else
-        echo "Source distribution file for ${PACKAGE} not found"
-        exit 1
-    fi
-done
 
-NORMALIZED_PACKAGE="$(normalize_dist_name "neo4j")"
-if check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}-py3-none-any.whl"
-then
-    TWINE_ARGS="${TWINE_ARGS} ${DIST}/${NORMALIZED_PACKAGE}-${VERSION}-py3-none-any.whl"
-elif check_file "${DIST}/${PACKAGE}-${VERSION}-py3-none-any.whl"; then
-    TWINE_ARGS="${TWINE_ARGS} ${DIST}/${PACKAGE}-${VERSION}-py3-none-any.whl"
-else
-    echo "Wheel distribution file for ${PACKAGE} not found"
+load_dist_files"${VERSION}"
+
+if [ "${#DIST_FILES[@]}" -eq 0 ]; then
+    echo "No distributions found, aborting"
+    exit 1
+fi
+twine check --strict "${DIST_FILES[@]}"
+if [ "${#DIST_FILES[@]}" -ne 113 ]; then
+    echo "Some distributions are missing, aborting"
     exit 1
 fi
 
-
-twine upload ${TWINE_ARGS}
+twine upload "${TWINE_ARGS[@]}" "${DIST_FILES[@]}"

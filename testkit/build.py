@@ -19,12 +19,21 @@ Executed in driver container.
 Responsible for building driver and test backend.
 """
 
+import os
 
-from _common import run_python
+from _common import (
+    configured_extensions,
+    run_python,
+)
 
 
 if __name__ == "__main__":
     run_python(["-m", "pip", "install", "-U", "pip"],
                warning_as_error=False)
+
     run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
                warning_as_error=False)
+    with configured_extensions():
+        run_python(["-m", "pip", "install", ".[pandas,numpy,pyarrow]"],
+                   warning_as_error=False)
+    run_python(["-m", "tox", "f", "clean"])

@@ -1,8 +1,13 @@
 *~
-*.py[co]
+*.py[cod]
 __pycache__
+.pytest_cache/
 *.lprof
 *.class
+*.o
+*.so
+*.dylib
+*.dll
 
 .idea
 htmlcov
@@ -15,18 +20,18 @@ htmlcov
 .DS_Store
 
 docs/build
-dist
+dist/
 *.egg-info
-build
-venv
+build/
+venv*/
+.venv*/
+.tox/
 
 run
 */run
 
 neo4j-community-*
 neo4j-enterprise-*
-
-*.so
 
 testkit/CAs
 testkit/CustomCAs

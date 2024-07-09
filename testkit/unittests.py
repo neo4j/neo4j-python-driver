@@ -14,8 +14,12 @@
 # limitations under the License.
 
 
-from _common import run_python
+from _common import (
+    configured_extensions,
+    run_python,
+)
 
 
 if __name__ == "__main__":
-    run_python(["-m", "tox", "-f", "unit"])
+    with configured_extensions():
+        run_python(["-m", "tox", "-f", "unit"])

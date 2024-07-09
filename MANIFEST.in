@@ -1,3 +1,7 @@
 include NOTICE* src/**/py.typed
-global-exclude *.class *.py[cod] *.so *.dll __pycache__
+global-exclude *.class *.py[cod] *.so *.dll __pycache__ *.egg-info
 prune test*
+prune rust_ext
+include rust_ext/Cargo.toml  # [rust_ext]
+include rust_ext/Cargo.lock  # [rust_ext]
+recursive-include rust_ext/src *.rs  # [rust_ext]

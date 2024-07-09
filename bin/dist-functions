@@ -3,30 +3,59 @@ set -e
 
 ROOT=$(dirname "$0")/..
 SRC="${ROOT}/src"
-DIST="${ROOT}/dist"
+DIST_FOLDER="dist"
+DIST="${ROOT}/${DIST_FOLDER}"
+DIST_FILES=()
 
-function get_package
-{
+function load_dist_files {
+    local VERSION
+    VERSION="$1"; shift
+    mapfile -td '' DIST_FILES < <(find "$DIST" -regex '^.*/\(neo4j\|neo4j-driver\|neo4j_driver\|neo4j-py\|neo4j_py\|neo4j-rust-ext\|neo4j_rust_ext\)-'"${VERSION}"'\(-.+\)?\.\(whl\|tar\.gz\)$' -print0)
+}
+
+function get_package {
     cd "${SRC}"
     python -c "from neo4j._meta import package; print(package)"
     cd - > /dev/null
 }
 
-function set_package
-{
-    sed -i 's/^package = .*/package = "'$1'"/g' "${SRC}/neo4j/_meta.py"
+function sed_replace {
+    local PATTERN REPLACEMENT FILE MATCHES FORCE
+    PATTERN="${1////\\/}"; shift
+    REPLACEMENT="${1////\\/}"; shift
+    FILE="$1"; shift
+    MATCHES="$(sed -i "s/${PATTERN}/${REPLACEMENT}/g w /dev/stdout" "${FILE}" | wc -l)"
+    if [ "$1" = "--force" ] || [ "$1" = "-f" ]; then
+        FORCE=1
+        shift
+    fi
+    if [ -n "$FORCE" ]; then
+        return 0
+    fi
+    if [ "${MATCHES}" -eq 0 ]; then
+        echo "Error: No matches found for pattern '${PATTERN}' in file '${FILE}'"
+        return 1
+    fi
 }
 
-function get_version
-{
+function set_package {
+    local VALUE
+    VALUE="$1"; shift
+    sed_replace '^\(package\s*=\s*"\).*\("  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${SRC}/neo4j/_meta.py" "$@"
+    sed_replace '^\(name\s*=\s*"\).*\("  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${ROOT}/pyproject.toml" "$@"
+}
+
+function get_version {
     cd "${SRC}"
     python -c "from neo4j._meta import version; print(version)"
     cd - > /dev/null
 }
 
-function set_version
-{
-    sed -i 's/^version = .*/version = "'$1'"/g' "${SRC}/neo4j/_meta.py"
+function set_version {
+    local VALUE
+    VALUE="$1"; shift
+    sed_replace '^\(version\s*=\s*"\).*\("  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${SRC}/neo4j/_meta.py" "$@"
+    sed_replace '^\(version\s*=\s*"\).*\("  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${ROOT}/pyproject.toml" "$@"
 }
 
 function get_deprecated {
@@ -36,59 +65,206 @@ function get_deprecated {
 }
 
 function set_deprecated {
-    sed -i 's/^deprecated_package = .*/deprecated_package = '$1'/g' "${SRC}/neo4j/_meta.py"
+    local VALUE
+    VALUE="$1"; shift
+    sed_replace '^\(deprecated_package\s*=\s*\).*\(  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${SRC}/neo4j/_meta.py" "$@"
 }
 
-# distribution normalization according to PEP 625 https://peps.python.org/pep-0625/
-function normalize_dist_name
-{
-    echo $1 | sed 's/[._-]\+/_/g' | tr '[:upper:]' '[:lower:]'
+function set_native_extensions_build {
+    local VALUE
+    VALUE="$1"; shift
+    sed_replace '^\(native_extensions_build\s*=\s*\).*\(  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${SRC}/neo4j/_meta.py" "$@"
 }
 
-function check_file
-{
-    FILE=$1
-    echo -n "Checking file $(basename "${FILE}")... "
-    if [ -f "${FILE}" ]
-    then
-        echo "OK"
+function get_native_extensions_build {
+    cd "${SRC}"
+    python -c "from neo4j._meta import native_extensions_build; print(native_extensions_build)"
+    cd - > /dev/null
+}
+
+function set_native_extensions_force {
+    local VALUE
+    VALUE="$1"; shift
+    sed_replace '^\(native_extensions_force\s*=\s*\).*\(  # \[script-set\]$\)' '\1'"$VALUE"'\2' "${SRC}/neo4j/_meta.py" "$@"
+}
+
+function get_native_extensions_force {
+    cd "${SRC}"
+    python -c "from neo4j._meta import native_extensions_force; print(native_extensions_force)"
+    cd - > /dev/null
+}
+
+function exclude_rust_ext {
+    sed -i 's/^.*# \[rust_ext\]$/# \0/g' "${ROOT}/MANIFEST.in"
+    sed -i 's/^.*# \[rust_ext\]$/# \0/g' "${ROOT}/pyproject.toml"
+}
+
+function include_rust_ext {
+    sed -i 's/^# \(.*# \[rust_ext\]\)$/\1/g' "${ROOT}/MANIFEST.in"
+    sed -i 's/^# \(.*# \[rust_ext\]\)$/\1/g' "${ROOT}/pyproject.toml"
+}
+
+
+function set_readme {
+    local PACKAGE
+    PACKAGE="$1"; shift
+    README_PATH="${ROOT}/dist_readmes/README_${PACKAGE}.md"
+    if [ -f "${ROOT}/dist_readmes/README_${PACKAGE}.md" ]; then
+        if [ -f "${ROOT}/README.md.bak" ]; then
+            echo "Custom README backup exists!"
+            return 1
+        fi
+        echo "Setting custom README for ${PACKAGE} from ${README_PATH}"
+        mv "${ROOT}/README.md" "${ROOT}/README.md.bak"
+        cp -a "${README_PATH}" "${ROOT}/README.md"
+    fi
+    return 0
+}
+
+function reset_readme {
+    if [ -f "${ROOT}/README.md.bak" ]; then
+        echo "Reverting custom README"
+        mv "${ROOT}/README.md.bak" "${ROOT}/README.md"
+    fi
+    return 0
+}
+
+function check_file {
+    echo -n "Checking dist file '$1' ... "
+
+    OLD_IFS="$IFS"
+    function cleanup {
+        IFS="$OLD_IFS"
+    }
+    IFS=
+    trap cleanup EXIT
+
+    FILES=($1)
+
+    trap - EXIT
+    cleanup
+
+    if [ "${#FILES[@]}" != "1" ]; then
+        echo "Error: Expected exactly one file, found ${#FILES[@]}:"
+        for FILE in "${FILES[@]}"; do
+            echo "  '$FILE'"
+        done
+        return 1
+    fi
+
+    if [ -f "${FILES[0]}" ]; then
+        echo "OK: Found '${FILES[0]}'"
         return 0
     else
-        echo "missing"
+        echo "Missing"
         return 1
     fi
 }
 
-function set_metadata_and_setup
-{
-    PACKAGE="$1"; shift
-    DEPRECATED="$1"; shift
-    VERSION="$1"; shift
+function set_metadata_and_setup {
+    local DEPRECATED="False"
+    local NATIVE_EXTENSIONS_BUILD="False"
+    local NATIVE_EXTENSIONS_FORCE="False"
+    local SDIST
+    local WHEEL
+    local CROSS
+    local DOCKER_PRUNE
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --deprecated)
+                DEPRECATED="True"
+                shift
+                ;;
+            --native-extensions-build)
+                NATIVE_EXTENSIONS_BUILD="True"
+                shift
+                ;;
+            --native-extensions-force)
+                NATIVE_EXTENSIONS_BUILD="True"
+                NATIVE_EXTENSIONS_FORCE="True"
+                shift
+                ;;
+            --sdist)
+                SDIST=1
+                shift
+                ;;
+            --wheel)
+                WHEEL=1
+                shift
+                ;;
+            --cross)
+                CROSS=1
+                shift
+                ;;
+            --docker-prune)
+                DOCKER_PRUNE=1
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    local PACKAGE="$1"; shift
+    local VERSION="$1"; shift
 
     cd "${ROOT}"
 
     # Capture original package metadata
+    local ORIGINAL_PACKAGE
     ORIGINAL_PACKAGE=$(get_package)
+    local ORIGINAL_VERSION
     ORIGINAL_VERSION=$(get_version)
+    local ORIGINAL_DEPRECATED
     ORIGINAL_DEPRECATED=$(get_deprecated)
-    echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}/deprecated=${ORIGINAL_DEPRECATED}"
+    local ORIGINAL_NATIVE_EXTENSIONS_BUILD
+    ORIGINAL_NATIVE_EXTENSIONS_BUILD=$(get_native_extensions_build)
+    local ORIGINAL_NATIVE_EXTENSIONS_FORCE
+    ORIGINAL_NATIVE_EXTENSIONS_FORCE=$(get_native_extensions_force)
+    echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}/deprecated=${ORIGINAL_DEPRECATED}/native_extensions_build=${ORIGINAL_NATIVE_EXTENSIONS_BUILD}/native_extensions_force=${ORIGINAL_NATIVE_EXTENSIONS_FORCE}"
     echo "----------------------------------------"
-    grep "package\s\+=" "${SRC}/neo4j/_meta.py"
-    grep "version\s\+=" "${SRC}/neo4j/_meta.py"
-    grep "deprecated_package\s\+=" "${SRC}/neo4j/_meta.py"
+    echo "_meta.py:"
+    grep "  # \[script-set\]" "${SRC}/neo4j/_meta.py"
+    echo ""
+    echo "pyproject.toml:"
+    grep "  # \[script-set\]" "${ROOT}/pyproject.toml"
+    grep "# \[rust_ext\]" "${ROOT}/pyproject.toml"
+    echo ""
+    echo "MANIFEST.in:"
+    grep "# \[rust_ext\]" "${ROOT}/MANIFEST.in"
+    echo ""
+    echo "README.me"
+    sed -n 1,5p "${ROOT}/README.md"
     echo "----------------------------------------"
+    echo ""
 
     function cleanup() {
-      # Reset to original package metadata
-      set_package "${ORIGINAL_PACKAGE}"
-      set_version "${ORIGINAL_VERSION}"
-      set_deprecated "${ORIGINAL_DEPRECATED}"
-      echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}/deprecated=${ORIGINAL_DEPRECATED}"
-      echo "----------------------------------------"
-      grep "package\s\+=" "${SRC}/neo4j/_meta.py"
-      grep "version\s\+=" "${SRC}/neo4j/_meta.py"
-      grep "deprecated_package\s\+=" "${SRC}/neo4j/_meta.py"
-      echo "----------------------------------------"
+        cd "${ROOT}"
+        # Reset to original package metadata
+        set_package "${ORIGINAL_PACKAGE}" --force
+        set_version "${ORIGINAL_VERSION}" --force
+        set_deprecated "${ORIGINAL_DEPRECATED}" --force
+        set_native_extensions_build "${ORIGINAL_NATIVE_EXTENSIONS_BUILD}" --force
+        set_native_extensions_force "${ORIGINAL_NATIVE_EXTENSIONS_FORCE}" --force
+        if [ "${NATIVE_EXTENSIONS_BUILD}" != "True" ]; then
+            include_rust_ext
+        fi
+        reset_readme
+        echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}/deprecated=${ORIGINAL_DEPRECATED}/native_extensions_build=${ORIGINAL_NATIVE_EXTENSIONS_BUILD}/native_extensions_force=${ORIGINAL_NATIVE_EXTENSIONS_FORCE}"
+        echo "----------------------------------------"
+        echo "_meta.py:"
+        grep "  # \[script-set\]" "${SRC}/neo4j/_meta.py"
+        echo ""
+        echo "pyproject.toml:"
+        grep "  # \[script-set\]" "${ROOT}/pyproject.toml"
+        grep "# \[rust_ext\]" "${ROOT}/pyproject.toml"
+        echo ""
+        echo "MANIFEST.in:"
+        grep "# \[rust_ext\]" "${ROOT}/MANIFEST.in"
+        echo ""
+        echo "README.me"
+        sed -n 1,5p "${ROOT}/README.md"
+        echo "----------------------------------------"
     }
     trap cleanup EXIT
 
@@ -96,31 +272,153 @@ function set_metadata_and_setup
     set_package "${PACKAGE}"
     set_version "${VERSION}"
     set_deprecated "${DEPRECATED}"
-    echo "Source code reconfigured for package ${PACKAGE}/${VERSION}/deprecated=${DEPRECATED}"
+    set_native_extensions_build "${NATIVE_EXTENSIONS_BUILD}"
+    set_native_extensions_force "${NATIVE_EXTENSIONS_FORCE}"
+    if [ "${NATIVE_EXTENSIONS_BUILD}" != "True" ]; then
+        exclude_rust_ext
+    fi
+    set_readme "${PACKAGE}"
+    echo "Source code reconfigured for package ${PACKAGE}/${VERSION}/deprecated=${DEPRECATED}/native_extensions_build=${NATIVE_EXTENSIONS_BUILD}/native_extensions_force=${NATIVE_EXTENSIONS_FORCE}"
     echo "----------------------------------------"
-    grep "package\s\+=" "${SRC}/neo4j/_meta.py"
-    grep "version\s\+=" "${SRC}/neo4j/_meta.py"
-    grep "deprecated_package\s\+=" "${SRC}/neo4j/_meta.py"
+    echo "_meta.py:"
+    grep "  # \[script-set\]" "${SRC}/neo4j/_meta.py"
+    echo ""
+    echo "pyproject.toml:"
+    grep "  # \[script-set\]" "${ROOT}/pyproject.toml"
+    grep "# \[rust_ext\]" "${ROOT}/pyproject.toml"
+    echo ""
+    echo "MANIFEST.in:"
+    grep "# \[rust_ext\]" "${ROOT}/MANIFEST.in"
+    echo ""
+    echo "README.me"
+    sed -n 1,5p "${ROOT}/README.md"
     echo "----------------------------------------"
+    echo ""
 
-    # Create source distribution
-    find . -name *.pyc -delete
+    find . -name "*.pyc" -delete
     rm -rf "${SRC}/*.egg-info" 2> /dev/null
-    python -m build $*
-    NORMALIZED_PACKAGE="$(normalize_dist_name $PACKAGE)"
-    if ! (check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz" \
-          || check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"); then
-        STATUS=1
+
+    # source distribution (sdist) build
+    if [ -n "${SDIST}" ]; then
+        python -m build --sdist
+    fi
+
+    if [ -n "${CROSS}" ]; then
+        echo "----------------------------------------"
+        echo "Compiling for windows and macOS (docker image ubuntu:22.04)"
+        docker run --rm -v "$ROOT:/io" -w /io -i -a stdout -a stderr ubuntu:22.04 bash << EOF1
+set -ex
+
+apt-get update -q
+apt-get install -yq sudo llvm python3 python3-pip mingw-w64 curl
+pip install -U pip
+pip install maturin[zig]
+
+groupadd --non-unique -g $(id -g) docker
+useradd --create-home --non-unique -u $(id -u) -g $(id -g) docker
+adduser docker sudo
+
+sudo -u docker bash -ex << "EOF2"
+
+export RUSTUP_HOME="\$HOME/.rustup"
+export CARGO_HOME="\$HOME/.cargo"
+curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+export PATH="\$HOME/.cargo/bin:\$PATH"
+rustup target add x86_64-pc-windows-gnu i686-pc-windows-gnu aarch64-pc-windows-msvc x86_64-apple-darwin aarch64-apple-darwin
+
+cd /io
+for python in python3.7 python3.8 python3.9 python3.10 python3.11 python3.12; do
+    maturin build --out "$DIST_FOLDER" --release --interpreter "\$python" --target x86_64-pc-windows-gnu
+    maturin build --out "$DIST_FOLDER" --release --interpreter "\$python" --target i686-pc-windows-gnu
+    maturin build --out "$DIST_FOLDER" --release --interpreter "\$python" --target aarch64-pc-windows-msvc
+    maturin build --out "$DIST_FOLDER" --release --zig --interpreter "\$python" --target x86_64-apple-darwin
+    maturin build --out "$DIST_FOLDER" --release --zig --interpreter "\$python" --target aarch64-apple-darwin
+done
+
+EOF2
+EOF1
+        if [ -n "${DOCKER_PRUNE}" ]; then
+            docker rmi ubuntu:22.04  || true
+        fi
+        echo "----------------------------------------"
+        echo ""
+        local TUPLE
+        for TUPLE in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-unknown-linux-musl armv7-unknown-linux-gnueabihf; do
+            local IMAGE
+            case "${TUPLE}" in
+                x86_64-unknown-linux-gnu)
+                    IMAGE="ghcr.io/rust-cross/manylinux2014-cross:x86_64"
+                    ;;
+                aarch64-unknown-linux-gnu)
+                    IMAGE="ghcr.io/rust-cross/manylinux2014-cross:aarch64"
+                    ;;
+                x86_64-unknown-linux-musl)
+                    IMAGE="ghcr.io/rust-cross/musllinux_1_2-cross:x86_64"
+                    ;;
+                armv7-unknown-linux-gnueabihf)
+                    IMAGE="ghcr.io/rust-cross/manylinux2014-cross:armv7"
+                    ;;
+            esac
+
+            echo "----------------------------------------"
+            echo "Compiling for manylinux ${TUPLE} (docker image ${IMAGE})"
+            docker run --rm -v "$ROOT:/io" -w /io -i -a stdout -a stderr "${IMAGE}" bash << EOF1
+set -ex
+
+pip install -U pip
+pip install maturin
+
+groupadd --non-unique -g $(id -g) docker
+useradd --create-home --non-unique -u $(id -u) -g $(id -g) docker
+adduser docker sudo
+
+sudo -EH -u docker bash -ex << EOF2
+
+export PATH="\\\$PATH:\$PATH"
+export RUSTUP_HOME="\\\$HOME/.rustup"
+export CARGO_HOME="\\\$HOME/.cargo"
+curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --target $TUPLE --profile minimal
+export PATH="\\\$CARGO_HOME/bin:\\\$PATH"
+
+export PATH="\\\$PATH:/opt/python/cp37-cp37m/bin:/opt/python/cp38-cp38/bin:/opt/python/cp39-cp39/bin:/opt/python/cp310-cp310/bin:/opt/python/cp311-cp311/bin:/opt/python/cp312-cp312/bin"
+
+cd /io
+for python in python3.7 python3.8 python3.9 python3.10 python3.11 python3.12; do
+    maturin build --out "$DIST_FOLDER" --release --interpreter "\\\$python" --target $TUPLE
+done
+
+EOF2
+EOF1
+            if [ -n "${DOCKER_PRUNE}" ]; then
+                docker rmi "${IMAGE}"  || true
+            fi
+            echo "----------------------------------------"
+            echo ""
+        done
+    elif [ -n "${WHEEL}" ]; then
+        # wheel build
+        if [ "${NATIVE_EXTENSIONS_BUILD}" = "True" ]; then
+            # When building wheels for distribution, we enforce that building
+            # native extensions is working, so we're not accidentally shipping
+            # wheels without native extensions.
+            set_native_extensions_force "True"
+            echo "Source code reconfigured for wheel build native_extensions_force=True"
+            echo "----------------------------------------"
+            grep "^native_extensions_force\s\+=" "${SRC}/neo4j/_meta.py"
+            echo "----------------------------------------"
+            echo ""
+        fi
+        python -m build --wheel
+        if [ "${NATIVE_EXTENSIONS_BUILD}" = "True" ]; then
+            set_native_extensions_force "${NATIVE_EXTENSIONS_FORCE}"
+            echo "Source code restored after wheel build native_extensions_force=${NATIVE_EXTENSIONS_FORCE}"
+            echo "----------------------------------------"
+            grep "^native_extensions_force\s\+=" "${SRC}/neo4j/_meta.py"
+            echo "----------------------------------------"
+            echo ""
+        fi
     fi
 
     trap - EXIT
     cleanup
-}
-
-function setup
-{
-    ARGS="$*"
-    rm -rf ${DIST} 2> /dev/null
-    set_metadata_and_setup "neo4j-driver" "True" ${ARGS} --sdist  # Legacy package; can be removed in 2.0
-    set_metadata_and_setup "neo4j" "False" ${ARGS}
 }

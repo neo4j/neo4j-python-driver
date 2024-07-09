@@ -1,3 +1,9 @@
+> **Warning**
+> This package is deprecated and will stop receiving updates starting with version 6.0.0.
+> Please install ``neo4j`` instead (which is an alias, i.e., a drop-in replacement).
+> See https://pypi.org/project/neo4j/ .
+
+
 # Neo4j Bolt Driver for Python
 This repository contains the official Neo4j driver for Python.
 

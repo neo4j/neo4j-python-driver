@@ -23,6 +23,7 @@ pytest-asyncio>=0.16.0
 pytest-benchmark>=3.4.1
 pytest-cov>=3.0.0
 pytest-mock>=3.6.1
+pytest-benchmark>=4.0.0
 teamcity-messages>=1.29
 tox>=4.0.0
 

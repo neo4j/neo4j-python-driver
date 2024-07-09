@@ -32,9 +32,11 @@ if t.TYPE_CHECKING:
 
 
 # Can be automatically overridden in builds
-package = "neo4j"
-version = "5.22.dev0"
-deprecated_package = False
+package = "neo4j"  # [script-set]
+version = "5.22.dev0"  # [script-set]
+deprecated_package = False  # [script-set]
+native_extensions_build = True  # [script-set]
+native_extensions_force = False  # [script-set]
 
 
 def _compute_bolt_agent() -> t.Dict[str, str]:

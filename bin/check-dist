@@ -7,19 +7,20 @@ DIST="${ROOT}/dist"
 STATUS=0
 
 VERSION="$1"
-if [ "${VERSION}" == "" ]
-then
+if [ "${VERSION}" == "" ]; then
     echo "usage: ${SCRIPT} VERSION"
     exit 1
-else
-    source "${ROOT}/bin/dist-functions"
-    for PACKAGE in "neo4j-driver" "neo4j"; do
-        NORMALIZED_PACKAGE="$(normalize_dist_name "$PACKAGE")"
-        if ! (check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz" \
-              || check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"); then
-            STATUS=1
-        fi
-    done
 fi
 
-exit ${STATUS}
+source "${ROOT}/bin/dist-functions"
+
+load_dist_files "${VERSION}"
+if [ "${#DIST_FILES[@]}" -eq 0 ]; then
+    echo "No distributions found, aborting"
+    exit 1
+fi
+twine check --strict "${DIST_FILES[@]}"
+if [ "${#DIST_FILES[@]}" -ne 113 ]; then
+    echo "Some distributions are missing, aborting"
+    exit 1
+fi

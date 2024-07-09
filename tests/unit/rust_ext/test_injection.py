@@ -14,33 +14,74 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import importlib
 import sys
 import traceback
+import typing as t
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 import pytest
 
 from neo4j._codec.hydration import DehydrationHooks
-from neo4j._codec.packstream import Structure
+from neo4j._codec.packstream import (
+    RUST_AVAILABLE,
+    Structure,
+)
 from neo4j._codec.packstream.v1 import (
+    PackableBuffer,
     Packer,
+    UnpackableBuffer,
     Unpacker,
+)
+from neo4j._meta import (
+    native_extensions_build,
+    native_extensions_force,
+)
+
+
+_T_PACKER_FIXTURE: te.TypeAlias = t.Tuple[Packer, PackableBuffer]
+_T_UNPACKER_FIXTURE: te.TypeAlias = t.Tuple[Unpacker, UnpackableBuffer]
+
+rust_exclusive = pytest.mark.skipif(
+    not RUST_AVAILABLE, reason="Rust extensions is not available"
 )
 
 
 @pytest.fixture
-def packer_with_buffer():
+def packer_with_buffer() -> _T_PACKER_FIXTURE:
     packable_buffer = Packer.new_packable_buffer()
     return Packer(packable_buffer), packable_buffer
 
 
 @pytest.fixture
-def unpacker_with_buffer():
+def unpacker_with_buffer() -> _T_UNPACKER_FIXTURE:
     unpackable_buffer = Unpacker.new_unpackable_buffer()
     return Unpacker(unpackable_buffer), unpackable_buffer
 
 
-def test_pack_injection_works(packer_with_buffer):
+@pytest.mark.skipif(
+    not native_extensions_force,
+    reason="Native extensions are expected to (potentially) be unavailable"
+)
+def test_available() -> None:
+    assert RUST_AVAILABLE
+
+
+@pytest.mark.skipif(
+    native_extensions_build,
+    reason="Native extensions are expected to (potentially) be available"
+)
+def test_not_available() -> None:
+    assert not RUST_AVAILABLE
+
+
+@rust_exclusive
+def test_pack_injection_works(packer_with_buffer: _T_PACKER_FIXTURE) -> None:
     class TestClass:
         pass
 
@@ -68,11 +109,14 @@ def test_pack_injection_works(packer_with_buffer):
                    for entry in exc.traceback)
 
 
-def test_unpack_injection_works(unpacker_with_buffer):
+@rust_exclusive
+def test_unpack_injection_works(
+    unpacker_with_buffer: _T_UNPACKER_FIXTURE
+) -> None:
     class TestException(Exception):
         pass
 
-    def raise_test_exception(*args, **kwargs):
+    def raise_test_exception(*args, **kwargs) -> None:
         raise TestException()
 
     hydration_hooks = {Structure: raise_test_exception}
@@ -100,7 +144,8 @@ def test_unpack_injection_works(unpacker_with_buffer):
         ("neo4j._codec.packstream", ("_rust",)),
     )
 )
-def test_import_module(name, package_names):
+@rust_exclusive
+def test_import_module(name, package_names) -> None:
     module = importlib.import_module(name)
 
     assert module.__name__ == name

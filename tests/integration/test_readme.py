@@ -70,7 +70,7 @@ def test_should_run_readme(uri, auth):
 
 def test_readme_contains_example():
     test_path = Path(__file__)
-    readme_path = test_path.parents[2] / "README.rst"
+    readme_path = test_path.parents[2] / "README.md"
 
     with test_path.open("r") as fd:
         test_content = fd.read()
@@ -89,6 +89,10 @@ def test_readme_contains_example():
             continue
         if adding:
             line = re.sub(r"\s+# isort:skip\s+$", "\n", line)
+            if line.startswith("    "):
+                line = line[4:]
+            else:
+                assert line == "\n"
             stripped_test_content += line
 
     assert stripped_test_content in readme_content
