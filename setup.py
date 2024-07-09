@@ -43,7 +43,7 @@ if deprecated:
     )
 
 readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                           "README.rst"))
+                                           "README.md"))
 with open(readme_path, mode="r", encoding="utf-8") as fr:
     readme = fr.read()
 
