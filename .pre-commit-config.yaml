@@ -4,8 +4,12 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0
     hooks:
+      - id: check-byte-order-marker
       - id: check-case-conflict
       - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
       - id: check-symlinks
       - id: destroyed-symlinks
       - id: end-of-file-fixer
@@ -42,3 +46,12 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+        args: [ "--manifest-path=rust_ext/Cargo.toml", "--" ]
+      - id: cargo-check
+        args: [ "--manifest-path=rust_ext/Cargo.toml", "--" ]
+      - id: clippy
+        args: [ "--manifest-path=rust_ext/Cargo.toml", "--" ]
