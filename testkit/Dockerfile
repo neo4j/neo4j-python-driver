@@ -25,7 +25,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
         libsqlite3-dev wget curl llvm libncurses5-dev xz-utils tk-dev \
-        libxml2-dev libxmlsec1-dev libffi-dev \
+        libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
         ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -40,13 +40,24 @@ ENV PYENV_ROOT /.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Set minimum supported Python version
-RUN pyenv install 3.5.9
+RUN pyenv install 3.5.10
 RUN pyenv rehash
-RUN pyenv global 3.5.9
+RUN pyenv global 3.5.10
+
+# Set up new Python version, just to be able to load new CA certificates for pip
+RUN pyenv install 3.12.4 && \
+    pyenv rehash && \
+    pyenv global 3.12.4 && \
+    python3.12 -m pip install --upgrade pip && \
+    python3.12 -m pip install certifi && \
+    cp $PYENV_ROOT/versions/3.12.4/lib/python3.12/site-packages/certifi/cacert.pem /tmp/pip-certifi.pem && \
+    pyenv global 3.5.10 && \
+    pyenv uninstall -f 3.12.4 && \
+    pyenv rehash
 
 # Install Latest pip for each environment
 # https://pip.pypa.io/en/stable/news/
-RUN python -m pip install --upgrade pip
+RUN python -m pip --cert /tmp/pip-certifi.pem install --upgrade pip
 
 # Install Python Testing Tools
-RUN python -m pip install coverage tox
+RUN python -m pip --cert /tmp/pip-certifi.pem install coverage tox
