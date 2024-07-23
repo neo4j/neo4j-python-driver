@@ -284,6 +284,7 @@ class Bolt:
             Bolt5x3,
             Bolt5x4,
             Bolt5x5,
+            Bolt5x6,
         )
 
         handlers = {
@@ -299,6 +300,7 @@ class Bolt:
             Bolt5x3.PROTOCOL_VERSION: Bolt5x3,
             Bolt5x4.PROTOCOL_VERSION: Bolt5x4,
             Bolt5x5.PROTOCOL_VERSION: Bolt5x5,
+            Bolt5x6.PROTOCOL_VERSION: Bolt5x6,
         }
 
         if protocol_version is None:
@@ -413,7 +415,10 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if protocol_version == (5, 5):
+        if protocol_version == (5, 6):
+            from ._bolt5 import Bolt5x6
+            bolt_cls = Bolt5x6
+        elif protocol_version == (5, 5):
             from ._bolt5 import Bolt5x5
             bolt_cls = Bolt5x5
         elif protocol_version == (5, 4):

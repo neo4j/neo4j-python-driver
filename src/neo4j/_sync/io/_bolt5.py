@@ -783,7 +783,51 @@ class Bolt5x5(Bolt5x4):
         ("CURRENT_SCHEMA", "/"),
     )
 
-    def _make_enrich_diagnostic_record_handler(self, wrapped_handler=None):
+    def _make_enrich_statuses_handler(self, wrapped_handler=None):
+        def handler(metadata):
+            def enrich(metadata_):
+                if not isinstance(metadata_, dict):
+                    return
+                statuses = metadata_.get("statuses")
+                if not isinstance(statuses, list):
+                    return
+                for status in statuses:
+                    if not isinstance(status, dict):
+                        continue
+                    status["description"] = status.get("status_description")
+                    diag_record = status.setdefault("diagnostic_record", {})
+                    if not isinstance(diag_record, dict):
+                        log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                                 "invalid diagnostic record (%r).",
+                                 self.local_port, diag_record)
+                        continue
+                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
+                        diag_record.setdefault(key, value)
+
+            enrich(metadata)
+            Util.callback(wrapped_handler, metadata)
+
+        return handler
+
+    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
+                hydration_hooks=None, **handlers):
+        handlers["on_success"] = self._make_enrich_statuses_handler(
+            wrapped_handler=handlers.get("on_success")
+        )
+        super().discard(n, qid, dehydration_hooks, hydration_hooks, **handlers)
+
+    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
+             **handlers):
+        handlers["on_success"] = self._make_enrich_statuses_handler(
+            wrapped_handler=handlers.get("on_success")
+        )
+        super().pull(n, qid, dehydration_hooks, hydration_hooks, **handlers)
+
+class Bolt5x6(Bolt5x5):
+
+    PROTOCOL_VERSION = Version(5, 6)
+
+    def _make_enrich_statuses_handler(self, wrapped_handler=None):
         def handler(metadata):
             def enrich(metadata_):
                 if not isinstance(metadata_, dict):
@@ -807,17 +851,3 @@ class Bolt5x5(Bolt5x4):
             Util.callback(wrapped_handler, metadata)
 
         return handler
-
-    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
-                hydration_hooks=None, **handlers):
-        handlers["on_success"] = self._make_enrich_diagnostic_record_handler(
-            wrapped_handler=handlers.get("on_success")
-        )
-        super().discard(n, qid, dehydration_hooks, hydration_hooks, **handlers)
-
-    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
-             **handlers):
-        handlers["on_success"] = self._make_enrich_diagnostic_record_handler(
-            wrapped_handler=handlers.get("on_success")
-        )
-        super().pull(n, qid, dehydration_hooks, hydration_hooks, **handlers)

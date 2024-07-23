@@ -163,7 +163,7 @@ class ResultSummary:
                 for notification_key, status_key in (
                     ("title", "title"),
                     ("code", "neo4j_code"),
-                    ("description", "status_description"),
+                    ("description", "description"),
                 ):
                     value = status.get(status_key)
                     if not isinstance(value, str) or not value:

@@ -190,6 +190,7 @@ def test_statuses_and_notifications_dont_mix(summary_args_kwargs) -> None:
     raw_status = {
         "gql_status": "12345",
         "status_description": "cool description",
+        "description": "cool notification description",
         "neo4j_code": "Neo.Foo.Bar.Baz",
         "title": "nice title",
         "diagnostic_record": raw_diag_rec,
@@ -314,6 +315,7 @@ class StatusOrderHelper:
             "gql_status": gql_status,
             "status_description": "note: successful completion - "
                                   f"custom stuff {i}",
+            "description": f"notification description {i}",
             "neo4j_code": f"Neo.Foo.Bar.{type_}-{i}",
             "title": f"Some cool title which defo is dope! {i}",
             "diagnostic_record": {
@@ -606,15 +608,18 @@ def test_status(
 ) -> None:
     args, kwargs = summary_args_kwargs
     default_position = SummaryInputPosition(line=1337, column=42, offset=420)
-    default_description = "some nice description goes here"
+    default_status_description = "some nice description goes here"
+    default_description = "some nice notification description here"
     default_severity = "WARNING"
     default_classification = "HINT"
     default_code = "Neo.Cool.Legacy.Code"
     default_title = "Cool Title"
     default_gql_status = "12345"
+
     raw_status: t.Dict[str, t.Any] = {
         "gql_status": default_gql_status,
-        "status_description": default_description,
+        "status_description": default_status_description,
+        "description": default_description,
         "neo4j_code": default_code,
         "title": default_title,
         "diagnostic_record": {
@@ -661,7 +666,7 @@ def test_status(
             == expectation_overwrite.get("gql_status", default_gql_status))
     assert (status.status_description
             == expectation_overwrite.get("status_description",
-                                         default_description))
+                                         default_status_description))
     assert (status.position
             == expectation_overwrite.get("position", default_position))
     assert (status.raw_classification
@@ -837,6 +842,7 @@ def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
     ((5, 3), "t_first"),
     ((5, 4), "t_first"),
     ((5, 5), "t_first"),
+    ((5, 6), "t_first"),
 ))
 def test_summary_result_available_after(
     summary_args_kwargs, exists, bolt_version, meta_name
@@ -869,6 +875,7 @@ def test_summary_result_available_after(
     ((5, 3), "t_last"),
     ((5, 4), "t_last"),
     ((5, 5), "t_last"),
+    ((5, 6), "t_last"),
 ))
 def test_summary_result_consumed_after(
     summary_args_kwargs, exists, bolt_version, meta_name
@@ -1438,9 +1445,9 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
                                 ("FOOBAR", None, ..., -1, 1.6, False, [], {}))
         ),
 
-        # copies status_description to description
+        # copies description to description
         (
-            {"status_description": "something completely different 👀"}, {},
+            {"description": "something completely different 👀"}, {},
             {"description": "something completely different 👀"}
         ),
 
@@ -1537,15 +1544,17 @@ def test_notification_from_status(
     summary_args_kwargs
 ) -> None:
     default_status = "03BAZ"
-    default_description = "note: successful completion - custom stuff"
+    default_status_description = "note: successful completion - custom stuff"
     default_code = "Neo.Foo.Bar.Baz"
     default_title = "Some cool title which defo is dope!"
     default_severity = "INFORMATION"
     default_classification = "HINT"
+    default_description = "nice message"
     default_position = SummaryInputPosition(line=1337, column=42, offset=420)
     raw_status_obj: t.Dict[str, t.Any] = {
         "gql_status": default_status,
-        "status_description": default_description,
+        "status_description": default_status_description,
+        "description": default_description,
         "neo4j_code": default_code,
         "title": default_title,
         "diagnostic_record": {
@@ -1767,7 +1776,7 @@ def test_broken_diagnostic_record(in_status, summary_args_kwargs) -> None:
     ("status_overwrite", "diagnostic_record_overwrite"),
     (
         *(
-            ({"status_description": value}, {})
+            ({"description": value}, {})
             for value in t.cast(t.Iterable[t.Any],
                                 ("", None, ..., 1, False, [], {}))
         ),
@@ -1818,7 +1827,8 @@ def test_no_notification_from_broken_status(
     status_overwrite, diagnostic_record_overwrite, summary_args_kwargs
 ) -> None:
     default_status = "03BAZ"
-    default_description = "note: successful completion - custom stuff"
+    default_status_description = "note: successful completion - custom stuff"
+    default_description = "some description"
     default_code = "Neo.Foo.Bar.Baz"
     default_title = "Some cool title which defo is dope!"
     default_severity = "INFORMATION"
@@ -1826,7 +1836,8 @@ def test_no_notification_from_broken_status(
     default_position = SummaryInputPosition(line=1337, column=42, offset=420)
     raw_status_obj: t.Dict[str, t.Any] = {
         "gql_status": default_status,
-        "status_description": default_description,
+        "description": default_description,
+        "status_description": default_status_description,
         "neo4j_code": default_code,
         "title": default_title,
         "diagnostic_record": {
