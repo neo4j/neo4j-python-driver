@@ -57,6 +57,7 @@
     "Feature:Bolt:5.3": true,
     "Feature:Bolt:5.4": true,
     "Feature:Bolt:5.5": true,
+    "Feature:Bolt:5.6": true,
     "Feature:Bolt:Patch:UTC": true,
     "Feature:Impersonation": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",

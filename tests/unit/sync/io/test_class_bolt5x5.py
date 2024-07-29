@@ -615,7 +615,7 @@ DEFAULT_DIAG_REC_PAIRS = (
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))
 @mark_sync_test
-def test_enriches_diagnostic_record(
+def test_enriches_statuses(
     sent_diag_records,
     method,
     fake_socket_pair,
@@ -628,7 +628,9 @@ def test_enriches_diagnostic_record(
 
     sent_metadata = {
         "statuses": [
-            {"diagnostic_record": r} if r is not ... else {}
+            {"status_description": "the status description", "diagnostic_record": r}
+            if r is not ...
+            else { "status_description": "the status description" }
             for r in sent_diag_records
         ]
     }
@@ -654,7 +656,9 @@ def test_enriches_diagnostic_record(
     expected_diag_records = [extend_diag_record(r) for r in sent_diag_records]
     expected_metadata = {
         "statuses": [
-            {"diagnostic_record": r} if r is not ... else {}
+            {"status_description": "the status description", "description": "the status description", "diagnostic_record": r}
+            if r is not ...
+            else { "status_description": "the status description", "description": "the status description" }
             for r in expected_diag_records
         ]
     }
