@@ -685,6 +685,7 @@ class Bolt5x4(Bolt5x3):
                      Response(self, "telemetry", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
 
+
 class Bolt5x5(Bolt5x4):
 
     PROTOCOL_VERSION = Version(5, 5)
@@ -822,6 +823,7 @@ class Bolt5x5(Bolt5x4):
             wrapped_handler=handlers.get("on_success")
         )
         super().pull(n, qid, dehydration_hooks, hydration_hooks, **handlers)
+
 
 class Bolt5x6(Bolt5x5):
 
