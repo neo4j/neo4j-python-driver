@@ -102,7 +102,7 @@ class TrustCustomCAs(TrustStore):
     authority at the specified paths. This option is primarily intended for
     self-signed and custom certificates.
 
-    :param certificates (str): paths to the certificates to trust.
+    :param certificates: paths to the certificates to trust.
         Those are not the certificates you expect to see from the server but
         the CA certificates you expect to be used to sign the server's
         certificate.
@@ -118,7 +118,7 @@ class TrustCustomCAs(TrustStore):
             )
         )
     """
-    def __init__(self, *certificates):
+    def __init__(self, *certificates: str):
         self.certs = certificates
 
 

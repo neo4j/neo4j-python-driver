@@ -260,12 +260,6 @@ def static_cert_provider(*args, **kwargs):
         return ClientCertificateProviders.static(*args, **kwargs)
 
 
-@copy_signature(RotatingClientCertificateProvider)
-def rotating_cert_provider_direct(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        return RotatingClientCertificateProvider(*args, **kwargs)
-
-
 @copy_signature(ClientCertificateProviders.rotating)
 def rotating_cert_provider(*args, **kwargs):
     with pytest.warns(PreviewWarning, match="Mutual TLS"):
@@ -285,15 +279,6 @@ def test_static_client_cert_provider(client_cert_factory) -> None:
 if t.TYPE_CHECKING:
     # Tests for type checker only. No need to run the test.
 
-    def test_rotating_client_cert_provider_type_init(
-        client_cert_factory
-    ) -> None:
-        cert1: ClientCertificate = client_cert_factory()
-        provider: RotatingClientCertificateProvider = \
-            rotating_cert_provider_direct(cert1)
-        _: ClientCertificateProvider = provider
-
-
     def test_rotating_client_cert_provider_type_factory(
         client_cert_factory
     ) -> None:
@@ -303,19 +288,13 @@ if t.TYPE_CHECKING:
         _: ClientCertificateProvider = provider
 
 
-@pytest.mark.parametrize(
-    "factory", (rotating_cert_provider, rotating_cert_provider_direct)
-)
 @mark_sync_test
-def test_rotating_client_cert_provider(
-    factory: t.Callable[[ClientCertificate],
-                        RotatingClientCertificateProvider],
-    client_cert_factory
-) -> None:
+def test_rotating_client_cert_provider(client_cert_factory) -> None:
     cert1: ClientCertificate = client_cert_factory()
     cert2: ClientCertificate = client_cert_factory()
     assert cert1 is not cert2  # sanity check
-    provider: RotatingClientCertificateProvider = factory(cert1)
+    provider: RotatingClientCertificateProvider = \
+        rotating_cert_provider(cert1)
 
     assert provider.get_certificate() is cert1
     for _ in range(10):
