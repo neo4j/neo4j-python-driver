@@ -52,8 +52,6 @@ Driver API Errors
     + AuthConfigurationError
     + CertificateConfigurationError
 
-+ Neo4jWarning
-
 Connector API Errors
 ====================
 + BoltError
