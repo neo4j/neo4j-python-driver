@@ -15,8 +15,7 @@ types-pytz>=2022.1.2
 
 # needed for running tests
 coverage[toml]>=5.5
-# pin freezegun to 1.4.x until https://github.com/spulec/freezegun/pull/546 is resolved
-freezegun ~= 1.4.0
+freezegun>=1.5.1
 mock>=4.0.3
 pytest>=6.2.5
 pytest-asyncio>=0.16.0
