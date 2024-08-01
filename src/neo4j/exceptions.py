@@ -103,6 +103,48 @@ else:
     _TSession = t.Union["AsyncSession", "Session"]
 
 
+__all__ = [
+    # TODO: 6.0 - make these constants private
+    "CLASSIFICATION_CLIENT",
+    "CLASSIFICATION_TRANSIENT",
+    "CLASSIFICATION_DATABASE",
+    "ERROR_REWRITE_MAP",
+
+    "Neo4jError",
+    "ClientError",
+    "CypherSyntaxError",
+    "CypherTypeError",
+    "ConstraintError",
+    "AuthError",
+    "TokenExpired",
+    "Forbidden",
+    "DatabaseError",
+    "TransientError",
+    "DatabaseUnavailable",
+    "NotALeader",
+    "ForbiddenOnReadOnlyDatabase",
+    "DriverError",
+    "SessionError",
+    "TransactionError",
+    "TransactionNestingError",
+    "ResultError",
+    "ResultFailedError",
+    "ResultConsumedError",
+    "ResultNotSingleError",
+    "BrokenRecordError",
+    "SessionExpired",
+    "ServiceUnavailable",
+    "RoutingServiceUnavailable",
+    "WriteServiceUnavailable",
+    "ReadServiceUnavailable",
+    "IncompleteCommit",
+    "ConfigurationError",
+    "AuthConfigurationError",
+    "CertificateConfigurationError",
+    "UnsupportedServerProduct",
+]
+
+
 CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
 CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
 CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"

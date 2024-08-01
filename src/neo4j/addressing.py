@@ -38,6 +38,16 @@ if t.TYPE_CHECKING:
         def getpeername(self) -> tuple: ...
 
 
+__all__ = [
+    "Address",
+    "IPv4Address",
+    "IPv6Address",
+    "ResolvedAddress",
+    "ResolvedIPv4Address",
+    "ResolvedIPv6Address",
+]
+
+
 class _AddressMeta(type(tuple)):  # type: ignore[misc]
 
     def __init__(cls, *args, **kwargs):
@@ -311,7 +321,7 @@ class IPv4Address(Address):
 
 
 class IPv6Address(Address):
-    """An IPv6 address (family ``AF_INETl``).
+    """An IPv6 address (family ``AF_INET6``).
 
     This class should not be instantiated directly. Instead, use
     :class:`.Address` or one of its factory methods.
@@ -323,6 +333,7 @@ class IPv6Address(Address):
         return "[{}]:{}".format(*self)
 
 
+# TODO: 6.0 - make this class private
 class ResolvedAddress(Address):
 
     _unresolved_host_name: str
@@ -342,9 +353,11 @@ class ResolvedAddress(Address):
         return new
 
 
+# TODO: 6.0 - make this class private
 class ResolvedIPv4Address(IPv4Address, ResolvedAddress):
     pass
 
 
+# TODO: 6.0 - make this class private
 class ResolvedIPv6Address(IPv6Address, ResolvedAddress):
     pass
