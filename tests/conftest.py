@@ -14,8 +14,11 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 import sys
+import typing as t
 from functools import wraps
 
 import pytest
@@ -132,9 +135,13 @@ def bolt_protocol_version(server_info):
     return server_info.protocol_version
 
 
+def _parse_version(version: str) -> t.Tuple[int, ...]:
+    return tuple(map(int, version.split(".")))
+
+
 def mark_requires_min_bolt_version(version="3.5"):
     return pytest.mark.skipif(
-        env.NEO4J_VERSION < version,
+        _parse_version(env.NEO4J_VERSION) < _parse_version(version),
         reason=f"requires server version '{version}' or higher, "
                f"found '{env.NEO4J_VERSION}'"
     )
