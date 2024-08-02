@@ -139,6 +139,33 @@ class ResultSummary:
             f"'{self.__class__.__name__}' object has no attribute '{key}'"
         )
 
+    @staticmethod
+    def _notification_from_status(status: dict) -> dict:
+        notification = {}
+        for notification_key, status_key in (
+            ("title", "title"),
+            ("code", "neo4j_code"),
+            ("description", "description"),
+        ):
+            if status_key in status:
+                notification[notification_key] = status[status_key]
+
+        if "diagnostic_record" in status:
+            diagnostic_record = status["diagnostic_record"]
+            if not isinstance(diagnostic_record, dict):
+                diagnostic_record = {}
+
+            for notification_key, diag_record_key in (
+                ("severity", "_severity"),
+                ("category", "_classification"),
+                ("position", "_position"),
+            ):
+                if diag_record_key in diagnostic_record:
+                    notification[notification_key] = \
+                        diagnostic_record[diag_record_key]
+
+        return notification
+
     def _set_notifications(self):
         if "notifications" in self.metadata:
             notifications = self.metadata["notifications"]
@@ -156,53 +183,10 @@ class ResultSummary:
                 return
             notifications = []
             for status in statuses:
-                if not isinstance(status, dict):
+                if not (isinstance(status , dict) and "neo4j_code" in status):
+                    # not a notification status
                     continue
-                notification = {}
-                failed = False
-                for notification_key, status_key in (
-                    ("title", "title"),
-                    ("code", "neo4j_code"),
-                    ("description", "description"),
-                ):
-                    value = status.get(status_key)
-                    if not isinstance(value, str) or not value:
-                        failed = True
-                        break
-                    notification[notification_key] = value
-                if failed:
-                    continue
-                diagnostic_record = status.get("diagnostic_record")
-                if not isinstance(diagnostic_record, dict):
-                    continue
-                for notification_key, diag_record_key in (
-                    ("severity", "_severity"),
-                    ("category", "_classification"),
-                ):
-                    value = diagnostic_record.get(diag_record_key)
-                    if not isinstance(value, str) or not value:
-                        failed = True
-                        break
-                    notification[notification_key] = value
-                if failed:
-                    continue
-                raw_position = diagnostic_record.get("_position")
-                if not isinstance(raw_position, dict):
-                    continue
-                position = {}
-                for pos_key, raw_pos_key in (
-                    ("line", "line"),
-                    ("column", "column"),
-                    ("offset", "offset"),
-                ):
-                    value = raw_position.get(raw_pos_key)
-                    if not isinstance(value, int) or isinstance(value, bool):
-                        failed = True
-                        break
-                    position[pos_key] = value
-                if failed:
-                    continue
-                notification["position"] = position
+                notification = self._notification_from_status(status)
                 notifications.append(notification)
             self.notifications = notifications
             return
