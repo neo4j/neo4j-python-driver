@@ -135,8 +135,13 @@ def bolt_protocol_version(server_info):
     return server_info.protocol_version
 
 
-def _parse_version(version: str) -> t.Tuple[int, ...]:
-    return tuple(map(int, version.split(".")))
+def _parse_version(version: str) -> t.Tuple[float, ...]:
+    def parse_segment(seg: str) -> float:
+        if seg == "dev":
+            return float("inf")
+        return float(int(seg))
+
+    return tuple(map(parse_segment, version.split(".")))
 
 
 def mark_requires_min_bolt_version(version="3.5"):
