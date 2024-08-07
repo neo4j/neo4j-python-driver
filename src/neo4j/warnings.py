@@ -22,12 +22,18 @@ from ._debug import NotificationPrinter
 from ._work.summary import SummaryNotification
 
 
+__all__ = [
+    "Neo4jWarning",
+    "Neo4jDeprecationWarning",
+]
+
+
 class Neo4jWarning(Warning):
     """
     Warning emitted for notifications sent by the server.
 
     Which notifications trigger a warning can be controlled by a
-    configuration: :ref:`driver-warn-notification-severity-ref`
+    configuration option: :ref:`driver-warn-notification-severity-ref`
 
     **This is experimental** (see :ref:`filter-warnings-ref`).
     It might be changed or removed any time even without prior notice.

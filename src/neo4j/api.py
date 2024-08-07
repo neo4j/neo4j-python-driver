@@ -40,12 +40,51 @@ else:
     _Protocol = object
 
 
+__all__ = [
+    "READ_ACCESS",
+    "WRITE_ACCESS",
+    "DRIVER_BOLT",
+    "DRIVER_NEO4J",
+    "SECURITY_TYPE_NOT_SECURE",
+    "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE",
+    "SECURITY_TYPE_SECURE",
+    "URI_SCHEME_BOLT",
+    "URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE",
+    "URI_SCHEME_BOLT_SECURE",
+    "URI_SCHEME_NEO4J",
+    "URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE",
+    "URI_SCHEME_NEO4J_SECURE",
+    "URI_SCHEME_BOLT_ROUTING",
+    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
+    "TRUST_ALL_CERTIFICATES",
+    "SYSTEM_DATABASE",
+    "DEFAULT_DATABASE",
+    "Auth",
+    "AuthToken",
+    "basic_auth",
+    "kerberos_auth",
+    "bearer_auth",
+    "custom_auth",
+    "Bookmark",
+    "Bookmarks",
+    "ServerInfo",
+    "Version",
+    "BookmarkManager",
+    "AsyncBookmarkManager",
+    "parse_neo4j_uri",
+    "check_access_mode",
+    "parse_routing_context",
+]
+
+
 READ_ACCESS: te.Final[str] = "READ"
 WRITE_ACCESS: te.Final[str] = "WRITE"
 
+# TODO: 6.0 - make these 2 constants private
 DRIVER_BOLT: te.Final[str] = "DRIVER_BOLT"
 DRIVER_NEO4J: te.Final[str] = "DRIVER_NEO4J"
 
+# TODO: 6.0 - make these 3 constants private
 SECURITY_TYPE_NOT_SECURE: te.Final[str] = "SECURITY_TYPE_NOT_SECURE"
 SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: te.Final[str] = \
     "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
@@ -354,6 +393,9 @@ class ServerInfo:
         self._metadata.update(metadata)
 
 
+# TODO: 6.0 - this class should not be public.
+#       As far the user is concerned, protocol versions should simply be a
+#       tuple[int, int].
 class Version(tuple):
 
     def __new__(cls, *v):
@@ -480,6 +522,7 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__
 
 
+# TODO: 6.0 - make this function private
 def parse_neo4j_uri(uri):
     parsed = urlparse(uri)
 
@@ -525,6 +568,7 @@ def parse_neo4j_uri(uri):
     return driver_type, security_type, parsed
 
 
+# TODO: 6.0 - make this function private
 def check_access_mode(access_mode):
     if access_mode is None:
         return WRITE_ACCESS
@@ -535,6 +579,7 @@ def check_access_mode(access_mode):
     return access_mode
 
 
+# TODO: 6.0 - make this function private
 def parse_routing_context(query):
     """ Parse the query portion of a URI to generate a routing context dictionary.
     """

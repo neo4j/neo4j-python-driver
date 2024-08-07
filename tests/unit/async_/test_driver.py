@@ -453,9 +453,9 @@ async def test_with_custom_ducktype_sync_bookmark_manager(
 
 @mark_async_test
 async def test_with_static_client_certificate() -> None:
-    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
         cert = ClientCertificate("foo")
-    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
         async with AsyncGraphDatabase.driver(
             "bolt://localhost", client_certificate=cert
         ) as driver:
@@ -474,7 +474,7 @@ async def test_with_custom_inherited_client_certificate_provider(
             return None
 
     provider = Provider()
-    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
         async with AsyncGraphDatabase.driver(
             "bolt://localhost", client_certificate=provider
         ) as driver:
@@ -490,7 +490,7 @@ async def test_with_custom_ducktype_client_certificate_provider(
             return None
 
     provider = Provider()
-    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
         async with AsyncGraphDatabase.driver(
             "bolt://localhost", client_certificate=provider
         ) as driver:

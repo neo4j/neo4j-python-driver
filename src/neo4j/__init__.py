@@ -186,7 +186,7 @@ __all__ = [
 _log = _getLogger("neo4j")
 
 
-def __getattr__(name):
+def __getattr__(name) -> _t.Any:
     # TODO: 6.0 - remove this
     if name in (
         "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
@@ -219,7 +219,7 @@ def __getattr__(name):
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-def __dir__():
+def __dir__() -> _t.List[str]:
     return __all__
 
 
