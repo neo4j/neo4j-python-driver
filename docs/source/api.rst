@@ -688,7 +688,7 @@ Disabling severities allows the server to skip analysis for those, which can spe
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 Further, they are surfaced through :attr:`.ResultSummary.gql_status_objects`:
 For GQL-aware servers, notifications are a subset of GqlStatusObjects.
-See also :attr:`.GqlSatusObject.is_notification`.
+See also :attr:`.GqlStatusObject.is_notification`.
 
 :data:`None` will apply the server's default setting.
 
@@ -714,7 +714,7 @@ Disabling categories allows the server to skip analysis for those, which can spe
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
-See also :attr:`.GqlSatusObject.is_notification`.
+See also :attr:`.GqlStatusObject.is_notification`.
 
 :data:`None` will apply the server's default setting.
 
@@ -1188,7 +1188,7 @@ Disabling severities allows the server to skip analysis for those, which can spe
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
-See also :attr:`.GqlSatusObject.is_notification`.
+See also :attr:`.GqlStatusObject.is_notification`.
 
 :data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
 
@@ -1214,7 +1214,7 @@ Disabling categories allows the server to skip analysis for those, which can spe
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
-See also :attr:`.GqlSatusObject.is_notification`.
+See also :attr:`.GqlStatusObject.is_notification`.
 
 :data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-disabled-categories-ref`).
 

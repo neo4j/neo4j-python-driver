@@ -64,9 +64,9 @@ pyarrow = ["pyarrow >= 1.0.0"]
 
 [build-system]
 requires = [
-    "setuptools >= 66.1.0",
+    "setuptools == 68.0.0",  # dropped support for Python 3.7 in 68.1.0
     # TODO: 6.0 - can be removed once `setup.py` is simplified
-    "tomlkit ~= 0.11.6",
+    "tomlkit == 0.11.8",
 ]
 build-backend = "setuptools.build_meta"
 
