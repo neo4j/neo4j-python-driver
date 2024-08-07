@@ -260,12 +260,6 @@ def static_cert_provider(*args, **kwargs):
         return AsyncClientCertificateProviders.static(*args, **kwargs)
 
 
-@copy_signature(AsyncRotatingClientCertificateProvider)
-def rotating_cert_provider_direct(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        return AsyncRotatingClientCertificateProvider(*args, **kwargs)
-
-
 @copy_signature(AsyncClientCertificateProviders.rotating)
 def rotating_cert_provider(*args, **kwargs):
     with pytest.warns(PreviewWarning, match="Mutual TLS"):
@@ -285,15 +279,6 @@ async def test_static_client_cert_provider(client_cert_factory) -> None:
 if t.TYPE_CHECKING:
     # Tests for type checker only. No need to run the test.
 
-    async def test_rotating_client_cert_provider_type_init(
-        client_cert_factory
-    ) -> None:
-        cert1: ClientCertificate = client_cert_factory()
-        provider: AsyncRotatingClientCertificateProvider = \
-            rotating_cert_provider_direct(cert1)
-        _: AsyncClientCertificateProvider = provider
-
-
     async def test_rotating_client_cert_provider_type_factory(
         client_cert_factory
     ) -> None:
@@ -303,19 +288,13 @@ if t.TYPE_CHECKING:
         _: AsyncClientCertificateProvider = provider
 
 
-@pytest.mark.parametrize(
-    "factory", (rotating_cert_provider, rotating_cert_provider_direct)
-)
 @mark_async_test
-async def test_rotating_client_cert_provider(
-    factory: t.Callable[[ClientCertificate],
-                        AsyncRotatingClientCertificateProvider],
-    client_cert_factory
-) -> None:
+async def test_rotating_client_cert_provider(client_cert_factory) -> None:
     cert1: ClientCertificate = client_cert_factory()
     cert2: ClientCertificate = client_cert_factory()
     assert cert1 is not cert2  # sanity check
-    provider: AsyncRotatingClientCertificateProvider = factory(cert1)
+    provider: AsyncRotatingClientCertificateProvider = \
+        rotating_cert_provider(cert1)
 
     assert await provider.get_certificate() is cert1
     for _ in range(10):

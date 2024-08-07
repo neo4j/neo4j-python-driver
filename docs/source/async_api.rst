@@ -457,6 +457,14 @@ https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 .. versionadded:: 5.19
 
 .. autoclass:: neo4j.auth_management.AsyncClientCertificateProvider
+    :members:
+
+.. autoclass:: neo4j.auth_management.AsyncClientCertificateProviders
+    :members:
+
+.. autoclass:: neo4j.auth_management.AsyncRotatingClientCertificateProvider
+    :show-inheritance:
+    :members:
 
 
 

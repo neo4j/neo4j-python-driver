@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import abc
 import typing as t
 from logging import getLogger
 
@@ -110,7 +111,8 @@ class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
 
 
 class AsyncAuthManagers:
-    """A collection of :class:`.AsyncAuthManager` factories.
+    """
+    A collection of :class:`.AsyncAuthManager` factories.
 
     .. versionadded:: 5.8
 
@@ -124,7 +126,8 @@ class AsyncAuthManagers:
 
     @staticmethod
     def static(auth: _TAuth) -> AsyncAuthManager:
-        """Create a static auth manager.
+        """
+        Create a static auth manager.
 
         The manager will always return the auth info provided at its creation.
 
@@ -163,7 +166,8 @@ class AsyncAuthManagers:
     def basic(
         provider: t.Callable[[], t.Awaitable[_TAuth]]
     ) -> AsyncAuthManager:
-        """Create an auth manager handling basic auth password rotation.
+        """
+        Create an auth manager handling basic auth password rotation.
 
         This factory wraps the provider function in an auth manager
         implementation that caches the provided auth info until the server
@@ -230,7 +234,8 @@ class AsyncAuthManagers:
     def bearer(
         provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
     ) -> AsyncAuthManager:
-        """Create an auth manager for potentially expiring bearer auth tokens.
+        """
+        Create an auth manager for potentially expiring bearer auth tokens.
 
         This factory wraps the provider function in an auth manager
         implementation that caches the provided auth info until either the
@@ -310,10 +315,9 @@ class _AsyncStaticClientCertificateProvider(AsyncClientCertificateProvider):
         return cert
 
 
-@preview("Mutual TLS is a preview feature.")
 class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
     """
-    Implementation of a certificate provider that can rotate certificates.
+    Abstract base class for certificate providers that can rotate certificates.
 
     The provider will make the driver use the initial certificate for all
     connections until the certificate is updated using the
@@ -367,10 +371,26 @@ class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
         # rotated again
         ...
 
-    :param initial_cert: The certificate to use initially.
-
     .. versionadded:: 5.19
+
+    .. versionchanged:: 5.24
+
+        Turned this class into an abstract class to make the actual
+        implementation internal. This entails removing the possibility to
+        directly instantiate this class. Please use the factory method
+        :meth:`.AsyncClientCertificateProviders.rotating` instead.
     """
+
+    @abc.abstractmethod
+    async def update_certificate(self, cert: ClientCertificate) -> None:
+        """
+        Update the certificate to use for new connections.
+        """
+
+
+class _AsyncNeo4jRotatingClientCertificateProvider(
+    AsyncRotatingClientCertificateProvider
+):
     def __init__(self, initial_cert: ClientCertificate) -> None:
         self._cert: t.Optional[ClientCertificate] = initial_cert
         self._lock = AsyncCooperativeLock()
@@ -381,15 +401,13 @@ class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
             return cert
 
     async def update_certificate(self, cert: ClientCertificate) -> None:
-        """
-        Update the certificate to use for new connections.
-        """
         async with self._lock:
             self._cert = cert
 
 
 class AsyncClientCertificateProviders:
-    """A collection of :class:`.AsyncClientCertificateProvider` factories.
+    """
+    A collection of :class:`.AsyncClientCertificateProvider` factories.
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
@@ -419,4 +437,4 @@ class AsyncClientCertificateProviders:
 
         .. seealso:: :class:`.AsyncRotatingClientCertificateProvider`
         """
-        return AsyncRotatingClientCertificateProvider(initial_cert)
+        return _AsyncNeo4jRotatingClientCertificateProvider(initial_cert)

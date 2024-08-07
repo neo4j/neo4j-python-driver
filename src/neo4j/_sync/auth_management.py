@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import abc
 import typing as t
 from logging import getLogger
 
@@ -110,7 +111,8 @@ class Neo4jAuthTokenManager(AuthManager):
 
 
 class AuthManagers:
-    """A collection of :class:`.AuthManager` factories.
+    """
+    A collection of :class:`.AuthManager` factories.
 
     .. versionadded:: 5.8
 
@@ -124,7 +126,8 @@ class AuthManagers:
 
     @staticmethod
     def static(auth: _TAuth) -> AuthManager:
-        """Create a static auth manager.
+        """
+        Create a static auth manager.
 
         The manager will always return the auth info provided at its creation.
 
@@ -163,7 +166,8 @@ class AuthManagers:
     def basic(
         provider: t.Callable[[], t.Union[_TAuth]]
     ) -> AuthManager:
-        """Create an auth manager handling basic auth password rotation.
+        """
+        Create an auth manager handling basic auth password rotation.
 
         This factory wraps the provider function in an auth manager
         implementation that caches the provided auth info until the server
@@ -230,7 +234,8 @@ class AuthManagers:
     def bearer(
         provider: t.Callable[[], t.Union[ExpiringAuth]]
     ) -> AuthManager:
-        """Create an auth manager for potentially expiring bearer auth tokens.
+        """
+        Create an auth manager for potentially expiring bearer auth tokens.
 
         This factory wraps the provider function in an auth manager
         implementation that caches the provided auth info until either the
@@ -310,10 +315,9 @@ class _StaticClientCertificateProvider(ClientCertificateProvider):
         return cert
 
 
-@preview("Mutual TLS is a preview feature.")
 class RotatingClientCertificateProvider(ClientCertificateProvider):
     """
-    Implementation of a certificate provider that can rotate certificates.
+    Abstract base class for certificate providers that can rotate certificates.
 
     The provider will make the driver use the initial certificate for all
     connections until the certificate is updated using the
@@ -367,10 +371,26 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
         # rotated again
         ...
 
-    :param initial_cert: The certificate to use initially.
-
     .. versionadded:: 5.19
+
+    .. versionchanged:: 5.24
+
+        Turned this class into an abstract class to make the actual
+        implementation internal. This entails removing the possibility to
+        directly instantiate this class. Please use the factory method
+        :meth:`.ClientCertificateProviders.rotating` instead.
     """
+
+    @abc.abstractmethod
+    def update_certificate(self, cert: ClientCertificate) -> None:
+        """
+        Update the certificate to use for new connections.
+        """
+
+
+class _Neo4jRotatingClientCertificateProvider(
+    RotatingClientCertificateProvider
+):
     def __init__(self, initial_cert: ClientCertificate) -> None:
         self._cert: t.Optional[ClientCertificate] = initial_cert
         self._lock = CooperativeLock()
@@ -381,15 +401,13 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
             return cert
 
     def update_certificate(self, cert: ClientCertificate) -> None:
-        """
-        Update the certificate to use for new connections.
-        """
         with self._lock:
             self._cert = cert
 
 
 class ClientCertificateProviders:
-    """A collection of :class:`.ClientCertificateProvider` factories.
+    """
+    A collection of :class:`.ClientCertificateProvider` factories.
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
@@ -419,4 +437,4 @@ class ClientCertificateProviders:
 
         .. seealso:: :class:`.RotatingClientCertificateProvider`
         """
-        return RotatingClientCertificateProvider(initial_cert)
+        return _Neo4jRotatingClientCertificateProvider(initial_cert)

@@ -37,7 +37,8 @@ else:
 
 @dataclass
 class ExpiringAuth:
-    """Represents potentially expiring authentication information.
+    """
+    Represents potentially expiring authentication information.
 
     This class is used with :meth:`.AuthManagers.bearer` and
     :meth:`.AsyncAuthManagers.bearer`.
@@ -68,7 +69,8 @@ class ExpiringAuth:
     expires_at: t.Optional[float] = None
 
     def expires_in(self, seconds: float) -> ExpiringAuth:
-        """Return a (flat) copy of this object with a new expiration time.
+        """
+        Return a (flat) copy of this object with a new expiration time.
 
         This is a convenience method for creating an :class:`.ExpiringAuth`
         for a relative expiration time ("expires in" instead of "expires at").
@@ -96,7 +98,8 @@ def expiring_auth_has_expired(auth: ExpiringAuth) -> bool:
 
 
 class AuthManager(metaclass=abc.ABCMeta):
-    """Baseclass for authentication information managers.
+    """
+    Abstract base class for authentication information managers.
 
     The driver provides some default implementations of this class in
     :class:`.AuthManagers` for convenience.
@@ -132,7 +135,8 @@ class AuthManager(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_auth(self) -> _TAuth:
-        """Return the current authentication information.
+        """
+        Return the current authentication information.
 
         The driver will call this method very frequently. It is recommended
         to implement some form of caching to avoid unnecessary overhead.
@@ -151,7 +155,8 @@ class AuthManager(metaclass=abc.ABCMeta):
     def handle_security_exception(
         self, auth: _TAuth, error: Neo4jError
     ) -> bool:
-        """Handle the server indicating authentication failure.
+        """
+        Handle the server indicating authentication failure.
 
         The driver will call this method when the server returns any
         `Neo.ClientError.Security.*` error. The error will then be processed
@@ -174,7 +179,8 @@ class AuthManager(metaclass=abc.ABCMeta):
 
 
 class AsyncAuthManager(_Protocol, metaclass=abc.ABCMeta):
-    """Async version of :class:`.AuthManager`.
+    """
+    Async version of :class:`.AuthManager`.
 
     .. seealso:: :class:`.AuthManager`
 
@@ -234,10 +240,14 @@ class ClientCertificate:
 
 class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
     """
-    Provides a client certificate to the driver for mutual TLS.
+    Interface for providing a client certificate to the driver for mutual TLS.
+
+    This is an abstract base class (:class:`abc.ABC`) as well as a protocol
+    (:class:`typing.Protocol`). Meaning you can either inherit from it or just
+    implement all required method on a class to satisfy the type constraints.
 
     The package provides some default implementations of this class in
-    :class:`.AsyncClientCertificateProviders` for convenience.
+    :class:`.ClientCertificateProviders` for convenience.
 
     The driver will call :meth:`.get_certificate` to check if the client wants
     the driver to use as new certificate for mutual TLS.
@@ -286,12 +296,17 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
     """
     Async version of :class:`.ClientCertificateProvider`.
 
+    The package provides some default implementations of this class in
+    :class:`.AsyncClientCertificateProviders` for convenience.
+
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
-    .. seealso:: :class:`.ClientCertificateProvider`
+    .. seealso::
+        :class:`.ClientCertificateProvider`,
+        :class:`.AsyncClientCertificateProviders`
 
     .. versionadded:: 5.19
     """
