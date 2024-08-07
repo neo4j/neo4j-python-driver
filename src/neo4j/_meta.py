@@ -116,6 +116,7 @@ def deprecated_property(message: str):
     return t.cast(property, decorator)
 
 
+# TODO: 6.0 - remove this class, replace usage with PreviewWarning
 class ExperimentalWarning(Warning):
     """ Base class for warnings about experimental features.
 
@@ -145,6 +146,8 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
     return _make_warning_decorator(message, experimental_warn)
 
 
+# TODO: 6.0 - consider moving this to the `warnings` module
+#             and not to re-export it from the top-level package `neo4j`
 class PreviewWarning(Warning):
     """A driver feature in preview has been used.
 
