@@ -156,6 +156,9 @@ class NotificationDisabledCategory(str, Enum):
 
     .. versionchanged:: 5.14
         Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
+
+    .. versionchanged:: 5.24
+        Added category :attr:`.SCHEMA`.
     """
 
     HINT = "HINT"
@@ -167,6 +170,8 @@ class NotificationDisabledCategory(str, Enum):
     SECURITY = "SECURITY"
     #: Requires server version 5.13 or newer.
     TOPOLOGY = "TOPOLOGY"
+    #: Requires server version 5.17 or newer.
+    SCHEMA = "SCHEMA"
 
 
 class NotificationDisabledClassification(str, Enum):
@@ -188,6 +193,9 @@ class NotificationDisabledClassification(str, Enum):
         :ref:`session-notifications-disabled-classifications-ref`
 
     .. versionadded:: 5.22
+
+    .. versionchanged:: 5.24
+        Added classification :attr:`.SCHEMA`.
     """
 
     HINT = "HINT"
@@ -199,6 +207,8 @@ class NotificationDisabledClassification(str, Enum):
     SECURITY = "SECURITY"
     #: Requires server version 5.13 or newer.
     TOPOLOGY = "TOPOLOGY"
+    #: Requires server version 5.17 or newer.
+    SCHEMA = "SCHEMA"
 
 
 if t.TYPE_CHECKING:
@@ -214,6 +224,7 @@ if t.TYPE_CHECKING:
             "GENERIC",
             "SECURITY",
             "TOPOLOGY",
+            "SCHEMA",
         ],
     ]
     __all__.append("T_NotificationDisabledCategory")
@@ -239,6 +250,9 @@ class NotificationCategory(str, Enum):
 
     .. versionchanged:: 5.14
         Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
+
+    .. versionchanged:: 5.24
+        Added category :attr:`.SCHEMA`.
     """
 
     HINT = "HINT"
@@ -249,6 +263,7 @@ class NotificationCategory(str, Enum):
     GENERIC = "GENERIC"
     SECURITY = "SECURITY"
     TOPOLOGY = "TOPOLOGY"
+    SCHEMA = "SCHEMA"
     #: Used when the server provides a Category which the driver is unaware of.
     #: This can happen when connecting to a server newer than the driver or
     #: before notification categories were introduced.
@@ -270,6 +285,9 @@ class NotificationClassification(str, Enum):
     .. seealso:: :attr:`.GqlStatusObject.classification`
 
     .. versionadded:: 5.22
+
+    .. versionchanged:: 5.24
+        Added classification :attr:`.SCHEMA`.
     """
 
     HINT = "HINT"
@@ -280,6 +298,7 @@ class NotificationClassification(str, Enum):
     GENERIC = "GENERIC"
     SECURITY = "SECURITY"
     TOPOLOGY = "TOPOLOGY"
+    SCHEMA = "SCHEMA"
     #: Used when the server provides a Category which the driver is unaware of.
     #: This can happen when connecting to a server newer than the driver or
     #: before notification categories were introduced.

@@ -2164,6 +2164,7 @@ def _make_summary_notification(
                 ("GENERIC", NotificationCategory.GENERIC),
                 ("SECURITY", NotificationCategory.SECURITY),
                 ("TOPOLOGY", NotificationCategory.TOPOLOGY),
+                ("SCHEMA", NotificationCategory.SCHEMA),
             )
         ),
         *(

@@ -456,6 +456,7 @@ _CATEGORY_LOOKUP: t.Dict[t.Any, NotificationCategory] = {
     "GENERIC": NotificationCategory.GENERIC,
     "SECURITY": NotificationCategory.SECURITY,
     "TOPOLOGY": NotificationCategory.TOPOLOGY,
+    "SCHEMA": NotificationCategory.SCHEMA,
 }
 
 _CLASSIFICATION_LOOKUP: t.Dict[t.Any, NotificationClassification] = {
