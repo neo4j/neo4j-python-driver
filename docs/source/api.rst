@@ -246,18 +246,18 @@ Closing a driver will immediately shut down all connections in the pool.
                 assert isinstance(count, int)
                 return count
 
-        :param query_:
+        :param query:
             Cypher query to execute.
             Use a :class:`.Query` object to pass a query with additional
             transaction configuration.
-        :type query_: typing.LiteralString | Query
-        :param parameters_: parameters to use in the query
-        :type parameters_: typing.Dict[str, typing.Any] | None
-        :param routing_:
+        :type query: typing.LiteralString | Query
+        :param parameters\_: parameters to use in the query
+        :type parameters\_: typing.Dict[str, typing.Any] | None
+        :param routing\_:
             Whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
-        :type routing_: RoutingControl
-        :param database_:
+        :type routing\_: RoutingControl
+        :param database\_:
             Database to execute the query against.
 
             None (default) uses the database configured on the server side.
@@ -268,8 +268,8 @@ Closing a driver will immediately shut down all connections in the pool.
                 as it will not have to resolve the default database first.
 
             See also the Session config :ref:`database-ref`.
-        :type database_: str | None
-        :param impersonated_user_:
+        :type database\_: str | None
+        :param impersonated_user\_:
             Name of the user to impersonate.
 
             This means that all query will be executed in the security context
@@ -278,15 +278,15 @@ Closing a driver will immediately shut down all connections in the pool.
             permissions.
 
             See also the Session config :ref:`impersonated-user-ref`.
-        :type impersonated_user_: str | None
-        :param auth_:
+        :type impersonated_user\_: str | None
+        :param auth\_:
             Authentication information to use for this query.
 
             By default, the driver configuration is used.
 
             See also the Session config :ref:`session-auth-ref`.
-        :type auth_: typing.Tuple[typing.Any, typing.Any] | Auth | None
-        :param result_transformer_:
+        :type auth\_: typing.Tuple[typing.Any, typing.Any] | Auth | None
+        :param result_transformer\_:
             A function that gets passed the :class:`neo4j.Result` object
             resulting from the query and converts it to a different type. The
             result of the transformer function is returned by this method.
@@ -346,9 +346,9 @@ Closing a driver will immediately shut down all connections in the pool.
                         result_transformer_=transformer
                     )
 
-        :type result_transformer_:
+        :type result_transformer\_:
             typing.Callable[[Result], T]
-        :param bookmark_manager_:
+        :param bookmark_manager\_:
             Specify a bookmark manager to use.
 
             If present, the bookmark manager is used to keep the query causally
@@ -357,7 +357,7 @@ Closing a driver will immediately shut down all connections in the pool.
             Defaults to the driver's :attr:`.execute_query_bookmark_manager`.
 
             Pass :data:`None` to disable causal consistency.
-        :type bookmark_manager_: BookmarkManager | None
+        :type bookmark_manager\_: BookmarkManager | None
         :param kwargs: additional keyword parameters. None of these can end
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
