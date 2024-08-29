@@ -3,6 +3,10 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
+- No breaking or major changes.
+
+
+## Version 5.24
 - Made `neo4j.auth_management.RotatingClientCertificateProvider` and
   `...AsyncRotatingClientCertificateProvider` (in preview)
   abstract classes, meaning they can no longer be instantiated directly.  
