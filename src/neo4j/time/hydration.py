@@ -34,22 +34,22 @@ from .._meta import deprecation_warn
 
 
 __all__ = [
+    "dehydrate_date",
+    "dehydrate_datetime",
+    "dehydrate_duration",
+    "dehydrate_time",
+    "dehydrate_timedelta",
     "get_date_unix_epoch",
     "get_date_unix_epoch_ordinal",
     "get_datetime_unix_epoch_utc",
     "hydrate_date",
-    "dehydrate_date",
-    "hydrate_time",
-    "dehydrate_time",
     "hydrate_datetime",
-    "dehydrate_datetime",
     "hydrate_duration",
-    "dehydrate_duration",
-    "dehydrate_timedelta",
+    "hydrate_time",
 ]
 
 deprecation_warn(
     "The module `neo4j.time.hydration` was made internal and will "
     "no longer be available for import in future versions.",
-    stack_level=2
+    stack_level=2,
 )

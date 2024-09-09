@@ -25,7 +25,8 @@ if t.TYPE_CHECKING:
 
 
 class EagerResult(t.NamedTuple):
-    """In-memory result of a query.
+    """
+    In-memory result of a query.
 
     It's a named tuple with 3 elements:
      * records - the list of records returned by the query
@@ -46,9 +47,10 @@ class EagerResult(t.NamedTuple):
 
     .. versionchanged:: 5.8 Stabilized from experimental.
     """
+
     #: Alias for field 0 (``eager_result[0]``)
-    records: t.List[Record]
+    records: list[Record]
     #: Alias for field 1 (``eager_result[1]``)
     summary: ResultSummary
     #: Alias for field 2 (``eager_result[2]``)
-    keys: t.List[str]
+    keys: list[str]

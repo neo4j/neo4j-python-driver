@@ -21,12 +21,12 @@ from neo4j._async.io._pool import AsyncIOPool
 
 
 __all__ = [
-    "fake_pool",
+    "async_fake_pool",
 ]
 
 
 @pytest.fixture
-def fake_pool(async_fake_connection_generator, mocker):
+def async_fake_pool(async_fake_connection_generator, mocker):
     pool = mocker.AsyncMock(spec=AsyncIOPool)
     assert not hasattr(pool, "acquired_connection_mocks")
     pool.buffered_connection_mocks = []

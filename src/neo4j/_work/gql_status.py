@@ -20,10 +20,13 @@ class GqlStatusObject:
 
     **This is a preview**.
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.22
+
     """
 
 
@@ -35,8 +38,11 @@ class DiagnosticRecord:
 
     **This is a preview**.
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.22
+
     """

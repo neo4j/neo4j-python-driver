@@ -32,8 +32,8 @@ from .summary import (
 
 __all__ = [
     "EagerResult",
-    "NotificationClassification",
     "GqlStatusObject",
+    "NotificationClassification",
     "Query",
     "ResultSummary",
     "SummaryCounters",

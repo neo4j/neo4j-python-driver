@@ -26,8 +26,8 @@ from ._meta import deprecation_warn
 
 
 __all__ = [
-    "Record",
     "DataTransformer",
+    "Record",
     "RecordExporter",
     "RecordTableRowExporter",
 ]
@@ -36,5 +36,5 @@ deprecation_warn(
     "The module `neo4j.data` was made internal and will "
     "no longer be available for import in future versions. "
     "`neo4j.data.Record` should be imported directly from `neo4j`.",
-    stack_level=2
+    stack_level=2,
 )

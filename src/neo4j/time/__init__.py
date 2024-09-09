@@ -15,10 +15,11 @@
 
 
 """
+Fundamental temporal types for interchange with the DBMS.
+
 This module contains the fundamental types used for temporal accounting as well
 as a number of utility functions.
 """
-
 
 from __future__ import annotations
 
@@ -45,8 +46,6 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
 from ._arithmetic import (
-    nano_add,
-    nano_div,
     round_half_to_even,
     symmetric_divmod,
 )
@@ -58,24 +57,24 @@ from ._metaclasses import (
 
 
 __all__ = [
-    "MIN_INT64",
     "MAX_INT64",
-    "MIN_YEAR",
     "MAX_YEAR",
-    "Duration",
+    "MIN_INT64",
+    "MIN_YEAR",
     "Date",
-    "ZeroDate",
-    "Time",
-    "Midnight",
-    "Midday",
     "DateTime",
+    "Duration",
+    "Midday",
+    "Midnight",
     "Never",
+    "Time",
     "UnixEpoch",
+    "ZeroDate",
 ]
 
 
-MIN_INT64 = -(2 ** 63)
-MAX_INT64 = (2 ** 63) - 1
+MIN_INT64 = -(2**63)
+MAX_INT64 = (2**63) - 1
 
 #: The smallest year number allowed in a :class:`.Date` or :class:`.DateTime`
 #: object to be compatible with :class:`datetime.date` and
@@ -112,18 +111,22 @@ def _is_leap_year(year):
     return year % 400 == 0
 
 
-IS_LEAP_YEAR = {year: _is_leap_year(year) for year in range(MIN_YEAR, MAX_YEAR + 1)}
+IS_LEAP_YEAR = {
+    year: _is_leap_year(year) for year in range(MIN_YEAR, MAX_YEAR + 1)
+}
 
 
 def _days_in_year(year):
     return 366 if IS_LEAP_YEAR[year] else 365
 
 
-DAYS_IN_YEAR = {year: _days_in_year(year) for year in range(MIN_YEAR, MAX_YEAR + 1)}
+DAYS_IN_YEAR = {
+    year: _days_in_year(year) for year in range(MIN_YEAR, MAX_YEAR + 1)
+}
 
 
 def _days_in_month(year, month):
-    if month in (9, 4, 6, 11):
+    if month in {9, 4, 6, 11}:
         return 30
     elif month != 2:
         return 31
@@ -131,18 +134,22 @@ def _days_in_month(year, month):
         return 29 if IS_LEAP_YEAR[year] else 28
 
 
-DAYS_IN_MONTH = {(year, month): _days_in_month(year, month)
-                 for year in range(MIN_YEAR, MAX_YEAR + 1) for month in range(1, 13)}
+DAYS_IN_MONTH = {
+    (year, month): _days_in_month(year, month)
+    for year in range(MIN_YEAR, MAX_YEAR + 1)
+    for month in range(1, 13)
+}
 
 
 def _normalize_day(year, month, day):
-    """ Coerce the day of the month to an internal value that may or
-    may not match the "public" value.
+    """
+    Coerce the day of the month to an internal value.
 
-    With the exception of the last three days of every month, all
-    days are stored as-is. The last three days are instead stored
-    as -1 (the last), -2 (the second to last) and -3 (the third to
-    last).
+    That value may or may not match the "public" value.
+
+    Except for the last three days of every month, all days are stored as-is.
+    The last three days are instead stored as -1 (the last), -2 (the second to
+    last) and -3 (the third to last).
 
     Therefore, for a 28-day month, the last week is as follows:
 
@@ -173,31 +180,35 @@ def _normalize_day(year, month, day):
     :returns:
     """
     if year < MIN_YEAR or year > MAX_YEAR:
-        raise ValueError("Year out of range (%d..%d)" % (MIN_YEAR, MAX_YEAR))
+        raise ValueError(f"Year out of range ({MIN_YEAR}..{MAX_YEAR})")
     if month < 1 or month > 12:
         raise ValueError("Month out of range (1..12)")
-    days_in_month = DAYS_IN_MONTH[(year, month)]
-    if day in (days_in_month, -1):
+    days_in_month = DAYS_IN_MONTH[year, month]
+    if day in {days_in_month, -1}:
         return year, month, -1
-    if day in (days_in_month - 1, -2):
+    if day in {days_in_month - 1, -2}:
         return year, month, -2
-    if day in (days_in_month - 2, -3):
+    if day in {days_in_month - 2, -3}:
         return year, month, -3
     if 1 <= day <= days_in_month - 3:
         return year, month, int(day)
     # TODO improve this error message
-    raise ValueError("Day %d out of range (1..%d, -1, -2 ,-3)" % (day, days_in_month))
+    raise ValueError(
+        f"Day {day} out of range (1..{days_in_month}, -1, -2 ,-3)"
+    )
 
 
 class ClockTime(tuple):
-    """ A count of `seconds` and `nanoseconds`. This class can be used to
-    mark a particular point in time, relative to an externally-specified
-    epoch.
+    """
+    A count of `seconds` and `nanoseconds`.
+
+    This class can be used to mark a particular point in time, relative to an
+    externally-specified epoch.
 
     The `seconds` and `nanoseconds` values provided to the constructor can
     can have any sign but will be normalized internally into a positive or
     negative `seconds` value along with a positive `nanoseconds` value
-    between `0` and `999,999,999`. Therefore ``ClockTime(-1, -1)`` is
+    between `0` and `999,999,999`. Therefore, ``ClockTime(-1, -1)`` is
     normalized to ``ClockTime(-2, 999999999)``.
 
     Note that the structure of a :class:`.ClockTime` object is similar to
@@ -214,27 +225,41 @@ class ClockTime(tuple):
         if isinstance(other, (int, float)):
             other = ClockTime(other)
         if isinstance(other, ClockTime):
-            return ClockTime(self.seconds + other.seconds, self.nanoseconds + other.nanoseconds)
+            return ClockTime(
+                self.seconds + other.seconds,
+                self.nanoseconds + other.nanoseconds,
+            )
         if isinstance(other, Duration):
             if other.months or other.days:
                 raise ValueError("Cannot add Duration with months or days")
-            return ClockTime(self.seconds + other.seconds, self.nanoseconds +
-                             int(other.nanoseconds))
+            return ClockTime(
+                self.seconds + other.seconds,
+                self.nanoseconds + int(other.nanoseconds),
+            )
         return NotImplemented
 
     def __sub__(self, other):
         if isinstance(other, (int, float)):
             other = ClockTime(other)
         if isinstance(other, ClockTime):
-            return ClockTime(self.seconds - other.seconds, self.nanoseconds - other.nanoseconds)
+            return ClockTime(
+                self.seconds - other.seconds,
+                self.nanoseconds - other.nanoseconds,
+            )
         if isinstance(other, Duration):
             if other.months or other.days:
-                raise ValueError("Cannot subtract Duration with months or days")
-            return ClockTime(self.seconds - other.seconds, self.nanoseconds - int(other.nanoseconds))
+                raise ValueError(
+                    "Cannot subtract Duration with months or days"
+                )
+            return ClockTime(
+                self.seconds - other.seconds,
+                self.nanoseconds - int(other.nanoseconds),
+            )
         return NotImplemented
 
     def __repr__(self):
-        return "ClockTime(seconds=%r, nanoseconds=%r)" % self
+        s, ns = self
+        return f"ClockTime(seconds={s!r}, nanoseconds={ns!r})"
 
     @property
     def seconds(self):
@@ -246,7 +271,10 @@ class ClockTime(tuple):
 
 
 class Clock:
-    """ Accessor for time values. This class is fulfilled by implementations
+    """
+    Accessor for time values.
+
+    This class is fulfilled by implementations
     that subclass :class:`.Clock`. These implementations are contained within
     the ``neo4j.time.clock_implementations`` module, and are not intended to be
     accessed directly.
@@ -255,9 +283,9 @@ class Clock:
     precision clock implementation available.
 
         >>> clock = Clock()
-        >>> type(clock)                                         # doctest: +SKIP
+        >>> type(clock)                                        # doctest: +SKIP
         neo4j.time.clock_implementations.LibCClock
-        >>> clock.local_time()                                  # doctest: +SKIP
+        >>> clock.local_time()                                 # doctest: +SKIP
         ClockTime(seconds=1525265942, nanoseconds=506844026)
 
     """
@@ -267,17 +295,27 @@ class Clock:
     def __new__(cls):
         if cls.__implementations is None:
             # Find an available clock with the best precision
-            import neo4j.time._clock_implementations
-            cls.__implementations = sorted((clock for clock in Clock.__subclasses__() if clock.available()),
-                                           key=lambda clock: clock.precision(), reverse=True)
+            import neo4j.time._clock_implementations  # noqa: F401 needed to make subclasses available
+
+            cls.__implementations = sorted(
+                (
+                    clock
+                    for clock in Clock.__subclasses__()
+                    if clock.available()
+                ),
+                key=lambda clock: clock.precision(),
+                reverse=True,
+            )
         if not cls.__implementations:
             raise RuntimeError("No clock implementations available")
-        instance = object.__new__(cls.__implementations[0])
-        return instance
+        return object.__new__(cls.__implementations[0])
 
     @classmethod
     def precision(cls):
-        """ The precision of this clock implementation, represented as a
+        """
+        Return precision (decimal places) of this clock implementation.
+
+        The precision of this clock implementation, represented as a
         number of decimal places. Therefore, for a nanosecond precision
         clock, this function returns `9`.
         """
@@ -285,15 +323,22 @@ class Clock:
 
     @classmethod
     def available(cls):
-        """ A boolean flag to indicate whether or not this clock
-        implementation is available on this platform.
+        """
+        Indicate whether this clock implementation is available.
+
+        A boolean flag to indicate whether this clock implementation is
+        available on this platform.
         """
         raise NotImplementedError("No clock implementation selected")
 
     @classmethod
     def local_offset(cls):
-        """The offset from UTC for local time read from this clock.
-        This may raise OverflowError if not supported, because of platform depending C libraries.
+        """
+        Get the UTC offset of the local time.
+
+        The offset from UTC for local time read from this clock.
+        This may raise OverflowError if not supported, because of platform
+        dependent C libraries.
 
         :returns:
         :rtype:
@@ -306,8 +351,12 @@ class Clock:
         return ClockTime(-int(mktime(gmtime(172800))) + 172800)
 
     def local_time(self):
-        """ Read and return the current local time from this clock, measured relative to the Unix Epoch.
-        This may raise OverflowError if not supported, because of platform depending C libraries.
+        """
+        Get the current local time relative to the Unix Epoch.
+
+        Read and return the current local time from this clock, measured
+        relative to the Unix Epoch. This may raise OverflowError if not
+        supported, because of platform dependent C libraries.
 
         :returns:
         :rtype:
@@ -317,8 +366,10 @@ class Clock:
         return self.utc_time() + self.local_offset()
 
     def utc_time(self):
-        """ Read and return the current UTC time from this clock, measured
-        relative to the Unix Epoch.
+        """
+        Read and return the current UTC time from this clock.
+
+        Time is measured relative to the Unix Epoch.
         """
         raise NotImplementedError("No clock implementation selected")
 
@@ -331,9 +382,11 @@ else:
     duration_base_class = object
 
 
-class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
-               duration_base_class):
-    """A difference between two points in time.
+class Duration(  # type: ignore[misc]
+    t.Tuple[int, int, int, int], duration_base_class
+):
+    r"""
+    A difference between two points in time.
 
     A :class:`.Duration` represents the difference between two points in time.
     Duration objects store a composite value of `months`, `days`, `seconds`,
@@ -342,22 +395,23 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
     nanoseconds are applied separately in calculations (element-wise).
 
     A :class:`.Duration` stores four primary instance attributes internally:
-    `months`, `days`, `seconds` and `nanoseconds`. These are maintained as
-    individual values and are immutable. Each of these four attributes can carry
-    its own sign, with the exception of `nanoseconds`, which always has the same
-    sign as `seconds`. The constructor will establish this state, should the
-    duration be initialized with conflicting `seconds` and `nanoseconds` signs.
-    This structure allows the modelling of durations such as
-    `3 months minus 2 days`.
+    ``months``, ``days``, ``seconds`` and ``nanoseconds``. These are maintained
+    as individual values and are immutable. Each of these four attributes can
+    carry its own sign, except for ``nanoseconds``, which always has the same
+    sign as ``seconds``. The constructor will establish this state, should the
+    duration be initialized with conflicting ``seconds`` and ``nanoseconds``
+    signs. This structure allows the modelling of durations such as
+    ``3 months minus 2 days``.
 
-    To determine if a :class:`Duration` `d` is overflowing the accepted values
-    of the database, first, all `nanoseconds` outside the range -999_999_999 and
-    999_999_999 are transferred into the seconds field. Then, `months`, `days`,
-    and `seconds` are summed up like so:
-    `months * 2629746 + days * 86400 + d.seconds + d.nanoseconds // 1000000000`.
+    To determine if a :class:`Duration` ``d`` is overflowing the accepted
+    values of the database, first, all ``nanoseconds`` outside the range
+    -999_999_999 and 999_999_999 are transferred into the seconds field. Then,
+    ``months``, ``days``, and ``seconds`` are summed up like so:
+    ``months * 2629746 + days * 86400 + d.seconds
+    + d.nanoseconds // 1000000000``.
     (Like the integer division in Python, this one is to be understood as
     rounding down rather than towards 0.)
-    This value must be between -(2\\ :sup:`63`) and (2\\ :sup:`63` - 1)
+    This value must be between -(2\ :sup:`63`) and (2\ :sup:`63` - 1)
     inclusive.
 
     :param years: will be added times 12 to `months`
@@ -393,26 +447,32 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         seconds: float = 0,
         milliseconds: float = 0,
         microseconds: float = 0,
-        nanoseconds: float = 0
+        nanoseconds: float = 0,
     ) -> Duration:
         mo = int(12 * years + months)
         if mo < MIN_INT64 or mo > MAX_INT64:
             raise ValueError("Months value out of range")
         d = int(7 * weeks + days)
-        ns = (int(3600000000000 * hours) +
-              int(60000000000 * minutes) +
-              int(1000000000 * seconds) +
-              int(1000000 * milliseconds) +
-              int(1000 * microseconds) +
-              int(nanoseconds))
+        ns = (
+            int(3600000000000 * hours)
+            + int(60000000000 * minutes)
+            + int(1000000000 * seconds)
+            + int(1000000 * milliseconds)
+            + int(1000 * microseconds)
+            + int(nanoseconds)
+        )
         s, ns = symmetric_divmod(ns, NANO_SECONDS)
-        avg_total_seconds = (mo * AVERAGE_SECONDS_IN_MONTH
-                             + d * AVERAGE_SECONDS_IN_DAY
-                             + s
-                             - (1 if ns < 0 else 0))
+        avg_total_seconds = (
+            mo * AVERAGE_SECONDS_IN_MONTH
+            + d * AVERAGE_SECONDS_IN_DAY
+            + s
+            - (1 if ns < 0 else 0)
+        )
         if not MIN_INT64 <= avg_total_seconds <= MAX_INT64:
-            raise ValueError("Duration value out of range: %r",
-                             tuple.__repr__((mo, d, s, ns)))
+            raise ValueError(
+                "Duration value out of range: %r",
+                tuple.__repr__((mo, d, s, ns)),
+            )
         return tuple.__new__(cls, (mo, d, s, ns))
 
     def __bool__(self) -> bool:
@@ -422,7 +482,7 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
     __nonzero__ = __bool__
 
     def __add__(  # type: ignore[override]
-        self, other: t.Union[Duration, timedelta]
+        self, other: Duration | timedelta
     ) -> Duration:
         """Add a :class:`.Duration` or :class:`datetime.timedelta`."""
         if isinstance(other, Duration):
@@ -430,36 +490,38 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
                 months=self[0] + int(other.months),
                 days=self[1] + int(other.days),
                 seconds=self[2] + int(other.seconds),
-                nanoseconds=self[3] + int(other.nanoseconds)
+                nanoseconds=self[3] + int(other.nanoseconds),
             )
         if isinstance(other, timedelta):
             return Duration(
-                months=self[0], days=self[1] + other.days,
+                months=self[0],
+                days=self[1] + other.days,
                 seconds=self[2] + other.seconds,
-                nanoseconds=self[3] + other.microseconds * 1000
+                nanoseconds=self[3] + other.microseconds * 1000,
             )
         return NotImplemented
 
-    def __sub__(self, other: t.Union[Duration, timedelta]) -> Duration:
+    def __sub__(self, other: Duration | timedelta) -> Duration:
         """Subtract a :class:`.Duration` or :class:`datetime.timedelta`."""
         if isinstance(other, Duration):
             return Duration(
                 months=self[0] - int(other.months),
                 days=self[1] - int(other.days),
                 seconds=self[2] - int(other.seconds),
-                nanoseconds=self[3] - int(other.nanoseconds)
+                nanoseconds=self[3] - int(other.nanoseconds),
             )
         if isinstance(other, timedelta):
             return Duration(
                 months=self[0],
                 days=self[1] - other.days,
                 seconds=self[2] - other.seconds,
-                nanoseconds=self[3] - other.microseconds * 1000
+                nanoseconds=self[3] - other.microseconds * 1000,
             )
         return NotImplemented
 
     def __mul__(self, other: float) -> Duration:  # type: ignore[override]
-        """Multiply by an :class:`int` or :class:`float`.
+        """
+        Multiply by an :class:`int` or :class:`float`.
 
         The operation is performed element-wise on
         ``(months, days, nanaoseconds)`` where
@@ -475,14 +537,14 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
                 months=round_half_to_even(self[0] * other),
                 days=round_half_to_even(self[1] * other),
                 nanoseconds=round_half_to_even(
-                    self[2] * NANO_SECONDS * other
-                    + self[3] * other
-                )
+                    self[2] * NANO_SECONDS * other + self[3] * other
+                ),
             )
         return NotImplemented
 
     def __floordiv__(self, other: int) -> Duration:  # type: ignore[override]
-        """Integer division by an :class:`int`.
+        """
+        Integer division by an :class:`int`.
 
         The operation is performed element-wise on
         ``(months, days, nanaoseconds)`` where
@@ -495,13 +557,15 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         """
         if isinstance(other, int):
             return Duration(
-                months=self[0] // other, days=self[1] // other,
-                nanoseconds=(self[2] * NANO_SECONDS + self[3]) // other
+                months=self[0] // other,
+                days=self[1] // other,
+                nanoseconds=(self[2] * NANO_SECONDS + self[3]) // other,
             )
         return NotImplemented
 
     def __mod__(self, other: int) -> Duration:  # type: ignore[override]
-        """Modulo operation by an :class:`int`.
+        """
+        Modulo operation by an :class:`int`.
 
         The operation is performed element-wise on
         ``(months, days, nanaoseconds)`` where
@@ -512,15 +576,17 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         """
         if isinstance(other, int):
             return Duration(
-                months=self[0] % other, days=self[1] % other,
-                nanoseconds=(self[2] * NANO_SECONDS + self[3]) % other
+                months=self[0] % other,
+                days=self[1] % other,
+                nanoseconds=(self[2] * NANO_SECONDS + self[3]) % other,
             )
         return NotImplemented
 
     def __divmod__(  # type: ignore[override]
         self, other: int
-    ) -> t.Tuple[Duration, Duration]:
-        """Division and modulo operation by an :class:`int`.
+    ) -> tuple[Duration, Duration]:
+        """
+        Division and modulo operation by an :class:`int`.
 
         See :meth:`__floordiv__` and :meth:`__mod__`.
         """
@@ -529,7 +595,8 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         return NotImplemented
 
     def __truediv__(self, other: float) -> Duration:  # type: ignore[override]
-        """Division by an :class:`int` or :class:`float`.
+        """
+        Division by an :class:`int` or :class:`float`.
 
         The operation is performed element-wise on
         ``(months, days, nanaoseconds)`` where
@@ -545,38 +612,42 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
                 months=round_half_to_even(self[0] / other),
                 days=round_half_to_even(self[1] / other),
                 nanoseconds=round_half_to_even(
-                    self[2] * NANO_SECONDS / other
-                    + self[3] / other
-                )
+                    self[2] * NANO_SECONDS / other + self[3] / other
+                ),
             )
         return NotImplemented
 
     def __pos__(self) -> Duration:
-        """"""
         return self
 
     def __neg__(self) -> Duration:
-        """"""
-        return Duration(months=-self[0], days=-self[1], seconds=-self[2],
-                        nanoseconds=-self[3])
+        return Duration(
+            months=-self[0],
+            days=-self[1],
+            seconds=-self[2],
+            nanoseconds=-self[3],
+        )
 
     def __abs__(self) -> Duration:
-        """"""
-        return Duration(months=abs(self[0]), days=abs(self[1]),
-                        seconds=abs(self[2]), nanoseconds=abs(self[3]))
+        return Duration(
+            months=abs(self[0]),
+            days=abs(self[1]),
+            seconds=abs(self[2]),
+            nanoseconds=abs(self[3]),
+        )
 
     def __repr__(self) -> str:
-        """"""
-        return "Duration(months=%r, days=%r, seconds=%r, nanoseconds=%r)" % self
+        mo, day, sec, ns = self
+        return (
+            f"Duration(months={mo!r}, days={day!r}, seconds={sec!r}, "
+            f"nanoseconds={ns!r})"
+        )
 
     def __str__(self) -> str:
-        """"""
         return self.iso_format()
 
     def __reduce__(self):
-        return (
-            type(self)._restore, (tuple(self), self.__dict__)
-        )
+        return type(self)._restore, (tuple(self), self.__dict__)
 
     @classmethod
     def _restore(cls, elements, dict_):
@@ -587,7 +658,8 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
 
     @classmethod
     def from_iso_format(cls, s: str) -> Duration:
-        """Parse a ISO formatted duration string.
+        """
+        Parse a ISO formatted duration string.
 
         Accepted formats (all lowercase letters are placeholders):
             'P', a zero length duration
@@ -595,7 +667,8 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
             'PmM', m being a number of months
             'PdD', d being a number of days
 
-            Any combination of the above, e.g., 'P25Y1D' for 25 years and 1 day.
+            Any combination of the above, e.g., 'P25Y1D' for 25 years and 1
+            day.
 
             'PThH', h being a number of hours
             'PTmM', h being a number of minutes
@@ -623,47 +696,47 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
                 hours=int(match.group(9) or 0),
                 minutes=int(match.group(11) or 0),
                 seconds=int(match.group(14) or 0),
-                nanoseconds=ns
+                nanoseconds=ns,
             )
         raise ValueError("Duration string must be in ISO format")
 
     fromisoformat = from_iso_format
 
     def iso_format(self, sep: str = "T") -> str:
-        """Return the :class:`Duration` as ISO formatted string.
+        """
+        Return the :class:`Duration` as ISO formatted string.
 
         :param sep: the separator before the time components.
         """
         parts = []
-        hours, minutes, seconds, nanoseconds = \
+        hours, minutes, seconds, nanoseconds = (
             self.hours_minutes_seconds_nanoseconds
+        )
         if hours:
-            parts.append("%dH" % hours)
+            parts.append(f"{hours}H")
         if minutes:
-            parts.append("%dM" % minutes)
+            parts.append(f"{minutes}M")
         if nanoseconds:
             if seconds >= 0 and nanoseconds >= 0:
-                parts.append("%d.%sS" %
-                             (seconds,
-                              str(nanoseconds).rjust(9, "0").rstrip("0")))
+                ns_str = str(nanoseconds).rjust(9, "0").rstrip("0")
+                parts.append(f"{seconds}.{ns_str}S")
             elif seconds <= 0 and nanoseconds <= 0:
-                parts.append("-%d.%sS" %
-                             (abs(seconds),
-                              str(abs(nanoseconds)).rjust(9, "0").rstrip("0")))
+                ns_str = str(abs(nanoseconds)).rjust(9, "0").rstrip("0")
+                parts.append(f"-{abs(seconds)}.{ns_str}S")
 
             else:
-                assert False and "Please report this issue"
+                raise AssertionError("Please report this issue")
         elif seconds:
-            parts.append("%dS" % seconds)
+            parts.append(f"{seconds}S")
         if parts:
             parts.insert(0, sep)
         years, months, days = self.years_months_days
         if days:
-            parts.insert(0, "%dD" % days)
+            parts.insert(0, f"{days}D")
         if months:
-            parts.insert(0, "%dM" % months)
+            parts.insert(0, f"{months}M")
         if years:
-            parts.insert(0, "%dY" % years)
+            parts.insert(0, f"{years}Y")
         if parts:
             parts.insert(0, "P")
             return "".join(parts)
@@ -691,19 +764,21 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         return self[3]
 
     @property
-    def years_months_days(self) -> t.Tuple[int, int, int]:
-        """Months and days components as a 3-tuple.
+    def years_months_days(self) -> tuple[int, int, int]:
+        """
+        Months and days components as a 3-tuple.
 
-        t.Tuple of years, months and days.
+        tuple of years, months and days.
         """
         years, months = symmetric_divmod(self[0], 12)
         return years, months, self[1]
 
     @property
-    def hours_minutes_seconds_nanoseconds(self) -> t.Tuple[int, int, int, int]:
-        """Seconds and nanoseconds components as a 4-tuple.
+    def hours_minutes_seconds_nanoseconds(self) -> tuple[int, int, int, int]:
+        """
+        Seconds and nanoseconds components as a 4-tuple.
 
-        t.Tuple of hours, minutes, seconds and nanoseconds.
+        tuple of hours, minutes, seconds and nanoseconds.
         """
         minutes, seconds = symmetric_divmod(self[2], 60)
         hours, minutes = symmetric_divmod(minutes, 60)
@@ -715,8 +790,7 @@ Duration.min = Duration(  # type: ignore
 )
 
 Duration.max = Duration(  # type: ignore
-    seconds=MAX_INT64,
-    nanoseconds=999999999
+    seconds=MAX_INT64, nanoseconds=999999999
 )
 
 
@@ -729,7 +803,8 @@ else:
 
 
 class Date(date_base_class, metaclass=DateType):
-    """Idealized date representation.
+    """
+    Idealized date representation.
 
     A :class:`.Date` object represents a date (year, month, and day) in the
     `proleptic Gregorian Calendar
@@ -743,9 +818,9 @@ class Date(date_base_class, metaclass=DateType):
     31 Dec 9999. The standard `year`, `month` and `day` value of each date is
     also available.
 
-    Internally, the day of the month is always stored as-is, with the exception
-    of the last three days of that month. These are always stored as
-    -1, -2 and -3 (counting from the last day). This system allows some temporal
+    Internally, the day of the month is always stored as-is, except for the
+    last three days of that month. These are always stored as -1, -2 and -3
+    (counting from the last day). This system allows some temporal
     arithmetic (particularly adding or subtracting months) to produce a more
     desirable outcome than would otherwise be produced. Externally, the day
     number is always the same as would be written on a calendar.
@@ -792,8 +867,9 @@ class Date(date_base_class, metaclass=DateType):
     # CLASS METHODS #
 
     @classmethod
-    def today(cls, tz: t.Optional[_tzinfo] = None) -> Date:
-        """Get the current date.
+    def today(cls, tz: _tzinfo | None = None) -> Date:
+        """
+        Get the current date.
 
         :param tz: timezone or None to get the local :class:`.Date`.
 
@@ -806,7 +882,8 @@ class Date(date_base_class, metaclass=DateType):
         else:
             return (
                 DateTime.utc_now()
-                .replace(tzinfo=timezone.utc).astimezone(tz)
+                .replace(tzinfo=timezone.utc)
+                .astimezone(tz)
                 .date()
             )
 
@@ -817,9 +894,10 @@ class Date(date_base_class, metaclass=DateType):
 
     @classmethod
     def from_timestamp(
-        cls, timestamp: float, tz: t.Optional[_tzinfo] = None
+        cls, timestamp: float, tz: _tzinfo | None = None
     ) -> Date:
-        """:class:`.Date` from a time stamp (seconds since unix epoch).
+        """
+        Construct :class:`.Date` from a time stamp (seconds since unix epoch).
 
         :param timestamp: the unix timestamp (seconds since unix epoch).
         :param tz: timezone. Set to None to create a local :class:`.Date`.
@@ -832,7 +910,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @classmethod
     def utc_from_timestamp(cls, timestamp: float) -> Date:
-        """:class:`.Date` from a time stamp (seconds since unix epoch).
+        """
+        Construct :class:`.Date` from a time stamp (seconds since unix epoch).
 
         :returns: the `Date` as local date `Date` in UTC.
         """
@@ -841,7 +920,7 @@ class Date(date_base_class, metaclass=DateType):
     @classmethod
     def from_ordinal(cls, ordinal: int) -> Date:
         """
-        The :class:`.Date` that corresponds to the proleptic Gregorian ordinal.
+        Construct :class:`.Date` from the proleptic Gregorian ordinal.
 
         `0001-01-01` has ordinal 1 and `9999-12-31` has ordinal 3,652,059.
         Values outside of this range trigger a :exc:`ValueError`.
@@ -862,7 +941,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @classmethod
     def parse(cls, s: str) -> Date:
-        """Parse a string to produce a :class:`.Date`.
+        """
+        Parse a string to produce a :class:`.Date`.
 
         Accepted formats:
             'Y-M-D'
@@ -874,7 +954,9 @@ class Date(date_base_class, metaclass=DateType):
         try:
             numbers = list(map(int, s.split("-")))
         except (ValueError, AttributeError):
-            raise ValueError("Date string must be in format YYYY-MM-DD")
+            raise ValueError(
+                "Date string must be in format YYYY-MM-DD"
+            ) from None
         else:
             if len(numbers) == 3:
                 return cls(*numbers)
@@ -882,7 +964,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @classmethod
     def from_iso_format(cls, s: str) -> Date:
-        """Parse a ISO formatted Date string.
+        """
+        Parse a ISO formatted Date string.
 
         Accepted formats:
             'YYYY-MM-DD'
@@ -901,7 +984,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @classmethod
     def from_native(cls, d: date) -> Date:
-        """Convert from a native Python `datetime.date` value.
+        """
+        Convert from a native Python `datetime.date` value.
 
         :param d: the date to convert.
         """
@@ -910,10 +994,11 @@ class Date(date_base_class, metaclass=DateType):
     @classmethod
     def from_clock_time(
         cls,
-        clock_time: t.Union[ClockTime, t.Tuple[float, int]],
-        epoch: DateTime
+        clock_time: ClockTime | tuple[float, int],
+        epoch: DateTime,
     ) -> Date:
-        """Convert from a ClockTime relative to a given epoch.
+        """
+        Convert from a ClockTime relative to a given epoch.
 
         :param clock_time: the clock time as :class:`.ClockTime` or as tuple of
             (seconds, nanoseconds)
@@ -922,14 +1007,17 @@ class Date(date_base_class, metaclass=DateType):
         try:
             clock_time = ClockTime(*clock_time)
         except (TypeError, ValueError):
-            raise ValueError("Clock time must be a 2-tuple of (s, ns)")
+            raise ValueError(
+                "Clock time must be a 2-tuple of (s, ns)"
+            ) from None
         else:
             ordinal = clock_time.seconds // 86400
             return Date.from_ordinal(ordinal + epoch.date().to_ordinal())
 
     @classmethod
     def is_leap_year(cls, year: int) -> bool:
-        """Indicates whether or not `year` is a leap year.
+        """
+        Indicate whether `year` is a leap year.
 
         :param year: the year to look up
 
@@ -937,12 +1025,13 @@ class Date(date_base_class, metaclass=DateType):
             :attr:`MIN_YEAR` <= year <= :attr:`MAX_YEAR`
         """
         if year < MIN_YEAR or year > MAX_YEAR:
-            raise ValueError("Year out of range (%d..%d)" % (MIN_YEAR, MAX_YEAR))
+            raise ValueError(f"Year out of range ({MIN_YEAR}..{MAX_YEAR})")
         return IS_LEAP_YEAR[year]
 
     @classmethod
     def days_in_year(cls, year: int) -> int:
-        """Return the number of days in `year`.
+        """
+        Return the number of days in `year`.
 
         :param year: the year to look up
 
@@ -950,12 +1039,13 @@ class Date(date_base_class, metaclass=DateType):
             :attr:`MIN_YEAR` <= year <= :attr:`MAX_YEAR`
         """
         if year < MIN_YEAR or year > MAX_YEAR:
-            raise ValueError("Year out of range (%d..%d)" % (MIN_YEAR, MAX_YEAR))
+            raise ValueError(f"Year out of range ({MIN_YEAR}..{MAX_YEAR})")
         return DAYS_IN_YEAR[year]
 
     @classmethod
     def days_in_month(cls, year: int, month: int) -> int:
-        """Return the number of days in `month` of `year`.
+        """
+        Return the number of days in `month` of `year`.
 
         :param year: the year to look up
         :param month: the month to look up
@@ -965,10 +1055,10 @@ class Date(date_base_class, metaclass=DateType):
             1 <= year <= 12
         """
         if year < MIN_YEAR or year > MAX_YEAR:
-            raise ValueError("Year out of range (%d..%d)" % (MIN_YEAR, MAX_YEAR))
+            raise ValueError(f"Year out of range ({MIN_YEAR}..{MAX_YEAR})")
         if month < 1 or month > 12:
             raise ValueError("Month out of range (1..12)")
-        return DAYS_IN_MONTH[(year, month)]
+        return DAYS_IN_MONTH[year, month]
 
     @classmethod
     def __calc_ordinal(cls, year, month, day):
@@ -981,23 +1071,20 @@ class Date(date_base_class, metaclass=DateType):
     # CLASS METHOD ALIASES #
 
     if t.TYPE_CHECKING:
-        @classmethod
-        def fromisoformat(cls, s: str) -> Date:
-            ...
 
         @classmethod
-        def fromordinal(cls, ordinal: int) -> Date:
-            ...
+        def fromisoformat(cls, s: str) -> Date: ...
+
+        @classmethod
+        def fromordinal(cls, ordinal: int) -> Date: ...
 
         @classmethod
         def fromtimestamp(
-            cls, timestamp: float, tz: t.Optional[_tzinfo] = None
-        ) -> Date:
-            ...
+            cls, timestamp: float, tz: _tzinfo | None = None
+        ) -> Date: ...
 
         @classmethod
-        def utcfromtimestamp(cls, timestamp: float) -> Date:
-            ...
+        def utcfromtimestamp(cls, timestamp: float) -> Date: ...
 
     # CLASS ATTRIBUTES #
 
@@ -1022,7 +1109,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @property
     def year(self) -> int:
-        """The year of the date.
+        """
+        The year of the date.
 
         :type: int
         """
@@ -1030,7 +1118,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @property
     def month(self) -> int:
-        """The month of the date.
+        """
+        The month of the date.
 
         :type: int
         """
@@ -1038,7 +1127,8 @@ class Date(date_base_class, metaclass=DateType):
 
     @property
     def day(self) -> int:
-        """The day of the date.
+        """
+        The day of the date.
 
         :type: int
         """
@@ -1049,14 +1139,14 @@ class Date(date_base_class, metaclass=DateType):
         return self.days_in_month(self.__year, self.__month) + self.__day + 1
 
     @property
-    def year_month_day(self) -> t.Tuple[int, int, int]:
-        """3-tuple of (year, month, day) describing the date.
-        """
+    def year_month_day(self) -> tuple[int, int, int]:
+        """3-tuple of (year, month, day) describing the date."""
         return self.year, self.month, self.day
 
     @property
-    def year_week_day(self) -> t.Tuple[int, int, int]:
-        """3-tuple of (year, week_of_year, day_of_week) describing the date.
+    def year_week_day(self) -> tuple[int, int, int]:
+        """
+        3-tuple of (year, week_of_year, day_of_week) describing the date.
 
         `day_of_week` will be 1 for Monday and 7 for Sunday.
         """
@@ -1081,64 +1171,73 @@ class Date(date_base_class, metaclass=DateType):
             if ordinal < week1.to_ordinal():
                 year -= 1
                 week1 = iso_week_1(year)
-        return (year, int((ordinal - week1.to_ordinal()) / 7 + 1),
-                day_of_week(ordinal))
+        return (
+            year,
+            int((ordinal - week1.to_ordinal()) / 7 + 1),
+            day_of_week(ordinal),
+        )
 
     @property
-    def year_day(self) -> t.Tuple[int, int]:
-        """2-tuple of (year, day_of_the_year) describing the date.
+    def year_day(self) -> tuple[int, int]:
+        """
+        2-tuple of (year, day_of_the_year) describing the date.
 
         This is the number of the day relative to the start of the year,
         with `1 Jan` corresponding to `1`.
         """
-        return (self.__year,
-                self.toordinal() - Date(self.__year, 1, 1).toordinal() + 1)
+        return (
+            self.__year,
+            self.toordinal() - Date(self.__year, 1, 1).toordinal() + 1,
+        )
 
     # OPERATIONS #
 
     def __hash__(self):
-        """"""
         return hash(self.toordinal())
 
     def __eq__(self, other: object) -> bool:
         """``==`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        if isinstance(other, (Date, date)):
-            return self.toordinal() == other.toordinal()
-        return False
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
+        return self.toordinal() == other.toordinal()
 
     def __ne__(self, other: object) -> bool:
         """``!=`` comparison with :class:`.Date` or :class:`datetime.date`."""
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
         return not self.__eq__(other)
 
-    def __lt__(self, other: t.Union[Date, date]) -> bool:
+    def __lt__(self, other: Date | date) -> bool:
         """``<`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        if isinstance(other, (Date, date)):
-            return self.toordinal() < other.toordinal()
-        raise TypeError("'<' not supported between instances of 'Date' and %r" % type(other).__name__)
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
+        return self.toordinal() < other.toordinal()
 
-    def __le__(self, other: t.Union[Date, date]) -> bool:
+    def __le__(self, other: Date | date) -> bool:
         """``<=`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        if isinstance(other, (Date, date)):
-            return self.toordinal() <= other.toordinal()
-        raise TypeError("'<=' not supported between instances of 'Date' and %r" % type(other).__name__)
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
+        return self.toordinal() <= other.toordinal()
 
-    def __ge__(self, other: t.Union[Date, date]) -> bool:
+    def __ge__(self, other: Date | date) -> bool:
         """``>=`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        if isinstance(other, (Date, date)):
-            return self.toordinal() >= other.toordinal()
-        raise TypeError("'>=' not supported between instances of 'Date' and %r" % type(other).__name__)
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
+        return self.toordinal() >= other.toordinal()
 
-    def __gt__(self, other: t.Union[Date, date]) -> bool:
+    def __gt__(self, other: Date | date) -> bool:
         """``>`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        if isinstance(other, (Date, date)):
-            return self.toordinal() > other.toordinal()
-        raise TypeError("'>' not supported between instances of 'Date' and %r" % type(other).__name__)
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
+        return self.toordinal() > other.toordinal()
 
     def __add__(self, other: Duration) -> Date:  # type: ignore[override]
-        """Add a :class:`.Duration`.
+        """
+        Add a :class:`.Duration`.
 
         :raises ValueError: if the added duration has a time component.
         """
+
         def add_months(d, months):
             overflow_years, month = divmod(months + d.__month - 1, 12)
             d.__year += overflow_years
@@ -1156,8 +1255,10 @@ class Date(date_base_class, metaclass=DateType):
 
         if isinstance(other, Duration):
             if other.seconds or other.nanoseconds:
-                raise ValueError("Cannot add a Duration with seconds or "
-                                 "nanoseconds to a Date")
+                raise ValueError(
+                    "Cannot add a Duration with seconds or "
+                    "nanoseconds to a Date"
+                )
             if other.months == other.days == 0:
                 return self
             new_date = self.replace()
@@ -1167,20 +1268,21 @@ class Date(date_base_class, metaclass=DateType):
                 add_days(new_date, other.days)
             if other.months:
                 add_months(new_date, other.months)
-            new_date.__ordinal = self.__calc_ordinal(new_date.year, new_date.month, new_date.day)
+            new_date.__ordinal = self.__calc_ordinal(
+                new_date.year, new_date.month, new_date.day
+            )
             return new_date
         return NotImplemented
 
     @t.overload  # type: ignore[override]
-    def __sub__(self, other: t.Union[Date, date]) -> Duration:
-        ...
+    def __sub__(self, other: Date | date) -> Duration: ...
 
     @t.overload
-    def __sub__(self, other: Duration) -> Date:
-        ...
+    def __sub__(self, other: Duration) -> Date: ...
 
     def __sub__(self, other):
-        """Subtract a :class:`.Date` or :class:`.Duration`.
+        """
+        Subtract a :class:`.Date` or :class:`.Duration`.
 
         :returns: If a :class:`.Date` is subtracted, the time between the two
             dates is returned as :class:`.Duration`. If a :class:`.Duration` is
@@ -1217,14 +1319,14 @@ class Date(date_base_class, metaclass=DateType):
             year: te.SupportsIndex = ...,
             month: te.SupportsIndex = ...,
             day: te.SupportsIndex = ...,
-            **kwargs: object
-        ) -> Date:
-            ...
+            **kwargs: object,
+        ) -> Date: ...
 
     else:
 
         def replace(self, **kwargs) -> Date:
-            """Return a :class:`.Date` with one or more components replaced.
+            """
+            Return a :class:`.Date` with one or more components replaced.
 
             :Keyword Arguments:
                * **year** (:class:`typing.SupportsIndex`):
@@ -1234,69 +1336,83 @@ class Date(date_base_class, metaclass=DateType):
                * **day** (:class:`typing.SupportsIndex`):
                  overwrite the day - default: `self.day`
             """
-            return Date(int(kwargs.get("year", self.__year)),
-                        int(kwargs.get("month", self.__month)),
-                        int(kwargs.get("day", self.__day)))
+            return Date(
+                int(kwargs.get("year", self.__year)),
+                int(kwargs.get("month", self.__month)),
+                int(kwargs.get("day", self.__day)),
+            )
 
     def time_tuple(self) -> struct_time:
         """Convert the date to :class:`time.struct_time`."""
         _, _, day_of_week = self.year_week_day
         _, day_of_year = self.year_day
-        return struct_time((self.year, self.month, self.day, 0, 0, 0, day_of_week - 1, day_of_year, -1))
+        return struct_time(
+            (
+                self.year,
+                self.month,
+                self.day,
+                0,
+                0,
+                0,
+                day_of_week - 1,
+                day_of_year,
+                -1,
+            )
+        )
 
     def to_ordinal(self) -> int:
-        """The date's proleptic Gregorian ordinal.
+        """
+        Get the date's proleptic Gregorian ordinal.
 
         The corresponding class method for the reverse ordinal-to-date
         transformation is :meth:`.Date.from_ordinal`.
         """
         return self.__ordinal
 
-    def to_clock_time(self, epoch: t.Union[Date, DateTime]) -> ClockTime:
-        """Convert the date to :class:`ClockTime` relative to `epoch`.
+    def to_clock_time(self, epoch: Date | DateTime) -> ClockTime:
+        """
+        Convert the date to :class:`ClockTime` relative to `epoch`.
 
         :param epoch: the epoch to which the date is relative
         """
         try:
             return ClockTime(86400 * (self.to_ordinal() - epoch.to_ordinal()))
-        except AttributeError:
-            raise TypeError("Epoch has no ordinal value")
+        except AttributeError as e:
+            raise TypeError("Epoch has no ordinal value") from e
 
     def to_native(self) -> date:
-        """Convert to a native Python :class:`datetime.date` value.
-        """
+        """Convert to a native Python :class:`datetime.date` value."""
         return date.fromordinal(self.to_ordinal())
 
     def weekday(self) -> int:
-        """The day of the week where Monday is 0 and Sunday is 6."""
+        """Get the day of the week where Monday is 0 and Sunday is 6."""
         return self.year_week_day[2] - 1
 
     def iso_weekday(self) -> int:
-        """The day of the week where Monday is 1 and Sunday is 7."""
+        """Get the day of the week where Monday is 1 and Sunday is 7."""
         return self.year_week_day[2]
 
-    def iso_calendar(self) -> t.Tuple[int, int, int]:
-        """Alias for :attr:`.year_week_day`"""
+    def iso_calendar(self) -> tuple[int, int, int]:
+        """Return :attr:`.year_week_day`."""
         return self.year_week_day
 
     def iso_format(self) -> str:
         """Return the :class:`.Date` as ISO formatted string."""
         if self.__ordinal == 0:
             return "0000-00-00"
-        return "%04d-%02d-%02d" % self.year_month_day
+        year, month, day = self.year_month_day
+        return f"{year:04d}-{month:02d}-{day:02d}"
 
     def __repr__(self) -> str:
-        """"""
         if self.__ordinal == 0:
             return "neo4j.time.ZeroDate"
-        return "neo4j.time.Date(%r, %r, %r)" % self.year_month_day
+        year, month, day = self.year_month_day
+        return f"neo4j.time.Date({year!r}, {month!r}, {day!r})"
 
     def __str__(self) -> str:
-        """"""
         return self.iso_format()
 
     def __format__(self, format_spec):
-        """"""
         if not format_spec:
             return self.iso_format()
         format_spec = FORMAT_F_REPLACE.sub("000000000", format_spec)
@@ -1305,7 +1421,10 @@ class Date(date_base_class, metaclass=DateType):
     # INSTANCE METHOD ALIASES #
 
     def __getattr__(self, name):
-        """ Map standard library attribute names to local attribute names,
+        """
+        Get attribute by name.
+
+        Map standard library attribute names to local attribute names,
         for compatibility.
         """
         try:
@@ -1318,11 +1437,11 @@ class Date(date_base_class, metaclass=DateType):
                 "timetuple": self.time_tuple,
             }[name]
         except KeyError:
-            raise AttributeError("Date has no attribute %r" % name)
+            raise AttributeError(f"Date has no attribute {name!r}") from None
 
     if t.TYPE_CHECKING:
-        def iso_calendar(self) -> t.Tuple[int, int, int]:
-            ...
+
+        def iso_calendar(self) -> tuple[int, int, int]: ...
 
         isoformat = iso_format
         isoweekday = iso_weekday
@@ -1349,7 +1468,8 @@ else:
 
 
 class Time(time_base_class, metaclass=TimeType):
-    """Time of day.
+    """
+    Time of day.
 
     The :class:`.Time` class is a nanosecond-precision drop-in replacement for
     the standard library :class:`datetime.time` class.
@@ -1386,15 +1506,17 @@ class Time(time_base_class, metaclass=TimeType):
         minute: int = 0,
         second: int = 0,
         nanosecond: int = 0,
-        tzinfo: t.Optional[_tzinfo] = None
+        tzinfo: _tzinfo | None = None,
     ) -> None:
         hour, minute, second, nanosecond = self.__normalize_nanosecond(
             hour, minute, second, nanosecond
         )
-        ticks = (3600000000000 * hour
-                 + 60000000000 * minute
-                 + 1000000000 * second
-                 + nanosecond)
+        ticks = (
+            3600000000000 * hour
+            + 60000000000 * minute
+            + 1000000000 * second
+            + nanosecond
+        )
         self.__unchecked_init(ticks, hour, minute, second, nanosecond, tzinfo)
 
     @classmethod
@@ -1405,7 +1527,7 @@ class Time(time_base_class, metaclass=TimeType):
         minutes: int,
         second: int,
         nano: int,
-        tz: t.Optional[_tzinfo]
+        tz: _tzinfo | None,
     ) -> Time:
         instance = object.__new__(Time)
         instance.__unchecked_init(ticks, hour, minutes, second, nano, tz)
@@ -1418,7 +1540,7 @@ class Time(time_base_class, metaclass=TimeType):
         minutes: int,
         second: int,
         nano: int,
-        tz: t.Optional[_tzinfo]
+        tz: _tzinfo | None,
     ) -> None:
         self.__ticks = ticks
         self.__hour = hour
@@ -1430,8 +1552,9 @@ class Time(time_base_class, metaclass=TimeType):
     # CLASS METHODS #
 
     @classmethod
-    def now(cls, tz: t.Optional[_tzinfo] = None) -> Time:
-        """Get the current time.
+    def now(cls, tz: _tzinfo | None = None) -> Time:
+        """
+        Get the current time.
 
         :param tz: optional timezone
 
@@ -1444,7 +1567,8 @@ class Time(time_base_class, metaclass=TimeType):
         else:
             return (
                 DateTime.utc_now()
-                .replace(tzinfo=timezone.utc).astimezone(tz)
+                .replace(tzinfo=timezone.utc)
+                .astimezone(tz)
                 .timetz()
             )
 
@@ -1455,7 +1579,8 @@ class Time(time_base_class, metaclass=TimeType):
 
     @classmethod
     def from_iso_format(cls, s: str) -> Time:
-        """Parse a ISO formatted time string.
+        """
+        Parse a ISO formatted time string.
 
         Accepted formats:
             Local times:
@@ -1479,6 +1604,7 @@ class Time(time_base_class, metaclass=TimeType):
         :raises ValueError: if the string does not match the required format.
         """
         from pytz import FixedOffset  # type: ignore
+
         m = TIME_ISO_PATTERN.match(s)
         if m:
             hour = int(m.group(1))
@@ -1499,13 +1625,19 @@ class Time(time_base_class, metaclass=TimeType):
                 # so we can ignore this part
                 # offset_second = float(m.group(13) or 0.0)
                 offset = 60 * offset_hour + offset_minute
-                return cls(hour, minute, second, nanosecond,
-                           tzinfo=FixedOffset(offset_multiplier * offset))
+                return cls(
+                    hour,
+                    minute,
+                    second,
+                    nanosecond,
+                    tzinfo=FixedOffset(offset_multiplier * offset),
+                )
         raise ValueError("Time string is not in ISO format")
 
     @classmethod
-    def from_ticks(cls, ticks: int, tz: t.Optional[_tzinfo] = None) -> Time:
-        """Create a time from ticks (nanoseconds since midnight).
+    def from_ticks(cls, ticks: int, tz: _tzinfo | None = None) -> Time:
+        """
+        Create a time from ticks (nanoseconds since midnight).
 
         :param ticks: nanoseconds since midnight
         :param tz: optional timezone
@@ -1524,13 +1656,15 @@ class Time(time_base_class, metaclass=TimeType):
             second, nanosecond = divmod(ticks, NANO_SECONDS)
             minute, second = divmod(second, 60)
             hour, minute = divmod(minute, 60)
-            return cls.__unchecked_new(ticks, hour, minute, second, nanosecond,
-                                       tz)
+            return cls.__unchecked_new(
+                ticks, hour, minute, second, nanosecond, tz
+            )
         raise ValueError("Ticks out of range (0..86400000000000)")
 
     @classmethod
     def from_native(cls, t: time) -> Time:
-        """Convert from a native Python :class:`datetime.time` value.
+        """
+        Convert from a native Python :class:`datetime.time` value.
 
         :param t: time to convert from
         """
@@ -1540,13 +1674,14 @@ class Time(time_base_class, metaclass=TimeType):
     @classmethod
     def from_clock_time(
         cls,
-        clock_time: t.Union[ClockTime, t.Tuple[float, int]],
-        epoch: DateTime
+        clock_time: ClockTime | tuple[float, int],
+        epoch: DateTime,
     ) -> Time:
-        """Convert from a :class:`.ClockTime` relative to a given epoch.
+        """
+        Convert from a :class:`.ClockTime` relative to a given epoch.
 
-        This method, in contrast to most others of this package, assumes days of
-        exactly 24 hours.
+        This method, in contrast to most others of this package, assumes days
+        of exactly 24 hours.
 
         :param clock_time: the clock time as :class:`.ClockTime` or as tuple of
             (seconds, nanoseconds)
@@ -1586,19 +1721,19 @@ class Time(time_base_class, metaclass=TimeType):
         hour, minute, second = cls.__normalize_second(hour, minute, second)
         if 0 <= nanosecond < NANO_SECONDS:
             return hour, minute, second, nanosecond
-        raise ValueError("Nanosecond out of range (0..%s)" % (NANO_SECONDS - 1))
+        raise ValueError(
+            "Nanosecond out of range (0..%s)" % (NANO_SECONDS - 1)
+        )
 
     # CLASS METHOD ALIASES #
 
     if t.TYPE_CHECKING:
 
         @classmethod
-        def from_iso_format(cls, s: str) -> Time:
-            ...
+        def from_iso_format(cls, s: str) -> Time: ...
 
         @classmethod
-        def utc_now(cls) -> Time:
-            ...
+        def utc_now(cls) -> Time: ...
 
     # CLASS ATTRIBUTES #
 
@@ -1623,11 +1758,12 @@ class Time(time_base_class, metaclass=TimeType):
 
     __nanosecond = 0
 
-    __tzinfo: t.Optional[_tzinfo] = None
+    __tzinfo: _tzinfo | None = None
 
     @property
     def ticks(self) -> int:
-        """The total number of nanoseconds since midnight.
+        """
+        The total number of nanoseconds since midnight.
 
         .. versionchanged:: 5.0
             The property's type changed from :class:`float` to :class:`int`.
@@ -1647,7 +1783,8 @@ class Time(time_base_class, metaclass=TimeType):
 
     @property
     def second(self) -> int:
-        """The seconds of the time.
+        """
+        The seconds of the time.
 
         .. versionchanged:: 4.4
             The property's type changed from :class:`float` to
@@ -1666,38 +1803,41 @@ class Time(time_base_class, metaclass=TimeType):
         return self.__nanosecond
 
     @property
-    def hour_minute_second_nanosecond(self) -> t.Tuple[int, int, int, int]:
+    def hour_minute_second_nanosecond(self) -> tuple[int, int, int, int]:
         """The time as a tuple of (hour, minute, second, nanosecond)."""
         return self.__hour, self.__minute, self.__second, self.__nanosecond
 
     @property
-    def tzinfo(self) -> t.Optional[_tzinfo]:
+    def tzinfo(self) -> _tzinfo | None:
         """The timezone of this time."""
         return self.__tzinfo
 
     # OPERATIONS #
 
     def _get_both_normalized_ticks(self, other: object, strict=True):
-        if (isinstance(other, (time, Time))
-                and ((self.utc_offset() is None)
-                     ^ (other.utcoffset() is None))):
+        if isinstance(other, (time, Time)) and (
+            (self.utc_offset() is None) ^ (other.utcoffset() is None)
+        ):
             if strict:
-                raise TypeError("can't compare offset-naive and offset-aware "
-                                "times")
+                raise TypeError(
+                    "can't compare offset-naive and offset-aware " "times"
+                )
             else:
                 return None, None
         other_ticks: int
         if isinstance(other, Time):
             other_ticks = other.__ticks
         elif isinstance(other, time):
-            other_ticks = int(3600000000000 * other.hour
-                              + 60000000000 * other.minute
-                              + NANO_SECONDS * other.second
-                              + 1000 * other.microsecond)
+            other_ticks = int(
+                3600000000000 * other.hour
+                + 60000000000 * other.minute
+                + NANO_SECONDS * other.second
+                + 1000 * other.microsecond
+            )
         else:
             return None, None
         assert isinstance(other, (Time, time))
-        utc_offset: t.Optional[timedelta] = other.utcoffset()
+        utc_offset: timedelta | None = other.utcoffset()
         if utc_offset is not None:
             other_ticks -= int(utc_offset.total_seconds() * NANO_SECONDS)
         self_ticks = self.__ticks
@@ -1707,7 +1847,6 @@ class Time(time_base_class, metaclass=TimeType):
         return self_ticks, other_ticks
 
     def __hash__(self):
-        """"""
         if self.__nanosecond % 1000 == 0:
             return hash(self.to_native())
         self_ticks = self.__ticks
@@ -1717,8 +1856,9 @@ class Time(time_base_class, metaclass=TimeType):
 
     def __eq__(self, other: object) -> bool:
         """`==` comparison with :class:`.Time` or :class:`datetime.time`."""
-        self_ticks, other_ticks = self._get_both_normalized_ticks(other,
-                                                                  strict=False)
+        self_ticks, other_ticks = self._get_both_normalized_ticks(
+            other, strict=False
+        )
         if self_ticks is None:
             return False
         return self_ticks == other_ticks
@@ -1727,28 +1867,28 @@ class Time(time_base_class, metaclass=TimeType):
         """`!=` comparison with :class:`.Time` or :class:`datetime.time`."""
         return not self.__eq__(other)
 
-    def __lt__(self, other: t.Union[Time, time]) -> bool:
+    def __lt__(self, other: Time | time) -> bool:
         """`<` comparison with :class:`.Time` or :class:`datetime.time`."""
         self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         if self_ticks is None:
             return NotImplemented
         return self_ticks < other_ticks
 
-    def __le__(self, other: t.Union[Time, time]) -> bool:
+    def __le__(self, other: Time | time) -> bool:
         """`<=` comparison with :class:`.Time` or :class:`datetime.time`."""
         self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         if self_ticks is None:
             return NotImplemented
         return self_ticks <= other_ticks
 
-    def __ge__(self, other: t.Union[Time, time]) -> bool:
+    def __ge__(self, other: Time | time) -> bool:
         """`>=` comparison with :class:`.Time` or :class:`datetime.time`."""
         self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         if self_ticks is None:
             return NotImplemented
         return self_ticks >= other_ticks
 
-    def __gt__(self, other: t.Union[Time, time]) -> bool:
+    def __gt__(self, other: Time | time) -> bool:
         """`>` comparison with :class:`.Time` or :class:`datetime.time`."""
         self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         if self_ticks is None:
@@ -1765,15 +1905,15 @@ class Time(time_base_class, metaclass=TimeType):
             minute: te.SupportsIndex = ...,
             second: te.SupportsIndex = ...,
             nanosecond: te.SupportsIndex = ...,
-            tzinfo: t.Optional[_tzinfo] = ...,
-            **kwargs: object
-        ) -> Time:
-            ...
+            tzinfo: _tzinfo | None = ...,
+            **kwargs: object,
+        ) -> Time: ...
 
     else:
 
         def replace(self, **kwargs) -> Time:
-            """Return a :class:`.Time` with one or more components replaced.
+            """
+            Return a :class:`.Time` with one or more components replaced.
 
             :Keyword Arguments:
                * **hour** (:class:`typing.SupportsIndex`):
@@ -1787,12 +1927,13 @@ class Time(time_base_class, metaclass=TimeType):
                * **tzinfo** (:class:`datetime.tzinfo` or `None`):
                  overwrite the timezone - default: `self.tzinfo`
             """
-            return Time(hour=int(kwargs.get("hour", self.__hour)),
-                        minute=int(kwargs.get("minute", self.__minute)),
-                        second=int(kwargs.get("second", self.__second)),
-                        nanosecond=int(kwargs.get("nanosecond",
-                                                  self.__nanosecond)),
-                        tzinfo=kwargs.get("tzinfo", self.__tzinfo))
+            return Time(
+                hour=int(kwargs.get("hour", self.__hour)),
+                minute=int(kwargs.get("minute", self.__minute)),
+                second=int(kwargs.get("second", self.__second)),
+                nanosecond=int(kwargs.get("nanosecond", self.__nanosecond)),
+                tzinfo=kwargs.get("tzinfo", self.__tzinfo),
+            )
 
     def _utc_offset(self, dt=None):
         if self.tzinfo is None:
@@ -1814,8 +1955,9 @@ class Time(time_base_class, metaclass=TimeType):
             return value
         raise TypeError("utcoffset must be a timedelta")
 
-    def utc_offset(self) -> t.Optional[timedelta]:
-        """Return the UTC offset of this time.
+    def utc_offset(self) -> timedelta | None:
+        """
+        Return the UTC offset of this time.
 
         :returns: None if this is a local time (:attr:`.tzinfo` is None), else
             returns `self.tzinfo.utcoffset(self)`.
@@ -1823,13 +1965,14 @@ class Time(time_base_class, metaclass=TimeType):
         :raises ValueError: if `self.tzinfo.utcoffset(self)` is not None and a
             :class:`timedelta` with a magnitude greater equal 1 day or that is
             not a whole number of minutes.
-        :raises TypeError: if `self.tzinfo.utcoffset(self)` does return anything but
-            None or a :class:`datetime.timedelta`.
+        :raises TypeError: if `self.tzinfo.utcoffset(self)` does return
+            anything but :data:`None` or a :class:`datetime.timedelta`.
         """
         return self._utc_offset()
 
-    def dst(self) -> t.Optional[timedelta]:
-        """Get the daylight saving time adjustment (DST).
+    def dst(self) -> timedelta | None:
+        """
+        Get the daylight saving time adjustment (DST).
 
         :returns: None if this is a local time (:attr:`.tzinfo` is None), else
             returns `self.tzinfo.dst(self)`.
@@ -1858,11 +2001,12 @@ class Time(time_base_class, metaclass=TimeType):
             return value
         raise TypeError("dst must be a timedelta")
 
-    def tzname(self) -> t.Optional[str]:
-        """Get the name of the :class:`.Time`'s timezone.
+    def tzname(self) -> str | None:
+        """
+        Get the name of the :class:`.Time`'s timezone.
 
-        :returns: None if the time is local (i.e., has no timezone), else return
-            `self.tzinfo.tzname(self)`
+        :returns: None if the time is local (i.e., has no timezone), else
+            return `self.tzinfo.tzname(self)`
         """
         if self.tzinfo is None:
             return None
@@ -1879,7 +2023,8 @@ class Time(time_base_class, metaclass=TimeType):
         return ClockTime(seconds, nanoseconds)
 
     def to_native(self) -> time:
-        """Convert to a native Python `datetime.time` value.
+        """
+        Convert to a native Python `datetime.time` value.
 
         This conversion is lossy as the native time implementation only
         supports a resolution of microseconds instead of nanoseconds.
@@ -1891,37 +2036,46 @@ class Time(time_base_class, metaclass=TimeType):
 
     def iso_format(self) -> str:
         """Return the :class:`.Time` as ISO formatted string."""
-        s = "%02d:%02d:%02d.%09d" % self.hour_minute_second_nanosecond
+        h, m, s, ns = self.hour_minute_second_nanosecond
+        res = f"{h:02d}:{m:02d}:{s:02d}.{ns:09d}"
         offset = self.utc_offset()
         if offset is not None:
-            s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
-        return s
+            offset_hours, offset_minutes = divmod(
+                int(offset.total_seconds() // 60), 60
+            )
+            res += f"{offset_hours:+03d}:{offset_minutes:02d}"
+        return res
 
     def __repr__(self) -> str:
-        """"""
+        fields: tuple[str, ...]
         if self.tzinfo is None:
-            return "neo4j.time.Time(%r, %r, %r, %r)" % \
-                   self.hour_minute_second_nanosecond
+            fields = tuple(map(repr, self.hour_minute_second_nanosecond))
         else:
-            return "neo4j.time.Time(%r, %r, %r, %r, tzinfo=%r)" % \
-                   (self.hour_minute_second_nanosecond + (self.tzinfo,))
+            fields = (
+                *map(repr, self.hour_minute_second_nanosecond),
+                f"tzinfo={self.tzinfo!r}",
+            )
+
+        return f"neo4j.time.Time({', '.join(fields)})"
 
     def __str__(self) -> str:
-        """"""
         return self.iso_format()
 
     def __format__(self, format_spec):
-        """"""
         if not format_spec:
             return self.iso_format()
-        format_spec = FORMAT_F_REPLACE.sub(f"{self.__nanosecond:09}",
-                                           format_spec)
+        format_spec = FORMAT_F_REPLACE.sub(
+            f"{self.__nanosecond:09}", format_spec
+        )
         return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 
     def __getattr__(self, name):
-        """Map standard library attribute names to local attribute names,
+        """
+        Get attribute by name.
+
+        Map standard library attribute names to local attribute names,
         for compatibility.
         """
         try:
@@ -1930,7 +2084,7 @@ class Time(time_base_class, metaclass=TimeType):
                 "utcoffset": self.utc_offset,
             }[name]
         except KeyError:
-            raise AttributeError("Date has no attribute %r" % name)
+            raise AttributeError(f"Date has no attribute {name!r}") from None
 
     if t.TYPE_CHECKING:
 
@@ -1969,7 +2123,8 @@ else:
 
 @total_ordering
 class DateTime(date_time_base_class, metaclass=DateTimeType):
-    """A point in time represented as a date and a time.
+    """
+    A point in time represented as a date and a time.
 
     The :class:`.DateTime` class is a nanosecond-precision drop-in replacement
     for the standard library :class:`datetime.datetime` class.
@@ -2011,16 +2166,19 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         minute: int = 0,
         second: int = 0,
         nanosecond: int = 0,
-        tzinfo: t.Optional[_tzinfo] = None
+        tzinfo: _tzinfo | None = None,
     ) -> DateTime:
-        return cls.combine(Date(year, month, day),
-                           Time(hour, minute, second, nanosecond, tzinfo))
+        return cls.combine(
+            Date(year, month, day),
+            Time(hour, minute, second, nanosecond, tzinfo),
+        )
 
     # CLASS METHODS #
 
     @classmethod
-    def now(cls, tz: t.Optional[_tzinfo] = None) -> DateTime:
-        """Get the current date and time.
+    def now(cls, tz: _tzinfo | None = None) -> DateTime:
+        """
+        Get the current date and time.
 
         :param tz: timezone. Set to None to create a local :class:`.DateTime`.
 
@@ -2040,16 +2198,16 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             except TypeError:
                 # For timezone implementations not compatible with the custom
                 # datetime implementations, we can't do better than this.
-                utc_now = cls.from_clock_time(
-                    Clock().utc_time(), UnixEpoch
-                )
+                utc_now = cls.from_clock_time(Clock().utc_time(), UnixEpoch)
                 utc_now_native = utc_now.to_native()
                 now_native = tz.fromutc(utc_now_native)
                 now = cls.from_native(now_native)
                 return now.replace(
-                    nanosecond=(now.nanosecond
-                                + utc_now.nanosecond
-                                - utc_now_native.microsecond * 1000)
+                    nanosecond=(
+                        now.nanosecond
+                        + utc_now.nanosecond
+                        - utc_now_native.microsecond * 1000
+                    )
                 )
 
     @classmethod
@@ -2059,23 +2217,26 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     @classmethod
     def from_iso_format(cls, s) -> DateTime:
-        """Parse a ISO formatted date with time string.
+        """
+        Parse a ISO formatted date with time string.
 
         :param s: String to parse
 
         :raises ValueError: if the string does not match the ISO format.
         """
         try:
-            return cls.combine(Date.from_iso_format(s[0:10]),
-                               Time.from_iso_format(s[11:]))
-        except ValueError:
-            raise ValueError("DateTime string is not in ISO format")
+            return cls.combine(
+                Date.from_iso_format(s[0:10]), Time.from_iso_format(s[11:])
+            )
+        except ValueError as e:
+            raise ValueError("DateTime string is not in ISO format") from e
 
     @classmethod
     def from_timestamp(
-        cls, timestamp: float, tz: t.Optional[_tzinfo] = None
+        cls, timestamp: float, tz: _tzinfo | None = None
     ) -> DateTime:
-        """:class:`.DateTime` from a time stamp (seconds since unix epoch).
+        """
+        :class:`.DateTime` from a time stamp (seconds since unix epoch).
 
         :param timestamp: the unix timestamp (seconds since unix epoch).
         :param tz: timezone. Set to None to create a local :class:`.DateTime`.
@@ -2091,12 +2252,14 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         else:
             return (
                 cls.utc_from_timestamp(timestamp)
-                .replace(tzinfo=timezone.utc).astimezone(tz)
+                .replace(tzinfo=timezone.utc)
+                .astimezone(tz)
             )
 
     @classmethod
     def utc_from_timestamp(cls, timestamp: float) -> DateTime:
-        """:class:`.DateTime` from a time stamp (seconds since unix epoch).
+        """
+        :class:`.DateTime` from a time stamp (seconds since unix epoch).
 
         Returns the `DateTime` as local date `DateTime` in UTC.
         """
@@ -2104,7 +2267,8 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     @classmethod
     def from_ordinal(cls, ordinal: int) -> DateTime:
-        """:class:`.DateTime` from an ordinal.
+        """
+        :class:`.DateTime` from an ordinal.
 
         For more info about ordinals see :meth:`.Date.from_ordinal`.
         """
@@ -2114,7 +2278,8 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     def combine(  # type: ignore[override]
         cls, date: Date, time: Time
     ) -> DateTime:
-        """Combine a :class:`.Date` and a :class:`.Time` to a :class:`DateTime`.
+        """
+        Combine a :class:`.Date` and a :class:`.Time` to a :class:`DateTime`.
 
         :param date: the date
         :param time: the time
@@ -2134,24 +2299,27 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     @classmethod
     def parse(cls, date_string, format):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def from_native(cls, dt: datetime) -> DateTime:
-        """Convert from a native Python :class:`datetime.datetime` value.
+        """
+        Convert from a native Python :class:`datetime.datetime` value.
 
         :param dt: the datetime to convert
         """
-        return cls.combine(Date.from_native(dt.date()),
-                           Time.from_native(dt.timetz()))
+        return cls.combine(
+            Date.from_native(dt.date()), Time.from_native(dt.timetz())
+        )
 
     @classmethod
     def from_clock_time(
         cls,
-        clock_time: t.Union[ClockTime, t.Tuple[float, int]],
-        epoch: DateTime
+        clock_time: ClockTime | tuple[float, int],
+        epoch: DateTime,
     ) -> DateTime:
-        """Convert from a :class:`ClockTime` relative to a given epoch.
+        """
+        Convert from a :class:`ClockTime` relative to a given epoch.
 
         :param clock_time: the clock time as :class:`.ClockTime` or as tuple of
             (seconds, nanoseconds)
@@ -2161,8 +2329,8 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         """
         try:
             seconds, nanoseconds = ClockTime(*clock_time)
-        except (TypeError, ValueError):
-            raise ValueError("Clock time must be a 2-tuple of (s, ns)")
+        except (TypeError, ValueError) as e:
+            raise ValueError("Clock time must be a 2-tuple of (s, ns)") from e
         else:
             ordinal, seconds = divmod(seconds, 86400)
             ticks = epoch.time().ticks + seconds * NANO_SECONDS + nanoseconds
@@ -2177,36 +2345,29 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     if t.TYPE_CHECKING:
 
         @classmethod
-        def fromisoformat(cls, s) -> DateTime:
-            ...
+        def fromisoformat(cls, s) -> DateTime: ...
 
         @classmethod
-        def fromordinal(cls, ordinal: int) -> DateTime:
-            ...
+        def fromordinal(cls, ordinal: int) -> DateTime: ...
 
         @classmethod
         def fromtimestamp(
-            cls, timestamp: float, tz: t.Optional[_tzinfo] = None
-        ) -> DateTime:
-            ...
+            cls, timestamp: float, tz: _tzinfo | None = None
+        ) -> DateTime: ...
 
         # alias of parse
         @classmethod
-        def strptime(cls, date_string, format):
-            ...
+        def strptime(cls, date_string, format): ...
 
         # alias of now
         @classmethod
-        def today(cls, tz: t.Optional[_tzinfo] = None) -> DateTime:
-            ...
+        def today(cls, tz: _tzinfo | None = None) -> DateTime: ...
 
         @classmethod
-        def utcfromtimestamp(cls, timestamp: float) -> DateTime:
-            ...
+        def utcfromtimestamp(cls, timestamp: float) -> DateTime: ...
 
         @classmethod
-        def utcnow(cls) -> DateTime:
-            ...
+        def utcnow(cls) -> DateTime: ...
 
     # CLASS ATTRIBUTES #
 
@@ -2223,7 +2384,8 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     @property
     def year(self) -> int:
-        """The year of the :class:`.DateTime`.
+        """
+        The year of the :class:`.DateTime`.
 
         See :attr:`.Date.year`.
         """
@@ -2231,90 +2393,113 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     @property
     def month(self) -> int:
-        """The year of the :class:`.DateTime`.
+        """
+        The year of the :class:`.DateTime`.
 
-        See :attr:`.Date.year`."""
+        See :attr:`.Date.year`.
+        """
         return self.__date.month
 
     @property
     def day(self) -> int:
-        """The day of the :class:`.DateTime`'s date.
+        """
+        The day of the :class:`.DateTime`'s date.
 
-        See :attr:`.Date.day`."""
+        See :attr:`.Date.day`.
+        """
         return self.__date.day
 
     @property
-    def year_month_day(self) -> t.Tuple[int, int, int]:
-        """The year_month_day of the :class:`.DateTime`'s date.
+    def year_month_day(self) -> tuple[int, int, int]:
+        """
+        The year_month_day of the :class:`.DateTime`'s date.
 
-        See :attr:`.Date.year_month_day`."""
+        See :attr:`.Date.year_month_day`.
+        """
         return self.__date.year_month_day
 
     @property
-    def year_week_day(self) -> t.Tuple[int, int, int]:
-        """The year_week_day of the :class:`.DateTime`'s date.
+    def year_week_day(self) -> tuple[int, int, int]:
+        """
+        The year_week_day of the :class:`.DateTime`'s date.
 
-        See :attr:`.Date.year_week_day`."""
+        See :attr:`.Date.year_week_day`.
+        """
         return self.__date.year_week_day
 
     @property
-    def year_day(self) -> t.Tuple[int, int]:
-        """The year_day of the :class:`.DateTime`'s date.
+    def year_day(self) -> tuple[int, int]:
+        """
+        The year_day of the :class:`.DateTime`'s date.
 
-        See :attr:`.Date.year_day`."""
+        See :attr:`.Date.year_day`.
+        """
         return self.__date.year_day
 
     @property
     def hour(self) -> int:
-        """The hour of the :class:`.DateTime`'s time.
+        """
+        The hour of the :class:`.DateTime`'s time.
 
-        See :attr:`.Time.hour`."""
+        See :attr:`.Time.hour`.
+        """
         return self.__time.hour
 
     @property
     def minute(self) -> int:
-        """The minute of the :class:`.DateTime`'s time.
+        """
+        The minute of the :class:`.DateTime`'s time.
 
-        See :attr:`.Time.minute`."""
+        See :attr:`.Time.minute`.
+        """
         return self.__time.minute
 
     @property
     def second(self) -> int:
-        """The second of the :class:`.DateTime`'s time.
+        """
+        The second of the :class:`.DateTime`'s time.
 
-        See :attr:`.Time.second`."""
+        See :attr:`.Time.second`.
+        """
         return self.__time.second
 
     @property
     def nanosecond(self) -> int:
-        """The nanosecond of the :class:`.DateTime`'s time.
+        """
+        The nanosecond of the :class:`.DateTime`'s time.
 
-        See :attr:`.Time.nanosecond`."""
+        See :attr:`.Time.nanosecond`.
+        """
         return self.__time.nanosecond
 
     @property
-    def tzinfo(self) -> t.Optional[_tzinfo]:
-        """The tzinfo of the :class:`.DateTime`'s time.
+    def tzinfo(self) -> _tzinfo | None:
+        """
+        The tzinfo of the :class:`.DateTime`'s time.
 
-        See :attr:`.Time.tzinfo`."""
+        See :attr:`.Time.tzinfo`.
+        """
         return self.__time.tzinfo
 
     @property
-    def hour_minute_second_nanosecond(self) -> t.Tuple[int, int, int, int]:
-        """The hour_minute_second_nanosecond of the :class:`.DateTime`'s time.
+    def hour_minute_second_nanosecond(self) -> tuple[int, int, int, int]:
+        """
+        The hour_minute_second_nanosecond of the :class:`.DateTime`'s time.
 
-        See :attr:`.Time.hour_minute_second_nanosecond`."""
+        See :attr:`.Time.hour_minute_second_nanosecond`.
+        """
         return self.__time.hour_minute_second_nanosecond
 
     # OPERATIONS #
 
     def _get_both_normalized(self, other, strict=True):
-        if (isinstance(other, (datetime, DateTime))
-                and ((self.utc_offset() is None)
-                     ^ (other.utcoffset() is None))):
+        if isinstance(other, (datetime, DateTime)) and (
+            (self.utc_offset() is None) ^ (other.utcoffset() is None)
+        ):
             if strict:
-                raise TypeError("can't compare offset-naive and offset-aware "
-                                "datetimes")
+                raise TypeError(
+                    "can't compare offset-naive and offset-aware " "datetimes"
+                )
             else:
                 return None, None
         self_norm = self
@@ -2333,7 +2518,6 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return self_norm, other_norm
 
     def __hash__(self):
-        """"""
         if self.nanosecond % 1000 == 0:
             return hash(self.to_native())
         self_norm = self
@@ -2344,7 +2528,9 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     def __eq__(self, other: object) -> bool:
         """
-        ``==`` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
+        ``==`` comparison with another datetime.
+
+        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
         if not isinstance(other, (datetime, DateTime)):
             return NotImplemented
@@ -2357,15 +2543,21 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     def __ne__(self, other: object) -> bool:
         """
-        ``!=`` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
+        ``!=`` comparison with another datetime.
+
+        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
+        if not isinstance(other, (Date, date)):
+            return NotImplemented
         return not self.__eq__(other)
 
     def __lt__(  # type: ignore[override]
-        self, other: datetime
+        self, other: object
     ) -> bool:
         """
-        ``<`` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
+        ``<`` comparison with another datetime.
+
+        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
         if not isinstance(other, (datetime, DateTime)):
             return NotImplemented
@@ -2374,14 +2566,18 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
                 return self.time() < other.time()
             return self.date() < other.date()
         self_norm, other_norm = self._get_both_normalized(other)
-        return (self_norm.date() < other_norm.date()
-                or self_norm.time() < other_norm.time())
+        return (
+            self_norm.date() < other_norm.date()
+            or self_norm.time() < other_norm.time()
+        )
 
     def __le__(  # type: ignore[override]
-        self, other: t.Union[datetime, DateTime]
+        self, other: object
     ) -> bool:
         """
-        ``<=`` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
+        ``<=`` comparison with another datetime.
+
+        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
         if not isinstance(other, (datetime, DateTime)):
             return NotImplemented
@@ -2393,10 +2589,12 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return self_norm <= other_norm
 
     def __ge__(  # type: ignore[override]
-        self, other: t.Union[datetime, DateTime]
+        self, other: object
     ) -> bool:
         """
-        ``>=`` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
+        ``>=`` comparison with another datetime.
+
+        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
         if not isinstance(other, (datetime, DateTime)):
             return NotImplemented
@@ -2408,10 +2606,12 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return self_norm >= other_norm
 
     def __gt__(  # type: ignore[override]
-        self, other: t.Union[datetime, DateTime]
+        self, other: object
     ) -> bool:
         """
-        ``>`` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
+        ``>`` comparison with another datetime.
+
+        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
         if not isinstance(other, (datetime, DateTime)):
             return NotImplemented
@@ -2420,45 +2620,47 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
                 return self.time() > other.time()
             return self.date() > other.date()
         self_norm, other_norm = self._get_both_normalized(other)
-        return (self_norm.date() > other_norm.date()
-                or self_norm.time() > other_norm.time())
+        return (
+            self_norm.date() > other_norm.date()
+            or self_norm.time() > other_norm.time()
+        )
 
-    def __add__(self, other: t.Union[timedelta, Duration]) -> DateTime:
+    def __add__(self, other: timedelta | Duration) -> DateTime:
         """Add a :class:`datetime.timedelta`."""
         if isinstance(other, Duration):
-            t = (self.to_clock_time()
-                 + ClockTime(other.seconds, other.nanoseconds))
+            t = self.to_clock_time() + ClockTime(
+                other.seconds, other.nanoseconds
+            )
             days, seconds = symmetric_divmod(t.seconds, 86400)
-            date_ = self.date() + Duration(months=other.months,
-                                           days=days + other.days)
+            date_ = self.date() + Duration(
+                months=other.months, days=days + other.days
+            )
             time_ = Time.from_ticks(seconds * NANO_SECONDS + t.nanoseconds)
             return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         if isinstance(other, timedelta):
-            t = (self.to_clock_time()
-                 + ClockTime(86400 * other.days + other.seconds,
-                             other.microseconds * 1000))
+            t = self.to_clock_time() + ClockTime(
+                86400 * other.days + other.seconds, other.microseconds * 1000
+            )
             days, seconds = symmetric_divmod(t.seconds, 86400)
             date_ = Date.from_ordinal(days + 1)
-            time_ = Time.from_ticks(round_half_to_even(
-                seconds * NANO_SECONDS + t.nanoseconds
-            ))
+            time_ = Time.from_ticks(
+                round_half_to_even(seconds * NANO_SECONDS + t.nanoseconds)
+            )
             return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         return NotImplemented
 
     @t.overload  # type: ignore[override]
-    def __sub__(self, other: DateTime) -> Duration:
-        ...
+    def __sub__(self, other: DateTime) -> Duration: ...
 
     @t.overload
-    def __sub__(self, other: datetime) -> timedelta:
-        ...
+    def __sub__(self, other: datetime) -> timedelta: ...
 
     @t.overload
-    def __sub__(self, other: t.Union[Duration, timedelta]) -> DateTime:
-        ...
+    def __sub__(self, other: Duration | timedelta) -> DateTime: ...
 
     def __sub__(self, other):
-        """Subtract a datetime/DateTime or a timedelta/Duration.
+        """
+        Subtract a datetime/DateTime or a timedelta/Duration.
 
         Subtracting a :class:`.DateTime` yields the duration between the two
         as a :class:`.Duration`.
@@ -2475,17 +2677,23 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             months = self_month_ordinal - other_month_ordinal
             days = self.day - other.day
             t = self.time().to_clock_time() - other.time().to_clock_time()
-            return Duration(months=months, days=days, seconds=t.seconds,
-                            nanoseconds=t.nanoseconds)
+            return Duration(
+                months=months,
+                days=days,
+                seconds=t.seconds,
+                nanoseconds=t.nanoseconds,
+            )
         if isinstance(other, datetime):
             days = self.to_ordinal() - other.toordinal()
-            t = (self.time().to_clock_time()
-                 - ClockTime(
-                       3600 * other.hour + 60 * other.minute + other.second,
-                       other.microsecond * 1000
-                    ))
-            return timedelta(days=days, seconds=t.seconds,
-                             microseconds=(t.nanoseconds // 1000))
+            t = self.time().to_clock_time() - ClockTime(
+                3600 * other.hour + 60 * other.minute + other.second,
+                other.microsecond * 1000,
+            )
+            return timedelta(
+                days=days,
+                seconds=t.seconds,
+                microseconds=(t.nanoseconds // 1000),
+            )
         if isinstance(other, Duration):
             return self.__add__(-other)
         if isinstance(other, timedelta):
@@ -2505,15 +2713,15 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     # INSTANCE METHODS #
 
     def date(self) -> Date:
-        """The date."""
+        """Get the date."""
         return self.__date
 
     def time(self) -> Time:
-        """The time without timezone info."""
+        """Get the time without timezone info."""
         return self.__time.replace(tzinfo=None)
 
     def timetz(self) -> Time:
-        """The time with timezone info."""
+        """Get the time with timezone info."""
         return self.__time
 
     if t.TYPE_CHECKING:
@@ -2527,15 +2735,15 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             minute: te.SupportsIndex = ...,
             second: te.SupportsIndex = ...,
             nanosecond: te.SupportsIndex = ...,
-            tzinfo: t.Optional[_tzinfo] = ...,
-            **kwargs: object
-        ) -> DateTime:
-            ...
+            tzinfo: _tzinfo | None = ...,
+            **kwargs: object,
+        ) -> DateTime: ...
 
     else:
 
         def replace(self, **kwargs) -> DateTime:
-            """Return a ``DateTime`` with one or more components replaced.
+            """
+            Return a ``DateTime`` with one or more components replaced.
 
             See :meth:`.Date.replace` and :meth:`.Time.replace` for available
             arguments.
@@ -2545,7 +2753,8 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             return self.combine(date_, time_)
 
     def as_timezone(self, tz: _tzinfo) -> DateTime:
-        """Convert this :class:`.DateTime` to another timezone.
+        """
+        Convert this :class:`.DateTime` to another timezone.
 
         :param tz: the new timezone
 
@@ -2566,40 +2775,44 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             native_res = tz.fromutc(native_utc)
             res = self.from_native(native_res)
             return res.replace(
-                nanosecond=(native_res.microsecond * 1000
-                            + self.nanosecond % 1000)
+                nanosecond=(
+                    native_res.microsecond * 1000 + self.nanosecond % 1000
+                )
             )
 
-    def utc_offset(self) -> t.Optional[timedelta]:
-        """Get the date times utc offset.
+    def utc_offset(self) -> timedelta | None:
+        """
+        Get the date times utc offset.
 
         See :meth:`.Time.utc_offset`.
         """
-
         return self.__time._utc_offset(self)
 
-    def dst(self) -> t.Optional[timedelta]:
-        """Get the daylight saving time adjustment (DST).
+    def dst(self) -> timedelta | None:
+        """
+        Get the daylight saving time adjustment (DST).
 
         See :meth:`.Time.dst`.
         """
         return self.__time.dst()
 
-    def tzname(self) -> t.Optional[str]:
-        """Get the timezone name.
+    def tzname(self) -> str | None:
+        """
+        Get the timezone name.
 
         See :meth:`.Time.tzname`.
         """
         return self.__time.tzname()
 
     def time_tuple(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def utc_time_tuple(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def to_ordinal(self) -> int:
-        """Get the ordinal of the :class:`.DateTime`'s date.
+        """
+        Get the ordinal of the :class:`.DateTime`'s date.
 
         See :meth:`.Date.to_ordinal`
         """
@@ -2612,10 +2825,11 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return ClockTime(ordinal_seconds + time_seconds, nanoseconds)
 
     def to_native(self) -> datetime:
-        """Convert to a native Python :class:`datetime.datetime` value.
+        """
+        Convert to a native Python :class:`datetime.datetime` value.
 
-        This conversion is lossy as the native time implementation only supports
-        a resolution of microseconds instead of nanoseconds.
+        This conversion is lossy as the native time implementation only
+        supports a resolution of microseconds instead of nanoseconds.
         """
         y, mo, d = self.year_month_day
         h, m, s, ns = self.hour_minute_second_nanosecond
@@ -2624,28 +2838,32 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return datetime(y, mo, d, h, m, s, ms, tz)
 
     def weekday(self) -> int:
-        """Get the weekday.
+        """
+        Get the weekday.
 
         See :meth:`.Date.weekday`
         """
         return self.__date.weekday()
 
     def iso_weekday(self) -> int:
-        """Get the ISO weekday.
+        """
+        Get the ISO weekday.
 
         See :meth:`.Date.iso_weekday`
         """
         return self.__date.iso_weekday()
 
-    def iso_calendar(self) -> t.Tuple[int, int, int]:
-        """Get date as ISO tuple.
+    def iso_calendar(self) -> tuple[int, int, int]:
+        """
+        Get date as ISO tuple.
 
         See :meth:`.Date.iso_calendar`
         """
         return self.__date.iso_calendar()
 
     def iso_format(self, sep: str = "T") -> str:
-        """Return the :class:`.DateTime` as ISO formatted string.
+        """
+        Return the :class:`.DateTime` as ISO formatted string.
 
         This method joins `self.date().iso_format()` (see
         :meth:`.Date.iso_format`) and `self.timetz().iso_format()` (see
@@ -2653,8 +2871,9 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         :param sep: the separator between the formatted date and time.
         """
-        s = "%s%s%s" % (self.date().iso_format(), sep,
-                        self.timetz().iso_format())
+        s_date = self.date().iso_format()
+        s_time = self.timetz().iso_format()
+        s = f"{s_date}{sep}{s_time}"
         time_tz = self.timetz()
         offset = time_tz.utc_offset()
         if offset is not None:
@@ -2662,38 +2881,55 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             return s
         offset = self.utc_offset()
         if offset is not None:
-            s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
+            offset_hours, offset_minutes = divmod(
+                int(offset.total_seconds() // 60), 60
+            )
+            s += f"{offset_hours:+03d}:{offset_minutes:02d}"
         return s
 
     def __repr__(self) -> str:
-        """"""
-        fields: tuple
+        fields: tuple[str, ...]
         if self.tzinfo is None:
-            fields = (*self.year_month_day,
-                      *self.hour_minute_second_nanosecond)
-            return "neo4j.time.DateTime(%r, %r, %r, %r, %r, %r, %r)" % fields
+            fields = tuple(
+                map(
+                    repr,
+                    (
+                        *self.year_month_day,
+                        *self.hour_minute_second_nanosecond,
+                    ),
+                )
+            )
         else:
-            fields = (*self.year_month_day,
-                      *self.hour_minute_second_nanosecond, self.tzinfo)
-            return ("neo4j.time.DateTime(%r, %r, %r, %r, %r, %r, %r, tzinfo=%r)"
-                    % fields)
+            fields = (
+                *map(
+                    repr,
+                    (
+                        *self.year_month_day,
+                        *self.hour_minute_second_nanosecond,
+                    ),
+                ),
+                f"tzinfo={self.tzinfo!r}",
+            )
+        return f"neo4j.time.DateTime({', '.join(fields)})"
 
     def __str__(self) -> str:
-        """"""
         return self.iso_format()
 
     def __format__(self, format_spec):
-        """"""
         if not format_spec:
             return self.iso_format()
-        format_spec = FORMAT_F_REPLACE.sub(f"{self.__time.nanosecond:09}",
-                                           format_spec)
+        format_spec = FORMAT_F_REPLACE.sub(
+            f"{self.__time.nanosecond:09}", format_spec
+        )
         return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 
     def __getattr__(self, name):
-        """ Map standard library attribute names to local attribute names,
+        """
+        Get attribute by name.
+
+        Map standard library attribute names to local attribute names,
         for compatibility.
         """
         try:
@@ -2709,19 +2945,19 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
                 "utctimetuple": self.utc_time_tuple,
             }[name]
         except KeyError:
-            raise AttributeError("DateTime has no attribute %r" % name)
+            raise AttributeError(
+                f"DateTime has no attribute {name!r}"
+            ) from None
 
     if t.TYPE_CHECKING:
 
         def astimezone(  # type: ignore[override]
             self, tz: _tzinfo
-        ) -> DateTime:
-            ...
+        ) -> DateTime: ...
 
         def isocalendar(  # type: ignore[override]
-            self
-        ) -> t.Tuple[int, int, int]:
-            ...
+            self,
+        ) -> tuple[int, int, int]: ...
 
         def iso_format(self, sep: str = "T") -> str:  # type: ignore[override]
             ...

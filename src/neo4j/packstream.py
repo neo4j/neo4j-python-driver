@@ -33,20 +33,20 @@ from ._meta import deprecation_warn
 
 
 __all__ = [
+    "INT64_MAX",
+    "INT64_MIN",
     "PACKED_UINT_8",
     "PACKED_UINT_16",
     "UNPACKED_UINT_8",
     "UNPACKED_UINT_16",
-    "INT64_MIN",
-    "INT64_MAX",
-    "Structure",
     "Packer",
-    "Unpacker",
+    "Structure",
     "UnpackableBuffer",
+    "Unpacker",
 ]
 
 deprecation_warn(
     "The module `neo4j.packstream` was made internal and will "
     "no longer be available for import in future versions.",
-    stack_level=2
+    stack_level=2,
 )

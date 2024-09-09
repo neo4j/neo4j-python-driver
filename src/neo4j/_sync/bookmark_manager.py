@@ -31,8 +31,8 @@ TBmConsumer = t.Callable[[Bookmarks], t.Union[None, t.Union[None]]]
 
 
 def _bookmarks_to_set(
-    bookmarks: t.Union[Bookmarks, t.Iterable[str]]
-) -> t.Set[str]:
+    bookmarks: Bookmarks | t.Iterable[str],
+) -> set[str]:
     if isinstance(bookmarks, Bookmarks):
         return set(bookmarks.raw_values)
     return set(map(str, bookmarks))
@@ -41,9 +41,9 @@ def _bookmarks_to_set(
 class Neo4jBookmarkManager(BookmarkManager):
     def __init__(
         self,
-        initial_bookmarks: t.Union[None, Bookmarks, t.Iterable[str]] = None,
-        bookmarks_supplier: t.Optional[TBmSupplier] = None,
-        bookmarks_consumer: t.Optional[TBmConsumer] = None
+        initial_bookmarks: Bookmarks | t.Iterable[str] | None = None,
+        bookmarks_supplier: TBmSupplier | None = None,
+        bookmarks_consumer: TBmConsumer | None = None,
     ) -> None:
         super().__init__()
         self._bookmarks_supplier = bookmarks_supplier
@@ -61,8 +61,9 @@ class Neo4jBookmarkManager(BookmarkManager):
         self._lock = CooperativeLock()
 
     def update_bookmarks(
-        self, previous_bookmarks: t.Collection[str],
-        new_bookmarks: t.Collection[str]
+        self,
+        previous_bookmarks: t.Collection[str],
+        new_bookmarks: t.Collection[str],
     ) -> None:
         if not new_bookmarks:
             return
@@ -72,10 +73,11 @@ class Neo4jBookmarkManager(BookmarkManager):
             if self._bookmarks_consumer:
                 curr_bms_snapshot = Bookmarks.from_raw_values(self._bookmarks)
         if self._bookmarks_consumer:
-            Util.callback(self._bookmarks_consumer,
-                                     curr_bms_snapshot)
+            Util.callback(
+                self._bookmarks_consumer, curr_bms_snapshot
+            )
 
-    def get_bookmarks(self) -> t.Set[str]:
+    def get_bookmarks(self) -> set[str]:
         with self._lock:
             bms = set(self._bookmarks)
         if self._bookmarks_supplier:

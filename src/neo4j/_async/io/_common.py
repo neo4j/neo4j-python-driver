@@ -16,10 +16,11 @@
 
 import asyncio
 import logging
+from contextlib import suppress
 from struct import pack as struct_pack
 
 from ..._async_compat.util import AsyncUtil
-from ..._exceptions import SocketDeadlineExceeded
+from ..._exceptions import SocketDeadlineExceededError
 from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
@@ -32,7 +33,6 @@ log = logging.getLogger("neo4j.io")
 
 
 class AsyncInbox:
-
     def __init__(self, sock, on_error, unpacker_cls):
         self.on_error = on_error
         self._local_port = sock.getsockname()[1]
@@ -62,7 +62,9 @@ class AsyncInbox:
                     # chunk_size was the end marker for the message
                     return
         except (
-            OSError, SocketDeadlineExceeded, asyncio.CancelledError
+            OSError,
+            SocketDeadlineExceededError,
+            asyncio.CancelledError,
         ) as error:
             self._broken = True
             await AsyncUtil.callback(self.on_error, error)
@@ -72,8 +74,9 @@ class AsyncInbox:
         await self._buffer_one_chunk()
         try:
             size, tag = self._unpacker.unpack_structure_header()
-            fields = [self._unpacker.unpack(hydration_hooks)
-                      for _ in range(size)]
+            fields = [
+                self._unpacker.unpack(hydration_hooks) for _ in range(size)
+            ]
             return tag, fields
         finally:
             # Reset for new message
@@ -81,7 +84,6 @@ class AsyncInbox:
 
 
 class AsyncOutbox:
-
     def __init__(self, sock, on_error, packer_cls, max_chunk_size=16384):
         self._max_chunk_size = max_chunk_size
         self._chunked_data = bytearray()
@@ -100,23 +102,23 @@ class AsyncOutbox:
 
     def _chunk_data(self):
         data_len = len(self._buffer.data)
-        num_full_chunks, chunk_rest = divmod(
-            data_len, self._max_chunk_size
-        )
+        num_full_chunks, chunk_rest = divmod(data_len, self._max_chunk_size)
         num_chunks = num_full_chunks + bool(chunk_rest)
 
         with memoryview(self._buffer.data) as data_view:
             header_start = len(self._chunked_data)
             data_start = header_start + 2
             raw_data_start = 0
-            for i in range(num_chunks):
-                chunk_size = min(data_len - raw_data_start,
-                                 self._max_chunk_size)
+            for _ in range(num_chunks):
+                chunk_size = min(
+                    data_len - raw_data_start, self._max_chunk_size
+                )
                 self._chunked_data[header_start:data_start] = struct_pack(
                     ">H", chunk_size
                 )
-                self._chunked_data[data_start:(data_start + chunk_size)] = \
-                    data_view[raw_data_start:(raw_data_start + chunk_size)]
+                self._chunked_data[data_start : (data_start + chunk_size)] = (
+                    data_view[raw_data_start : (raw_data_start + chunk_size)]
+                )
                 header_start += chunk_size + 2
                 data_start = header_start + 2
                 raw_data_start += chunk_size
@@ -138,7 +140,9 @@ class AsyncOutbox:
             try:
                 await self.socket.sendall(data)
             except (
-                OSError, SocketDeadlineExceeded, asyncio.CancelledError
+                OSError,
+                SocketDeadlineExceededError,
+                asyncio.CancelledError,
             ) as error:
                 await AsyncUtil.callback(self.on_error, error)
                 return False
@@ -154,16 +158,15 @@ class ConnectionErrorHandler:
     The class will wrap each method to invoke a callback if the method raises
     Neo4jError, SessionExpired, or ServiceUnavailable.
     The error will be re-raised after the callback.
+
+    :param connection the connection object to warp
+    :type connection Bolt
+    :param on_error the function to be called when a method of
+        connection raises of the caught errors.
+    :type on_error callable
     """
 
     def __init__(self, connection, on_error):
-        """
-        :param connection the connection object to warp
-        :type connection Bolt
-        :param on_error the function to be called when a method of
-            connection raises of of the caught errors.
-        :type on_error callable
-        """
         self.__connection = connection
         self.__on_error = on_error
 
@@ -180,16 +183,22 @@ class ConnectionErrorHandler:
                     assert not asyncio.iscoroutinefunction(self.__on_error)
                     self.__on_error(exc)
                     raise
+
             return inner
 
         def outer_async(coroutine_func):
             async def inner(*args, **kwargs):
                 try:
                     await coroutine_func(*args, **kwargs)
-                except (Neo4jError, ServiceUnavailable, SessionExpired,
-                        asyncio.CancelledError) as exc:
+                except (
+                    Neo4jError,
+                    ServiceUnavailable,
+                    SessionExpired,
+                    asyncio.CancelledError,
+                ) as exc:
                     await AsyncUtil.callback(self.__on_error, exc)
                     raise
+
             return inner
 
         if asyncio.iscoroutinefunction(connection_attr):
@@ -204,8 +213,10 @@ class ConnectionErrorHandler:
 
 
 class Response:
-    """ Subscriber object for a full response (zero or
-    more detail messages followed by one summary message).
+    """
+    Subscriber object for a full response.
+
+    I.e., zero or more detail messages followed by one summary message.
     """
 
     def __init__(self, connection, message, hydration_hooks, **handlers):
@@ -216,14 +227,12 @@ class Response:
         self.complete = False
 
     async def on_records(self, records):
-        """ Called when one or more RECORD messages have been received.
-        """
+        """Handle one or more RECORD messages been received."""
         handler = self.handlers.get("on_records")
         await AsyncUtil.callback(handler, records)
 
     async def on_success(self, metadata):
-        """ Called when a SUCCESS message has been received.
-        """
+        """Handle a SUCCESS message been received."""
         handler = self.handlers.get("on_success")
         await AsyncUtil.callback(handler, metadata)
 
@@ -232,12 +241,9 @@ class Response:
             await AsyncUtil.callback(handler)
 
     async def on_failure(self, metadata):
-        """ Called when a FAILURE message has been received.
-        """
-        try:
+        """Handle a FAILURE message been received."""
+        with suppress(SessionExpired, ServiceUnavailable):
             await self.connection.reset()
-        except (SessionExpired, ServiceUnavailable):
-            pass
         handler = self.handlers.get("on_failure")
         await AsyncUtil.callback(handler, metadata)
         handler = self.handlers.get("on_summary")
@@ -245,8 +251,7 @@ class Response:
         raise Neo4jError.hydrate(**metadata)
 
     async def on_ignored(self, metadata=None):
-        """ Called when an IGNORED message has been received.
-        """
+        """Handle an IGNORED message been received."""
         handler = self.handlers.get("on_ignored")
         await AsyncUtil.callback(handler, metadata)
         handler = self.handlers.get("on_summary")
@@ -264,7 +269,7 @@ class InitResponse(Response):
         await AsyncUtil.callback(handler)
         metadata["message"] = metadata.get(
             "message",
-            "Connection initialisation failed due to an unknown error"
+            "Connection initialisation failed due to an unknown error",
         )
         raise Neo4jError.hydrate(**metadata)
 
@@ -283,9 +288,12 @@ class LogonResponse(InitResponse):
 
 class ResetResponse(Response):
     async def _unexpected_message(self, response):
-        log.warning("[#%04X]  _: <CONNECTION> RESET received %s "
-                    "(unexpected response) => dropping connection",
-                    self.connection.local_port, response)
+        log.warning(
+            "[#%04X]  _: <CONNECTION> RESET received %s "
+            "(unexpected response) => dropping connection",
+            self.connection.local_port,
+            response,
+        )
         await self.connection.close()
 
     async def on_records(self, records):
@@ -306,8 +314,10 @@ class CommitResponse(Response):
 
 
 def check_supported_server_product(agent):
-    """ Checks that a server product is supported by the driver by
-    looking at the server agent string.
+    """
+    Check that a server product is supported by the driver.
+
+    This is done by inspecting the server agent string.
 
     :param agent: server agent string to check for validity
 
@@ -323,7 +333,9 @@ async def receive_into_buffer(sock, buffer, n_bytes):
         buffer.data += bytearray(end - len(buffer.data))
     with memoryview(buffer.data) as view:
         while buffer.used < end:
-            n = await sock.recv_into(view[buffer.used:end], end - buffer.used)
+            n = await sock.recv_into(
+                view[buffer.used : end], end - buffer.used
+            )
             if n == 0:
                 raise OSError("No data")
             buffer.used += n

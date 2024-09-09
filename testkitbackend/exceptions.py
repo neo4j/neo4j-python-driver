@@ -14,10 +14,9 @@
 # limitations under the License.
 
 
-class MarkdAsDriverException(Exception):
-    """
-    Wrap any error as DriverException
-    """
+class MarkdAsDriverError(Exception):
+    """Wrap any error as DriverException."""
+
     def __init__(self, wrapped_exc):
         super().__init__()
         self.wrapped_exc = wrapped_exc

@@ -30,10 +30,7 @@ from neo4j import GraphDatabase
 # isort: off
 
 
-# python -m pytest tests/integration/examples/test_config_secure_example.py -s -v
-
 class ConfigSecureExample(DriverSetupExample):
-
     # tag::config-secure[]
     def __init__(self, uri, auth):
         # trusted_certificates:
@@ -44,10 +41,13 @@ class ConfigSecureExample(DriverSetupExample):
         # neo4j.TrustCustomCAs("<path>", ...)
         #     specify a list of paths to certificates to trust
         self.driver = GraphDatabase.driver(
-            uri, auth=auth, encrypted=True,
+            uri,
+            auth=auth,
+            encrypted=True,
             trusted_certificates=neo4j.TrustSystemCAs(),
         )
         # or omit trusted_certificates as None is the default
+
     # end::config-secure[]
 
 

@@ -27,8 +27,6 @@ from neo4j import GraphDatabase
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_driver_lifecycle_example.py -s -v
-
 # tag::driver-lifecycle[]
 class DriverLifecycleExample:
     def __init__(self, uri, auth):
@@ -36,6 +34,8 @@ class DriverLifecycleExample:
 
     def close(self):
         self.driver.close()
+
+
 # end::driver-lifecycle[]
 
 

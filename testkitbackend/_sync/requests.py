@@ -42,7 +42,7 @@ from .. import (
     totestkit,
 )
 from .._warning_check import warnings_check
-from ..exceptions import MarkdAsDriverException
+from ..exceptions import MarkdAsDriverError
 
 
 class FrontendError(Exception):
@@ -51,7 +51,7 @@ class FrontendError(Exception):
 
 def load_config():
     config_path = path.join(path.dirname(__file__), "..", "test_config.json")
-    with open(config_path, "r") as fd:
+    with open(config_path, encoding="utf-8") as fd:
         config = json.load(fd)
     skips = config["skips"]
     features = [k for k, v in config["features"].items() if v is True]
@@ -71,9 +71,10 @@ def _get_skip_reason(test_name):
             match = re.match(skip_pattern, test_name)
         if match:
             return reason
+    return None
 
 
-def StartTest(backend, data):
+def start_test(backend, data):
     test_name = data["testName"]
     reason = _get_skip_reason(test_name)
     if reason is not None:
@@ -85,12 +86,14 @@ def StartTest(backend, data):
         backend.send_response("RunTest", {})
 
 
-def StartSubTest(backend, data):
+def start_sub_test(backend, data):
     test_name = data["testName"]
     subtest_args = data["subtestArguments"]
     subtest_args.mark_all_as_read(recursive=True)
     reason = _get_skip_reason(test_name)
-    assert reason and reason.startswith("test_subtest_skips.") or print(reason)
+    assert (reason and reason.startswith("test_subtest_skips.")) or print(
+        reason
+    )
     func = getattr(test_subtest_skips, reason[19:])
     reason = func(**subtest_args)
     if reason is not None:
@@ -99,11 +102,11 @@ def StartSubTest(backend, data):
         backend.send_response("RunTest", {})
 
 
-def GetFeatures(backend, data):
+def get_features(backend, data):
     backend.send_response("FeatureList", {"features": FEATURES})
 
 
-def NewDriver(backend, data):
+def new_driver(backend, data):
     expected_warnings = []
 
     auth = fromtestkit.to_auth_token(data, "authorizationToken")
@@ -114,8 +117,9 @@ def NewDriver(backend, data):
     kwargs = {}
     client_cert_provider_id = data.get("clientCertificateProviderId")
     if client_cert_provider_id is not None:
-        kwargs["client_certificate"] = \
-            backend.client_cert_providers[client_cert_provider_id]
+        kwargs["client_certificate"] = backend.client_cert_providers[
+            client_cert_provider_id
+        ]
         data.mark_item_as_read_if_equals("clientCertificate", None)
         expected_warnings.append(
             (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\.")
@@ -129,8 +133,9 @@ def NewDriver(backend, data):
             )
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
-            backend, data["resolverRegistered"],
-            data["domainNameResolverRegistered"]
+            backend,
+            data["resolverRegistered"],
+            data["domainNameResolverRegistered"],
         )
     for timeout_testkit, timeout_driver in (
         ("connectionTimeoutMs", "connection_timeout"),
@@ -143,16 +148,14 @@ def NewDriver(backend, data):
     for k in ("sessionConnectionTimeoutMs", "updateRoutingTableTimeoutMs"):
         if k in data:
             data.mark_item_as_read_if_equals(k, None)
-    for (conf_name, data_name) in (
+    for conf_name, data_name in (
         ("max_connection_pool_size", "maxConnectionPoolSize"),
         ("fetch_size", "fetchSize"),
-        ("telemetry_disabled", "telemetryDisabled")
+        ("telemetry_disabled", "telemetryDisabled"),
     ):
         if data.get(data_name):
             kwargs[conf_name] = data[data_name]
-    for (conf_name, data_name) in (
-        ("encrypted", "encrypted"),
-    ):
+    for conf_name, data_name in (("encrypted", "encrypted"),):
         if data_name in data:
             kwargs[conf_name] = data[data_name]
     if "trustedCertificates" in data:
@@ -161,17 +164,24 @@ def NewDriver(backend, data):
         elif not data["trustedCertificates"]:
             kwargs["trusted_certificates"] = neo4j.TrustAll()
         else:
-            cert_paths = ("/usr/local/share/custom-ca-certificates/" + cert
-                          for cert in data["trustedCertificates"])
+            cert_paths = (
+                "/usr/local/share/custom-ca-certificates/" + cert
+                for cert in data["trustedCertificates"]
+            )
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
 
-    expected_warnings.append((
-        neo4j.PreviewWarning, r"notification warnings are a preview feature\."
-    ))
+    expected_warnings.append(
+        (
+            neo4j.PreviewWarning,
+            r"notification warnings are a preview feature\.",
+        )
+    )
     with warnings_check(expected_warnings):
         driver = neo4j.GraphDatabase.driver(
-            data["uri"], auth=auth, user_agent=data["userAgent"],
+            data["uri"],
+            auth=auth,
+            user_agent=data["userAgent"],
             warn_notification_severity=neo4j.NotificationMinimumSeverity.OFF,
             **kwargs,
         )
@@ -180,16 +190,19 @@ def NewDriver(backend, data):
     backend.send_response("Driver", {"id": key})
 
 
-def NewAuthTokenManager(backend, data):
+def new_auth_token_manager(backend, data):
     auth_token_manager_id = backend.next_key()
 
     class TestKitAuthManager(AuthManager):
         def get_auth(self):
             key = backend.next_key()
-            backend.send_response("AuthTokenManagerGetAuthRequest", {
-                "id": key,
-                "authTokenManagerId": auth_token_manager_id,
-            })
+            backend.send_response(
+                "AuthTokenManagerGetAuthRequest",
+                {
+                    "id": key,
+                    "authTokenManagerId": auth_token_manager_id,
+                },
+            )
             if not backend.process_request():
                 # connection was closed before end of next message
                 return None
@@ -203,12 +216,13 @@ def NewAuthTokenManager(backend, data):
         def handle_security_exception(self, auth, error):
             key = backend.next_key()
             backend.send_response(
-                "AuthTokenManagerHandleSecurityExceptionRequest", {
+                "AuthTokenManagerHandleSecurityExceptionRequest",
+                {
                     "id": key,
                     "authTokenManagerId": auth_token_manager_id,
                     "auth": totestkit.auth_token(auth),
                     "errorCode": error.code,
-                }
+                },
             )
             if not backend.process_request():
                 # connection was closed before end of next message
@@ -219,8 +233,7 @@ def NewAuthTokenManager(backend, data):
                     "AuthTokenManagerHandleSecurityExceptionCompleted message "
                     f"for id {key}"
                 )
-            handled = backend.auth_token_on_expiration_supplies.pop(key)
-            return handled
+            return backend.auth_token_on_expiration_supplies.pop(key)
 
     auth_manager = TestKitAuthManager()
     backend.auth_token_managers[auth_token_manager_id] = auth_manager
@@ -229,18 +242,20 @@ def NewAuthTokenManager(backend, data):
     )
 
 
-def AuthTokenManagerGetAuthCompleted(backend, data):
+def auth_token_manager_get_auth_completed(backend, data):
     auth_token = fromtestkit.to_auth_token(data, "auth")
 
     backend.auth_token_supplies[data["requestId"]] = auth_token
 
 
-def AuthTokenManagerHandleSecurityExceptionCompleted(backend, data):
+def auth_token_manager_handle_security_exception_completed(
+    backend, data
+):
     handled = data["handled"]
     backend.auth_token_on_expiration_supplies[data["requestId"]] = handled
 
 
-def AuthTokenManagerClose(backend, data):
+def auth_token_manager_close(backend, data):
     auth_token_manager_id = data["id"]
     del backend.auth_token_managers[auth_token_manager_id]
     backend.send_response(
@@ -248,7 +263,7 @@ def AuthTokenManagerClose(backend, data):
     )
 
 
-def NewBasicAuthTokenManager(backend, data):
+def new_basic_auth_token_manager(backend, data):
     auth_token_manager_id = backend.next_key()
 
     def auth_token_provider():
@@ -258,7 +273,7 @@ def NewBasicAuthTokenManager(backend, data):
             {
                 "id": key,
                 "basicAuthTokenManagerId": auth_token_manager_id,
-            }
+            },
         )
         if not backend.process_request():
             # connection was closed before end of next message
@@ -278,12 +293,12 @@ def NewBasicAuthTokenManager(backend, data):
     )
 
 
-def BasicAuthTokenProviderCompleted(backend, data):
+def basic_auth_token_provider_completed(backend, data):
     auth = fromtestkit.to_auth_token(data, "auth")
     backend.basic_auth_token_supplies[data["requestId"]] = auth
 
 
-def NewBearerAuthTokenManager(backend, data):
+def new_bearer_auth_token_manager(backend, data):
     auth_token_manager_id = backend.next_key()
 
     def auth_token_provider():
@@ -293,7 +308,7 @@ def NewBearerAuthTokenManager(backend, data):
             {
                 "id": key,
                 "bearerAuthTokenManagerId": auth_token_manager_id,
-            }
+            },
         )
         if not backend.process_request():
             # connection was closed before end of next message
@@ -313,10 +328,11 @@ def NewBearerAuthTokenManager(backend, data):
     )
 
 
-def BearerAuthTokenProviderCompleted(backend, data):
+def bearer_auth_token_provider_completed(backend, data):
     temp_auth_data = data["auth"]
-    temp_auth_data.mark_item_as_read_if_equals("name",
-                                               "AuthTokenAndExpiration")
+    temp_auth_data.mark_item_as_read_if_equals(
+        "name", "AuthTokenAndExpiration"
+    )
     temp_auth_data = temp_auth_data["data"]
     auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
     expiring_auth = ExpiringAuth(auth_token)
@@ -339,7 +355,7 @@ class TestKitClientCertificateProvider(ClientCertificateProvider):
             {
                 "id": request_id,
                 "clientCertificateProviderId": self.id,
-            }
+            },
         )
         if not self._backend.process_request():
             # connection was closed before end of next message
@@ -353,7 +369,7 @@ class TestKitClientCertificateProvider(ClientCertificateProvider):
         return self._backend.client_cert_supplies.pop(request_id)
 
 
-def NewClientCertificateProvider(backend, data):
+def new_client_certificate_provider(backend, data):
     provider = TestKitClientCertificateProvider(backend)
     backend.client_cert_providers[provider.id] = provider
     backend.send_response(
@@ -361,7 +377,7 @@ def NewClientCertificateProvider(backend, data):
     )
 
 
-def ClientCertificateProviderClose(backend, data):
+def client_certificate_provider_close(backend, data):
     client_cert_provider_id = data["id"]
     del backend.client_cert_providers[client_cert_provider_id]
     backend.send_response(
@@ -369,7 +385,7 @@ def ClientCertificateProviderClose(backend, data):
     )
 
 
-def ClientCertificateProviderCompleted(backend, data):
+def client_certificate_provider_completed(backend, data):
     has_update = data["hasUpdate"]
     request_id = data["requestId"]
     if not has_update:
@@ -380,53 +396,60 @@ def ClientCertificateProviderCompleted(backend, data):
     backend.client_cert_supplies[request_id] = client_cert
 
 
-def VerifyConnectivity(backend, data):
+def verify_connectivity(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     driver.verify_connectivity()
     backend.send_response("Driver", {"id": driver_id})
 
 
-def GetServerInfo(backend, data):
+def get_server_info(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     server_info = driver.get_server_info()
-    backend.send_response("ServerInfo", {
-        "address": ":".join(map(str, server_info.address)),
-        "agent": server_info.agent,
-        "protocolVersion": ".".join(map(str, server_info.protocol_version)),
-    })
+    backend.send_response(
+        "ServerInfo",
+        {
+            "address": ":".join(map(str, server_info.address)),
+            "agent": server_info.agent,
+            "protocolVersion": ".".join(
+                map(str, server_info.protocol_version)
+            ),
+        },
+    )
 
 
-def CheckMultiDBSupport(backend, data):
+def check_multi_db_support(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     available = driver.supports_multi_db()
-    backend.send_response("MultiDBSupport", {
-        "id": backend.next_key(), "available": available
-    })
+    backend.send_response(
+        "MultiDBSupport", {"id": backend.next_key(), "available": available}
+    )
 
 
-def VerifyAuthentication(backend, data):
+def verify_authentication(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     auth = fromtestkit.to_auth_token(data, "authorizationToken")
     authenticated = driver.verify_authentication(auth=auth)
-    backend.send_response("DriverIsAuthenticated", {
-        "id": backend.next_key(), "authenticated": authenticated
-    })
+    backend.send_response(
+        "DriverIsAuthenticated",
+        {"id": backend.next_key(), "authenticated": authenticated},
+    )
 
 
-def CheckSessionAuthSupport(backend, data):
+def check_session_auth_support(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     available = driver.supports_session_auth()
-    backend.send_response("SessionAuthSupport", {
-        "id": backend.next_key(), "available": available
-    })
+    backend.send_response(
+        "SessionAuthSupport",
+        {"id": backend.next_key(), "available": available},
+    )
 
 
-def ExecuteQuery(backend, data):
+def execute_query(backend, data):
     driver = backend.drivers[data["driverId"]]
     cypher, params = fromtestkit.to_cypher_and_params(data)
     config = data.get("config", {})
@@ -440,10 +463,7 @@ def ExecuteQuery(backend, data):
         if value is not None:
             kwargs[kwargs_key] = value
     tx_kwargs = fromtestkit.to_tx_kwargs(config)
-    if tx_kwargs:
-        query = neo4j.Query(cypher, **tx_kwargs)
-    else:
-        query = cypher
+    query = neo4j.Query(cypher, **tx_kwargs) if tx_kwargs else cypher
     bookmark_manager_id = config.get("bookmarkManagerId")
     if bookmark_manager_id is not None:
         if bookmark_manager_id == -1:
@@ -452,15 +472,19 @@ def ExecuteQuery(backend, data):
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
     if "authorizationToken" in config:
-        kwargs["auth_"] = fromtestkit.to_auth_token(config,
-                                                    "authorizationToken")
+        kwargs["auth_"] = fromtestkit.to_auth_token(
+            config, "authorizationToken"
+        )
 
     eager_result = driver.execute_query(query, params, **kwargs)
-    backend.send_response("EagerResult", {
-        "keys": eager_result.keys,
-        "records": list(map(totestkit.record, eager_result.records)),
-        "summary": totestkit.summary(eager_result.summary),
-    })
+    backend.send_response(
+        "EagerResult",
+        {
+            "keys": eager_result.keys,
+            "records": list(map(totestkit.record, eager_result.records)),
+            "summary": totestkit.summary(eager_result.summary),
+        },
+    )
 
 
 def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
@@ -475,17 +499,17 @@ def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
         addresses = [":".join(map(str, address))]
         if custom_resolver:
             key = backend.next_key()
-            backend.send_response("ResolverResolutionRequired", {
-                "id": key,
-                "address": addresses[0]
-            })
+            backend.send_response(
+                "ResolverResolutionRequired",
+                {"id": key, "address": addresses[0]},
+            )
             if not backend.process_request():
                 # connection was closed before end of next message
                 return []
             if key not in backend.custom_resolutions:
                 raise RuntimeError(
                     "Backend did not receive expected "
-                    "ResolverResolutionCompleted message for id %s" % key
+                    f"ResolverResolutionCompleted message for id {key}"
                 )
             addresses = backend.custom_resolutions.pop(key)
         if custom_dns_resolver:
@@ -493,22 +517,24 @@ def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
             for address in addresses:
                 key = backend.next_key()
                 address = address.rsplit(":", 1)
-                backend.send_response("DomainNameResolutionRequired", {
-                    "id": key,
-                    "name": address[0]
-                })
+                backend.send_response(
+                    "DomainNameResolutionRequired",
+                    {"id": key, "name": address[0]},
+                )
                 if not backend.process_request():
                     # connection was closed before end of next message
                     return []
                 if key not in backend.dns_resolutions:
                     raise RuntimeError(
                         "Backend did not receive expected "
-                        "DomainNameResolutionCompleted message for id %s" % key
+                        f"DomainNameResolutionCompleted message for id {key}"
                     )
-                dns_resolved_addresses += list(map(
-                    lambda a: ":".join((a, *address[1:])),
-                    backend.dns_resolutions.pop(key)
-                ))
+                dns_resolved_addresses += list(
+                    map(
+                        lambda a: ":".join((a, *address[1:])),
+                        backend.dns_resolutions.pop(key),
+                    )
+                )
 
             addresses = dns_resolved_addresses
 
@@ -517,15 +543,15 @@ def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
     return resolve
 
 
-def ResolverResolutionCompleted(backend, data):
+def resolver_resolution_completed(backend, data):
     backend.custom_resolutions[data["requestId"]] = data["addresses"]
 
 
-def DomainNameResolutionCompleted(backend, data):
+def domain_name_resolution_completed(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
-def NewBookmarkManager(backend, data):
+def new_bookmark_manager(backend, data):
     bookmark_manager_id = backend.next_key()
 
     bmm_kwargs = {}
@@ -545,7 +571,7 @@ def NewBookmarkManager(backend, data):
     backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
 
-def BookmarkManagerClose(backend, data):
+def bookmark_manager_close(backend, data):
     bookmark_manager_id = data["id"]
     del backend.bookmark_managers[bookmark_manager_id]
     backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
@@ -554,71 +580,77 @@ def BookmarkManagerClose(backend, data):
 def bookmarks_supplier(backend, bookmark_manager_id):
     def supplier():
         key = backend.next_key()
-        backend.send_response("BookmarksSupplierRequest", {
-            "id": key,
-            "bookmarkManagerId": bookmark_manager_id,
-        })
+        backend.send_response(
+            "BookmarksSupplierRequest",
+            {
+                "id": key,
+                "bookmarkManagerId": bookmark_manager_id,
+            },
+        )
         if not backend.process_request():
             # connection was closed before end of next message
             return []
         if key not in backend.bookmarks_supplies:
             raise RuntimeError(
                 "Backend did not receive expected "
-                "BookmarksSupplierCompleted message for id %s" % key
+                f"BookmarksSupplierCompleted message for id {key}"
             )
         return backend.bookmarks_supplies.pop(key)
 
     return supplier
 
 
-def BookmarksSupplierCompleted(backend, data):
-    backend.bookmarks_supplies[data["requestId"]] = \
+def bookmarks_supplier_completed(backend, data):
+    backend.bookmarks_supplies[data["requestId"]] = (
         neo4j.Bookmarks.from_raw_values(data["bookmarks"])
+    )
 
 
 def bookmarks_consumer(backend, bookmark_manager_id):
     def consumer(bookmarks):
         key = backend.next_key()
-        backend.send_response("BookmarksConsumerRequest", {
-            "id": key,
-            "bookmarkManagerId": bookmark_manager_id,
-            "bookmarks": list(bookmarks.raw_values)
-        })
+        backend.send_response(
+            "BookmarksConsumerRequest",
+            {
+                "id": key,
+                "bookmarkManagerId": bookmark_manager_id,
+                "bookmarks": list(bookmarks.raw_values),
+            },
+        )
         if not backend.process_request():
             # connection was closed before end of next message
-            return []
+            return
         if key not in backend.bookmarks_consumptions:
             raise RuntimeError(
                 "Backend did not receive expected "
-                "BookmarksConsumerCompleted message for id %s" % key
+                f"BookmarksConsumerCompleted message for id {key}"
             )
         del backend.bookmarks_consumptions[key]
 
     return consumer
 
 
-def BookmarksConsumerCompleted(backend, data):
+def bookmarks_consumer_completed(backend, data):
     backend.bookmarks_consumptions[data["requestId"]] = True
 
 
-def DriverClose(backend, data):
+def driver_close(backend, data):
     key = data["driverId"]
     driver = backend.drivers[key]
     driver.close()
     backend.send_response("Driver", {"id": key})
 
 
-def CheckDriverIsEncrypted(backend, data):
+def check_driver_is_encrypted(backend, data):
     key = data["driverId"]
     driver = backend.drivers[key]
-    backend.send_response("DriverIsEncrypted", {
-        "encrypted": driver.encrypted
-    })
+    backend.send_response(
+        "DriverIsEncrypted", {"encrypted": driver.encrypted}
+    )
 
 
 class SessionTracker:
-    """ Keeps some extra state about the tracked session
-    """
+    """Keeps some extra state about the tracked session."""
 
     def __init__(self, session):
         self.session = session
@@ -626,7 +658,7 @@ class SessionTracker:
         self.error_id = ""
 
 
-def NewSession(backend, data):
+def new_session(backend, data):
     driver = backend.drivers[data["driverId"]]
     config = {
         "database": data["database"],
@@ -647,7 +679,7 @@ def NewSession(backend, data):
         config["bookmark_manager"] = backend.bookmark_managers[
             data["bookmarkManagerId"]
         ]
-    for (conf_name, data_name) in (
+    for conf_name, data_name in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),
     ):
@@ -662,7 +694,7 @@ def NewSession(backend, data):
     backend.send_response("Session", {"id": key})
 
 
-def SessionRun(backend, data):
+def session_run(backend, data):
     session = backend.sessions[data["sessionId"]].session
     query, params = fromtestkit.to_query_and_params(data)
     result = session.run(query, parameters=params)
@@ -671,7 +703,7 @@ def SessionRun(backend, data):
     backend.send_response("Result", {"id": key, "keys": result.keys()})
 
 
-def SessionClose(backend, data):
+def session_close(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
     session.close()
@@ -679,7 +711,7 @@ def SessionClose(backend, data):
     backend.send_response("Session", {"id": key})
 
 
-def SessionBeginTransaction(backend, data):
+def session_begin_transaction(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
     tx_kwargs = fromtestkit.to_tx_kwargs(data)
@@ -689,15 +721,15 @@ def SessionBeginTransaction(backend, data):
     backend.send_response("Transaction", {"id": key})
 
 
-def SessionReadTransaction(backend, data):
-    transactionFunc(backend, data, True)
+def session_read_transaction(backend, data):
+    transaction_func(backend, data, True)
 
 
-def SessionWriteTransaction(backend, data):
-    transactionFunc(backend, data, False)
+def session_write_transaction(backend, data):
+    transaction_func(backend, data, False)
 
 
-def transactionFunc(backend, data, is_read):
+def transaction_func(backend, data, is_read):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
     session = session_tracker.session
@@ -707,15 +739,15 @@ def transactionFunc(backend, data, is_read):
     def func(tx):
         txkey = backend.next_key()
         backend.transactions[txkey] = tx
-        session_tracker.state = ''
+        session_tracker.state = ""
         backend.send_response("RetryableTry", {"id": txkey})
 
         cont = True
         while cont:
             cont = backend.process_request()
-            if session_tracker.state == '+':
+            if session_tracker.state == "+":
                 cont = False
-            elif session_tracker.state == '-':
+            elif session_tracker.state == "-":
                 if session_tracker.error_id:
                     raise backend.errors[session_tracker.error_id]
                 else:
@@ -728,28 +760,29 @@ def transactionFunc(backend, data, is_read):
     backend.send_response("RetryableDone", {})
 
 
-def RetryablePositive(backend, data):
+def retryable_positive(backend, data):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
-    session_tracker.state = '+'
+    session_tracker.state = "+"
 
 
-def RetryableNegative(backend, data):
+def retryable_negative(backend, data):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
-    session_tracker.state = '-'
-    session_tracker.error_id = data.get('errorId', '')
+    session_tracker.state = "-"
+    session_tracker.error_id = data.get("errorId", "")
 
 
-def SessionLastBookmarks(backend, data):
+def session_last_bookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
     bookmarks = session.last_bookmarks()
-    backend.send_response("Bookmarks",
-                                {"bookmarks": list(bookmarks.raw_values)})
+    backend.send_response(
+        "Bookmarks", {"bookmarks": list(bookmarks.raw_values)}
+    )
 
 
-def TransactionRun(backend, data):
+def transaction_run(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
     cypher, params = fromtestkit.to_cypher_and_params(data)
@@ -759,43 +792,43 @@ def TransactionRun(backend, data):
     backend.send_response("Result", {"id": key, "keys": result.keys()})
 
 
-def TransactionCommit(backend, data):
+def transaction_commit(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
     try:
         commit = tx.commit
     except AttributeError as e:
-        raise MarkdAsDriverException(e)
+        raise MarkdAsDriverError(e) from None
         # raise DriverError("Type does not support commit %s" % type(tx))
     commit()
     backend.send_response("Transaction", {"id": key})
 
 
-def TransactionRollback(backend, data):
+def transaction_rollback(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
     try:
         rollback = tx.rollback
     except AttributeError as e:
-        raise MarkdAsDriverException(e)
+        raise MarkdAsDriverError(e) from None
         # raise DriverError("Type does not support rollback %s" % type(tx))
     rollback()
     backend.send_response("Transaction", {"id": key})
 
 
-def TransactionClose(backend, data):
+def transaction_close(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
     try:
         close = tx.close
     except AttributeError as e:
-        raise MarkdAsDriverException(e)
+        raise MarkdAsDriverError(e) from None
         # raise DriverError("Type does not support close %s" % type(tx))
     close()
     backend.send_response("Transaction", {"id": key})
 
 
-def ResultNext(backend, data):
+def result_next(backend, data):
     result = backend.results[data["resultId"]]
 
     try:
@@ -806,26 +839,27 @@ def ResultNext(backend, data):
     backend.send_response("Record", totestkit.record(record))
 
 
-def ResultSingle(backend, data):
+def result_single(backend, data):
     result = backend.results[data["resultId"]]
-    backend.send_response("Record", totestkit.record(
-        result.single(strict=True)
-    ))
+    backend.send_response(
+        "Record", totestkit.record(result.single(strict=True))
+    )
 
 
-def ResultSingleOptional(backend, data):
+def result_single_optional(backend, data):
     result = backend.results[data["resultId"]]
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
         record = result.single(strict=False)
     if record:
         record = totestkit.record(record)
-    backend.send_response("RecordOptional", {
-        "record": record, "warnings": list(map(str, warning_list))
-    })
+    backend.send_response(
+        "RecordOptional",
+        {"record": record, "warnings": list(map(str, warning_list))},
+    )
 
 
-def ResultPeek(backend, data):
+def result_peek(backend, data):
     result = backend.results[data["resultId"]]
     record = result.peek()
     if record is not None:
@@ -834,22 +868,22 @@ def ResultPeek(backend, data):
         backend.send_response("NullRecord", {})
 
 
-def ResultList(backend, data):
+def result_list(backend, data):
     result = backend.results[data["resultId"]]
     records = Util.list(result)
-    backend.send_response("RecordList", {
-        "records": [totestkit.record(r) for r in records]
-    })
+    backend.send_response(
+        "RecordList", {"records": [totestkit.record(r) for r in records]}
+    )
 
 
-def ResultConsume(backend, data):
+def result_consume(backend, data):
     result = backend.results[data["resultId"]]
     summary = result.consume()
     assert isinstance(summary, neo4j.ResultSummary)
     backend.send_response("Summary", totestkit.summary(summary))
 
 
-def ForcedRoutingTableUpdate(backend, data):
+def forced_routing_table_update(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     database = data["database"]
@@ -861,7 +895,7 @@ def ForcedRoutingTableUpdate(backend, data):
     backend.send_response("Driver", {"id": driver_id})
 
 
-def GetRoutingTable(backend, data):
+def get_routing_table(backend, data):
     driver_id = data["driverId"]
     database = data["database"]
     driver = backend.drivers[driver_id]
@@ -871,12 +905,12 @@ def GetRoutingTable(backend, data):
         "ttl": routing_table.ttl,
     }
     for role in ("routers", "readers", "writers"):
-        addresses = routing_table.__getattribute__(role)
+        addresses = getattr(routing_table, role)
         response_data[role] = list(map(str, addresses))
     backend.send_response("RoutingTable", response_data)
 
 
-def GetConnectionPoolMetrics(backend, data):
+def get_connection_pool_metrics(backend, data):
     driver_id = data["driverId"]
     address = neo4j.Address.parse(data["address"])
     driver = backend.drivers[driver_id]
@@ -886,13 +920,16 @@ def GetConnectionPoolMetrics(backend, data):
         + driver._pool.connections_reservations[address]
     )
     idle = len(connections) - in_use
-    backend.send_response("ConnectionPoolMetrics", {
-        "inUse": in_use,
-        "idle": idle,
-    })
+    backend.send_response(
+        "ConnectionPoolMetrics",
+        {
+            "inUse": in_use,
+            "idle": idle,
+        },
+    )
 
 
-def FakeTimeInstall(backend, _data):
+def fake_time_install(backend, _data):
     assert backend.fake_time is None
     assert backend.fake_time_ticker is None
 
@@ -901,7 +938,7 @@ def FakeTimeInstall(backend, _data):
     backend.send_response("FakeTimeAck", {})
 
 
-def FakeTimeTick(backend, data):
+def fake_time_tick(backend, data):
     assert backend.fake_time is not None
     assert backend.fake_time_ticker is not None
 
@@ -911,7 +948,7 @@ def FakeTimeTick(backend, data):
     backend.send_response("FakeTimeAck", {})
 
 
-def FakeTimeUninstall(backend, _data):
+def fake_time_uninstall(backend, _data):
     assert backend.fake_time is not None
     assert backend.fake_time_ticker is not None
 

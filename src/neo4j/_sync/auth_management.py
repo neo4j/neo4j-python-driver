@@ -58,15 +58,15 @@ class StaticAuthManager(AuthManager):
 
 
 class Neo4jAuthTokenManager(AuthManager):
-    _current_auth: t.Optional[ExpiringAuth]
+    _current_auth: ExpiringAuth | None
     _provider: t.Callable[[], t.Union[ExpiringAuth]]
-    _handled_codes: t.FrozenSet[str]
+    _handled_codes: frozenset[str]
     _lock: Lock
 
     def __init__(
         self,
         provider: t.Callable[[], t.Union[ExpiringAuth]],
-        handled_codes: t.FrozenSet[str]
+        handled_codes: frozenset[str],
     ) -> None:
         self._provider = provider
         self._handled_codes = handled_codes
@@ -89,8 +89,10 @@ class Neo4jAuthTokenManager(AuthManager):
         with self._lock:
             auth = self._current_auth
             if auth is None or expiring_auth_has_expired(auth):
-                log.debug("[     ]  _: <AUTH MANAGER> refreshing (%s)",
-                          "init" if auth is None else "time out")
+                log.debug(
+                    "[     ]  _: <AUTH MANAGER> refreshing (%s)",
+                    "init" if auth is None else "time out",
+                )
                 self._refresh_auth()
                 auth = self._current_auth
                 assert auth is not None
@@ -104,8 +106,10 @@ class Neo4jAuthTokenManager(AuthManager):
         with self._lock:
             cur_auth = self._current_auth
             if cur_auth is not None and cur_auth.auth == auth:
-                log.debug("[     ]  _: <AUTH MANAGER> refreshing (error %s)",
-                          error.code)
+                log.debug(
+                    "[     ]  _: <AUTH MANAGER> refreshing (error %s)",
+                    error.code,
+                )
                 self._refresh_auth()
             return True
 
@@ -164,7 +168,7 @@ class AuthManagers:
 
     @staticmethod
     def basic(
-        provider: t.Callable[[], t.Union[_TAuth]]
+        provider: t.Callable[[], t.Union[_TAuth]],
     ) -> AuthManager:
         """
         Create an auth manager handling basic auth password rotation.
@@ -232,7 +236,7 @@ class AuthManagers:
 
     @staticmethod
     def bearer(
-        provider: t.Callable[[], t.Union[ExpiringAuth]]
+        provider: t.Callable[[], t.Union[ExpiringAuth]],
     ) -> AuthManager:
         """
         Create an auth manager for potentially expiring bearer auth tokens.
@@ -297,20 +301,22 @@ class AuthManagers:
 
         .. versionchanged:: 5.14 Stabilized from preview.
         """
-        handled_codes = frozenset((
-            "Neo.ClientError.Security.TokenExpired",
-            "Neo.ClientError.Security.Unauthorized",
-        ))
+        handled_codes = frozenset(
+            (
+                "Neo.ClientError.Security.TokenExpired",
+                "Neo.ClientError.Security.Unauthorized",
+            )
+        )
         return Neo4jAuthTokenManager(provider, handled_codes)
 
 
 class _StaticClientCertificateProvider(ClientCertificateProvider):
-    _cert: t.Optional[ClientCertificate]
+    _cert: ClientCertificate | None
 
     def __init__(self, cert: ClientCertificate) -> None:
         self._cert = cert
 
-    def get_certificate(self) -> t.Optional[ClientCertificate]:
+    def get_certificate(self) -> ClientCertificate | None:
         cert, self._cert = self._cert, None
         return cert
 
@@ -327,7 +333,9 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     Example::
@@ -379,23 +387,22 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
         implementation internal. This entails removing the possibility to
         directly instantiate this class. Please use the factory method
         :meth:`.ClientCertificateProviders.rotating` instead.
+
     """
 
     @abc.abstractmethod
     def update_certificate(self, cert: ClientCertificate) -> None:
-        """
-        Update the certificate to use for new connections.
-        """
+        """Update the certificate to use for new connections."""
 
 
 class _Neo4jRotatingClientCertificateProvider(
     RotatingClientCertificateProvider
 ):
     def __init__(self, initial_cert: ClientCertificate) -> None:
-        self._cert: t.Optional[ClientCertificate] = initial_cert
+        self._cert: ClientCertificate | None = initial_cert
         self._lock = CooperativeLock()
 
-    def get_certificate(self) -> t.Optional[ClientCertificate]:
+    def get_certificate(self) -> ClientCertificate | None:
         with self._lock:
             cert, self._cert = self._cert, None
             return cert
@@ -411,11 +418,15 @@ class ClientCertificateProviders:
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
+
     """
+
     @staticmethod
     @preview("Mutual TLS is a preview feature.")
     def static(cert: ClientCertificate) -> ClientCertificateProvider:
@@ -430,7 +441,7 @@ class ClientCertificateProviders:
     @staticmethod
     @preview("Mutual TLS is a preview feature.")
     def rotating(
-        initial_cert: ClientCertificate
+        initial_cert: ClientCertificate,
     ) -> RotatingClientCertificateProvider:
         """
         Create certificate provider that allows for rotating certificates.

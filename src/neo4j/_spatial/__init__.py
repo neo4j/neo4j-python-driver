@@ -14,9 +14,7 @@
 # limitations under the License.
 
 
-"""
-This module defines spatial data types.
-"""
+"""Fundamental spatial types for interchange with the DBMS."""
 
 from __future__ import annotations
 
@@ -25,12 +23,13 @@ from threading import Lock
 
 
 # SRID to subclass mappings
-srid_table: t.Dict[int, t.Tuple[t.Type[Point], int]] = {}
+srid_table: dict[int, tuple[type[Point], int]] = {}
 srid_table_lock = Lock()
 
 
 class Point(t.Tuple[float, ...]):
-    """Base-class for spatial data.
+    """
+    Base-class for spatial data.
 
     A point within a geometric space. This type is generally used via its
     subclasses and should not be instantiated directly unless there is no
@@ -45,9 +44,10 @@ class Point(t.Tuple[float, ...]):
     #: The SRID (spatial reference identifier) of the spatial data.
     #: A number that identifies the coordinate system the spatial type is to
     #: be interpreted in.
-    srid: t.Optional[int]
+    srid: int | None
 
     if t.TYPE_CHECKING:
+
         @property
         def x(self) -> float: ...
 
@@ -61,12 +61,13 @@ class Point(t.Tuple[float, ...]):
         return tuple.__new__(cls, map(float, iterable))
 
     def __repr__(self) -> str:
-        return "POINT(%s)" % " ".join(map(str, self))
+        return f"POINT({' '.join(map(str, self))})"
 
     def __eq__(self, other: object) -> bool:
         try:
-            return (type(self) is type(other)
-                    and tuple(self) == tuple(t.cast(Point, other)))
+            return type(self) is type(other) and tuple(self) == tuple(
+                t.cast(Point, other)
+            )
         except (AttributeError, TypeError):
             return False
 
@@ -78,12 +79,9 @@ class Point(t.Tuple[float, ...]):
 
 
 def point_type(
-    name: str,
-    fields: t.Tuple[str, str, str],
-    srid_map: t.Dict[int, int]
-) -> t.Type[Point]:
-    """ Dynamically create a Point subclass.
-    """
+    name: str, fields: tuple[str, str, str], srid_map: dict[int, int]
+) -> type[Point]:
+    """Dynamically create a Point subclass."""
 
     def srid(self):
         try:
@@ -99,9 +97,9 @@ def point_type(
             try:
                 return self[i]
             except IndexError:
-                raise AttributeError(f)
+                raise AttributeError(f) from None
 
-        for field_alias in {subclass_field, "xyz"[index]}:
+        for field_alias in (subclass_field, "xyz"[index]):
             attributes[field_alias] = property(accessor)
 
     cls = t.cast(t.Type[Point], type(name, (Point,), attributes))
@@ -115,13 +113,15 @@ def point_type(
 
 # Point subclass definitions
 if t.TYPE_CHECKING:
-    class CartesianPoint(Point):
-        ...
+
+    class CartesianPoint(Point): ...
 else:
-    CartesianPoint = point_type("CartesianPoint", ("x", "y", "z"),
-                                {2: 7203, 3: 9157})
+    CartesianPoint = point_type(
+        "CartesianPoint", ("x", "y", "z"), {2: 7203, 3: 9157}
+    )
 
 if t.TYPE_CHECKING:
+
     class WGS84Point(Point):
         @property
         def longitude(self) -> float: ...
@@ -132,5 +132,6 @@ if t.TYPE_CHECKING:
         @property
         def height(self) -> float: ...
 else:
-    WGS84Point = point_type("WGS84Point", ("longitude", "latitude", "height"),
-                            {2: 4326, 3: 4979})
+    WGS84Point = point_type(
+        "WGS84Point", ("longitude", "latitude", "height"), {2: 4326, 3: 4979}
+    )

@@ -14,9 +14,36 @@
 # limitations under the License.
 
 
-from ..v1.hydration_handler import *
+from datetime import (
+    date,
+    datetime,
+    time,
+    timedelta,
+)
+
+from ...._optional_deps import (
+    np,
+    pd,
+)
+from ....spatial import (
+    CartesianPoint,
+    Point,
+    WGS84Point,
+)
+from ....time import (
+    Date,
+    DateTime,
+    Duration,
+    Time,
+)
+from .._common import HydrationScope
+from .._interface import HydrationHandlerABC
+from ..v1 import (
+    spatial,
+    temporal as temporal_v1,
+)
 from ..v1.hydration_handler import _GraphHydrator
-from . import temporal  # type: ignore[no-redef]
+from . import temporal as temporal_v2
 
 
 class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
@@ -27,38 +54,44 @@ class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
             **self.struct_hydration_functions,
             b"X": spatial.hydrate_point,
             b"Y": spatial.hydrate_point,
-            b"D": temporal.hydrate_date,
-            b"T": temporal.hydrate_time,         # time zone offset
-            b"t": temporal.hydrate_time,         # no time zone
-            b"I": temporal.hydrate_datetime,     # time zone offset
-            b"i": temporal.hydrate_datetime,     # time zone name
-            b"d": temporal.hydrate_datetime,     # no time zone
-            b"E": temporal.hydrate_duration,
+            b"D": temporal_v1.hydrate_date,
+            b"T": temporal_v1.hydrate_time,  # time zone offset
+            b"t": temporal_v1.hydrate_time,  # no time zone
+            b"I": temporal_v2.hydrate_datetime,  # time zone offset
+            b"i": temporal_v2.hydrate_datetime,  # time zone name
+            b"d": temporal_v2.hydrate_datetime,  # no time zone
+            b"E": temporal_v1.hydrate_duration,
         }
-        self.dehydration_hooks.update(exact_types={
-            Point: spatial.dehydrate_point,
-            CartesianPoint: spatial.dehydrate_point,
-            WGS84Point: spatial.dehydrate_point,
-            Date: temporal.dehydrate_date,
-            date: temporal.dehydrate_date,
-            Time: temporal.dehydrate_time,
-            time: temporal.dehydrate_time,
-            DateTime: temporal.dehydrate_datetime,
-            datetime: temporal.dehydrate_datetime,
-            Duration: temporal.dehydrate_duration,
-            timedelta: temporal.dehydrate_timedelta,
-        })
+        self.dehydration_hooks.update(
+            exact_types={
+                Point: spatial.dehydrate_point,
+                CartesianPoint: spatial.dehydrate_point,
+                WGS84Point: spatial.dehydrate_point,
+                Date: temporal_v1.dehydrate_date,
+                date: temporal_v1.dehydrate_date,
+                Time: temporal_v1.dehydrate_time,
+                time: temporal_v1.dehydrate_time,
+                DateTime: temporal_v2.dehydrate_datetime,
+                datetime: temporal_v2.dehydrate_datetime,
+                Duration: temporal_v1.dehydrate_duration,
+                timedelta: temporal_v1.dehydrate_timedelta,
+            }
+        )
         if np is not None:
-            self.dehydration_hooks.update(exact_types={
-                np.datetime64: temporal.dehydrate_np_datetime,
-                np.timedelta64: temporal.dehydrate_np_timedelta,
-            })
+            self.dehydration_hooks.update(
+                exact_types={
+                    np.datetime64: temporal_v1.dehydrate_np_datetime,
+                    np.timedelta64: temporal_v1.dehydrate_np_timedelta,
+                }
+            )
         if pd is not None:
-            self.dehydration_hooks.update(exact_types={
-                pd.Timestamp: temporal.dehydrate_pandas_datetime,
-                pd.Timedelta: temporal.dehydrate_pandas_timedelta,
-                type(pd.NaT): lambda _: None,
-            })
+            self.dehydration_hooks.update(
+                exact_types={
+                    pd.Timestamp: temporal_v2.dehydrate_pandas_datetime,
+                    pd.Timedelta: temporal_v1.dehydrate_pandas_timedelta,
+                    type(pd.NaT): lambda _: None,
+                }
+            )
 
     def new_hydration_scope(self):
         self._created_scope = True

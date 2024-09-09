@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+# ruff: noqa: ASYNC110
+# FIXME: activate lint and fix it
+
 import asyncio
 import sys
 
@@ -30,8 +33,8 @@ from ..._async_compat import mark_async_test
     # direct driver is not making use of `asyncio.Lock`.
     sys.version_info < (3, 10) and env.NEO4J_SCHEME == "neo4j",
     reason="asyncio's synchronization primitives can create a new event loop "
-           "if instantiated while there is no running event loop. This "
-           "changed with Python 3.10.",
+    "if instantiated while there is no running event loop. This "
+    "changed with Python 3.10.",
     raises=RuntimeError,
     strict=True,
 )
@@ -69,8 +72,10 @@ def test_can_create_async_driver_outside_of_loop(uri, auth):
 
     async def run(driver_: neo4j.AsyncDriver):
         async with driver_:
-            work_loads = (session_handler(driver_.session())
-                          for _ in range(pool_size * 4))
+            work_loads = (
+                session_handler(driver_.session())
+                for _ in range(pool_size * 4)
+            )
             res = await asyncio.gather(*work_loads, return_exceptions=True)
             for r in res:
                 if isinstance(r, Exception):
@@ -136,4 +141,4 @@ async def test_cancel_driver_close(uri, auth):
     # give the driver a chance to close connections forcefully
     await asyncio.sleep(0)
     # driver should be marked as closed to not emmit a ResourceWarning later
-    assert driver._closed == True
+    assert driver._closed is True

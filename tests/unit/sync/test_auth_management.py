@@ -59,7 +59,8 @@ CODES_HANDLED_BY_BEARER_MANAGER = {
     "Neo.ClientError.Security.Unauthorized",
 }
 SAMPLE_ERRORS = [
-    Neo4jError.hydrate(code=code) for code in {
+    Neo4jError.hydrate(code=code)
+    for code in {
         "Neo.ClientError.Security.AuthenticationRateLimit",
         "Neo.ClientError.Security.AuthorizationExpired",
         "Neo.ClientError.Security.CredentialsExpired",
@@ -98,8 +99,7 @@ def expiring_auth(*args, **kwargs):
 @pytest.mark.parametrize("auth", SAMPLE_AUTHS)
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 def test_static_manager(
-    auth: t.Union[t.Tuple[str, str], Auth, None],
-    error: Neo4jError
+    auth: t.Union[t.Tuple[str, str], Auth, None], error: Neo4jError
 ) -> None:
     manager: AuthManager = static_auth_manager(auth)
     assert manager.get_auth() is auth
@@ -116,35 +116,42 @@ def test_static_manager(
 
 
 @mark_sync_test
-@pytest.mark.parametrize(("auth1", "auth2"),
-                         list(itertools.product(SAMPLE_AUTHS, repeat=2)))
+@pytest.mark.parametrize(
+    ("auth1", "auth2"), list(itertools.product(SAMPLE_AUTHS, repeat=2))
+)
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 def test_basic_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     error: Neo4jError,
-    mocker
+    mocker,
 ) -> None:
     def return_value_generator(auth):
         return auth
 
     _test_manager(
-        auth1, auth2, return_value_generator, basic_auth_manager, error,
-        CODES_HANDLED_BY_BASIC_MANAGER, mocker
+        auth1,
+        auth2,
+        return_value_generator,
+        basic_auth_manager,
+        error,
+        CODES_HANDLED_BY_BASIC_MANAGER,
+        mocker,
     )
 
 
 @mark_sync_test
-@pytest.mark.parametrize(("auth1", "auth2"),
-                         itertools.product(SAMPLE_AUTHS, repeat=2))
+@pytest.mark.parametrize(
+    ("auth1", "auth2"), itertools.product(SAMPLE_AUTHS, repeat=2)
+)
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
-@pytest.mark.parametrize("expires_at", (None, .001, 1, 1000.))
+@pytest.mark.parametrize("expires_at", (None, 0.001, 1, 1000.0))
 def test_bearer_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     error: Neo4jError,
     expires_at: t.Optional[float],
-    mocker
+    mocker,
 ) -> None:
     def return_value_generator(auth):
         return expiring_auth(auth)
@@ -152,20 +159,26 @@ def test_bearer_manager_manual_expiry(
     with freeze_time("1970-01-01 00:00:00") as frozen_time:
         assert isinstance(frozen_time, FrozenDateTimeFactory)
         _test_manager(
-            auth1, auth2, return_value_generator, bearer_auth_manager, error,
-            CODES_HANDLED_BY_BEARER_MANAGER, mocker
+            auth1,
+            auth2,
+            return_value_generator,
+            bearer_auth_manager,
+            error,
+            CODES_HANDLED_BY_BEARER_MANAGER,
+            mocker,
         )
 
 
 @mark_sync_test
-@pytest.mark.parametrize(("auth1", "auth2"),
-                         itertools.product(SAMPLE_AUTHS, repeat=2))
-@pytest.mark.parametrize("expires_at", (None, -1, 1., 1, 1000.))
+@pytest.mark.parametrize(
+    ("auth1", "auth2"), itertools.product(SAMPLE_AUTHS, repeat=2)
+)
+@pytest.mark.parametrize("expires_at", (None, -1, 1.0, 1, 1000.0))
 def test_bearer_manager_time_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     expires_at: t.Optional[float],
-    mocker
+    mocker,
 ) -> None:
     with freeze_time("1970-01-01 00:00:00") as frozen_time:
         assert isinstance(frozen_time, FrozenDateTimeFactory)
@@ -280,11 +293,12 @@ if t.TYPE_CHECKING:
     # Tests for type checker only. No need to run the test.
 
     def test_rotating_client_cert_provider_type_factory(
-        client_cert_factory
+        client_cert_factory,
     ) -> None:
         cert1: ClientCertificate = client_cert_factory()
-        provider: RotatingClientCertificateProvider = \
+        provider: RotatingClientCertificateProvider = (
             rotating_cert_provider(cert1)
+        )
         _: ClientCertificateProvider = provider
 
 
@@ -293,8 +307,9 @@ def test_rotating_client_cert_provider(client_cert_factory) -> None:
     cert1: ClientCertificate = client_cert_factory()
     cert2: ClientCertificate = client_cert_factory()
     assert cert1 is not cert2  # sanity check
-    provider: RotatingClientCertificateProvider = \
-        rotating_cert_provider(cert1)
+    provider: RotatingClientCertificateProvider = rotating_cert_provider(
+        cert1
+    )
 
     assert provider.get_certificate() is cert1
     for _ in range(10):

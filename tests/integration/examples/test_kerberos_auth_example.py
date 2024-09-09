@@ -28,12 +28,11 @@ from neo4j import (
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_kerberos_auth_example.py -s -v
-
 class KerberosAuthExample(DriverSetupExample):
     # tag::kerberos-auth[]
     def __init__(self, uri, ticket):
         self._driver = GraphDatabase.driver(uri, auth=kerberos_auth(ticket))
+
     # end::kerberos-auth[]
 
 

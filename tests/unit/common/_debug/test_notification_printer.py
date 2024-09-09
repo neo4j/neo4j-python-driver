@@ -36,66 +36,41 @@ if t.TYPE_CHECKING:
         # no query
         (None, None, "{notification}"),
         (None, {"offset": 0, "line": 1, "column": 1}, "{notification}"),
-
         # no position
         ("MATCH (n) RETURN n", None, "{notification} for query:\n{query}"),
         ("MATCH (n)\nRETURN n", None, "{notification} for query:\n{query}"),
-
         # normal position
         (
             "MATCH (n) RETURN n",
             {"offset": 0, "line": 1, "column": 1},
-            (
-                "{notification} for query:\n"
-                "MATCH (n) RETURN n\n"
-                "^"
-             ),
+            ("{notification} for query:\n" "MATCH (n) RETURN n\n" "^"),
         ),
         (
             "MATCH (n) RETURN n",
             {"offset": 2, "line": 1, "column": 3},
-            (
-                "{notification} for query:\n"
-                "MATCH (n) RETURN n\n"
-                "  ^"
-             ),
+            ("{notification} for query:\n" "MATCH (n) RETURN n\n" "  ^"),
         ),
         (
-            (
-                "MATCH (n)\n"
-                "RETURN n"
-            ),
+            ("MATCH (n)\n" "RETURN n"),
             {"offset": 0, "line": 1, "column": 3},
-            (
-                "{notification} for query:\n"
-                "MATCH (n)\n"
-                "  ^\n"
-                "RETURN n"
-             ),
+            ("{notification} for query:\n" "MATCH (n)\n" "  ^\n" "RETURN n"),
         ),
         (
-            (
-                "MATCH (n)\n"
-                "RETURN n"
-            ),
+            ("MATCH (n)\n" "RETURN n"),
             {"offset": 0, "line": 2, "column": 8},
             (
                 "{notification} for query:\n"
                 "MATCH (n)\n"
                 "RETURN n\n"
                 "       ^"
-             ),
+            ),
         ),
-
         # position out of bounds
         *(
             (
                 "MATCH (n) RETURN n",
                 {"offset": 0, "line": line, "column": column},
-                (
-                    "{notification} for query:\n"
-                    "MATCH (n) RETURN n"
-                 ),
+                ("{notification} for query:\n" "MATCH (n) RETURN n"),
             )
             for (line, column) in (
                 (0, 1),
@@ -113,27 +88,24 @@ if t.TYPE_CHECKING:
                 "{notification} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "                   ^"
-             ),
+            ),
         ),
         (
-            (
-                "MATCH (n)\n"
-                "RETURN n"
-            ),
+            ("MATCH (n)\n" "RETURN n"),
             {"offset": 0, "line": 1, "column": 20},
             (
                 "{notification} for query:\n"
                 "MATCH (n)\n"
                 "                   ^\n"
                 "RETURN n"
-             ),
+            ),
         ),
-    )
+    ),
 )
 def test_position(
     notification_factory: TNotificationFactory,
-    query: t.Optional[str],
-    position: t.Optional[Position],
+    query: str | None,
+    position: Position | None,
     expected_output_template: str,
 ) -> None:
     notification = notification_factory(data_overwrite={"position": position})

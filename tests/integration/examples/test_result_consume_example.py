@@ -17,15 +17,18 @@
 # tag::result-consume-import[]
 # end::result-consume-import[]
 
-# python -m pytest tests/integration/examples/test_result_consume_example.py -s -v
 
 def result_consume_example(driver):
     with driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _").consume()
 
     with driver.session() as session:
-        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Alice").single().value()
-        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Bob").single().value()
+        session.run(
+            "CREATE (a:Person {name: $name}) RETURN a", name="Alice"
+        ).single().value()
+        session.run(
+            "CREATE (a:Person {name: $name}) RETURN a", name="Bob"
+        ).single().value()
 
     # tag::result-consume[]
     def match_person_nodes(tx):
@@ -44,4 +47,4 @@ def result_consume_example(driver):
 
 def test_example(driver):
     people = result_consume_example(driver)
-    assert people == ['Alice', 'Bob']
+    assert people == ["Alice", "Bob"]

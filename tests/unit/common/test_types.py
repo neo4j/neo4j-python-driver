@@ -15,7 +15,6 @@
 
 
 import copy
-import pickle
 import typing as t
 from dataclasses import dataclass
 from itertools import product
@@ -37,11 +36,14 @@ from neo4j.graph import (
 # Node
 
 
-@pytest.mark.parametrize(("id_", "element_id"), (
-    (123, "123"),
-    (123, None),
-    (None, "foobar"),
-))
+@pytest.mark.parametrize(
+    ("id_", "element_id"),
+    (
+        (123, "123"),
+        (123, None),
+        (None, "foobar"),
+    ),
+)
 def test_can_create_node(id_, element_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
@@ -79,8 +81,9 @@ def test_can_create_node(id_, element_id):
 def test_node_with_null_properties():
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
-    stuff = gh.hydrate_node(1, (), {"good": ["puppies", "kittens"],
-                                    "bad": None})
+    stuff = gh.hydrate_node(
+        1, (), {"good": ["puppies", "kittens"], "bad": None}
+    )
     assert isinstance(stuff, Node)
     assert set(stuff.keys()) == {"good"}
     assert stuff.get("good") == ["puppies", "kittens"]
@@ -92,24 +95,26 @@ def test_node_with_null_properties():
     assert "bad" not in stuff
 
 
-@pytest.mark.parametrize(("g1", "id1", "eid1", "props1",
-                          "g2", "id2", "eid2", "props2"), (
-    (*n1, *n2)
-    for n1, n2 in product(
-        (  # type: ignore
-            (g, id_, element_id, props)  # type: ignore
-            for g in (0, 1)
-            for id_, element_id in (
-                (1, "1"),
-                (1234, "1234"),
-                (None, "1234"),
-                (None, "foobar"),
-            )
-            for props in (None, {}, {"a": 1})
-        ),
-        repeat=2
-    )
-))
+@pytest.mark.parametrize(
+    ("g1", "id1", "eid1", "props1", "g2", "id2", "eid2", "props2"),
+    (
+        (*n1, *n2)
+        for n1, n2 in product(
+            (  # type: ignore
+                (g, id_, element_id, props)  # type: ignore
+                for g in (0, 1)
+                for id_, element_id in (
+                    (1, "1"),
+                    (1234, "1234"),
+                    (None, "1234"),
+                    (None, "foobar"),
+                )
+                for props in (None, {}, {"a": 1})
+            ),
+            repeat=2,
+        )
+    ),
+)
 def test_node_equality(g1, id1, eid1, props1, g2, id2, eid2, props2):
     graphs = (Graph(), Graph())
     node_1 = Node(graphs[g1], eid1, id1, props1)
@@ -162,8 +167,9 @@ def test_can_create_relationship_v1():
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
-    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}
+    )
     assert isinstance(alice_knows_bob, Relationship)
     assert alice_knows_bob.start_node == alice
     assert alice_knows_bob.type == "KNOWS"
@@ -180,19 +186,23 @@ def test_can_create_relationship_v2(legacy_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(
-        1, {"Person"}, {"name": "Alice", "age": 33},
-        "1" if legacy_id else "alice"
+        1,
+        {"Person"},
+        {"name": "Alice", "age": 33},
+        "1" if legacy_id else "alice",
     )
     bob = gh.hydrate_node(
-        2, {"Person"}, {"name": "Bob", "age": 44},
-        "2" if legacy_id else "bob"
+        2, {"Person"}, {"name": "Bob", "age": 44}, "2" if legacy_id else "bob"
     )
     alice_knows_bob = gh.hydrate_relationship(
         1,
-        1, 2,
-        "KNOWS", {"since": 1999},
+        1,
+        2,
+        "KNOWS",
+        {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
-        "1" if legacy_id else "alice", "2" if legacy_id else "bob"
+        "1" if legacy_id else "alice",
+        "2" if legacy_id else "bob",
     )
     assert isinstance(alice_knows_bob, Relationship)
     assert alice_knows_bob.start_node == alice
@@ -210,8 +220,9 @@ def test_relationship_v1_repr():
     gh = hydration_scope._graph_hydrator
     _alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
-    alice_knows_bob = gh.hydrate_relationship(3, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        3, 1, 2, "KNOWS", {"since": 1999}
+    )
     assert repr(alice_knows_bob) == (
         "<Relationship element_id='3' "
         "nodes=(<Node element_id='1' labels=frozenset({'Person'}) "
@@ -226,17 +237,20 @@ def test_relationship_v2_repr(legacy_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     gh.hydrate_node(
-        1, {"Person"}, {"name": "Alice"},
-        "1" if legacy_id else "alice"
+        1, {"Person"}, {"name": "Alice"}, "1" if legacy_id else "alice"
     )
     gh.hydrate_node(
-        2, {"Person"}, {"name": "Bob"},
-        "2" if legacy_id else "bob"
+        2, {"Person"}, {"name": "Bob"}, "2" if legacy_id else "bob"
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1, 1, 2, "KNOWS", {"since": 1999},
+        1,
+        1,
+        2,
+        "KNOWS",
+        {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
-        "1" if legacy_id else "alice", "2" if legacy_id else "bob"
+        "1" if legacy_id else "alice",
+        "2" if legacy_id else "bob",
     )
     expected_eid = "1" if legacy_id else "alice_knows_bob"
     expected_eid_alice = "1" if legacy_id else "alice"
@@ -253,14 +267,16 @@ def test_relationship_v2_repr(legacy_id):
 
 # Path
 
+
 def test_can_create_path_v1():
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
-    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}
+    )
     carol_dislikes_bob = gh.hydrate_relationship(2, 3, 2, "DISLIKES", {})
     path = Path(alice, alice_knows_bob, carol_dislikes_bob)
     assert isinstance(path, Path)
@@ -276,27 +292,39 @@ def test_can_create_path_v2(legacy_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(
-        1, {"Person"}, {"name": "Alice", "age": 33},
-        "1" if legacy_id else "alice"
+        1,
+        {"Person"},
+        {"name": "Alice", "age": 33},
+        "1" if legacy_id else "alice",
     )
     bob = gh.hydrate_node(
-        2, {"Person"}, {"name": "Bob", "age": 44},
-        "2" if legacy_id else "bob"
+        2, {"Person"}, {"name": "Bob", "age": 44}, "2" if legacy_id else "bob"
     )
     carol = gh.hydrate_node(
-        3, {"Person"}, {"name": "Carol", "age": 55},
-        "3" if legacy_id else "carol"
+        3,
+        {"Person"},
+        {"name": "Carol", "age": 55},
+        "3" if legacy_id else "carol",
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1, 1, 2, "KNOWS",  {"since": 1999},
+        1,
+        1,
+        2,
+        "KNOWS",
+        {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
-        "1" if legacy_id else "alice", "2" if legacy_id else "bob"
-
+        "1" if legacy_id else "alice",
+        "2" if legacy_id else "bob",
     )
     carol_dislikes_bob = gh.hydrate_relationship(
-        2, 3, 2, "DISLIKES", {},
+        2,
+        3,
+        2,
+        "DISLIKES",
+        {},
         "2" if legacy_id else "carol_dislikes_bob",
-        "3" if legacy_id else "carol", "2" if legacy_id else "bob"
+        "3" if legacy_id else "carol",
+        "2" if legacy_id else "bob",
     )
     path = Path(alice, alice_knows_bob, carol_dislikes_bob)
     assert isinstance(path, Path)
@@ -320,10 +348,14 @@ def test_can_hydrate_path(cyclic):
     else:
         carol_id = 3
         carol_eid = "3"
-        carol = gh.hydrate_node(carol_id, {"Person"},
-                                {"name": "Carol", "age": 55}, carol_eid)
-    r = [gh.hydrate_unbound_relationship(1, "KNOWS", {"since": 1999}, "1"),
-         gh.hydrate_unbound_relationship(2, "DISLIKES", {}), "2"]
+        carol = gh.hydrate_node(
+            carol_id, {"Person"}, {"name": "Carol", "age": 55}, carol_eid
+        )
+    r = [
+        gh.hydrate_unbound_relationship(1, "KNOWS", {"since": 1999}, "1"),
+        gh.hydrate_unbound_relationship(2, "DISLIKES", {}),
+        "2",
+    ]
     path = gh.hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
     assert path.start_node is alice
     assert path.end_node is carol
@@ -334,10 +366,14 @@ def test_can_hydrate_path(cyclic):
     expected_carol_dislikes_bob = gh.hydrate_relationship(
         2, carol_id, 2, "DISLIKES", {}, "2", carol_eid, "2"
     )
-    assert path.relationships == (expected_alice_knows_bob,
-                                  expected_carol_dislikes_bob)
-    assert list(path) == [expected_alice_knows_bob,
-                          expected_carol_dislikes_bob]
+    assert path.relationships == (
+        expected_alice_knows_bob,
+        expected_carol_dislikes_bob,
+    )
+    assert list(path) == [
+        expected_alice_knows_bob,
+        expected_carol_dislikes_bob,
+    ]
 
 
 def test_path_v1_equality():
@@ -346,8 +382,9 @@ def test_path_v1_equality():
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     _carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
-    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}
+    )
     carol_dislikes_bob = gh.hydrate_relationship(2, 3, 2, "DISLIKES", {})
     path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
     path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
@@ -360,26 +397,39 @@ def test_path_v2_equality(legacy_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(
-        1, {"Person"}, {"name": "Alice", "age": 33},
-        "1" if legacy_id else "alice"
+        1,
+        {"Person"},
+        {"name": "Alice", "age": 33},
+        "1" if legacy_id else "alice",
     )
     _bob = gh.hydrate_node(
-        2, {"Person"}, {"name": "Bob", "age": 44},
-        "2" if legacy_id else "bob"
+        2, {"Person"}, {"name": "Bob", "age": 44}, "2" if legacy_id else "bob"
     )
     _carol = gh.hydrate_node(
-        3, {"Person"}, {"name": "Carol", "age": 55},
-        "3" if legacy_id else "carol"
+        3,
+        {"Person"},
+        {"name": "Carol", "age": 55},
+        "3" if legacy_id else "carol",
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1, 1, 2, "KNOWS", {"since": 1999},
+        1,
+        1,
+        2,
+        "KNOWS",
+        {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
-        "1" if legacy_id else "alice", "2" if legacy_id else "bob"
+        "1" if legacy_id else "alice",
+        "2" if legacy_id else "bob",
     )
     carol_dislikes_bob = gh.hydrate_relationship(
-        2, 3, 2, "DISLIKES", {},
+        2,
+        3,
+        2,
+        "DISLIKES",
+        {},
         "2" if legacy_id else "carol_dislikes_bob",
-        "3" if legacy_id else "carol", "2" if legacy_id else "bob"
+        "3" if legacy_id else "carol",
+        "2" if legacy_id else "bob",
     )
     path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
     path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
@@ -393,8 +443,9 @@ def test_path_v1_hashing():
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     _carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
-    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}
+    )
     carol_dislikes_bob = gh.hydrate_relationship(2, 3, 2, "DISLIKES", {})
     path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
     path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
@@ -406,26 +457,39 @@ def test_path_v2_hashing(legacy_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(
-        1, {"Person"}, {"name": "Alice", "age": 33},
-        "1" if legacy_id else "alice"
+        1,
+        {"Person"},
+        {"name": "Alice", "age": 33},
+        "1" if legacy_id else "alice",
     )
     _bob = gh.hydrate_node(
-        2, {"Person"}, {"name": "Bob", "age": 44},
-        "2" if legacy_id else "bob"
+        2, {"Person"}, {"name": "Bob", "age": 44}, "2" if legacy_id else "bob"
     )
     _carol = gh.hydrate_node(
-        3, {"Person"}, {"name": "Carol", "age": 55},
-        "3" if legacy_id else "carol"
+        3,
+        {"Person"},
+        {"name": "Carol", "age": 55},
+        "3" if legacy_id else "carol",
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1, 1, 2, "KNOWS", {"since": 1999},
+        1,
+        1,
+        2,
+        "KNOWS",
+        {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
-        "1" if legacy_id else "alice", "2" if legacy_id else "bob"
+        "1" if legacy_id else "alice",
+        "2" if legacy_id else "bob",
     )
     carol_dislikes_bob = gh.hydrate_relationship(
-        2, 3, 2, "DISLIKES", {},
+        2,
+        3,
+        2,
+        "DISLIKES",
+        {},
         "2" if legacy_id else "carol_dislikes_bob",
-        "3" if legacy_id else "carol", "2" if legacy_id else "bob"
+        "3" if legacy_id else "carol",
+        "2" if legacy_id else "bob",
     )
     path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
     path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
@@ -438,8 +502,9 @@ def test_path_v1_repr():
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
     _carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"})
-    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}
+    )
     carol_dislikes_bob = gh.hydrate_relationship(2, 3, 2, "DISLIKES", {})
     path = Path(alice, alice_knows_bob, carol_dislikes_bob)
     assert repr(path) == (
@@ -454,29 +519,33 @@ def test_path_v2_repr(legacy_id):
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(
-        1, {"Person"}, {"name": "Alice"},
-        "1" if legacy_id else "alice"
-
+        1, {"Person"}, {"name": "Alice"}, "1" if legacy_id else "alice"
     )
     bob = gh.hydrate_node(
-        2, {"Person"}, {"name": "Bob"},
-        "2" if legacy_id else "bob"
-
+        2, {"Person"}, {"name": "Bob"}, "2" if legacy_id else "bob"
     )
     carol = gh.hydrate_node(
-        3, {"Person"}, {"name": "Carol"},
-        "3" if legacy_id else "carol"
-
+        3, {"Person"}, {"name": "Carol"}, "3" if legacy_id else "carol"
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1, 1, 2, "KNOWS", {"since": 1999},
+        1,
+        1,
+        2,
+        "KNOWS",
+        {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
-        alice.element_id, bob.element_id
+        alice.element_id,
+        bob.element_id,
     )
     carol_dislikes_bob = gh.hydrate_relationship(
-        2, 3, 2, "DISLIKES", {},
+        2,
+        3,
+        2,
+        "DISLIKES",
+        {},
         "2" if legacy_id else "carol_dislikes_bob",
-        carol.element_id, bob.element_id
+        carol.element_id,
+        bob.element_id,
     )
     path = Path(alice, alice_knows_bob, carol_dislikes_bob)
     assert repr(path) == (
@@ -493,8 +562,9 @@ def test_graph_views_v1():
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
     carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"})
-    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
-                                              {"since": 1999})
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}
+    )
     carol_dislikes_bob = gh.hydrate_relationship(2, 3, 2, "DISLIKES", {})
 
     g = hydration_scope.get_graph()
@@ -532,29 +602,48 @@ def example_graph_builder_v2() -> t.Callable[[bool], ExampleGraph]:
         carol_element_id = "3" if legacy_id else "carol"
 
         alice = gh.hydrate_node(
-            1, {"Person"},  {"name": "Alice", "dict": {"list": [1]}},
-            alice_element_id
+            1,
+            {"Person"},
+            {"name": "Alice", "dict": {"list": [1]}},
+            alice_element_id,
         )
         bob = gh.hydrate_node(
-            2, {"Person"}, {"name": "Bob", "dict": {"list": [1]}},
-            bob_element_id
+            2,
+            {"Person"},
+            {"name": "Bob", "dict": {"list": [1]}},
+            bob_element_id,
         )
         carol = gh.hydrate_node(
-            3, {"Person"}, {"name": "Carol", "dict": {"list": [1]}},
-            carol_element_id
+            3,
+            {"Person"},
+            {"name": "Carol", "dict": {"list": [1]}},
+            carol_element_id,
         )
 
         alice_knows_bob_element_id = "1" if legacy_id else "alice_knows_bob"
-        carol_dislikes_bob_element_id = \
+        carol_dislikes_bob_element_id = (
             "2" if legacy_id else "carol_dislikes_bob"
+        )
 
         alice_knows_bob = gh.hydrate_relationship(
-            1, 1, 2, "KNOWS", {"since": 1999}, alice_knows_bob_element_id,
-            alice_element_id, bob_element_id
+            1,
+            1,
+            2,
+            "KNOWS",
+            {"since": 1999},
+            alice_knows_bob_element_id,
+            alice_element_id,
+            bob_element_id,
         )
         carol_dislikes_bob = gh.hydrate_relationship(
-            2, 3, 2, "DISLIKES", {}, carol_dislikes_bob_element_id,
-            carol_element_id, bob_element_id
+            2,
+            3,
+            2,
+            "DISLIKES",
+            {},
+            carol_dislikes_bob_element_id,
+            carol_element_id,
+            bob_element_id,
         )
 
         return ExampleGraph(
@@ -563,7 +652,7 @@ def example_graph_builder_v2() -> t.Callable[[bool], ExampleGraph]:
             bob=bob,
             carol=carol,
             alice_knows_bob=alice_knows_bob,
-            carol_dislikes_bob=carol_dislikes_bob
+            carol_dislikes_bob=carol_dislikes_bob,
         )
 
     return builder

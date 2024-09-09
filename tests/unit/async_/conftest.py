@@ -14,4 +14,20 @@
 # limitations under the License.
 
 
-from .fixtures import *  # necessary for pytest to discover the fixtures
+# necessary for pytest to discover the fixtures
+from .fixtures import (
+    async_fake_connection,
+    async_fake_connection_generator,
+    async_fake_pool,
+    async_scripted_connection,
+    async_scripted_connection_generator,
+)
+
+
+__all__ = [
+    "async_fake_connection",
+    "async_fake_connection_generator",
+    "async_fake_pool",
+    "async_scripted_connection",
+    "async_scripted_connection_generator",
+]

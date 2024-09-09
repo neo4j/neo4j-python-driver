@@ -19,8 +19,13 @@ import pytest
 
 @pytest.fixture
 def server_info(driver):
-    """ Simple fixture to provide quick and easy access to a
+    """
+    Provide a :class:`.ServerInfo` object.
+
+    Simple fixture to provide quick and easy access to a
     :class:`.ServerInfo` object.
+
+    :yields: the server info
     """
     with driver.session() as session:
         summary = session.run("RETURN 1").consume()

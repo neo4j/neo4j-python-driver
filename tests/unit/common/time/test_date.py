@@ -38,7 +38,6 @@ timezone_utc = pytz.utc
 
 
 class TestDate:
-
     def test_bad_attribute(self) -> None:
         d = Date(2000, 1, 1)
         with pytest.raises(AttributeError):
@@ -236,6 +235,7 @@ class TestDate:
     def test_bad_from_clock_time(self) -> None:
         with pytest.raises(ValueError):
             _ = Date.from_clock_time(object(), None)  # type: ignore[arg-type]
+
     def test_is_leap_year(self) -> None:
         assert Date.is_leap_year(2000)
         assert not Date.is_leap_year(2001)
@@ -334,14 +334,14 @@ class TestDate:
         assert d2 == Date(1976, 8, 1)
 
     def test_can_add_months_then_days_for_last_day_of_short_month(
-        self
+        self,
     ) -> None:
         d1 = Date(1976, 6, 30)
         d2 = d1 + Duration(months=1) + Duration(days=1)
         assert d2 == Date(1976, 8, 1)
 
     def test_can_add_days_then_months_for_last_day_of_short_month(
-        self
+        self,
     ) -> None:
         d1 = Date(1976, 6, 30)
         d2 = d1 + Duration(days=1) + Duration(months=1)
@@ -378,21 +378,21 @@ class TestDate:
         assert d2 == Date(1976, 5, 12)
 
     def test_can_add_negative_months_and_days_for_first_day_of_month(
-        self
+        self,
     ) -> None:
         d1 = Date(1976, 6, 1)
         d2 = d1 + Duration(months=-1, days=-1)
         assert d2 == Date(1976, 4, 30)
 
     def test_can_add_negative_months_then_days_for_first_day_of_month(
-        self
+        self,
     ) -> None:
         d1 = Date(1976, 6, 1)
         d2 = d1 + Duration(months=-1) + Duration(days=-1)
         assert d2 == Date(1976, 4, 30)
 
     def test_can_add_negative_days_then_months_for_last_day_of_month(
-        self
+        self,
     ) -> None:
         d1 = Date(1976, 6, 1)
         d2 = d1 + Duration(days=-1) + Duration(months=-1)
@@ -477,13 +477,18 @@ class TestDate:
         d1 = Date(2000, 1, 1)
         assert d1 != object()
 
-    @pytest.mark.parametrize("ordinal", (
-        Date(2001, 1, 1).to_ordinal(),
-        Date(2008, 1, 1).to_ordinal(),
-    ))
+    @pytest.mark.parametrize(
+        "ordinal",
+        (
+            Date(2001, 1, 1).to_ordinal(),
+            Date(2008, 1, 1).to_ordinal(),
+        ),
+    )
     def test_year_week_day(self, ordinal) -> None:
-        assert Date.from_ordinal(ordinal).iso_calendar() \
-               == date.fromordinal(ordinal).isocalendar()
+        assert (
+            Date.from_ordinal(ordinal).iso_calendar()
+            == date.fromordinal(ordinal).isocalendar()
+        )
 
     def test_time_tuple(self) -> None:
         d = Date(2018, 4, 30)
@@ -529,7 +534,7 @@ class TestDate:
 
     def test_iso_format(self) -> None:
         d = Date(2018, 10, 1)
-        assert "2018-10-01" == d.iso_format()
+        assert d.iso_format() == "2018-10-01"
 
     def test_from_iso_format(self) -> None:
         expected = Date(2018, 10, 1)
@@ -575,20 +580,22 @@ class TestDate:
         assert expected is actual
 
 
-@pytest.mark.parametrize(("tz", "expected"), (
-    (None, (1970, 1, 1)),
-    (timezone_eastern, (1970, 1, 1)),
-    (timezone_utc, (1970, 1, 1)),
-    (pytz.FixedOffset(-12 * 60), (1970, 1, 1)),
-    (datetime.timezone(datetime.timedelta(hours=-12)), (1970, 1, 1)),
-    (pytz.FixedOffset(-13 * 60), (1969, 12, 31)),
-    (datetime.timezone(datetime.timedelta(hours=-13)), (1969, 12, 31)),
-    (pytz.FixedOffset(11 * 60), (1970, 1, 1)),
-    (datetime.timezone(datetime.timedelta(hours=11)), (1970, 1, 1)),
-    (pytz.FixedOffset(12 * 60), (1970, 1, 2)),
-    (datetime.timezone(datetime.timedelta(hours=12)), (1970, 1, 2)),
-
-))
+@pytest.mark.parametrize(
+    ("tz", "expected"),
+    (
+        (None, (1970, 1, 1)),
+        (timezone_eastern, (1970, 1, 1)),
+        (timezone_utc, (1970, 1, 1)),
+        (pytz.FixedOffset(-12 * 60), (1970, 1, 1)),
+        (datetime.timezone(datetime.timedelta(hours=-12)), (1970, 1, 1)),
+        (pytz.FixedOffset(-13 * 60), (1969, 12, 31)),
+        (datetime.timezone(datetime.timedelta(hours=-13)), (1969, 12, 31)),
+        (pytz.FixedOffset(11 * 60), (1970, 1, 1)),
+        (datetime.timezone(datetime.timedelta(hours=11)), (1970, 1, 1)),
+        (pytz.FixedOffset(12 * 60), (1970, 1, 2)),
+        (datetime.timezone(datetime.timedelta(hours=12)), (1970, 1, 2)),
+    ),
+)
 def test_today(tz, expected) -> None:
     d = Date.today(tz=tz)
     assert isinstance(d, Date)

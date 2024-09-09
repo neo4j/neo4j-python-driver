@@ -41,7 +41,7 @@ async def _check_wait_for(wait_for_, should_propagate_cancellation):
 
 @pytest.mark.skipif(
     not (3, 12) > sys.version_info >= (3, 8),
-    reason="wait_for is only broken in Python 3.8-3.11 (inclusive)"
+    reason="wait_for is only broken in Python 3.8-3.11 (inclusive)",
 )
 @mark_async_test
 async def test_wait_for_shim_is_necessary_starting_from_3x8():
@@ -49,26 +49,20 @@ async def test_wait_for_shim_is_necessary_starting_from_3x8():
     await _check_wait_for(
         asyncio.wait_for,
         # this should propagate the cancellation, but it's broken :/
-        should_propagate_cancellation=False
+        should_propagate_cancellation=False,
     )
 
 
 @pytest.mark.skipif(
     (3, 12) > sys.version_info >= (3, 8),
-    reason="wait_for is only broken in Python 3.8-3.11 (inclusive)"
+    reason="wait_for is only broken in Python 3.8-3.11 (inclusive)",
 )
 @mark_async_test
 async def test_wait_for_shim_is_not_necessary_prior_to_3x8():
-    await _check_wait_for(
-        asyncio.wait_for,
-        should_propagate_cancellation=True
-    )
+    await _check_wait_for(asyncio.wait_for, should_propagate_cancellation=True)
 
 
 @mark_async_test
 async def test_wait_for_shim_propagates_cancellation():
     # shim should always work regardless of the Python version
-    await _check_wait_for(
-        shims.wait_for,
-        should_propagate_cancellation=True
-    )
+    await _check_wait_for(shims.wait_for, should_propagate_cancellation=True)

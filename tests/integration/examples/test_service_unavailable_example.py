@@ -36,6 +36,7 @@ def service_unavailable_example(driver):
             return True
         except ServiceUnavailable:
             return False
+
     # end::service-unavailable[]
 
     add_item()
@@ -52,4 +53,6 @@ def service_unavailable_example(driver):
 
 
 def test_example():
-    pytest.skip("Fix better error messages for the user. Be able to kill the server.")
+    pytest.skip(
+        "Fix better error messages for the user. Be able to kill the server."
+    )

@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# python -m pytest tests/integration/examples/test_temporal_types_example.py -s -v
-
 
 def _echo(tx, x):
     return tx.run("RETURN $x AS fieldName", x=x).single()
@@ -32,16 +30,17 @@ def test_datetime(driver):
 
     # tag::temporal-types-datetime[]
     # Create datetimes to be used as query parameters
-    # Python's builtin datetimes works as well. However, they don't support
-    # the full feature-set of Neo4j's durations: it has no nanosecond precision.
+    # Python's builtin datetimes works as well. However, they don't support the
+    # full feature-set of Neo4j's durations: it has no nanosecond precision.
     py_dt = datetime(2021, month=11, day=2, hour=7, minute=47, microsecond=4)
     py_dt = pytz.timezone("US/Eastern").localize(py_dt)
 
     # A DateTime can be created from a native datetime
     dt = DateTime.from_native(py_dt)
     # or directly
-    dt = DateTime(year=2021, month=11, day=2, hour=7, minute=47,
-                  nanosecond=4123)
+    dt = DateTime(
+        year=2021, month=11, day=2, hour=7, minute=47, nanosecond=4123
+    )
     dt = pytz.timezone("US/Eastern").localize(dt)
     # end::temporal-types-datetime[]
 
@@ -137,9 +136,11 @@ def test_time(driver):
 
     # tag::temporal-types-time[]
     # Create datetimes to be used as query parameters
-    # Python's builtin datetimes works as well. However, they don't support
-    # the full feature-set of Neo4j's durations: it has no nanosecond precision.
-    py_t = time(hour=7, minute=47, microsecond=4, tzinfo=pytz.FixedOffset(-240))
+    # Python's builtin datetimes works as well. However, they don't support the
+    # full feature-set of Neo4j's durations: it has no nanosecond precision.
+    py_t = time(
+        hour=7, minute=47, microsecond=4, tzinfo=pytz.FixedOffset(-240)
+    )
 
     # A Time can be created from a native time
     t = Time.from_native(py_t)
@@ -187,15 +188,16 @@ def test_local_datetime(driver):
 
     # tag::temporal-types-local-datetime[]
     # Create datetimes to be used as query parameters
-    # Python's builtin datetimes works as well. However, they don't support
-    # the full feature-set of Neo4j's durations: it has no nanosecond precision.
+    # Python's builtin datetimes works as well. However, they don't support the
+    # full feature-set of Neo4j's durations: it has no nanosecond precision.
     py_dt = datetime(2021, month=11, day=2, hour=7, minute=47, microsecond=4)
 
     # A DateTime can be created from a native datetime
     dt = DateTime.from_native(py_dt)
     # or directly
-    dt = DateTime(year=2021, month=11, day=2, hour=7, minute=47,
-                  nanosecond=4123)
+    dt = DateTime(
+        year=2021, month=11, day=2, hour=7, minute=47, nanosecond=4123
+    )
     # end::temporal-types-local-datetime[]
 
     in_dt = dt  # stored for later assertions
@@ -238,8 +240,8 @@ def test_local_time(driver):
 
     # tag::temporal-types-local-time[]
     # Create datetimes to be used as query parameters
-    # Python's builtin datetimes works as well. However, they don't support
-    # the full feature-set of Neo4j's durations: it has no nanosecond precision.
+    # Python's builtin datetimes works as well. However, they don't support the
+    # full feature-set of Neo4j's durations: it has no nanosecond precision.
     py_t = time(hour=7, minute=47, microsecond=4)
 
     # A Time can be created from a native time
@@ -308,7 +310,7 @@ def test_duration_example(driver):
     # end::temporal-types-duration[]
 
     assert isinstance(duration, Duration)
-    assert str(duration) == 'P1Y2DT3.000000004S'
+    assert str(duration) == "P1Y2DT3.000000004S"
     assert duration == in_duration
 
     with driver.session() as session:
@@ -316,5 +318,5 @@ def test_duration_example(driver):
 
     duration = record.get("fieldName")
     assert isinstance(duration, Duration)
-    assert str(duration) == 'P2DT3.000004S'
+    assert str(duration) == "P2DT3.000004S"
     assert Duration() + py_duration == duration

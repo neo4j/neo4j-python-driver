@@ -26,7 +26,14 @@ from neo4j.api import DEFAULT_DATABASE
 VALID_ROUTING_RECORD = {
     "ttl": 300,
     "servers": [
-        {"role": "ROUTE", "addresses": ["127.0.0.1:9001", "127.0.0.1:9002", "127.0.0.1:9003"]},
+        {
+            "role": "ROUTE",
+            "addresses": [
+                "127.0.0.1:9001",
+                "127.0.0.1:9002",
+                "127.0.0.1:9003",
+            ],
+        },
         {"role": "READ", "addresses": ["127.0.0.1:9004", "127.0.0.1:9005"]},
         {"role": "WRITE", "addresses": ["127.0.0.1:9006"]},
     ],
@@ -35,7 +42,14 @@ VALID_ROUTING_RECORD = {
 VALID_ROUTING_RECORD_WITH_EXTRA_ROLE = {
     "ttl": 300,
     "servers": [
-        {"role": "ROUTE", "addresses": ["127.0.0.1:9001", "127.0.0.1:9002", "127.0.0.1:9003"]},
+        {
+            "role": "ROUTE",
+            "addresses": [
+                "127.0.0.1:9001",
+                "127.0.0.1:9002",
+                "127.0.0.1:9003",
+            ],
+        },
         {"role": "READ", "addresses": ["127.0.0.1:9004", "127.0.0.1:9005"]},
         {"role": "WRITE", "addresses": ["127.0.0.1:9006"]},
         {"role": "MAGIC", "addresses": ["127.0.0.1:9007"]},
@@ -135,9 +149,13 @@ class TestRoutingTableParseRoutingInfo:
             servers=VALID_ROUTING_RECORD["servers"],
             ttl=VALID_ROUTING_RECORD["ttl"],
         )
-        assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-        assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-        assert table.writers == {('127.0.0.1', 9006)}
+        assert table.routers == {
+            ("127.0.0.1", 9001),
+            ("127.0.0.1", 9002),
+            ("127.0.0.1", 9003),
+        }
+        assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+        assert table.writers == {("127.0.0.1", 9006)}
         assert table.ttl == 300
 
     def test_should_return_routing_table_on_valid_record_with_extra_role(self):
@@ -146,9 +164,13 @@ class TestRoutingTableParseRoutingInfo:
             servers=VALID_ROUTING_RECORD_WITH_EXTRA_ROLE["servers"],
             ttl=VALID_ROUTING_RECORD_WITH_EXTRA_ROLE["ttl"],
         )
-        assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-        assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-        assert table.writers == {('127.0.0.1', 9006)}
+        assert table.routers == {
+            ("127.0.0.1", 9001),
+            ("127.0.0.1", 9002),
+            ("127.0.0.1", 9003),
+        }
+        assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+        assert table.writers == {("127.0.0.1", 9006)}
         assert table.ttl == 300
 
 
@@ -157,8 +179,18 @@ class TestRoutingTableServers:
         routing_table = {
             "ttl": 300,
             "servers": [
-                {"role": "ROUTE", "addresses": ["127.0.0.1:9001", "127.0.0.1:9002", "127.0.0.1:9003"]},
-                {"role": "READ", "addresses": ["127.0.0.1:9001", "127.0.0.1:9005"]},
+                {
+                    "role": "ROUTE",
+                    "addresses": [
+                        "127.0.0.1:9001",
+                        "127.0.0.1:9002",
+                        "127.0.0.1:9003",
+                    ],
+                },
+                {
+                    "role": "READ",
+                    "addresses": ["127.0.0.1:9001", "127.0.0.1:9005"],
+                },
                 {"role": "WRITE", "addresses": ["127.0.0.1:9002"]},
             ],
         }
@@ -167,7 +199,12 @@ class TestRoutingTableServers:
             servers=routing_table["servers"],
             ttl=routing_table["ttl"],
         )
-        assert table.servers() == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003), ('127.0.0.1', 9005)}
+        assert table.servers() == {
+            ("127.0.0.1", 9001),
+            ("127.0.0.1", 9002),
+            ("127.0.0.1", 9003),
+            ("127.0.0.1", 9005),
+        }
 
 
 class TestRoutingTableFreshness:
@@ -226,7 +263,11 @@ class TestRoutingTableUpdate:
     def new_table(self):
         return RoutingTable(
             database=DEFAULT_DATABASE,
-            routers=[("127.0.0.1", 9001), ("127.0.0.1", 9002), ("127.0.0.1", 9003)],
+            routers=[
+                ("127.0.0.1", 9001),
+                ("127.0.0.1", 9002),
+                ("127.0.0.1", 9003),
+            ],
             readers=[("127.0.0.1", 9004), ("127.0.0.1", 9005)],
             writers=[("127.0.0.1", 9006)],
             ttl=300,
@@ -234,8 +275,11 @@ class TestRoutingTableUpdate:
 
     def test_update_should_replace_routers(self, table, new_table):
         table.update(new_table)
-        assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002),
-                                 ("127.0.0.1", 9003)}
+        assert table.routers == {
+            ("127.0.0.1", 9001),
+            ("127.0.0.1", 9002),
+            ("127.0.0.1", 9003),
+        }
 
     def test_update_should_replace_readers(self, table, new_table):
         table.update(new_table)

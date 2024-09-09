@@ -27,7 +27,6 @@ from neo4j.time import Duration
 
 
 class TestDuration:
-
     def test_zero(self) -> None:
         d = Duration()
         assert d.months == 0
@@ -170,8 +169,9 @@ class TestDuration:
         assert t == Duration(seconds=123.777)
 
     def test_full_positive(self) -> None:
-        d = Duration(years=1, months=2, days=3, hours=4, minutes=5,
-                     seconds=6.789)
+        d = Duration(
+            years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789
+        )
         assert d.months == 14
         assert d.days == 3
         assert d.seconds == 14706
@@ -181,8 +181,9 @@ class TestDuration:
         assert bool(d)
 
     def test_full_negative(self) -> None:
-        d = Duration(years=-1, months=-2, days=-3, hours=-4, minutes=-5,
-                     seconds=-6.789)
+        d = Duration(
+            years=-1, months=-2, days=-3, hours=-4, minutes=-5, seconds=-6.789
+        )
         assert d.months == -14
         assert d.days == -3
         assert d.seconds == -14706
@@ -192,8 +193,9 @@ class TestDuration:
         assert bool(d)
 
     def test_negative_positive(self) -> None:
-        d = Duration(years=-1, months=-2, days=3, hours=-4, minutes=-5,
-                     seconds=-6.789)
+        d = Duration(
+            years=-1, months=-2, days=3, hours=-4, minutes=-5, seconds=-6.789
+        )
         assert d.months == -14
         assert d.days == 3
         assert d.seconds == -14706
@@ -202,8 +204,9 @@ class TestDuration:
         assert d.hours_minutes_seconds_nanoseconds == (-4, -5, -6, -789000000)
 
     def test_positive_negative(self) -> None:
-        d = Duration(years=1, months=2, days=-3, hours=4, minutes=5,
-                     seconds=6.789)
+        d = Duration(
+            years=1, months=2, days=-3, hours=4, minutes=5, seconds=6.789
+        )
         assert d.months == 14
         assert d.days == -3
         assert d.seconds == 14706
@@ -225,8 +228,7 @@ class TestDuration:
 
     def test_add_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = (Duration(months=2, days=3, seconds=5.7)
-                 + object())  # type: ignore[operator]
+            _ = Duration(months=2, days=3, seconds=5.7) + object()  # type: ignore[operator]
 
     def test_subtract_duration(self) -> None:
         d1 = Duration(months=2, days=3, seconds=5, nanoseconds=700000000)
@@ -242,8 +244,7 @@ class TestDuration:
 
     def test_subtract_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = (Duration(months=2, days=3, seconds=5.7)
-                 - object())  # type: ignore[operator]
+            _ = Duration(months=2, days=3, seconds=5.7) - object()  # type: ignore[operator]
 
     def test_multiplication_by_int(self) -> None:
         d1 = Duration(months=2, days=3, seconds=5.7)
@@ -257,20 +258,19 @@ class TestDuration:
 
     def test_multiplication_by_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = (Duration(months=2, days=3, seconds=5.7)
-                 * object())  # type: ignore[operator]
+            _ = Duration(months=2, days=3, seconds=5.7) * object()  # type: ignore[operator]
 
     @pytest.mark.parametrize("ns", (0, 1))
     def test_floor_division_by_int(self, ns) -> None:
         d1 = Duration(months=11, days=33, seconds=55.77, nanoseconds=ns)
         i = 2
-        assert d1 // i == Duration(months=5, days=16, seconds=27,
-                                   nanoseconds=885000000)
+        assert d1 // i == Duration(
+            months=5, days=16, seconds=27, nanoseconds=885000000
+        )
 
     def test_floor_division_by_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = (Duration(months=2, days=3, seconds=5.7)
-                 // object())  # type: ignore[operator]
+            _ = Duration(months=2, days=3, seconds=5.7) // object()  # type: ignore[operator]
 
     @pytest.mark.parametrize("ns", (0, 1))
     def test_modulus_by_int(self, ns) -> None:
@@ -280,21 +280,20 @@ class TestDuration:
 
     def test_modulus_by_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = (Duration(months=2, days=3, seconds=5.7)
-                 % object())  # type: ignore[operator]
+            _ = Duration(months=2, days=3, seconds=5.7) % object()  # type: ignore[operator]
 
     @pytest.mark.parametrize("ns", (0, 1))
     def test_floor_division_and_modulus_by_int(self, ns) -> None:
         d1 = Duration(months=11, days=33, seconds=55.77, nanoseconds=ns)
         i = 2
-        assert divmod(d1, i) == (Duration(months=5, days=16, seconds=27,
-                                          nanoseconds=885000000),
-                                 Duration(months=1, days=1, nanoseconds=ns))
+        assert divmod(d1, i) == (
+            Duration(months=5, days=16, seconds=27, nanoseconds=885000000),
+            Duration(months=1, days=1, nanoseconds=ns),
+        )
 
     def test_floor_division_and_modulus_by_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = divmod(Duration(months=2, days=3, seconds=5.7),
-                       object())  # type: ignore[operator]
+            _ = divmod(Duration(months=2, days=3, seconds=5.7), object())  # type: ignore[operator]
 
     @pytest.mark.parametrize(
         ("year", "month", "day"),
@@ -302,15 +301,17 @@ class TestDuration:
             *((i, 0, 0) for i in range(4)),
             *((0, i, 0) for i in range(4)),
             *((0, 0, i) for i in range(4)),
-        )
+        ),
     )
     @pytest.mark.parametrize("second", range(4))
     @pytest.mark.parametrize("ns", range(4))
     @pytest.mark.parametrize("divisor", (*range(1, 3), 1_000_000_000))
-    def test_div_mod_is_well_defined(self, year, month, day, second, ns,
-                                     divisor) -> None:
-        d1 = Duration(years=year, months=month, days=day, seconds=second,
-                      nanoseconds=ns)
+    def test_div_mod_is_well_defined(
+        self, year, month, day, second, ns, divisor
+    ) -> None:
+        d1 = Duration(
+            years=year, months=month, days=day, seconds=second, nanoseconds=ns
+        )
         fraction, rest = divmod(d1, divisor)
         assert d1 == fraction * divisor + rest
 
@@ -326,8 +327,7 @@ class TestDuration:
 
     def test_true_division_by_object(self) -> None:
         with pytest.raises(TypeError):
-            _ = (Duration(months=2, days=3, seconds=5.7)
-                 / object())  # type: ignore[operator]
+            _ = Duration(months=2, days=3, seconds=5.7) / object()  # type: ignore[operator]
 
     def test_unary_plus(self) -> None:
         d = Duration(months=11, days=33, seconds=55.77)
@@ -364,16 +364,27 @@ class TestDuration:
         assert Duration(years=1, months=2).iso_format() == "P1Y2M"
         assert Duration(years=-1, months=2).iso_format() == "P-10M"
         assert Duration(months=-13).iso_format() == "P-1Y-1M"
-        assert (Duration(months=2, days=3, seconds=5.7).iso_format()
-                == "P2M3DT5.7S")
+        assert (
+            Duration(months=2, days=3, seconds=5.7).iso_format()
+            == "P2M3DT5.7S"
+        )
         assert Duration(hours=12, minutes=34).iso_format() == "PT12H34M"
         assert Duration(seconds=59).iso_format() == "PT59S"
         assert Duration(seconds=0.123456789).iso_format() == "PT0.123456789S"
         assert Duration(seconds=-0.123456789).iso_format() == "PT-0.123456789S"
 
     def test_copy(self) -> None:
-        d = Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
-                     milliseconds=7, microseconds=8, nanoseconds=9)
+        d = Duration(
+            years=1,
+            months=2,
+            days=3,
+            hours=4,
+            minutes=5,
+            seconds=6,
+            milliseconds=7,
+            microseconds=8,
+            nanoseconds=9,
+        )
         d.foo = [1, 2]  # type: ignore[attr-defined]
         d2 = copy.copy(d)
         assert d == d2
@@ -381,8 +392,17 @@ class TestDuration:
         assert d.foo is d2.foo  # type: ignore[attr-defined]
 
     def test_deep_copy(self) -> None:
-        d = Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
-                     milliseconds=7, microseconds=8, nanoseconds=9)
+        d = Duration(
+            years=1,
+            months=2,
+            days=3,
+            hours=4,
+            minutes=5,
+            seconds=6,
+            milliseconds=7,
+            microseconds=8,
+            nanoseconds=9,
+        )
         d.foo = [1, [2]]  # type: ignore[attr-defined]
         d2 = copy.deepcopy(d)
         assert d == d2
@@ -393,8 +413,15 @@ class TestDuration:
 
     def test_pickle(self) -> None:
         expected = Duration(
-            years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
-            milliseconds=7, microseconds=8, nanoseconds=9
+            years=1,
+            months=2,
+            days=3,
+            hours=4,
+            minutes=5,
+            seconds=6,
+            milliseconds=7,
+            microseconds=8,
+            nanoseconds=9,
         )
         expected.foo = [1, [2]]  # type: ignore[attr-defined]
         actual = pickle.loads(pickle.dumps(expected))
@@ -406,9 +433,9 @@ class TestDuration:
         assert Duration(
             hours=12, minutes=34, seconds=56.789
         ) == Duration.from_iso_format("PT12H34M56.789S")
-        assert Duration(
-            years=1, months=2, days=3
-        ) == Duration.from_iso_format("P1Y2M3D")
+        assert Duration(years=1, months=2, days=3) == Duration.from_iso_format(
+            "P1Y2M3D"
+        )
         assert Duration(
             years=1, months=2, days=3, hours=12, minutes=34, seconds=56.789
         ) == Duration.from_iso_format("P1Y2M3DT12H34M56.789S")
@@ -416,44 +443,52 @@ class TestDuration:
         for i in range(500006000, 500010000, 1000):
             assert Duration(
                 years=1, months=2, days=3, hours=12, minutes=34, nanoseconds=i
-            ) == Duration.from_iso_format("P1Y2M3DT12H34M00.%sS" % str(i))
+            ) == Duration.from_iso_format(f"P1Y2M3DT12H34M00.{i!s}S")
             assert Duration(
                 years=1, months=2, days=3, hours=12, minutes=34, nanoseconds=i
-            ) == Duration.from_iso_format("P1Y2M3DT12H34M00.%sS" % str(i)[:-3])
+            ) == Duration.from_iso_format(f"P1Y2M3DT12H34M00.{str(i)[:-3]}S")
 
     @pytest.mark.parametrize("with_day", (True, False))
     @pytest.mark.parametrize("with_month", (True, False))
     @pytest.mark.parametrize("only_ns", (True, False))
     def test_minimal_value(self, with_day, with_month, only_ns) -> None:
-        seconds = (time.MIN_INT64
-                   + with_month * time.AVERAGE_SECONDS_IN_MONTH
-                   + with_day * time.AVERAGE_SECONDS_IN_DAY)
+        seconds = (
+            time.MIN_INT64
+            + with_month * time.AVERAGE_SECONDS_IN_MONTH
+            + with_day * time.AVERAGE_SECONDS_IN_DAY
+        )
         Duration(
             months=-with_month,
             days=-with_day,
             seconds=0 if only_ns else seconds,
-            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0
+            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0,
         )
 
     @pytest.mark.parametrize("with_day", (True, False))
     @pytest.mark.parametrize("with_month", (True, False))
     @pytest.mark.parametrize("only_ns", (True, False))
-    @pytest.mark.parametrize("overflow", (
-        (0, 0, 0, -1),
-        (0, 0, -1, 0),
-        (0, -1, 0, 0),
-        (-1, 0, 0, 0),
-    ))
-    def test_negative_overflow_value(self, with_day, with_month, only_ns,
-                                     overflow) -> None:
-        seconds = (time.MIN_INT64
-                   + with_month * time.AVERAGE_SECONDS_IN_MONTH
-                   + with_day * time.AVERAGE_SECONDS_IN_DAY)
+    @pytest.mark.parametrize(
+        "overflow",
+        (
+            (0, 0, 0, -1),
+            (0, 0, -1, 0),
+            (0, -1, 0, 0),
+            (-1, 0, 0, 0),
+        ),
+    )
+    def test_negative_overflow_value(
+        self, with_day, with_month, only_ns, overflow
+    ) -> None:
+        seconds = (
+            time.MIN_INT64
+            + with_month * time.AVERAGE_SECONDS_IN_MONTH
+            + with_day * time.AVERAGE_SECONDS_IN_DAY
+        )
         kwargs = {
             "months": overflow[0],
             "days": overflow[1],
             "seconds": overflow[2],
-            "nanoseconds": overflow[3]
+            "nanoseconds": overflow[3],
         }
         kwargs["months"] -= with_month
         kwargs["days"] -= with_day
@@ -465,28 +500,33 @@ class TestDuration:
         with pytest.raises(ValueError):
             Duration(**kwargs)
 
-    @pytest.mark.parametrize(("field", "module"), (
-        ("days", time.AVERAGE_SECONDS_IN_DAY),
-        ("months", time.AVERAGE_SECONDS_IN_MONTH),
-    ))
+    @pytest.mark.parametrize(
+        ("field", "module"),
+        (
+            ("days", time.AVERAGE_SECONDS_IN_DAY),
+            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+        ),
+    )
     def test_minimal_value_only_secondary_field(self, field, module) -> None:
         kwargs = {
-            field: (time.MIN_INT64 // module
-                    - (time.MIN_INT64 % module == 0)
-                    + 1)
+            field: (
+                time.MIN_INT64 // module - (time.MIN_INT64 % module == 0) + 1
+            )
         }
         Duration(**kwargs)
 
-    @pytest.mark.parametrize(("field", "module"), (
-        ("days", time.AVERAGE_SECONDS_IN_DAY),
-        ("months", time.AVERAGE_SECONDS_IN_MONTH),
-    ))
+    @pytest.mark.parametrize(
+        ("field", "module"),
+        (
+            ("days", time.AVERAGE_SECONDS_IN_DAY),
+            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+        ),
+    )
     def test_negative_overflow_value_only_secondary_field(
         self, field, module
     ) -> None:
         kwargs = {
-            field: (time.MIN_INT64 // module
-                    - (time.MIN_INT64 % module == 0))
+            field: (time.MIN_INT64 // module - (time.MIN_INT64 % module == 0))
         }
         with pytest.raises(ValueError):
             Duration(**kwargs)
@@ -502,35 +542,43 @@ class TestDuration:
     @pytest.mark.parametrize("with_month", (True, False))
     @pytest.mark.parametrize("only_ns", (True, False))
     def test_maximal_value(self, with_day, with_month, only_ns) -> None:
-        seconds = (time.MAX_INT64
-                   - with_month * time.AVERAGE_SECONDS_IN_MONTH
-                   - with_day * time.AVERAGE_SECONDS_IN_DAY)
+        seconds = (
+            time.MAX_INT64
+            - with_month * time.AVERAGE_SECONDS_IN_MONTH
+            - with_day * time.AVERAGE_SECONDS_IN_DAY
+        )
         Duration(
             months=with_month,
             days=with_day,
             seconds=0 if only_ns else seconds,
-            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0
+            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0,
         )
 
     @pytest.mark.parametrize("with_day", (True, False))
     @pytest.mark.parametrize("with_month", (True, False))
     @pytest.mark.parametrize("only_ns", (True, False))
-    @pytest.mark.parametrize("overflow", (
-        (0, 0, 0, 1),
-        (0, 0, 1, 0),
-        (0, 1, 0, 0),
-        (1, 0, 0, 0),
-    ))
-    def test_positive_overflow_value(self, with_day, with_month, only_ns,
-                                     overflow) -> None:
-        seconds = (time.MAX_INT64
-                   - with_month * time.AVERAGE_SECONDS_IN_MONTH
-                   - with_day * time.AVERAGE_SECONDS_IN_DAY)
+    @pytest.mark.parametrize(
+        "overflow",
+        (
+            (0, 0, 0, 1),
+            (0, 0, 1, 0),
+            (0, 1, 0, 0),
+            (1, 0, 0, 0),
+        ),
+    )
+    def test_positive_overflow_value(
+        self, with_day, with_month, only_ns, overflow
+    ) -> None:
+        seconds = (
+            time.MAX_INT64
+            - with_month * time.AVERAGE_SECONDS_IN_MONTH
+            - with_day * time.AVERAGE_SECONDS_IN_DAY
+        )
         kwargs = {
             "months": overflow[0],
             "days": overflow[1],
             "seconds": overflow[2],
-            "nanoseconds": time.NANO_SECONDS - 1 + overflow[3]
+            "nanoseconds": time.NANO_SECONDS - 1 + overflow[3],
         }
         kwargs["months"] += with_month
         kwargs["days"] += with_day
@@ -542,26 +590,28 @@ class TestDuration:
         with pytest.raises(ValueError):
             Duration(**kwargs)
 
-    @pytest.mark.parametrize(("field", "module"), (
-        ("days", time.AVERAGE_SECONDS_IN_DAY),
-        ("months", time.AVERAGE_SECONDS_IN_MONTH),
-    ))
+    @pytest.mark.parametrize(
+        ("field", "module"),
+        (
+            ("days", time.AVERAGE_SECONDS_IN_DAY),
+            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+        ),
+    )
     def test_maximal_value_only_secondary_field(self, field, module) -> None:
-        kwargs = {
-            field: time.MAX_INT64 // module
-        }
+        kwargs = {field: time.MAX_INT64 // module}
         Duration(**kwargs)
 
-    @pytest.mark.parametrize(("field", "module"), (
-        ("days", time.AVERAGE_SECONDS_IN_DAY),
-        ("months", time.AVERAGE_SECONDS_IN_MONTH),
-    ))
+    @pytest.mark.parametrize(
+        ("field", "module"),
+        (
+            ("days", time.AVERAGE_SECONDS_IN_DAY),
+            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+        ),
+    )
     def test_positive_overflow_value_only_secondary_field(
         self, field, module
     ) -> None:
-        kwargs = {
-            field: time.MAX_INT64 // module + 1
-        }
+        kwargs = {field: time.MAX_INT64 // module + 1}
         with pytest.raises(ValueError):
             Duration(**kwargs)
 

@@ -40,58 +40,63 @@ if t.TYPE_CHECKING:
 
 
 class ResultSummary:
-    """ A summary of execution returned with a :class:`.Result` object.
-    """
+    """A summary of execution returned with a :class:`.Result` object."""
 
-    #: A :class:`neo4j.ServerInfo` instance. Provides some basic information of the server where the result is obtained from.
+    #: A :class:`neo4j.ServerInfo` instance. Provides some basic information of
+    #: the server where the result is obtained from.
     server: ServerInfo
 
     #: The database name where this summary is obtained from.
-    database: t.Optional[str]
+    database: str | None
 
     #: The query that was executed to produce this result.
-    query: t.Optional[str]
+    query: str | None
 
     #: Dictionary of parameters passed with the statement.
-    parameters: t.Optional[t.Dict[str, t.Any]]
+    parameters: dict[str, t.Any] | None
 
     #: A string that describes the type of query
     # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-only,
     # ``'s'`` = schema.
-    query_type: t.Union[te.Literal["r", "rw", "w", "s"], None]
+    query_type: te.Literal["r", "rw", "w", "s"] | None
 
-    #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the query triggered.
+    #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the
+    #: query triggered.
     counters: SummaryCounters
 
     #: Dictionary that describes how the database will execute the query.
-    plan: t.Optional[dict]
+    plan: dict | None
 
     #: Dictionary that describes how the database executed the query.
-    profile: t.Optional[dict]
+    profile: dict | None
 
-    #: The time it took for the server to have the result available. (milliseconds)
-    result_available_after: t.Optional[int]
+    #: The time it took for the server to have the result available.
+    #: (milliseconds)
+    result_available_after: int | None
 
     #: The time it took for the server to consume the result. (milliseconds)
-    result_consumed_after: t.Optional[int]
+    result_consumed_after: int | None
 
     #: A list of Dictionaries containing notification information.
-    #: Notifications provide extra information for a user executing a statement.
-    #: They can be warnings about problematic queries or other valuable information that can be
+    #: Notifications provide extra information for a user executing a
+    #: statement.
+    #: They can be warnings about problematic queries or other valuable
+    #: information that can be
     #: presented in a client.
-    #: Unlike failures or errors, notifications do not affect the execution of a statement.
+    #: Unlike failures or errors, notifications do not affect the execution of
+    #: a statement.
     #:
     #: .. seealso:: :attr:`.summary_notifications`
-    notifications: t.Optional[t.List[dict]]
+    notifications: list[dict] | None
 
     # cache for notifications
     _notifications_set: bool = False
 
     # cache for property `summary_notifications`
-    _summary_notifications: t.List[SummaryNotification]
+    _summary_notifications: list[SummaryNotification]
 
     # cache for property `summary_notifications`
-    _gql_status_objects: t.Tuple[GqlStatusObject, ...]
+    _gql_status_objects: tuple[GqlStatusObject, ...]
 
     _had_key: bool
     _had_record: bool
@@ -101,7 +106,7 @@ class ResultSummary:
         address: Address,
         had_key: bool,
         had_record: bool,
-        metadata: t.Dict[str, t.Any],
+        metadata: dict[str, t.Any],
     ) -> None:
         self._had_key = had_key
         self._had_record = had_record
@@ -112,17 +117,20 @@ class ResultSummary:
         self.parameters = metadata.get("parameters")
         if "type" in metadata:
             self.query_type = metadata["type"]
-            if self.query_type not in ["r", "w", "rw", "s"]:
+            if self.query_type not in {"r", "w", "rw", "s"}:
                 raise BoltProtocolError(
-                    "Unexpected query type '%s' received from server. Consider "
-                    "updating the driver.", address
+                    "Unexpected query type '%s' received from server. "
+                    "Consider updating the driver.",
+                    address,
                 )
         self.query_type = metadata.get("type")
         self.plan = metadata.get("plan")
         self.profile = metadata.get("profile")
         self.counters = SummaryCounters(metadata.get("stats", {}))
         if self.server.protocol_version[0] < 3:
-            self.result_available_after = metadata.get("result_available_after")
+            self.result_available_after = metadata.get(
+                "result_available_after"
+            )
             self.result_consumed_after = metadata.get("result_consumed_after")
         else:
             self.result_available_after = metadata.get("t_first")
@@ -161,8 +169,9 @@ class ResultSummary:
                 ("position", "_position"),
             ):
                 if diag_record_key in diagnostic_record:
-                    notification[notification_key] = \
-                        diagnostic_record[diag_record_key]
+                    notification[notification_key] = diagnostic_record[
+                        diag_record_key
+                    ]
 
         return notification
 
@@ -183,7 +192,7 @@ class ResultSummary:
                 return
             notifications = []
             for status in statuses:
-                if not (isinstance(status , dict) and "neo4j_code" in status):
+                if not (isinstance(status, dict) and "neo4j_code" in status):
                     # not a notification status
                     continue
                 notification = self._notification_from_status(status)
@@ -195,8 +204,9 @@ class ResultSummary:
 
     # TODO: 6.0 - return a tuple for immutability (annotate with Sequence)
     @property
-    def summary_notifications(self) -> t.List[SummaryNotification]:
-        """The same as ``notifications`` but in a parsed, structured form.
+    def summary_notifications(self) -> list[SummaryNotification]:
+        """
+        The same as ``notifications`` but in a parsed, structured form.
 
         Further, if connected to a gql-aware server, this property will be
         polyfilled from :attr:`gql_status_objects`.
@@ -213,8 +223,7 @@ class ResultSummary:
             self._summary_notifications = []
             return self._summary_notifications
         self._summary_notifications = [
-            SummaryNotification._from_metadata(n)
-            for n in raw_notifications
+            SummaryNotification._from_metadata(n) for n in raw_notifications
         ]
         return self._summary_notifications
 
@@ -239,12 +248,14 @@ class ResultSummary:
 
         **This is a preview** (see :ref:`filter-warnings-ref`).
         It might be changed without following the deprecation policy.
-        See also
+
+        See Also
+        --------
         https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
         .. versionadded:: 5.22
-        """
 
+        """
         raw_status_objects = self.metadata.get("statuses")
         if isinstance(raw_status_objects, list):
             self._gql_status_objects = tuple(
@@ -256,10 +267,10 @@ class ResultSummary:
         raw_notifications = self.notifications
         notification_status_objects: t.Iterable[GqlStatusObject]
         if isinstance(raw_notifications, list):
-            notification_status_objects = list(
+            notification_status_objects = [
                 GqlStatusObject._from_notification_metadata(n)
                 for n in raw_notifications
-            )
+            ]
         else:
             notification_status_objects = ()
 
@@ -274,9 +285,7 @@ class ResultSummary:
             result_status = GqlStatusObject._omitted_result()
 
         notification_status_objects = itertools.chain(
-            notification_status_objects,
-            (result_status,)
-
+            notification_status_objects, (result_status,)
         )
 
         def status_precedence(status: GqlStatusObject) -> int:
@@ -305,8 +314,7 @@ class ResultSummary:
 
 
 class SummaryCounters:
-    """ Contains counters for various operations that a query triggered.
-    """
+    """Contains counters for various operations that a query triggered."""
 
     #:
     nodes_created: int = 0
@@ -374,16 +382,25 @@ class SummaryCounters:
 
     @property
     def contains_updates(self) -> bool:
-        """True if any of the counters except for system_updates, are greater
-        than 0. Otherwise False."""
+        """
+        Check if any counters tracking graph updates are greater than 0.
+
+        True if any of the counters except for system_updates, are greater
+        than 0. Otherwise, False.
+        """
         if self._contains_updates is not None:
             return self._contains_updates
         return bool(
-            self.nodes_created or self.nodes_deleted
-            or self.relationships_created or self.relationships_deleted
-            or self.properties_set or self.labels_added
-            or self.labels_removed or self.indexes_added
-            or self.indexes_removed or self.constraints_added
+            self.nodes_created
+            or self.nodes_deleted
+            or self.relationships_created
+            or self.relationships_deleted
+            or self.properties_set
+            or self.labels_added
+            or self.labels_removed
+            or self.indexes_added
+            or self.indexes_removed
+            or self.constraints_added
             or self.constraints_removed
         )
 
@@ -397,7 +414,8 @@ class SummaryCounters:
 
 @dataclass
 class SummaryInputPosition:
-    """Structured form of a gql status/notification position.
+    """
+    Structured form of a gql status/notification position.
 
     .. seealso::
         :attr:`.GqlStatusObject.position`,
@@ -406,6 +424,7 @@ class SummaryInputPosition:
 
     .. versionadded:: 5.22
     """
+
     #: The line number of the notification. Line numbers start at 1.
     line: int
     #: The column number of the notification. Column numbers start at 1.
@@ -414,7 +433,7 @@ class SummaryInputPosition:
     offset: int
 
     @classmethod
-    def _from_metadata(cls, metadata: t.Any) -> t.Optional[te.Self]:
+    def _from_metadata(cls, metadata: t.Any) -> te.Self | None:
         if not isinstance(metadata, dict):
             return None
         line = metadata.get("line")
@@ -429,8 +448,10 @@ class SummaryInputPosition:
         return cls(line=line, column=column, offset=offset)
 
     def __str__(self) -> str:
-        return (f"line: {self.line}, column: {self.column}, "
-                f"offset: {self.offset}")
+        return (
+            f"line: {self.line}, column: {self.column}, "
+            f"offset: {self.offset}"
+        )
 
 
 # Deprecated alias for :class:`.SummaryInputPosition`.
@@ -442,12 +463,12 @@ class SummaryInputPosition:
 SummaryNotificationPosition: te.TypeAlias = SummaryInputPosition
 
 
-_SEVERITY_LOOKUP: t.Dict[t.Any, NotificationSeverity] = {
-   "WARNING": NotificationSeverity.WARNING,
-   "INFORMATION": NotificationSeverity.INFORMATION,
+_SEVERITY_LOOKUP: dict[t.Any, NotificationSeverity] = {
+    "WARNING": NotificationSeverity.WARNING,
+    "INFORMATION": NotificationSeverity.INFORMATION,
 }
 
-_CATEGORY_LOOKUP: t.Dict[t.Any, NotificationCategory] = {
+_CATEGORY_LOOKUP: dict[t.Any, NotificationCategory] = {
     "HINT": NotificationCategory.HINT,
     "UNRECOGNIZED": NotificationCategory.UNRECOGNIZED,
     "UNSUPPORTED": NotificationCategory.UNSUPPORTED,
@@ -459,12 +480,13 @@ _CATEGORY_LOOKUP: t.Dict[t.Any, NotificationCategory] = {
     "SCHEMA": NotificationCategory.SCHEMA,
 }
 
-_CLASSIFICATION_LOOKUP: t.Dict[t.Any, NotificationClassification] = {
+_CLASSIFICATION_LOOKUP: dict[t.Any, NotificationClassification] = {
     k: NotificationClassification(v) for k, v in _CATEGORY_LOOKUP.items()
 }
 
 
 if t.TYPE_CHECKING:
+
     class _SummaryNotificationKwargs(te.TypedDict, total=False):
         title: str
         code: str
@@ -473,12 +495,13 @@ if t.TYPE_CHECKING:
         category: NotificationCategory
         raw_severity_level: str
         raw_category: str
-        position: t.Optional[SummaryInputPosition]
+        position: SummaryInputPosition | None
 
 
 @dataclass
 class SummaryNotification:
-    """Structured form of a notification received from the server.
+    """
+    Structured form of a notification received from the server.
 
     .. seealso:: :attr:`.ResultSummary.summary_notifications`
 
@@ -492,18 +515,21 @@ class SummaryNotification:
     category: NotificationCategory = NotificationCategory.UNKNOWN
     raw_severity_level: str = ""
     raw_category: str = ""
-    position: t.Optional[SummaryNotificationPosition] = None
+    position: SummaryNotificationPosition | None = None
 
     @classmethod
     def _from_metadata(cls, metadata: t.Any) -> te.Self:
         if not isinstance(metadata, dict):
             return cls()
         kwargs: _SummaryNotificationKwargs = {
-            "position":
-                SummaryInputPosition._from_metadata(metadata.get("position")),
+            "position": SummaryInputPosition._from_metadata(
+                metadata.get("position")
+            ),
         }
-        str_keys: t.Tuple[te.Literal["title", "code", "description"], ...] = (
-            "title", "code", "description"
+        str_keys: tuple[te.Literal["title", "code", "description"], ...] = (
+            "title",
+            "code",
+            "description",
         )
         for key in str_keys:
             value = metadata.get(key)
@@ -576,18 +602,18 @@ class GqlStatusObject:
     """
 
     # internal dictionaries, never handed to assure immutability
-    _status_metadata: t.Dict[str, t.Any]
-    _status_diagnostic_record: t.Optional[t.Dict[str, t.Any]] = None
+    _status_metadata: dict[str, t.Any]
+    _status_diagnostic_record: dict[str, t.Any] | None = None
 
     _is_notification: bool
     _gql_status: str
     _status_description: str
-    _position: t.Optional[SummaryInputPosition]
-    _raw_classification: t.Optional[str]
+    _position: SummaryInputPosition | None
+    _raw_classification: str | None
     _classification: NotificationClassification
-    _raw_severity: t.Optional[str]
+    _raw_severity: str | None
     _severity: NotificationSeverity
-    _diagnostic_record: t.Dict[str, t.Any]
+    _diagnostic_record: dict[str, t.Any]
 
     @classmethod
     def _success(cls) -> te.Self:
@@ -661,7 +687,7 @@ class GqlStatusObject:
             "status_description": description,
             "neo4j_code": neo4j_code,
             "title": title,
-            "diagnostic_record": diagnostic_record
+            "diagnostic_record": diagnostic_record,
         }
         obj._gql_status = gql_status
         obj._status_description = description
@@ -677,14 +703,14 @@ class GqlStatusObject:
     def __repr__(self) -> str:
         return (
             "GqlStatusObject("
-            f"gql_status={repr(self.gql_status)}, "
-            f"status_description={repr(self.status_description)}, "
-            f"position={repr(self.position)}, "
-            f"raw_classification={repr(self.raw_classification)}, "
-            f"classification={repr(self.classification)}, "
-            f"raw_severity={repr(self.raw_severity)}, "
-            f"severity={repr(self.severity)}, "
-            f"diagnostic_record={repr(self.diagnostic_record)}"
+            f"gql_status={self.gql_status!r}, "
+            f"status_description={self.status_description!r}, "
+            f"position={self.position!r}, "
+            f"raw_classification={self.raw_classification!r}, "
+            f"classification={self.classification!r}, "
+            f"raw_severity={self.raw_severity!r}, "
+            f"severity={self.severity!r}, "
+            f"diagnostic_record={self.diagnostic_record!r}"
             ")"
         )
 
@@ -709,8 +735,9 @@ class GqlStatusObject:
             return self._is_notification
 
         neo4j_code = self._status_metadata.get("neo4j_code")
-        self._is_notification = bool(isinstance(neo4j_code, str)
-                                     and neo4j_code)
+        self._is_notification = bool(
+            isinstance(neo4j_code, str) and neo4j_code
+        )
         return self._is_notification
 
     @classmethod
@@ -719,7 +746,7 @@ class GqlStatusObject:
         data: dict[str, t.Any],
         key: str,
         default: _T = "",  # type: ignore[assignment]
-    ) -> t.Union[str, _T]:
+    ) -> str | _T:
         value = data.get(key)
         if isinstance(value, str):
             return value
@@ -764,18 +791,19 @@ class GqlStatusObject:
         )
         return self._status_description
 
-    def _get_status_diagnostic_record(self) -> t.Dict[str, t.Any]:
+    def _get_status_diagnostic_record(self) -> dict[str, t.Any]:
         if self._status_diagnostic_record is not None:
             return self._status_diagnostic_record
 
-        self._status_diagnostic_record = \
-            self._status_metadata.get("diagnostic_record", {})
+        self._status_diagnostic_record = self._status_metadata.get(
+            "diagnostic_record", {}
+        )
         if not isinstance(self._status_diagnostic_record, dict):
             self._status_diagnostic_record = {}
         return self._status_diagnostic_record
 
     @property
-    def position(self) -> t.Optional[SummaryInputPosition]:
+    def position(self) -> SummaryInputPosition | None:
         """
         The position of the input that caused the status (if applicable).
 
@@ -799,7 +827,7 @@ class GqlStatusObject:
         return self._position
 
     @property
-    def raw_classification(self) -> t.Optional[str]:
+    def raw_classification(self) -> str | None:
         """
         The raw (``str``) classification of the status.
 
@@ -835,7 +863,7 @@ class GqlStatusObject:
         return self._classification
 
     @property
-    def raw_severity(self) -> t.Optional[str]:
+    def raw_severity(self) -> str | None:
         """
         The raw (``str``) severity of the status.
 
@@ -871,10 +899,8 @@ class GqlStatusObject:
         return self._severity
 
     @property
-    def diagnostic_record(self) -> t.Dict[str, t.Any]:
-        """
-        Further information about the GQLSTATUS for diagnostic purposes.
-        """
+    def diagnostic_record(self) -> dict[str, t.Any]:
+        """Further information about the GQLSTATUS for diagnostic purposes."""
         if hasattr(self, "_diagnostic_record"):
             return self._diagnostic_record
 

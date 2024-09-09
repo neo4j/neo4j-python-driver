@@ -28,37 +28,39 @@ from neo4j import SummaryNotification
 
 
 if t.TYPE_CHECKING:
-    class Position(te.TypedDict):
-        offset: te.NotRequired[t.Optional[int]]
-        line: te.NotRequired[t.Optional[int]]
-        column: te.NotRequired[t.Optional[int]]
 
+    class Position(te.TypedDict):
+        offset: te.NotRequired[int | None]
+        line: te.NotRequired[int | None]
+        column: te.NotRequired[int | None]
 
     class TNotificationData(te.TypedDict):
-        code: te.NotRequired[t.Optional[str]]
-        severity: te.NotRequired[t.Optional[str]]
-        title: te.NotRequired[t.Optional[str]]
-        description: te.NotRequired[t.Optional[str]]
-        category: te.NotRequired[t.Optional[str]]
-        position: te.NotRequired[t.Optional[Position]]
-
+        code: te.NotRequired[str | None]
+        severity: te.NotRequired[str | None]
+        title: te.NotRequired[str | None]
+        description: te.NotRequired[str | None]
+        category: te.NotRequired[str | None]
+        position: te.NotRequired[Position | None]
 
     class TNotificationFactory(te.Protocol):
         def __call__(
             self,
-            data: t.Optional[TNotificationData] = None,
-            data_overwrite: t.Optional[TNotificationData] = None,
-        ) -> SummaryNotification:
-            ...
-
+            data: TNotificationData | None = None,
+            data_overwrite: TNotificationData | None = None,
+        ) -> SummaryNotification: ...
 
     class TRawNotificationFactory(te.Protocol):
         def __call__(
             self,
-            data: t.Optional[TNotificationData] = None,
-            data_overwrite: t.Optional[TNotificationData] = None,
-        ) -> TNotificationData:
-            ...
+            data: TNotificationData | None = None,
+            data_overwrite: TNotificationData | None = None,
+        ) -> TNotificationData: ...
+
+
+__all__ = [
+    "notification_factory",
+    "raw_notification_factory",
+]
 
 
 @pytest.fixture
@@ -89,7 +91,6 @@ def raw_notification_factory() -> TRawNotificationFactory:
         return data
 
     return factory
-
 
 
 TEST_NOTIFICATION_DATA = (

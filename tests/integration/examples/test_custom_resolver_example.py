@@ -30,11 +30,8 @@ from neo4j import (
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_custom_resolver_example.py -s -v
-
 # tag::custom-resolver[]
 def create_driver(uri, user, password):
-
     def resolver(address):
         host, port = address
         if host == "x.example.com":
@@ -48,13 +45,16 @@ def create_driver(uri, user, password):
 
 
 def add_person(name):
-    driver = create_driver("neo4j://x.example.com",
-                           user="neo4j", password="password")
+    driver = create_driver(
+        "neo4j://x.example.com", user="neo4j", password="password"
+    )
     try:
         with driver.session(default_access_mode=WRITE_ACCESS) as session:
             session.run("CREATE (a:Person {name: $name})", {"name", name})
     finally:
         driver.close()
+
+
 # end::custom-resolver[]
 
 
@@ -65,4 +65,5 @@ def test_example(uri, auth):
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
     except ValueError as error:
-        assert error.args[0] == "Cannot resolve address a.example.com:7687"
+        if error.args[0] != "Cannot resolve address a.example.com:7687":
+            raise

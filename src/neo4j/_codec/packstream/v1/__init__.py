@@ -23,7 +23,16 @@ from struct import (
 
 from ...hydration import DehydrationHooks
 from .._common import Structure
-from .types import *
+from .types import (
+    BYTES_TYPES,
+    FALSE_VALUES,
+    FLOAT_TYPES,
+    INT_TYPES,
+    MAPPING_TYPES,
+    NONE_VALUES,
+    SEQUENCE_TYPES,
+    TRUE_VALUES,
+)
 
 
 try:
@@ -42,12 +51,11 @@ PACKED_UINT_16 = [struct_pack(">H", value) for value in range(0x10000)]
 UNPACKED_UINT_8 = {bytes(bytearray([x])): x for x in range(0x100)}
 UNPACKED_UINT_16 = {struct_pack(">H", x): x for x in range(0x10000)}
 
-INT64_MIN = -(2 ** 63)
-INT64_MAX = 2 ** 63
+INT64_MIN = -(2**63)
+INT64_MAX = 2**63
 
 
 class Packer:
-
     def __init__(self, stream):
         self.stream = stream
         self._write = self.stream.write
@@ -57,41 +65,37 @@ class Packer:
         self._pack(data, dehydration_hooks=dehydration_hooks)
 
     if _rust_pack:
+
         def _pack(self, data, dehydration_hooks=None):
             data = _rust_pack(data, dehydration_hooks)
             self._write(data)
     else:
+
         def _pack(self, data, dehydration_hooks=None):
             self._py_pack(data, dehydration_hooks)
 
     @classmethod
     def _inject_hooks(cls, dehydration_hooks=None):
         if dehydration_hooks is None:
-            return DehydrationHooks(
-                exact_types={tuple: list},
-                subtypes={}
-            )
-        return dehydration_hooks.extend(
-            exact_types={tuple: list},
-            subtypes={}
-        )
+            return DehydrationHooks(exact_types={tuple: list}, subtypes={})
+        return dehydration_hooks.extend(exact_types={tuple: list}, subtypes={})
 
     def _py_pack(self, value, dehydration_hooks=None):
         write = self._write
 
         # None
         if any(value is v for v in NONE_VALUES):
-            write(b"\xC0")  # NULL
+            write(b"\xc0")  # NULL
 
         # Boolean
         elif any(value is v for v in TRUE_VALUES):
-            write(b"\xC3")
+            write(b"\xc3")
         elif any(value is v for v in FALSE_VALUES):
-            write(b"\xC2")
+            write(b"\xc2")
 
         # Float (only double precision is supported)
         elif isinstance(value, FLOAT_TYPES):
-            write(b"\xC1")
+            write(b"\xc1")
             write(struct_pack(">d", value))
 
         # Integer
@@ -100,19 +104,19 @@ class Packer:
             if -0x10 <= value < 0x80:
                 write(PACKED_UINT_8[value % 0x100])
             elif -0x80 <= value < -0x10:
-                write(b"\xC8")
+                write(b"\xc8")
                 write(PACKED_UINT_8[value % 0x100])
             elif -0x8000 <= value < 0x8000:
-                write(b"\xC9")
+                write(b"\xc9")
                 write(PACKED_UINT_16[value % 0x10000])
             elif -0x80000000 <= value < 0x80000000:
-                write(b"\xCA")
+                write(b"\xca")
                 write(struct_pack(">i", value))
             elif INT64_MIN <= value < INT64_MAX:
-                write(b"\xCB")
+                write(b"\xcb")
                 write(struct_pack(">q", value))
             else:
-                raise OverflowError("Integer %s out of range" % value)
+                raise OverflowError(f"Integer {value} out of range")
 
         # String
         elif isinstance(value, str):
@@ -137,7 +141,7 @@ class Packer:
             for key, item in value.items():
                 if not isinstance(key, str):
                     raise TypeError(
-                        "Map keys must be strings, not {}".format(type(key))
+                        f"Map keys must be strings, not {type(key)}"
                     )
                 self._py_pack(key, dehydration_hooks)
                 self._py_pack(item, dehydration_hooks)
@@ -154,18 +158,18 @@ class Packer:
                     self._py_pack(transformer(value), dehydration_hooks)
                     return
 
-            raise ValueError("Values of type %s are not supported" % type(value))
+            raise ValueError(f"Values of type {type(value)} are not supported")
 
     def _pack_bytes_header(self, size):
         write = self._write
         if size < 0x100:
-            write(b"\xCC")
+            write(b"\xcc")
             write(PACKED_UINT_8[size])
         elif size < 0x10000:
-            write(b"\xCD")
+            write(b"\xcd")
             write(PACKED_UINT_16[size])
         elif size < 0x100000000:
-            write(b"\xCE")
+            write(b"\xce")
             write(struct_pack(">I", size))
         else:
             raise OverflowError("Bytes header size out of range")
@@ -175,13 +179,13 @@ class Packer:
         if size <= 0x0F:
             write(bytes((0x80 | size,)))
         elif size < 0x100:
-            write(b"\xD0")
+            write(b"\xd0")
             write(PACKED_UINT_8[size])
         elif size < 0x10000:
-            write(b"\xD1")
+            write(b"\xd1")
             write(PACKED_UINT_16[size])
         elif size < 0x100000000:
-            write(b"\xD2")
+            write(b"\xd2")
             write(struct_pack(">I", size))
         else:
             raise OverflowError("String header size out of range")
@@ -191,13 +195,13 @@ class Packer:
         if size <= 0x0F:
             write(bytes((0x90 | size,)))
         elif size < 0x100:
-            write(b"\xD4")
+            write(b"\xd4")
             write(PACKED_UINT_8[size])
         elif size < 0x10000:
-            write(b"\xD5")
+            write(b"\xd5")
             write(PACKED_UINT_16[size])
         elif size < 0x100000000:
-            write(b"\xD6")
+            write(b"\xd6")
             write(struct_pack(">I", size))
         else:
             raise OverflowError("List header size out of range")
@@ -207,21 +211,22 @@ class Packer:
         if size <= 0x0F:
             write(bytes((0xA0 | size,)))
         elif size < 0x100:
-            write(b"\xD8")
+            write(b"\xd8")
             write(PACKED_UINT_8[size])
         elif size < 0x10000:
-            write(b"\xD9")
+            write(b"\xd9")
             write(PACKED_UINT_16[size])
         elif size < 0x100000000:
-            write(b"\xDA")
+            write(b"\xda")
             write(struct_pack(">I", size))
         else:
             raise OverflowError("Map header size out of range")
 
     def pack_struct(self, signature, fields, dehydration_hooks=None):
         self._pack_struct(
-            signature, fields,
-            dehydration_hooks=self._inject_hooks(dehydration_hooks)
+            signature,
+            fields,
+            dehydration_hooks=self._inject_hooks(dehydration_hooks),
         )
 
     def _pack_struct(self, signature, fields, dehydration_hooks=None):
@@ -267,7 +272,6 @@ class PackableBuffer:
 
 
 class Unpacker:
-
     def __init__(self, unpackable):
         self.unpackable = unpackable
 
@@ -281,6 +285,7 @@ class Unpacker:
         return self.unpackable.read_u8()
 
     if _rust_unpack:
+
         def unpack(self, hydration_hooks=None):
             value, i = _rust_unpack(
                 self.unpackable.data, self.unpackable.p, hydration_hooks
@@ -288,6 +293,7 @@ class Unpacker:
             self.unpackable.p = i
             return value
     else:
+
         def unpack(self, hydration_hooks=None):
             return self._unpack(hydration_hooks=hydration_hooks)
 
@@ -309,7 +315,7 @@ class Unpacker:
 
         # Float
         elif marker == 0xC1:
-            value, = struct_unpack(">d", self.read(8))
+            (value,) = struct_unpack(">d", self.read(8))
             return value
 
         # Boolean
@@ -330,13 +336,13 @@ class Unpacker:
 
         # Bytes
         elif marker == 0xCC:
-            size, = struct_unpack(">B", self.read(1))
+            (size,) = struct_unpack(">B", self.read(1))
             return self.read(size).tobytes()
         elif marker == 0xCD:
-            size, = struct_unpack(">H", self.read(2))
+            (size,) = struct_unpack(">H", self.read(2))
             return self.read(size).tobytes()
         elif marker == 0xCE:
-            size, = struct_unpack(">I", self.read(4))
+            (size,) = struct_unpack(">I", self.read(4))
             return self.read(size).tobytes()
 
         else:
@@ -345,19 +351,21 @@ class Unpacker:
             if marker_high == 0x80:  # TINY_STRING
                 return decode(self.read(marker & 0x0F), "utf-8")
             elif marker == 0xD0:  # STRING_8:
-                size, = struct_unpack(">B", self.read(1))
+                (size,) = struct_unpack(">B", self.read(1))
                 return decode(self.read(size), "utf-8")
             elif marker == 0xD1:  # STRING_16:
-                size, = struct_unpack(">H", self.read(2))
+                (size,) = struct_unpack(">H", self.read(2))
                 return decode(self.read(size), "utf-8")
             elif marker == 0xD2:  # STRING_32:
-                size, = struct_unpack(">I", self.read(4))
+                (size,) = struct_unpack(">I", self.read(4))
                 return decode(self.read(size), "utf-8")
 
             # List
             elif 0x90 <= marker <= 0x9F or 0xD4 <= marker <= 0xD6:
-                return list(self._unpack_list_items(
-                    marker, hydration_hooks=hydration_hooks)
+                return list(
+                    self._unpack_list_items(
+                        marker, hydration_hooks=hydration_hooks
+                    )
                 )
 
             # Map
@@ -380,7 +388,7 @@ class Unpacker:
                 return hydration_hook(value)
 
             else:
-                raise ValueError("Unknown PackStream marker %02X" % marker)
+                raise ValueError(f"Unknown PackStream marker {marker:02X}")
 
     def _unpack_list_items(self, marker, hydration_hooks=None):
         marker_high = marker & 0xF0
@@ -394,15 +402,15 @@ class Unpacker:
                 for _ in range(size):
                     yield self._unpack(hydration_hooks=hydration_hooks)
         elif marker == 0xD4:  # LIST_8:
-            size, = struct_unpack(">B", self.read(1))
+            (size,) = struct_unpack(">B", self.read(1))
             for _ in range(size):
                 yield self._unpack(hydration_hooks=hydration_hooks)
         elif marker == 0xD5:  # LIST_16:
-            size, = struct_unpack(">H", self.read(2))
+            (size,) = struct_unpack(">H", self.read(2))
             for _ in range(size):
                 yield self._unpack(hydration_hooks=hydration_hooks)
         elif marker == 0xD6:  # LIST_32:
-            size, = struct_unpack(">I", self.read(4))
+            (size,) = struct_unpack(">I", self.read(4))
             for _ in range(size):
                 yield self._unpack(hydration_hooks=hydration_hooks)
         else:
@@ -422,21 +430,21 @@ class Unpacker:
                 value[key] = self._unpack(hydration_hooks=hydration_hooks)
             return value
         elif marker == 0xD8:  # MAP_8:
-            size, = struct_unpack(">B", self.read(1))
+            (size,) = struct_unpack(">B", self.read(1))
             value = {}
             for _ in range(size):
                 key = self._unpack(hydration_hooks=hydration_hooks)
                 value[key] = self._unpack(hydration_hooks=hydration_hooks)
             return value
         elif marker == 0xD9:  # MAP_16:
-            size, = struct_unpack(">H", self.read(2))
+            (size,) = struct_unpack(">H", self.read(2))
             value = {}
             for _ in range(size):
                 key = self._unpack(hydration_hooks=hydration_hooks)
                 value[key] = self._unpack(hydration_hooks=hydration_hooks)
             return value
         elif marker == 0xDA:  # MAP_32:
-            size, = struct_unpack(">I", self.read(4))
+            (size,) = struct_unpack(">I", self.read(4))
             value = {}
             for _ in range(size):
                 key = self._unpack(hydration_hooks=hydration_hooks)
@@ -458,7 +466,7 @@ class Unpacker:
             signature = self.read(1).tobytes()
             return marker & 0x0F, signature
         else:
-            raise ValueError("Expected structure, found marker %02X" % marker)
+            raise ValueError(f"Expected structure, found marker {marker:02X}")
 
     @staticmethod
     def new_unpackable_buffer():
@@ -466,7 +474,6 @@ class Unpacker:
 
 
 class UnpackableBuffer:
-
     initial_capacity = 8192
 
     def __init__(self, data=None):
@@ -485,7 +492,7 @@ class UnpackableBuffer:
     def read(self, n=1):
         view = memoryview(self.data)
         q = self.p + n
-        subview = view[self.p:q]
+        subview = view[self.p : q]
         self.p = q
         return subview
 
@@ -498,9 +505,7 @@ class UnpackableBuffer:
             return -1
 
     def pop_u16(self):
-        """ Remove the last two bytes of data, returning them as a big-endian
-        16-bit unsigned integer.
-        """
+        """Pop last two bytes as a big-endian 16-bit unsigned integer."""
         if self.used >= 2:
             value = 0x100 * self.data[self.used - 2] + self.data[self.used - 1]
             self.used -= 2

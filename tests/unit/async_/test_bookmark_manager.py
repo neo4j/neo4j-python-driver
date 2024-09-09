@@ -44,17 +44,23 @@ async def test_return_empty_if_empty() -> None:
     assert not await bmm.get_bookmarks()
 
 
-@pytest.mark.parametrize("initial_bookmarks", (
-    None, (), ("bm1", "bm2"), Bookmarks.from_raw_values(("bm1", "bm2")),
-    ("bm1", "bm2", "bm1")
-))
+@pytest.mark.parametrize(
+    "initial_bookmarks",
+    (
+        None,
+        (),
+        ("bm1", "bm2"),
+        Bookmarks.from_raw_values(("bm1", "bm2")),
+        ("bm1", "bm2", "bm1"),
+    ),
+)
 @mark_async_test
 async def test_return_initial_bookmarks(
-    initial_bookmarks: t.Union[None, t.Iterable[str], Bookmarks]
+    initial_bookmarks: t.Iterable[str] | Bookmarks | None,
 ) -> None:
     bmm = bookmark_manager(initial_bookmarks=initial_bookmarks)
 
-    expected_bookmarks: t.Set[str]
+    expected_bookmarks: set[str]
     if initial_bookmarks is None:
         expected_bookmarks = set()
     elif isinstance(initial_bookmarks, Bookmarks):
@@ -62,31 +68,34 @@ async def test_return_initial_bookmarks(
     else:
         expected_bookmarks = set(initial_bookmarks)
 
-    assert (sorted(list(await bmm.get_bookmarks()))
-            == sorted(list(expected_bookmarks)))
+    assert sorted(await bmm.get_bookmarks()) == sorted(expected_bookmarks)
 
 
 @pytest.mark.parametrize("supplier_async", supplier_async_options)
-@pytest.mark.parametrize("initial_bookmarks", (
-    ["db1:bm1", "db1:bm1", "db3:bm1", "db3:bm2", "db4:bm4"],
-    None,
-))
+@pytest.mark.parametrize(
+    "initial_bookmarks",
+    (
+        ["db1:bm1", "db1:bm1", "db3:bm1", "db3:bm2", "db4:bm4"],
+        None,
+    ),
+)
 @mark_async_test
 async def test_get_bookmarks_return_from_bookmarks_supplier(
-    mocker, initial_bookmarks: t.Optional[t.List[str]], supplier_async: bool
+    mocker, initial_bookmarks: list[str] | None, supplier_async: bool
 ) -> None:
     extra_bookmarks = ["foo:bm1", "bar:bm2", "foo:bm1"]
     mock_cls = mocker.AsyncMock if supplier_async else mocker.Mock
     supplier = mock_cls(
         return_value=Bookmarks.from_raw_values(extra_bookmarks)
     )
-    bmm = bookmark_manager(initial_bookmarks=initial_bookmarks,
-                           bookmarks_supplier=supplier)
+    bmm = bookmark_manager(
+        initial_bookmarks=initial_bookmarks, bookmarks_supplier=supplier
+    )
 
     received_bookmarks = await bmm.get_bookmarks()
 
     expected_bookmarks = {*extra_bookmarks, *(initial_bookmarks or [])}
-    assert sorted(list(received_bookmarks)) == sorted(list(expected_bookmarks))
+    assert sorted(received_bookmarks) == sorted(expected_bookmarks)
     if supplier_async:
         supplier.assert_awaited_once_with()
     else:
@@ -99,19 +108,18 @@ async def test_get_bookmarks_return_from_bookmarks_supplier(
     (
         (["db3:bm1"], ["db3:bm3"]),
         (["db3:bm1", "db5:bm1"], ["db3:bm3", "db3:bm5"]),
-    )
+    ),
 )
 async def test_chains_bookmarks(update_old, update_new) -> None:
-    initial_bookmarks = [
-        "db1:bm1", "db1:bm1", "db3:bm1", "db3:bm2", "db4:bm4"
-    ]
+    initial_bookmarks = ["db1:bm1", "db1:bm1", "db3:bm1", "db3:bm2", "db4:bm4"]
     bmm = bookmark_manager(initial_bookmarks=initial_bookmarks)
     await bmm.update_bookmarks(update_old, update_new)
     received_bookmarks = await bmm.get_bookmarks()
 
-    expected_bookmarks = (set(initial_bookmarks)
-                          - set(update_old) | set(update_new))
-    assert sorted(list(received_bookmarks)) == sorted(list(expected_bookmarks))
+    expected_bookmarks = set(initial_bookmarks) - set(update_old) | set(
+        update_new
+    )
+    assert sorted(received_bookmarks) == sorted(expected_bookmarks)
 
 
 @pytest.mark.parametrize("with_initial_bookmarks", (True, False))
@@ -127,8 +135,7 @@ async def test_notify_on_new_bookmarks(
     mock_cls = mocker.AsyncMock if consumer_async else mocker.Mock
     consumer = mock_cls()
     bmm = bookmark_manager(
-        initial_bookmarks=initial_bookmarks,
-        bookmarks_consumer=consumer
+        initial_bookmarks=initial_bookmarks, bookmarks_consumer=consumer
     )
     bookmarks_old = {"db1:bm1", "db3:bm1"}
     bookmarks_new = {"db1:bm4"}
@@ -162,8 +169,7 @@ async def test_does_not_notify_on_empty_new_bookmark_set(
     mock_cls = mocker.AsyncMock if consumer_async else mocker.Mock
     consumer = mock_cls()
     bmm = bookmark_manager(
-        initial_bookmarks=initial_bookmarks,
-        bookmarks_consumer=consumer
+        initial_bookmarks=initial_bookmarks, bookmarks_consumer=consumer
     )
     await bmm.update_bookmarks(["db1:bm1"], [])
 
@@ -173,7 +179,7 @@ async def test_does_not_notify_on_empty_new_bookmark_set(
 @pytest.mark.parametrize("with_initial_bookmarks", (True, False))
 @mark_async_test
 async def test_does_not_update_on_empty_new_bookmark_set(
-    with_initial_bookmarks
+    with_initial_bookmarks,
 ) -> None:
     if with_initial_bookmarks:
         initial_bookmarks = ["db1:bm1", "db1:bm2"]
@@ -185,4 +191,4 @@ async def test_does_not_update_on_empty_new_bookmark_set(
     received_bookmarks = await bmm.get_bookmarks()
 
     expected_bookmarks = set(initial_bookmarks or [])
-    assert sorted(list(received_bookmarks)) == sorted(list(expected_bookmarks))
+    assert sorted(received_bookmarks) == sorted(expected_bookmarks)

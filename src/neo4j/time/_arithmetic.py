@@ -24,13 +24,14 @@ __all__ = [
     "nano_add",
     "nano_div",
     "nano_divmod",
-    "symmetric_divmod",
     "round_half_to_even",
+    "symmetric_divmod",
 ]
 
 
 def nano_add(x, y):
     """
+    Add with nanosecond precission.
 
         >>> 0.7 + 0.2
         0.8999999999999999
@@ -50,6 +51,7 @@ def nano_add(x, y):
 
 def nano_div(x, y):
     """
+    Div with nanosecond precission.
 
         >>> 0.7 / 0.2
         3.4999999999999996
@@ -69,6 +71,7 @@ def nano_div(x, y):
 
 def nano_divmod(x, y):
     """
+    Divmod with nanosecond precission.
 
         >>> divmod(0.7, 0.2)
         (3.0, 0.09999999999999992)
@@ -103,8 +106,9 @@ def symmetric_divmod(
 
 def round_half_to_even(n):
     """
+    Round x.5 towards the nearest even integer.
 
-        >>> round_half_to_even(3)
+    >>> round_half_to_even(3)
         3
         >>> round_half_to_even(3.2)
         3

@@ -29,9 +29,9 @@ from .transaction import (
 
 
 __all__ = [
+    "ManagedTransaction",
     "Result",
     "Session",
-    "ManagedTransaction",
     "Transaction",
     "TransactionBase",
     "Workspace",

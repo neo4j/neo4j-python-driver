@@ -32,7 +32,7 @@ class TestGraphHydration(_TestGraphHydration):
         return HydrationHandler()
 
     def test_can_hydrate_node_structure(self, hydration_scope):
-        struct = Structure(b'N', 123, ["Person"], {"name": "Alice"}, "abc")
+        struct = Structure(b"N", 123, ["Person"], {"name": "Alice"}, "abc")
         alice = hydration_scope.hydration_hooks[Structure](struct)
 
         assert isinstance(alice, Node)
@@ -44,8 +44,9 @@ class TestGraphHydration(_TestGraphHydration):
         assert alice.get("name") == "Alice"
 
     def test_can_hydrate_relationship_structure(self, hydration_scope):
-        struct = Structure(b'R', 123, 456, 789, "KNOWS", {"since": 1999},
-                           "abc", "def", "ghi")
+        struct = Structure(
+            b"R", 123, 456, 789, "KNOWS", {"since": 1999}, "abc", "def", "ghi"
+        )
         rel = hydration_scope.hydration_hooks[Structure](struct)
 
         assert isinstance(rel, Relationship)

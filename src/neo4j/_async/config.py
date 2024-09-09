@@ -36,12 +36,12 @@ if t.TYPE_CHECKING:
 
 
 class AsyncPoolConfig(Config):
-    """ Connection pool configuration.
-    """
+    """Connection pool configuration."""
 
     #: Max Connection Lifetime
     max_connection_lifetime = 3600  # seconds
-    # The maximum duration the driver will keep a connection for before being removed from the pool.
+    # The maximum duration the driver will keep a connection for before being
+    # removed from the pool.
 
     #: Timeout after which idle connections will be checked for liveness
     #: before returned from the pool.
@@ -49,17 +49,20 @@ class AsyncPoolConfig(Config):
 
     #: Max Connection Pool Size
     max_connection_pool_size = 100
-    # The maximum total number of connections allowed, per host (i.e. cluster nodes), to be managed by the connection pool.
+    # The maximum total number of connections allowed, per host
+    # (i.e. cluster nodes), to be managed by the connection pool.
 
     #: Connection Timeout
     connection_timeout = 30.0  # seconds
-    # The maximum amount of time to wait for a TCP connection to be established.
+    # The maximum amount of time to wait for a TCP connection to be
+    # established.
 
     #: Trust
     trust = DeprecatedAlternative(
         "trusted_certificates", _trust_to_trusted_certificates
     )
-    # Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+    # Specify how to determine the authenticity of encryption certificates
+    # provided by the Neo4j instance on connection.
 
     #: Custom Resolver
     resolver = None
@@ -67,7 +70,8 @@ class AsyncPoolConfig(Config):
 
     #: Encrypted
     encrypted = False
-    # Specify whether to use an encrypted connection between the driver and server.
+    # Specify whether to use an encrypted connection between the driver and
+    # server.
 
     #: SSL Certificates to Trust
     trusted_certificates = TrustSystemCAs()
@@ -107,7 +111,7 @@ class AsyncPoolConfig(Config):
     #: Opt-Out of telemetry collection
     telemetry_disabled = False
 
-    _ssl_context_cache: t.Optional[ssl.SSLContext]
+    _ssl_context_cache: ssl.SSLContext | None
     _ssl_context_cache_lock: AsyncLock
 
     def __init__(self, *args, **kwargs) -> None:
@@ -115,14 +119,14 @@ class AsyncPoolConfig(Config):
         self._ssl_context_cache = None
         self._ssl_context_cache_lock = AsyncLock()
 
-    async def get_ssl_context(self) -> t.Optional[ssl.SSLContext]:
+    async def get_ssl_context(self) -> ssl.SSLContext | None:
         if self.ssl_context is not None:
             return self.ssl_context
 
         if not self.encrypted:
             return None
 
-        client_cert: t.Optional[ClientCertificate] = None
+        client_cert: ClientCertificate | None = None
 
         # try to serve the cached ssl context
         async with self._ssl_context_cache_lock:

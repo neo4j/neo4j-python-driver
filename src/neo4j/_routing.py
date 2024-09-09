@@ -15,6 +15,7 @@
 
 
 from collections.abc import MutableSet
+from contextlib import suppress
 from logging import getLogger
 from time import monotonic
 
@@ -25,14 +26,13 @@ log = getLogger("neo4j.pool")
 
 
 class OrderedSet(MutableSet):
-
     def __init__(self, elements=()):
         # dicts keep insertion order starting with Python 3.7
         self._elements = dict.fromkeys(elements)
         self._current = None
 
     def __repr__(self):
-        return "{%s}" % ", ".join(map(repr, self._elements))
+        return f"{{{', '.join(map(repr, self._elements))}}}"
 
     def __contains__(self, element):
         return element in self._elements
@@ -53,10 +53,8 @@ class OrderedSet(MutableSet):
         self._elements.clear()
 
     def discard(self, element):
-        try:
+        with suppress(KeyError):
             del self._elements[element]
-        except KeyError:
-            pass
 
     def remove(self, element):
         try:
@@ -74,11 +72,12 @@ class OrderedSet(MutableSet):
 
 
 class RoutingTable:
-
     @classmethod
     def parse_routing_info(cls, *, database, servers, ttl):
-        """ Parse the records returned from the procedure call and
-        return a new RoutingTable instance.
+        """
+        Construct a new RoutingTable instance from the given routing info.
+
+        The routing table info is returned from the procedure or BOLT message.
         """
         routers = []
         readers = []
@@ -86,9 +85,10 @@ class RoutingTable:
         try:
             for server in servers:
                 role = server["role"]
-                addresses = []
-                for address in server["addresses"]:
-                    addresses.append(Address.parse(address, default_port=7687))
+                addresses = [
+                    Address.parse(address, default_port=7687)
+                    for address in server["addresses"]
+                ]
                 if role == "ROUTE":
                     routers.extend(addresses)
                 elif role == "READ":
@@ -98,7 +98,13 @@ class RoutingTable:
         except (KeyError, TypeError) as exc:
             raise ValueError("Cannot parse routing info") from exc
         else:
-            return cls(database=database, routers=routers, readers=readers, writers=writers, ttl=ttl)
+            return cls(
+                database=database,
+                routers=routers,
+                readers=readers,
+                writers=writers,
+                ttl=ttl,
+            )
 
     def __init__(self, *, database, routers=(), readers=(), writers=(), ttl=0):
         self.initial_routers = OrderedSet(routers)
@@ -111,21 +117,22 @@ class RoutingTable:
         self.database = database
 
     def __repr__(self):
-        return "RoutingTable(database=%r routers=%r, readers=%r, writers=%r, last_updated_time=%r, ttl=%r)" % (
-            self.database,
-            self.routers,
-            self.readers,
-            self.writers,
-            self.last_updated_time,
-            self.ttl,
+        return (
+            f"RoutingTable(database={self.database!r}, "
+            f"routers={self.routers!r}, readers={self.readers!r}, "
+            f"writers={self.writers!r}, "
+            f"last_updated_time={self.last_updated_time!r}, ttl={self.ttl!r})"
         )
 
     def __contains__(self, address):
-        return address in self.routers or address in self.readers or address in self.writers
+        return (
+            address in self.routers
+            or address in self.readers
+            or address in self.writers
+        )
 
     def is_fresh(self, readonly=False):
-        """ Indicator for whether routing information is still usable.
-        """
+        """Indicate whether routing information is still usable."""
         assert isinstance(readonly, bool)
         expired = self.last_updated_time + self.ttl <= monotonic()
         if readonly:
@@ -133,30 +140,49 @@ class RoutingTable:
         else:
             has_server_for_mode = bool(self.writers)
         res = not expired and self.routers and has_server_for_mode
-        log.debug("[#0000]  _: <ROUTING> checking table freshness "
-                  "(readonly=%r): table expired=%r, "
-                  "has_server_for_mode=%r, table routers=%r => %r",
-                  readonly, expired, has_server_for_mode, self.routers, res)
+        log.debug(
+            "[#0000]  _: <ROUTING> checking table freshness "
+            "(readonly=%r): table expired=%r, "
+            "has_server_for_mode=%r, table routers=%r => %r",
+            readonly,
+            expired,
+            has_server_for_mode,
+            self.routers,
+            res,
+        )
         return res
 
     def should_be_purged_from_memory(self):
-        """ Check if the routing table is stale and not used for a long time and should be removed from memory.
+        """
+        Check if routing table needs to be purged from memory.
+
+        This is the case if the routing table is stale and has not been used
+        for a long time.
 
         :returns: Returns true if it is old and not used for a while.
         :rtype: bool
         """
         from ._conf import RoutingConfig
+
         perf_time = monotonic()
-        res = self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time
-        log.debug("[#0000]  _: <ROUTING> purge check: "
-                  "last_updated_time=%r, ttl=%r, perf_time=%r => %r",
-                  self.last_updated_time, self.ttl, perf_time, res)
+        res = (
+            self.last_updated_time
+            + self.ttl
+            + RoutingConfig.routing_table_purge_delay
+            <= perf_time
+        )
+        log.debug(
+            "[#0000]  _: <ROUTING> purge check: "
+            "last_updated_time=%r, ttl=%r, perf_time=%r => %r",
+            self.last_updated_time,
+            self.ttl,
+            perf_time,
+            res,
+        )
         return res
 
     def update(self, new_routing_table):
-        """ Update the current routing table with new routing information
-        from a replacement table.
-        """
+        """Update the routing table with new routing information."""
         self.routers.replace(new_routing_table.routers)
         self.readers.replace(new_routing_table.readers)
         self.writers.replace(new_routing_table.writers)

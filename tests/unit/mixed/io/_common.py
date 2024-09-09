@@ -38,7 +38,7 @@ class MultiEvent:
 
     def _reset_internal_locks(self):
         # private!  called by Thread._reset_internal_locks by _after_fork()
-        self._cond.__init__(Lock())
+        self._cond.__init__(Lock())  # noqa: PLC2801 (called on object, not class)
 
     def counter(self):
         return self._counter
@@ -84,7 +84,7 @@ class AsyncMultiEvent:
 
     def _reset_internal_locks(self):
         # private!  called by Thread._reset_internal_locks by _after_fork()
-        self._cond.__init__(AsyncLock())
+        self._cond.__init__(AsyncLock())  # noqa: PLC2801 (called on object, not class)
 
     def counter(self):
         return self._counter

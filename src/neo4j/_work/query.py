@@ -26,7 +26,8 @@ if t.TYPE_CHECKING:
 
 
 class Query:
-    """A query with attached extra data.
+    """
+    A query with attached extra data.
 
     This wrapper class for queries is used to attach extra data to queries
     passed to :meth:`.Session.run`/:meth:`.AsyncSession.run` and
@@ -64,11 +65,12 @@ class Query:
         :data:`None` will use the default timeout configured on the server.
     :type timeout: float | None
     """
+
     def __init__(
         self,
         text: te.LiteralString,
-        metadata: t.Optional[t.Dict[str, t.Any]] = None,
-        timeout: t.Optional[float] = None
+        metadata: dict[str, t.Any] | None = None,
+        timeout: float | None = None,
     ) -> None:
         self.text = text
 
@@ -85,10 +87,11 @@ class Query:
 
 
 def unit_of_work(
-    metadata: t.Optional[t.Dict[str, t.Any]] = None,
-    timeout: t.Optional[float] = None
+    metadata: dict[str, t.Any] | None = None,
+    timeout: float | None = None,
 ) -> t.Callable[[_T], _T]:
-    """Decorator giving extra control over transaction function configuration.
+    """
+    Configure a transaction function.
 
     This function is a decorator for transaction functions that allows extra
     control over how the transaction is carried out.
@@ -137,7 +140,6 @@ def unit_of_work(
     """
 
     def wrapper(f):
-
         def wrapped(*args, **kwargs):
             return f(*args, **kwargs)
 

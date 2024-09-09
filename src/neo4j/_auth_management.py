@@ -22,7 +22,6 @@ import typing as t
 from dataclasses import dataclass
 
 from ._meta import preview
-from .exceptions import Neo4jError
 
 
 if t.TYPE_CHECKING:
@@ -31,6 +30,7 @@ if t.TYPE_CHECKING:
     from typing_extensions import Protocol as _Protocol
 
     from .api import _TAuth
+    from .exceptions import Neo4jError
 else:
     _Protocol = object
 
@@ -65,8 +65,9 @@ class ExpiringAuth:
 
     .. versionchanged:: 5.14 Stabilized from preview.
     """
+
     auth: _TAuth
-    expires_at: t.Optional[float] = None
+    expires_at: float | None = None
 
     def expires_in(self, seconds: float) -> ExpiringAuth:
         """
@@ -195,7 +196,8 @@ class AsyncAuthManager(_Protocol, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def get_auth(self) -> _TAuth:
-        """Async version of :meth:`.AuthManager.get_auth`.
+        """
+        Async version of :meth:`.AuthManager.get_auth`.
 
         .. seealso:: :meth:`.AuthManager.get_auth`
         """
@@ -205,7 +207,8 @@ class AsyncAuthManager(_Protocol, metaclass=abc.ABCMeta):
     async def handle_security_exception(
         self, auth: _TAuth, error: Neo4jError
     ) -> bool:
-        """Async version of :meth:`.AuthManager.handle_security_exception`.
+        """
+        Async version of :meth:`.AuthManager.handle_security_exception`.
 
         .. seealso:: :meth:`.AuthManager.handle_security_exception`
         """
@@ -223,19 +226,18 @@ class ClientCertificate:
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
+
     """
-    certfile: t.Union[str, bytes, PathLike[str], PathLike[bytes]]
-    keyfile: t.Union[str, bytes, PathLike[str], PathLike[bytes], None] = None
-    password: t.Union[
-        t.Callable[[], t.Union[str | bytes]],
-        str,
-        bytes,
-        None
-    ] = None
+
+    certfile: str | bytes | PathLike[str] | PathLike[bytes]
+    keyfile: str | bytes | PathLike[str] | PathLike[bytes] | None = None
+    password: t.Callable[[], str | bytes] | str | bytes | None = None
 
 
 class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
@@ -269,14 +271,17 @@ class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
+
     """
 
     @abc.abstractmethod
-    def get_certificate(self) -> t.Optional[ClientCertificate]:
+    def get_certificate(self) -> ClientCertificate | None:
         """
         Return the new certificate (if present) to use for new connections.
 
@@ -301,7 +306,9 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
-    See also
+
+    See Also
+    --------
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. seealso::
@@ -309,10 +316,11 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
         :class:`.AsyncClientCertificateProviders`
 
     .. versionadded:: 5.19
+
     """
 
     @abc.abstractmethod
-    async def get_certificate(self) -> t.Optional[ClientCertificate]:
+    async def get_certificate(self) -> ClientCertificate | None:
         """
         Return the new certificate (if present) to use for new connections.
 

@@ -34,7 +34,6 @@ def make_reduce_points():
 
 
 class TestCartesianPoint:
-
     def test_alias_3d(self) -> None:
         x, y, z = 3.2, 4.0, -1.2
         p = CartesianPoint((x, y, z))

@@ -14,5 +14,19 @@
 # limitations under the License.
 
 
-from .fake_connection import *
-from .fake_pool import *
+from .fake_connection import (
+    fake_connection,
+    fake_connection_generator,
+    scripted_connection,
+    scripted_connection_generator,
+)
+from .fake_pool import fake_pool
+
+
+__all__ = [
+    "fake_connection",
+    "fake_connection_generator",
+    "fake_pool",
+    "scripted_connection",
+    "scripted_connection_generator",
+]

@@ -34,7 +34,6 @@ def make_reduce_points():
 
 
 class TestWGS84Point:
-
     def test_alias_3d(self) -> None:
         x, y, z = 3.2, 4.0, -1.2
         p = WGS84Point((x, y, z))
@@ -69,9 +68,9 @@ class TestWGS84Point:
         assert p.y == y
 
         with pytest.raises(AttributeError):
-            p.height
+            _ = p.height
         with pytest.raises(AttributeError):
-            p.z
+            _ = p.z
 
     @pytest.mark.parametrize("p", make_reduce_points())
     def test_copy(self, p):

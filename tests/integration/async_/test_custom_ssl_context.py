@@ -28,11 +28,11 @@ async def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     # Test that the driver calls either `.wrap_socket` or `.wrap_bio` on the
     # provided custom SSL context.
 
-    class NoNeedToGoFurtherException(Exception):
+    class NoNeedToGoFurtherError(Exception):
         pass
 
     def wrap_fail(*_, **__):
-        raise NoNeedToGoFurtherException()
+        raise NoNeedToGoFurtherError
 
     fake_ssl_context = mocker.create_autospec(SSLContext)
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
@@ -42,8 +42,10 @@ async def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
         uri, auth=auth, ssl_context=fake_ssl_context
     ) as driver:
         async with driver.session() as session:
-            with pytest.raises(NoNeedToGoFurtherException):
+            with pytest.raises(NoNeedToGoFurtherError):
                 await session.run("RETURN 1")
 
-    assert (fake_ssl_context.wrap_socket.call_count
-            + fake_ssl_context.wrap_bio.call_count) == 1
+    assert (
+        fake_ssl_context.wrap_socket.call_count
+        + fake_ssl_context.wrap_bio.call_count
+    ) == 1

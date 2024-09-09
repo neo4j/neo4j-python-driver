@@ -23,10 +23,12 @@ from collections import deque
 from logging import getLogger
 from time import monotonic
 
-from ..._api import TelemetryAPI
 from ..._async_compat.network import BoltSocket
 from ..._async_compat.util import Util
-from ..._codec.hydration import v1 as hydration_v1
+from ..._codec.hydration import (
+    HydrationHandlerABC,
+    v1 as hydration_v1,
+)
 from ..._codec.packstream import v1 as packstream_v1
 from ..._deadline import Deadline
 from ..._exceptions import (
@@ -57,36 +59,36 @@ from ._common import (
 )
 
 
+if t.TYPE_CHECKING:
+    from ..._api import TelemetryAPI
+
+
 # Set up logger
 log = getLogger("neo4j.io")
 
 
 class ServerStateManagerBase(abc.ABC):
     @abc.abstractmethod
-    def __init__(self, init_state, on_change=None):
-        ...
+    def __init__(self, init_state, on_change=None): ...
 
     @abc.abstractmethod
-    def transition(self, message, metadata):
-        ...
+    def transition(self, message, metadata): ...
 
     @abc.abstractmethod
-    def failed(self):
-        ...
+    def failed(self): ...
 
 
 class ClientStateManagerBase(abc.ABC):
     @abc.abstractmethod
-    def __init__(self, init_state, on_change=None):
-        ...
+    def __init__(self, init_state, on_change=None): ...
 
     @abc.abstractmethod
-    def transition(self, message):
-        ...
+    def transition(self, message): ...
 
 
 class Bolt:
-    """ Server connection for Bolt protocol.
+    """
+    Server connection for Bolt protocol.
 
     A :class:`.Bolt` should be constructed following a
     successful .open()
@@ -100,9 +102,11 @@ class Bolt:
 
     PACKER_CLS = packstream_v1.Packer
     UNPACKER_CLS = packstream_v1.Unpacker
-    HYDRATION_HANDLER_CLS = hydration_v1.HydrationHandler
+    HYDRATION_HANDLER_CLS: type[HydrationHandlerABC] = (
+        hydration_v1.HydrationHandler
+    )
 
-    MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
+    MAGIC_PREAMBLE = b"\x60\x60\xb0\x17"
 
     PROTOCOL_VERSION: Version = None  # type: ignore[assignment]
 
@@ -116,7 +120,7 @@ class Bolt:
     idle_since = float("-inf")
     # The database name the connection was last used with
     # (BEGIN for explicit transactions, RUN for auto-commit transactions)
-    last_database: t.Optional[str] = None
+    last_database: str | None = None
 
     # The socket
     _closing = False
@@ -126,23 +130,33 @@ class Bolt:
     #: The pool of which this connection is a member
     pool = None
 
-    # Store the id of the most recent ran query to be able to reduce sent bits by
-    # using the default (-1) to refer to the most recent query when pulling
+    # Store the id of the most recent ran query to be able to reduce sent bits
+    # by using the default (-1) to refer to the most recent query when pulling
     # results for it.
     most_recent_qid = None
 
-    def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
-                 auth=None, auth_manager=None, user_agent=None,
-                 routing_context=None, notifications_min_severity=None,
-                 notifications_disabled_classifications=None,
-                 telemetry_disabled=False):
+    def __init__(
+        self,
+        unresolved_address,
+        sock,
+        max_connection_lifetime,
+        *,
+        auth=None,
+        auth_manager=None,
+        user_agent=None,
+        routing_context=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        telemetry_disabled=False,
+    ):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
         self.server_info = ServerInfo(
-            ResolvedAddress(sock.getpeername(),
-                            host_name=unresolved_address.host),
-            self.PROTOCOL_VERSION
+            ResolvedAddress(
+                sock.getpeername(), host_name=unresolved_address.host
+            ),
+            self.PROTOCOL_VERSION,
         )
         # so far `connection.recv_timeout_seconds` is the only available
         # configuration hint that exists. Therefore, all hints can be stored at
@@ -150,12 +164,14 @@ class Bolt:
         self.configuration_hints = {}
         self.patch = {}
         self.outbox = Outbox(
-            self.socket, on_error=self._set_defunct_write,
-            packer_cls=self.PACKER_CLS
+            self.socket,
+            on_error=self._set_defunct_write,
+            packer_cls=self.PACKER_CLS,
         )
         self.inbox = Inbox(
-            self.socket, on_error=self._set_defunct_read,
-            unpacker_cls=self.UNPACKER_CLS
+            self.socket,
+            on_error=self._set_defunct_read,
+            unpacker_cls=self.UNPACKER_CLS,
         )
         self.hydration_handler = self.HYDRATION_HANDLER_CLS()
         self.responses = deque()
@@ -176,20 +192,19 @@ class Bolt:
         self.telemetry_disabled = telemetry_disabled
 
         self.notifications_min_severity = notifications_min_severity
-        self.notifications_disabled_classifications = \
+        self.notifications_disabled_classifications = (
             notifications_disabled_classifications
+        )
 
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
             self.close()
 
     @abc.abstractmethod
-    def _get_server_state_manager(self) -> ServerStateManagerBase:
-        ...
+    def _get_server_state_manager(self) -> ServerStateManagerBase: ...
 
     @abc.abstractmethod
-    def _get_client_state_manager(self) -> ClientStateManagerBase:
-        ...
+    def _get_client_state_manager(self) -> ClientStateManagerBase: ...
 
     @classmethod
     def _to_auth_dict(cls, auth):
@@ -201,8 +216,10 @@ class Bolt:
         else:
             try:
                 return vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
+            except (KeyError, TypeError) as e:
+                raise AuthError(
+                    f"Cannot determine auth details from {auth!r}"
+                ) from e
 
     @property
     def connection_id(self):
@@ -211,25 +228,28 @@ class Bolt:
     @property
     @abc.abstractmethod
     def supports_multiple_results(self):
-        """ Boolean flag to indicate if the connection version supports multiple
+        """
+        Check if the connection version supports result multiplexing.
+
+        Boolean flag to indicate if the connection version supports multiple
         queries to be buffered on the server side (True) or if all results need
         to be eagerly pulled before sending the next RUN (False).
         """
-        pass
 
     @property
     @abc.abstractmethod
     def supports_multiple_databases(self):
-        """ Boolean flag to indicate if the connection version supports multiple
+        """
+        Check if the connection version supports multiple databases.
+
+        Boolean flag to indicate if the connection version supports multiple
         databases.
         """
-        pass
 
     @property
     @abc.abstractmethod
     def supports_re_auth(self):
         """Whether the connection version supports re-authentication."""
-        pass
 
     def assert_re_auth_support(self):
         if not self.supports_re_auth:
@@ -243,7 +263,6 @@ class Bolt:
     @abc.abstractmethod
     def supports_notification_filtering(self):
         """Whether the connection version supports re-authentication."""
-        pass
 
     def assert_notification_filtering_support(self):
         if not self.supports_notification_filtering:
@@ -256,10 +275,12 @@ class Bolt:
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def protocol_handlers(cls, protocol_version=None):
-        """ Return a dictionary of available Bolt protocol handlers,
-        keyed by version tuple. If an explicit protocol version is
-        provided, the dictionary will contain either zero or one items,
-        depending on whether that version is supported. If no protocol
+        """
+        Return a dictionary of available Bolt protocol handlers.
+
+        The handlers are keyed by version tuple. If an explicit protocol
+        version is provided, the dictionary will contain either zero or one
+        items, depending on whether that version is supported. If no protocol
         version is provided, all available versions will be returned.
 
         :param protocol_version: tuple identifying a specific protocol
@@ -268,8 +289,8 @@ class Bolt:
             relevant and supported protocol versions
         :raise TypeError: if protocol version is not passed in a tuple
         """
-
-        # Carry out Bolt subclass imports locally to avoid circular dependency issues.
+        # Carry out Bolt subclass imports locally to avoid circular dependency
+        # issues.
         from ._bolt3 import Bolt3
         from ._bolt4 import (
             Bolt4x1,
@@ -315,10 +336,11 @@ class Bolt:
         return {}
 
     @classmethod
-    def version_list(cls, versions, limit=4):
-        """ Return a list of supported protocol versions in order of
-        preference. The number of protocol versions (or ranges)
-        returned is limited to four.
+    def version_list(cls, versions):
+        """
+        Return a list of supported protocol versions in order of preference.
+
+        The number of protocol versions (or ranges) returned is limited to 4.
         """
         # In fact, 4.3 is the fist version to support ranges. However, the
         # range support got backported to 4.2. But even if the server is too
@@ -327,10 +349,12 @@ class Bolt:
         first_with_range_support = Version(4, 2)
         result = []
         for version in versions:
-            if (result
-                    and version >= first_with_range_support
-                    and result[-1][0] == version[0]
-                    and result[-1][1][1] == version[1] + 1):
+            if (
+                result
+                and version >= first_with_range_support
+                and result[-1][0] == version[0]
+                and result[-1][1][1] == version[1] + 1
+            ):
                 # can use range to encompass this version
                 result[-1][1][1] = version[1]
                 continue
@@ -341,18 +365,27 @@ class Bolt:
 
     @classmethod
     def get_handshake(cls):
-        """ Return the supported Bolt versions as bytes.
+        """
+        Return the supported Bolt versions as bytes.
+
         The length is 16 bytes as specified in the Bolt version negotiation.
         :returns: bytes
         """
-        supported_versions = sorted(cls.protocol_handlers().keys(), reverse=True)
+        supported_versions = sorted(
+            cls.protocol_handlers().keys(), reverse=True
+        )
         offered_versions = cls.version_list(supported_versions)
-        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
+        return b"".join(
+            version.to_bytes() for version in offered_versions
+        ).ljust(16, b"\x00")
 
     @classmethod
     def ping(cls, address, *, deadline=None, pool_config=None):
-        """ Attempt to establish a Bolt connection, returning the
-        agreed Bolt protocol version if successful.
+        """
+        Attempt to establish a Bolt connection.
+
+        A one-off connection is created and the agreed Bolt protocol version
+        is returned on success.
         """
         if pool_config is None:
             pool_config = PoolConfig()
@@ -360,15 +393,19 @@ class Bolt:
             deadline = Deadline(None)
 
         try:
-            s, protocol_version, handshake, data = \
-                BoltSocket.connect(
-                    address,
-                    tcp_timeout=pool_config.connection_timeout,
-                    deadline=deadline,
-                    custom_resolver=pool_config.resolver,
-                    ssl_context=pool_config.get_ssl_context(),
-                    keep_alive=pool_config.keep_alive,
-                )
+            (
+                s,
+                protocol_version,
+                _handshake,
+                _data,
+            ) = BoltSocket.connect(
+                address,
+                tcp_timeout=pool_config.connection_timeout,
+                deadline=deadline,
+                custom_resolver=pool_config.resolver,
+                ssl_context=pool_config.get_ssl_context(),
+                keep_alive=pool_config.keep_alive,
+            )
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
         else:
@@ -378,10 +415,16 @@ class Bolt:
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def open(
-        cls, address, *, auth_manager=None, deadline=None,
-        routing_context=None, pool_config=None
+        cls,
+        address,
+        *,
+        auth_manager=None,
+        deadline=None,
+        routing_context=None,
+        pool_config=None,
     ):
-        """Open a new Bolt connection to a given server address.
+        """
+        Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth_manager:
@@ -395,21 +438,19 @@ class Bolt:
             raised if the Bolt Protocol can not negotiate a protocol version.
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
-
         if pool_config is None:
             pool_config = PoolConfig()
         if deadline is None:
             deadline = Deadline(None)
 
-        s, protocol_version, handshake, data = \
-            BoltSocket.connect(
-                address,
-                tcp_timeout=pool_config.connection_timeout,
-                deadline=deadline,
-                custom_resolver=pool_config.resolver,
-                ssl_context=pool_config.get_ssl_context(),
-                keep_alive=pool_config.keep_alive,
-            )
+        s, protocol_version, handshake, data = BoltSocket.connect(
+            address,
+            tcp_timeout=pool_config.connection_timeout,
+            deadline=deadline,
+            custom_resolver=pool_config.resolver,
+            ssl_context=pool_config.get_ssl_context(),
+            keep_alive=pool_config.keep_alive,
+        )
 
         pool_config.protocol_version = protocol_version
 
@@ -417,36 +458,47 @@ class Bolt:
         # issues.
         if protocol_version == (5, 6):
             from ._bolt5 import Bolt5x6
+
             bolt_cls = Bolt5x6
         elif protocol_version == (5, 5):
             from ._bolt5 import Bolt5x5
+
             bolt_cls = Bolt5x5
         elif protocol_version == (5, 4):
             from ._bolt5 import Bolt5x4
+
             bolt_cls = Bolt5x4
         elif protocol_version == (5, 3):
             from ._bolt5 import Bolt5x3
+
             bolt_cls = Bolt5x3
         elif protocol_version == (5, 2):
             from ._bolt5 import Bolt5x2
+
             bolt_cls = Bolt5x2
         elif protocol_version == (5, 1):
             from ._bolt5 import Bolt5x1
+
             bolt_cls = Bolt5x1
         elif protocol_version == (5, 0):
             from ._bolt5 import Bolt5x0
+
             bolt_cls = Bolt5x0
         elif protocol_version == (4, 4):
             from ._bolt4 import Bolt4x4
+
             bolt_cls = Bolt4x4
         elif protocol_version == (4, 3):
             from ._bolt4 import Bolt4x3
+
             bolt_cls = Bolt4x3
         elif protocol_version == (4, 2):
             from ._bolt4 import Bolt4x2
+
             bolt_cls = Bolt4x2
         elif protocol_version == (4, 1):
             from ._bolt4 import Bolt4x1
+
             bolt_cls = Bolt4x1
         # Implementation for 4.0 exists, but there was no space left in the
         # handshake to offer this version to the server. Hence, the server
@@ -456,6 +508,7 @@ class Bolt:
         #     bolt_cls = AsyncBolt4x0
         elif protocol_version == (3, 0):
             from ._bolt3 import Bolt3
+
             bolt_cls = Bolt3
         else:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
@@ -465,30 +518,41 @@ class Bolt:
             raise BoltHandshakeError(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
-                "{}.".format(tuple(map(str, supported_versions))),
-                address=address, request_data=handshake, response_data=data
+                f"{tuple(map(str, supported_versions))}.",
+                address=address,
+                request_data=handshake,
+                response_data=data,
             )
 
         try:
             auth = Util.callback(auth_manager.get_auth)
         except asyncio.CancelledError as e:
-            log.debug("[#%04X]  C: <KILL> open auth manager failed: %r",
-                      s.getsockname()[1], e)
+            log.debug(
+                "[#%04X]  C: <KILL> open auth manager failed: %r",
+                s.getsockname()[1],
+                e,
+            )
             s.kill()
             raise
         except Exception as e:
-            log.debug("[#%04X]  C: <CLOSE> open auth manager failed: %r",
-                      s.getsockname()[1], e)
+            log.debug(
+                "[#%04X]  C: <CLOSE> open auth manager failed: %r",
+                s.getsockname()[1],
+                e,
+            )
             s.close()
             raise
 
         connection = bolt_cls(
-            address, s, pool_config.max_connection_lifetime, auth=auth,
-            auth_manager=auth_manager, user_agent=pool_config.user_agent,
+            address,
+            s,
+            pool_config.max_connection_lifetime,
+            auth=auth,
+            auth_manager=auth_manager,
+            user_agent=pool_config.user_agent,
             routing_context=routing_context,
             notifications_min_severity=pool_config.notifications_min_severity,
-            notifications_disabled_classifications=
-                pool_config.notifications_disabled_classifications,
+            notifications_disabled_classifications=pool_config.notifications_disabled_classifications,
             telemetry_disabled=pool_config.telemetry_disabled,
         )
 
@@ -521,8 +585,11 @@ class Bolt:
 
     @abc.abstractmethod
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
-        """ Appends a HELLO message to the outgoing queue, sends it and consumes
-         all remaining messages.
+        """
+        Submit a HELLO (send + consume all).
+
+        Append a HELLO message to the outgoing queue, sends it and consumes
+        all remaining messages.
 
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
@@ -533,27 +600,29 @@ class Bolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         """
-        pass
 
     @abc.abstractmethod
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGON message to the outgoing queue."""
-        pass
 
     @abc.abstractmethod
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGOFF message to the outgoing queue."""
-        pass
 
     def mark_unauthenticated(self):
         """Mark the connection as unauthenticated."""
         self.auth_dict = {}
 
     def re_auth(
-        self, auth, auth_manager, force=False,
-        dehydration_hooks=None, hydration_hooks=None,
+        self,
+        auth,
+        auth_manager,
+        force=False,
+        dehydration_hooks=None,
+        hydration_hooks=None,
     ):
-        """Append LOGON, LOGOFF to the outgoing queue.
+        """
+        Append LOGON, LOGOFF to the outgoing queue.
 
         If auth is the same as the current auth, this method does nothing.
 
@@ -564,22 +633,32 @@ class Bolt:
             self.auth_manager = auth_manager
             self.auth = auth
             return False
-        self.logoff(dehydration_hooks=dehydration_hooks,
-                     hydration_hooks=hydration_hooks)
+        self.logoff(
+            dehydration_hooks=dehydration_hooks,
+            hydration_hooks=hydration_hooks,
+        )
         self.auth_dict = new_auth_dict
         self.auth_manager = auth_manager
         self.auth = auth
-        self.logon(dehydration_hooks=dehydration_hooks,
-                    hydration_hooks=hydration_hooks)
+        self.logon(
+            dehydration_hooks=dehydration_hooks,
+            hydration_hooks=hydration_hooks,
+        )
         return True
 
     @abc.abstractmethod
     def route(
-        self, database=None, imp_user=None, bookmarks=None,
-        dehydration_hooks=None, hydration_hooks=None
+        self,
+        database=None,
+        imp_user=None,
+        bookmarks=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
     ):
-        """ Fetch a routing table from the server for the given
-        `database`. For Bolt 4.3 and above, this appends a ROUTE
+        """
+        Fetch a routing table from the server for the given ``database``.
+
+        For Bolt 4.3 and above, this appends a ROUTE
         message; for earlier versions, a procedure call is made via
         the regular Cypher execution mechanism. In all cases, this is
         sent to the network, and a response is fetched.
@@ -599,12 +678,17 @@ class Bolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         """
-        pass
 
     @abc.abstractmethod
-    def telemetry(self, api: TelemetryAPI, dehydration_hooks=None,
-                  hydration_hooks=None, **handlers) -> None:
-        """Send telemetry information about the API usage to the server.
+    def telemetry(
+        self,
+        api: TelemetryAPI,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ) -> None:
+        """
+        Send telemetry information about the API usage to the server.
 
         :param api: the API used.
         :param dehydration_hooks:
@@ -616,21 +700,34 @@ class Bolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         """
-        pass
 
     @abc.abstractmethod
-    def run(self, query, parameters=None, mode=None, bookmarks=None,
-            metadata=None, timeout=None, db=None, imp_user=None,
-            notifications_min_severity=None,
-            notifications_disabled_classifications=None, dehydration_hooks=None,
-            hydration_hooks=None, **handlers):
-        """ Appends a RUN message to the output queue.
+    def run(
+        self,
+        query,
+        parameters=None,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
+        """
+        Append a RUN message to the output queue.
 
         :param query: Cypher query string
         :param parameters: dictionary of Cypher parameters
         :param mode: access mode for routing - "READ" or "WRITE" (default)
-        :param bookmarks: iterable of bookmark values after which this transaction should begin
-        :param metadata: custom metadata dictionary to attach to the transaction
+        :param bookmarks: iterable of bookmark values after which this
+            transaction should begin
+        :param metadata: custom metadata dictionary to attach to the
+            transaction
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
             Requires Bolt 4.0+.
@@ -650,14 +747,21 @@ class Bolt:
             Hooks to hydrate types (mapping from type (class) to
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
-        :param handlers: handler functions passed into the returned Response object
+        :param handlers: handler functions passed into the returned Response
+            object
         """
-        pass
 
     @abc.abstractmethod
-    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
-                hydration_hooks=None, **handlers):
-        """ Appends a DISCARD message to the output queue.
+    def discard(
+        self,
+        n=-1,
+        qid=-1,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
+        """
+        Append a DISCARD message to the output queue.
 
         :param n: number of records to discard, default = -1 (ALL)
         :param qid: query ID to discard for, default = -1 (last query)
@@ -669,14 +773,21 @@ class Bolt:
             Hooks to hydrate types (mapping from type (class) to
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
-        :param handlers: handler functions passed into the returned Response object
+        :param handlers: handler functions passed into the returned Response
+            object
         """
-        pass
 
     @abc.abstractmethod
-    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
-             **handlers):
-        """ Appends a PULL message to the output queue.
+    def pull(
+        self,
+        n=-1,
+        qid=-1,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
+        """
+        Append a PULL message to the output queue.
 
         :param n: number of records to pull, default = -1 (ALL)
         :param qid: query ID to pull for, default = -1 (last query)
@@ -688,20 +799,33 @@ class Bolt:
             Hooks to hydrate types (mapping from type (class) to
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
-        :param handlers: handler functions passed into the returned Response object
+        :param handlers: handler functions passed into the returned Response
+            object
         """
-        pass
 
     @abc.abstractmethod
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_classifications=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
-        """ Appends a BEGIN message to the output queue.
+    def begin(
+        self,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
+        """
+        Append a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
-        :param bookmarks: iterable of bookmark values after which this transaction should begin
-        :param metadata: custom metadata dictionary to attach to the transaction
+        :param bookmarks: iterable of bookmark values after which this
+            transaction should begin
+        :param metadata: custom metadata dictionary to attach to the
+            transaction
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
             Requires Bolt 4.0+.
@@ -721,14 +845,15 @@ class Bolt:
             Hooks to hydrate types (mapping from type (class) to
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
-        :param handlers: handler functions passed into the returned Response object
+        :param handlers: handler functions passed into the returned Response
+            object
         :returns: Response object
         """
-        pass
 
     @abc.abstractmethod
     def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
-        """ Appends a COMMIT message to the output queue.
+        """
+        Append a COMMIT message to the output queue.
 
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
@@ -739,11 +864,13 @@ class Bolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         """
-        pass
 
     @abc.abstractmethod
-    def rollback(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
-        """ Appends a ROLLBACK message to the output queue.
+    def rollback(
+        self, dehydration_hooks=None, hydration_hooks=None, **handlers
+    ):
+        """
+        Append a ROLLBACK message to the output queue.
 
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
@@ -752,13 +879,16 @@ class Bolt:
         :param hydration_hooks:
             Hooks to hydrate types (mapping from type (class) to
             dehydration function). Dehydration functions receive the value of
-            type understood by packstream and are free to return anything."""
-        pass
+        type understood by packstream and are free to return anything.
+        """
 
     @abc.abstractmethod
     def reset(self, dehydration_hooks=None, hydration_hooks=None):
-        """ Appends a RESET message to the outgoing queue, sends it and consumes
-         all remaining messages.
+        """
+        Submit a RESET (send + consume all).
+
+        Append a RESET message to the outgoing queue, sends it and consumes
+        all remaining messages.
 
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
@@ -769,11 +899,11 @@ class Bolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         """
-        pass
 
     @abc.abstractmethod
     def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
-        """Append a GOODBYE message to the outgoing queue.
+        """
+        Append a GOODBYE message to the outgoing queue.
 
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
@@ -784,14 +914,15 @@ class Bolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         """
-        pass
 
     def new_hydration_scope(self):
         return self.hydration_handler.new_hydration_scope()
 
-    def _append(self, signature, fields=(), response=None,
-                dehydration_hooks=None):
-        """ Appends a message to the outgoing queue.
+    def _append(
+        self, signature, fields=(), response=None, dehydration_hooks=None
+    ):
+        """
+        Append a message to the outgoing queue.
 
         :param signature: the signature of the message
         :param fields: the fields of the message as a tuple
@@ -811,44 +942,39 @@ class Bolt:
             self.idle_since = monotonic()
 
     def send_all(self):
-        """ Send all queued messages to the server.
-        """
+        """Send all queued messages to the server."""
         if self.closed():
             raise ServiceUnavailable(
-                "Failed to write to closed connection {!r} ({!r})".format(
-                    self.unresolved_address, self.server_info.address
-                )
+                "Failed to write to closed connection "
+                f"{self.unresolved_address!r} ({self.server_info.address!r})"
             )
         if self.defunct():
             raise ServiceUnavailable(
-                "Failed to write to defunct connection {!r} ({!r})".format(
-                    self.unresolved_address, self.server_info.address
-                )
+                "Failed to write to defunct connection "
+                f"{self.unresolved_address!r} ({self.server_info.address!r})"
             )
 
         self._send_all()
 
     @abc.abstractmethod
     def _process_message(self, tag, fields):
-        """ Receive at most one message from the server, if available.
+        """
+        Receive at most one message from the server, if available.
 
         :returns: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
-        pass
 
     def fetch_message(self):
         if self._closed:
             raise ServiceUnavailable(
-                "Failed to read from closed connection {!r} ({!r})".format(
-                    self.unresolved_address, self.server_info.address
-                )
+                "Failed to read from closed connection "
+                f"{self.unresolved_address!r} ({self.server_info.address!r})"
             )
         if self._defunct:
             raise ServiceUnavailable(
-                "Failed to read from defunct connection {!r} ({!r})".format(
-                    self.unresolved_address, self.server_info.address
-                )
+                "Failed to read from defunct connection "
+                f"{self.unresolved_address!r} ({self.server_info.address!r})"
             )
         if not self.responses:
             return 0, 0
@@ -862,7 +988,8 @@ class Bolt:
         return res
 
     def fetch_all(self):
-        """ Fetch all outstanding messages.
+        """
+        Fetch all outstanding messages.
 
         :returns: 2-tuple of number of detail messages and number of summary
                  messages fetched
@@ -877,14 +1004,16 @@ class Bolt:
         return detail_count, summary_count
 
     def _set_defunct_read(self, error=None, silent=False):
-        message = "Failed to read from defunct connection {!r} ({!r})".format(
-            self.unresolved_address, self.server_info.address
+        message = (
+            "Failed to read from defunct connection "
+            f"{self.unresolved_address!r} ({self.server_info.address!r})"
         )
         self._set_defunct(message, error=error, silent=silent)
 
     def _set_defunct_write(self, error=None, silent=False):
-        message = "Failed to write data to connection {!r} ({!r})".format(
-            self.unresolved_address, self.server_info.address
+        message = (
+            "Failed to write data to connection "
+            f"{self.unresolved_address!r} ({self.server_info.address!r})"
         )
         self._set_defunct(message, error=error, silent=silent)
 
@@ -893,8 +1022,9 @@ class Bolt:
         user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:
-            log.debug("[#%04X]  _: <CONNECTION> error: %r", self.local_port,
-                      error)
+            log.debug(
+                "[#%04X]  _: <CONNECTION> error: %r", self.local_port, error
+            )
         if not user_cancelled:
             log.error(message)
         # We were attempting to receive data but the connection
@@ -930,16 +1060,17 @@ class Bolt:
                 raise ServiceUnavailable(message) from error
             else:
                 raise ServiceUnavailable(message)
+        elif error:
+            raise SessionExpired(message) from error
         else:
-            if error:
-                raise SessionExpired(message) from error
-            else:
-                raise SessionExpired(message)
+            raise SessionExpired(message)
 
     def stale(self):
-        return (self._stale
-                or (0 <= self._max_connection_lifetime
-                    <= monotonic() - self._creation_timestamp))
+        return self._stale or (
+            0
+            <= self._max_connection_lifetime
+            <= monotonic() - self._creation_timestamp
+        )
 
     _stale = False
 
@@ -956,8 +1087,11 @@ class Bolt:
             try:
                 self._send_all()
             except (OSError, BoltError, DriverError) as exc:
-                log.debug("[#%04X]  _: <CONNECTION> ignoring failed close %r",
-                          self.local_port, exc)
+                log.debug(
+                    "[#%04X]  _: <CONNECTION> ignoring failed close %r",
+                    self.local_port,
+                    exc,
+                )
         log.debug("[#%04X]  C: <CLOSE>", self.local_port)
         try:
             self.socket.close()
@@ -975,8 +1109,11 @@ class Bolt:
         try:
             self.socket.kill()
         except OSError as exc:
-            log.debug("[#%04X]  _: <CONNECTION> ignoring failed kill %r",
-                      self.local_port, exc)
+            log.debug(
+                "[#%04X]  _: <CONNECTION> ignoring failed kill %r",
+                self.local_port,
+                exc,
+            )
         finally:
             self._closed = True
 
@@ -987,7 +1124,8 @@ class Bolt:
         return self._defunct
 
     def is_idle_for(self, timeout):
-        """Check if connection has been idle for at least the given timeout.
+        """
+        Check if connection has been idle for at least the given timeout.
 
         :param timeout: timeout in seconds
         :type timeout: float
@@ -1001,7 +1139,8 @@ BoltSocket.Bolt = Bolt  # type: ignore
 
 
 def tx_timeout_as_ms(timeout: float) -> int:
-    """Round transaction timeout to milliseconds.
+    """
+    Round transaction timeout to milliseconds.
 
     Values in (0, 1], else values are rounded using the built-in round()
     function (round n.5 values to nearest even).

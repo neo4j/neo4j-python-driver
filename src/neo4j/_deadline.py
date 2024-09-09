@@ -37,7 +37,7 @@ class Deadline:
         if self._deadline == float("inf"):
             return None
         timeout = self._deadline - monotonic()
-        return timeout if timeout > 0 else 0
+        return max(0, timeout)
 
     def __eq__(self, other):
         if isinstance(other, Deadline):
@@ -90,7 +90,7 @@ def connection_deadline(connection, deadline):
         yield
         return
     deadline = merge_deadlines(
-        (d for d in (deadline, original_deadline) if d is not None)
+        d for d in (deadline, original_deadline) if d is not None
     )
     connection.socket.set_deadline(deadline)
     try:

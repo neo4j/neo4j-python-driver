@@ -23,7 +23,6 @@ from neo4j.time._clock_implementations import (
 
 
 class TestClock:
-
     def test_no_clock_implementations(self):
         try:
             Clock._Clock__implementations = []

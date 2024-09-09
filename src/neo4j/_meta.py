@@ -37,7 +37,7 @@ version = "5.24.dev0"
 deprecated_package = False
 
 
-def _compute_bolt_agent() -> t.Dict[str, str]:
+def _compute_bolt_agent() -> dict[str, str]:
     def format_version_info(version_info):
         return "{}.{}.{}-{}-{}".format(*version_info)
 
@@ -47,16 +47,14 @@ def _compute_bolt_agent() -> t.Dict[str, str]:
 
     return {
         "product": f"neo4j-python/{version}",
-        "platform":
-            f"{platform.system() or 'Unknown'} "
-            f"{platform.release() or 'unknown'}; "
-            f"{platform.machine() or 'unknown'}",
+        "platform": f"{platform.system() or 'Unknown'} "
+        f"{platform.release() or 'unknown'}; "
+        f"{platform.machine() or 'unknown'}",
         "language": f"{language}/{format_version_info(sys.version_info)}",
-        "language_details":
-            f"{platform.python_implementation()}; "
-            f"{format_version_info(sys.implementation.version)} "
-            f"({', '.join(platform.python_build())}) "
-            f"[{platform.python_compiler()}]"
+        "language_details": f"{platform.python_implementation()}; "
+        f"{format_version_info(sys.implementation.version)} "
+        f"({', '.join(platform.python_build())}) "
+        f"[{platform.python_compiler()}]",
     }
 
 
@@ -64,9 +62,11 @@ BOLT_AGENT_DICT = _compute_bolt_agent()
 
 
 def _compute_user_agent() -> str:
-    return (f'{BOLT_AGENT_DICT["product"]} '
-            f'{BOLT_AGENT_DICT["language"]} '
-            f'({sys.platform})')
+    return (
+        f'{BOLT_AGENT_DICT["product"]} '
+        f'{BOLT_AGENT_DICT["language"]} '
+        f'({sys.platform})'
+    )
 
 
 USER_AGENT = _compute_user_agent()
@@ -76,8 +76,10 @@ USER_AGENT = _compute_user_agent()
 # Other official drivers also provide means to access the default user agent.
 # Hence, we'll leave this here for now.
 def get_user_agent():
-    """ Obtain the default user agent string sent to the server after
-    a successful handshake.
+    """
+    Obtain the driver's default user agent string.
+
+    The user agent is sent to the server after a successful handshake.
     """
     return USER_AGENT
 
@@ -90,7 +92,6 @@ def copy_signature(_: _FuncT) -> t.Callable[[t.Callable], _FuncT]:
     return _id
 
 
-
 # Copy globals as function locals to make sure that they are available
 # during Python shutdown when the Pool is destroyed.
 def deprecation_warn(message, stack_level=1, _warn=warn):
@@ -98,7 +99,8 @@ def deprecation_warn(message, stack_level=1, _warn=warn):
 
 
 def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
-    """ Decorator for deprecating functions and methods.
+    """
+    Decorate deprecated functions and methods.
 
     ::
 
@@ -113,12 +115,14 @@ def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
 def deprecated_property(message: str):
     def decorator(f):
         return property(deprecated(message)(f))
+
     return t.cast(property, decorator)
 
 
 # TODO: 6.0 - remove this class, replace usage with PreviewWarning
 class ExperimentalWarning(Warning):
-    """ Base class for warnings about experimental features.
+    """
+    Base class for warnings about experimental features.
 
     .. deprecated:: 5.8
         we now use "preview" instead of "experimental":
@@ -131,7 +135,8 @@ def experimental_warn(message, stack_level=1):
 
 
 def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
-    """ Decorator for tagging experimental functions and methods.
+    """
+    Decorate functions and methods as experimental.
 
     ::
 
@@ -149,7 +154,8 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
 # TODO: 6.0 - consider moving this to the `warnings` module
 #             and not to re-export it from the top-level package `neo4j`
 class PreviewWarning(Warning):
-    """A driver feature in preview has been used.
+    """
+    A driver feature in preview has been used.
 
     It might be changed without following the deprecation policy.
     See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
@@ -167,7 +173,9 @@ def preview_warn(message, stack_level=1):
 
 def preview(message) -> t.Callable[[_FuncT], _FuncT]:
     """
-    Decorator for tagging preview functions and methods.
+    Decorate functions and methods as preview.
+
+    ::
 
         @preview("foo is a preview.")
         def foo(x):
@@ -177,9 +185,9 @@ def preview(message) -> t.Callable[[_FuncT], _FuncT]:
 
 
 if t.TYPE_CHECKING:
+
     class _WarningFunc(t.Protocol):
-        def __call__(self, message: str, stack_level: int = 1) -> None:
-            ...
+        def __call__(self, message: str, stack_level: int = 1) -> None: ...
 else:
     _WarningFunc = object
 
@@ -190,6 +198,7 @@ def _make_warning_decorator(
 ) -> t.Callable[[_FuncT], _FuncT]:
     def decorator(f):
         if asyncio.iscoroutinefunction(f):
+
             @wraps(f)
             async def inner(*args, **kwargs):
                 warning_func(message, stack_level=2)
@@ -214,10 +223,9 @@ def _make_warning_decorator(
                 f.__init__ = inner
                 f._without_warning = classmethod(_without_warning)
                 return f
-            raise TypeError(
-                "Cannot decorate class without __init__"
-            )
+            raise TypeError("Cannot decorate class without __init__")
         else:
+
             @wraps(f)
             def inner(*args, **kwargs):
                 warning_func(message, stack_level=2)

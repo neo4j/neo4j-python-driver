@@ -14,8 +14,6 @@
 # limitations under the License.
 
 
-import datetime
-
 import pytest
 import pytz
 
@@ -70,12 +68,16 @@ class TestTemporalHydration(_TestTemporalHydrationV1):
         assert dt.minute == 37
         assert dt.second == 41
         assert dt.nanosecond == 474716862
-        tz = pytz.timezone("Europe/Stockholm") \
-            .localize(dt.replace(tzinfo=None)).tzinfo
+        tz = (
+            pytz.timezone("Europe/Stockholm")
+            .localize(dt.replace(tzinfo=None))
+            .tzinfo
+        )
         assert dt.tzinfo == tz
 
-    def test_hydrate_date_time_unknown_zone_id_structure(self,
-                                                         hydration_scope):
+    def test_hydrate_date_time_unknown_zone_id_structure(
+        self, hydration_scope
+    ):
         struct = Structure(b"i", 1539344261, 474716862, "Europe/Neo4j")
         res = hydration_scope.hydration_hooks[Structure](struct)
         assert isinstance(res, BrokenHydrationObject)

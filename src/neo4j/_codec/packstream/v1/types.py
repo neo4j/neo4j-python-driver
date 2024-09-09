@@ -43,18 +43,22 @@ if np is not None:
 
 if pd is not None:
     NONE_VALUES = (*NONE_VALUES, pd.NA)
-    SEQUENCE_TYPES = (*SEQUENCE_TYPES, pd.Series, pd.Categorical,
-                      pd.core.arrays.ExtensionArray)
+    SEQUENCE_TYPES = (
+        *SEQUENCE_TYPES,
+        pd.Series,
+        pd.Categorical,
+        pd.core.arrays.ExtensionArray,
+    )
     MAPPING_TYPES = (*MAPPING_TYPES, pd.DataFrame)
 
 
 __all__ = [
-    "NONE_VALUES",
-    "TRUE_VALUES",
-    "FALSE_VALUES",
-    "INT_TYPES",
-    "FLOAT_TYPES",
-    "SEQUENCE_TYPES",
-    "MAPPING_TYPES",
     "BYTES_TYPES",
+    "FALSE_VALUES",
+    "FLOAT_TYPES",
+    "INT_TYPES",
+    "MAPPING_TYPES",
+    "NONE_VALUES",
+    "SEQUENCE_TYPES",
+    "TRUE_VALUES",
 ]

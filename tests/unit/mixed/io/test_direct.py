@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+# ruff: noqa: ASYNC110
+# FIXME: activate lint and fix it
+
 import asyncio
 import threading
 import time
@@ -30,12 +33,10 @@ from neo4j._async.io._pool import AcquireAuth as AsyncAcquireAuth
 from neo4j._deadline import Deadline
 from neo4j._sync.io._pool import AcquireAuth
 
-from ...async_.conftest import async_fake_connection_generator
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...async_.test_auth_management import (
     static_auth_manager as static_async_auth_manager,
 )
-from ...sync.conftest import fake_connection_generator
 from ...sync.io.test_direct import FakeBoltPool
 from ...sync.test_auth_management import static_auth_manager
 from ._common import (
@@ -45,18 +46,21 @@ from ._common import (
 
 
 class TestMixedConnectionPoolTestCase:
-    def assert_pool_size(self, address, expected_active, expected_inactive,
-                         pool):
+    def assert_pool_size(
+        self, address, expected_active, expected_inactive, pool
+    ):
         try:
             connections = pool.connections[address]
         except KeyError:
-            assert 0 == expected_active
-            assert 0 == expected_inactive
+            assert expected_active == 0
+            assert expected_inactive == 0
         else:
-            assert (expected_active
-                    == len([cx for cx in connections if cx.in_use]))
-            assert (expected_inactive
-                    == len([cx for cx in connections if not cx.in_use]))
+            assert expected_active == len(
+                [cx for cx in connections if cx.in_use]
+            )
+            assert expected_inactive == len(
+                [cx for cx in connections if not cx.in_use]
+            )
 
     @pytest.mark.parametrize("pre_populated", (0, 3, 5))
     def test_multithread(self, pre_populated, fake_connection_generator):
@@ -64,8 +68,9 @@ class TestMixedConnectionPoolTestCase:
         connections = []
         pre_populated_connections = []
 
-        def acquire_release_conn(pool_, address_, acquired_counter_,
-                                 release_event_):
+        def acquire_release_conn(
+            pool_, address_, acquired_counter_, release_event_
+        ):
             nonlocal connections, connections_lock
             conn_ = pool_._acquire(address_, None, Deadline(3), None)
             with connections_lock:
@@ -93,11 +98,11 @@ class TestMixedConnectionPoolTestCase:
 
             # start 10 threads competing for connections from a pool of size 5
             threads = []
-            for i in range(10):
+            for _ in range(10):
                 t = Thread(
                     target=acquire_release_conn,
                     args=(pool, address, acquired_counter, release_event),
-                    daemon=True
+                    daemon=True,
                 )
                 t.start()
                 threads.append(t)
@@ -123,8 +128,8 @@ class TestMixedConnectionPoolTestCase:
 
     def test_full_pool_re_auth(self, fake_connection_generator, mocker):
         address = ("127.0.0.1", 7687)
-        acquire_auth1 = AcquireAuth(auth=static_auth_manager(
-            ("user1", "pass1"))
+        acquire_auth1 = AcquireAuth(
+            auth=static_auth_manager(("user1", "pass1"))
         )
         auth2 = ("user2", "pass2")
         acquire_auth2 = AcquireAuth(auth=static_auth_manager(auth2))
@@ -140,7 +145,8 @@ class TestMixedConnectionPoolTestCase:
                 with pool_.cond:
                     # _waiters is an internal attribute of threading.Condition
                     # this might break in the future, but we couldn't come up
-                    # with a better way of waiting for the other thread to block.
+                    # with a better way of waiting for the other thread to
+                    # block.
                     waiters = len(pool_.cond._waiters)
                 if waiters:
                     break
@@ -173,8 +179,9 @@ class TestMixedConnectionPoolTestCase:
         connections = []
         pre_populated_connections = []
 
-        async def acquire_release_conn(pool_, address_, acquired_counter_,
-                                       release_event_):
+        async def acquire_release_conn(
+            pool_, address_, acquired_counter_, release_event_
+        ):
             nonlocal connections
             conn_ = await pool_._acquire(address_, None, Deadline(3), None)
             if connections is not None:
@@ -224,11 +231,11 @@ class TestMixedConnectionPoolTestCase:
             coroutines = [
                 acquire_release_conn(
                     pool, address, acquired_counter, release_event
-                ) for _ in range(10)
+                )
+                for _ in range(10)
             ]
             await asyncio.gather(
-                waiter(pool, acquired_counter, release_event),
-                *coroutines
+                waiter(pool, acquired_counter, release_event), *coroutines
             )
 
     @pytest.mark.asyncio
@@ -236,8 +243,8 @@ class TestMixedConnectionPoolTestCase:
         self, async_fake_connection_generator, mocker
     ):
         address = ("127.0.0.1", 7687)
-        acquire_auth1 = AsyncAcquireAuth(auth=static_async_auth_manager(
-            ("user1", "pass1"))
+        acquire_auth1 = AsyncAcquireAuth(
+            auth=static_async_auth_manager(("user1", "pass1"))
         )
         auth2 = ("user2", "pass2")
         acquire_auth2 = AsyncAcquireAuth(auth=static_async_auth_manager(auth2))
@@ -245,7 +252,9 @@ class TestMixedConnectionPoolTestCase:
 
         async def acquire1(pool_):
             nonlocal cx1
-            cx = await pool_._acquire(address, acquire_auth1, Deadline(0), None)
+            cx = await pool_._acquire(
+                address, acquire_auth1, Deadline(0), None
+            )
             cx1 = cx
             while len(pool_.cond._waiters) == 0:
                 await asyncio.sleep(0)
@@ -254,8 +263,9 @@ class TestMixedConnectionPoolTestCase:
         async def acquire2(pool_):
             while cx1 is None:
                 await asyncio.sleep(0)
-            cx = await pool_._acquire(address, acquire_auth2,
-                                      Deadline(float("inf")), None)
+            cx = await pool_._acquire(
+                address, acquire_auth2, Deadline(float("inf")), None
+            )
             assert cx is cx1
             cx.re_auth.assert_called_once()
             assert auth2 in cx.re_auth.call_args.args

@@ -48,6 +48,7 @@ with warnings.catch_warnings():
         NotificationClassification,
     )
 
+
 @pytest.fixture
 def server_info_mock(mocker):
     server_info_mock = mocker.NonCallableMock()
@@ -61,7 +62,7 @@ def address():
 
 
 @pytest.fixture
-def summary_args_kwargs(address, server_info_mock) -> t.Tuple[tuple, dict]:
+def summary_args_kwargs(address, server_info_mock) -> tuple[tuple, dict]:
     return (
         (address,),
         {
@@ -69,8 +70,8 @@ def summary_args_kwargs(address, server_info_mock) -> t.Tuple[tuple, dict]:
             "had_record": True,
             "metadata": {
                 "server": server_info_mock,
-            }
-        }
+            },
+        },
     )
 
 
@@ -93,7 +94,7 @@ def test_summary_database(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["db"] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[str] = summary.database
+    summary_out: str | None = summary.database
 
     assert summary_out is summary_in
 
@@ -106,7 +107,7 @@ def test_summary_query(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["query"] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[str] = summary.query
+    summary_out: str | None = summary.query
 
     assert summary_out is summary_in
 
@@ -119,7 +120,7 @@ def test_summary_parameters(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["parameters"] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[t.Dict[str, t.Any]] = summary.parameters
+    summary_out: dict[str, t.Any] | None = summary.parameters
 
     assert summary_out is summary_in
 
@@ -131,7 +132,7 @@ def test_summary_query_type(summary_args_kwargs, summary_in) -> None:
         kwargs["metadata"]["type"] = summary_in
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Union[None, te.Literal["r", "w", "rw", "s"]]
+    summary_out: te.Literal["r", "w", "rw", "s"] | None
     summary_out = summary.query_type
 
     assert summary_out is summary_in
@@ -145,7 +146,7 @@ def test_summary_plan(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["plan"] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[dict] = summary.plan
+    summary_out: dict | None = summary.plan
 
     assert summary_out is summary_in
 
@@ -158,7 +159,7 @@ def test_summary_profile(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["profile"] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[dict] = summary.profile
+    summary_out: dict | None = summary.profile
 
     assert summary_out is summary_in
 
@@ -171,7 +172,7 @@ def test_summary_notifications(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["notifications"] = summary_in = [object()]
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[t.List[dict]] = summary.notifications
+    summary_out: list[dict] | None = summary.notifications
 
     assert summary_out is summary_in
 
@@ -255,23 +256,23 @@ def assert_is_non_notification_status(status: GqlStatusObject) -> None:
     is_notification: bool = status.is_notification
     assert not is_notification
 
-    position: t.Optional[SummaryInputPosition] = status.position
+    position: SummaryInputPosition | None = status.position
     assert position is None
 
-    raw_classification: t.Optional[str] = status.raw_classification
+    raw_classification: str | None = status.raw_classification
     assert raw_classification is None
 
-    classification: t.Optional[NotificationClassification]
+    classification: NotificationClassification | None
     classification = status.classification
     assert classification == NotificationClassification.UNKNOWN
 
-    raw_severity: t.Optional[str] = status.raw_severity
+    raw_severity: str | None = status.raw_severity
     assert raw_severity is None
 
-    severity: t.Optional[NotificationSeverity] = status.severity
+    severity: NotificationSeverity | None = status.severity
     assert severity == NotificationSeverity.UNKNOWN
 
-    diagnostic_record: t.Dict[str, t.Any] = status.diagnostic_record
+    diagnostic_record: dict[str, t.Any] = status.diagnostic_record
     assert diagnostic_record == {
         "OPERATION": "",
         "OPERATION_CODE": "0",
@@ -286,7 +287,7 @@ STATUS_SUCCESS = {
         "OPERATION": "",
         "OPERATION_CODE": "0",
         "CURRENT_SCHEMA": "/",
-    }
+    },
 }
 STATUS_OMITTED_RESULT = {
     **STATUS_SUCCESS,
@@ -303,8 +304,10 @@ STATUS_NO_DATA = {
 class StatusOrderHelper:
     @staticmethod
     def make_raw_status(
-        i: int, type_: te.Literal["WARNING", "INFORMATION",
-                                  "SUCCESS", "OMITTED", "NODATA"]
+        i: int,
+        type_: te.Literal[
+            "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
+        ],
     ) -> dict:
         if type_ == "SUCCESS":
             return STATUS_SUCCESS
@@ -317,7 +320,7 @@ class StatusOrderHelper:
         return {
             "gql_status": gql_status,
             "status_description": "note: successful completion - "
-                                  f"custom stuff {i}",
+            f"custom stuff {i}",
             "description": f"notification description {i}",
             "neo4j_code": f"Neo.Foo.Bar.{type_}-{i}",
             "title": f"Some cool title which defo is dope! {i}",
@@ -328,20 +331,17 @@ class StatusOrderHelper:
                 "_status_parameters": {},
                 "_severity": type_,
                 "_classification": "HINT",
-                "_position": {
-                    "line": 1337,
-                    "column": 42,
-                    "offset": 420
-                },
-            }
+                "_position": {"line": 1337, "column": 42, "offset": 420},
+            },
         }
 
     @staticmethod
     def assert_notification_is_status(
         notification: dict,
         i: int,
-        type_: te.Literal["WARNING", "INFORMATION",
-                          "SUCCESS", "OMITTED", "NODATA"]
+        type_: te.Literal[
+            "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
+        ],
     ) -> None:
         assert notification.get("code") == f"Neo.Foo.Bar.{type_}-{i}"
 
@@ -349,8 +349,9 @@ class StatusOrderHelper:
     def assert_parsed_notification_is_status(
         notification: SummaryNotification,
         i: int,
-        type_: te.Literal["WARNING", "INFORMATION",
-                          "SUCCESS", "OMITTED", "NODATA"]
+        type_: te.Literal[
+            "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
+        ],
     ) -> None:
         assert notification.code == f"Neo.Foo.Bar.{type_}-{i}"
 
@@ -358,8 +359,9 @@ class StatusOrderHelper:
     def assert_status_data_matches(
         status: GqlStatusObject,
         i: int,
-        type_: te.Literal["WARNING", "INFORMATION",
-                          "SUCCESS", "OMITTED", "NODATA"]
+        type_: te.Literal[
+            "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
+        ],
     ) -> None:
         if type_ == "SUCCESS":
             assert status.gql_status == STATUS_SUCCESS["gql_status"]
@@ -372,8 +374,7 @@ class StatusOrderHelper:
 
 
 @pytest.mark.parametrize(
-    "raw_status",
-    (STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA)
+    "raw_status", (STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA)
 )
 def test_non_notification_statuses(raw_status, summary_args_kwargs) -> None:
     args, kwargs = summary_args_kwargs
@@ -381,8 +382,9 @@ def test_non_notification_statuses(raw_status, summary_args_kwargs) -> None:
 
     summary = ResultSummary(*args, **kwargs)
     with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = \
+        status_objects: t.Sequence[GqlStatusObject] = (
             summary.gql_status_objects
+        )
 
     assert len(status_objects) == 1
     status = status_objects[0]
@@ -406,11 +408,21 @@ def test_non_notification_statuses(raw_status, summary_args_kwargs) -> None:
         ["WARNING", "INFORMATION", "NODATA"],
         ["SUCCESS", "WARNING", "SUCCESS"],
         [
-            "INFORMATION", "WARNING", "INFORMATION", "WARNING", "OMITTED",
-            "OMITTED", "SUCCESS", "NODATA", "INFORMATION", "NODATA",
-            "INFORMATION", "WARNING", "SUCCESS",
+            "INFORMATION",
+            "WARNING",
+            "INFORMATION",
+            "WARNING",
+            "OMITTED",
+            "OMITTED",
+            "SUCCESS",
+            "NODATA",
+            "INFORMATION",
+            "NODATA",
+            "INFORMATION",
+            "WARNING",
+            "SUCCESS",
         ],
-    )
+    ),
 )
 def test_gql_statuses_keep_order(
     summary_args_kwargs,
@@ -424,15 +436,14 @@ def test_gql_statuses_keep_order(
     summary = ResultSummary(*args, **kwargs)
 
     with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = \
+        status_objects: t.Sequence[GqlStatusObject] = (
             summary.gql_status_objects
+        )
 
     assert len(status_objects) == len(types)
     status: GqlStatusObject
     for i, (type_, status) in enumerate(zip(types, status_objects)):
-        StatusOrderHelper.assert_status_data_matches(
-            status, i, type_
-        )
+        StatusOrderHelper.assert_status_data_matches(status, i, type_)
 
 
 @pytest.mark.parametrize(
@@ -442,7 +453,6 @@ def test_gql_statuses_keep_order(
     ),
     (
         ({}, {}),
-
         # gql_status
         #  * string values stay as is
         #  * invalid values get turned into ""
@@ -450,65 +460,60 @@ def test_gql_statuses_keep_order(
         ({"gql_status": "00000"}, {"gql_status": "00000"}),
         (
             {"gql_status": "aBc1%d 👀\t Hi!!"},
-            {"gql_status": "aBc1%d 👀\t Hi!!"}
+            {"gql_status": "aBc1%d 👀\t Hi!!"},
         ),
         *(
             ({"gql_status": value}, {"gql_status": ""})
             for value in t.cast(t.Iterable, (1, None, False, ..., {}, []))
         ),
-
         # status_description is handled like gql_status
         ({"status_description": ""}, {"status_description": ""}),
         ({"status_description": "test"}, {"status_description": "test"}),
         (
             {"status_description": "aBc1%d 👀\t Hi!!"},
-            {"status_description": "aBc1%d 👀\t Hi!!"}
+            {"status_description": "aBc1%d 👀\t Hi!!"},
         ),
         *(
             ({"status_description": value}, {"status_description": ""})
             for value in t.cast(t.Iterable, (1, None, False, ..., {}, []))
         ),
-
         # title doesn't matter
         ({"title": "some other title, doesn't matter"}, {}),
         ({"title": 1}, {}),
         ({"title": None}, {}),
         ({"title": ...}, {}),
-
         # neo4j_code doesn't matter except for determining is_notification
         ({"neo4j_code": "Neo.ClientError.You.Suck"}, {}),
         ({"neo4j_code": ""}, {"is_notification": False}),
         ({"neo4j_code": 1}, {"is_notification": False}),
         ({"neo4j_code": None}, {"is_notification": False}),
         ({"neo4j_code": ...}, {"is_notification": False}),
-
         # severity
         #  * know severities are mapped
         #  * stays as-is in the diagnostic record
         #  * invalid gets turned into `None`
         (
             {("diagnostic_record", "_severity"): "INFORMATION"},
-            {"severity": "INFORMATION", "raw_severity": "INFORMATION"}
+            {"severity": "INFORMATION", "raw_severity": "INFORMATION"},
         ),
         (
             {("diagnostic_record", "_severity"): "WARNING"},
-            {"severity": "WARNING", "raw_severity": "WARNING"}
+            {"severity": "WARNING", "raw_severity": "WARNING"},
         ),
         *(
             (
                 {("diagnostic_record", "_severity"): sev},
-                {"severity": "UNKNOWN", "raw_severity": sev}
+                {"severity": "UNKNOWN", "raw_severity": sev},
             )
             for sev in ("", "FOOBAR", "UNKNOWN")
         ),
         *(
             (
                 {("diagnostic_record", "_severity"): severity},
-                {"severity": "UNKNOWN", "raw_severity": None}
+                {"severity": "UNKNOWN", "raw_severity": None},
             )
             for severity in (1, None, ...)
         ),
-
         # classification
         #  * know classifications are mapped to classification
         #  * stays as-is in the diagnostic record
@@ -516,7 +521,7 @@ def test_gql_statuses_keep_order(
         *(
             (
                 {("diagnostic_record", "_classification"): cls},
-                {"raw_classification": cls, "classification": cls}
+                {"raw_classification": cls, "classification": cls},
             )
             for cls in NotificationClassification.__members__
             if cls != "UNKNOWN"
@@ -524,18 +529,17 @@ def test_gql_statuses_keep_order(
         *(
             (
                 {("diagnostic_record", "_classification"): cls},
-                {"raw_classification": cls, "classification": "UNKNOWN"}
+                {"raw_classification": cls, "classification": "UNKNOWN"},
             )
             for cls in ("", "FOOBAR", "UNKNOWN")
         ),
         *(
             (
                 {("diagnostic_record", "_classification"): cls},
-                {"classification": "UNKNOWN", "raw_classification": None}
+                {"classification": "UNKNOWN", "raw_classification": None},
             )
             for cls in (1, None, ...)
         ),
-
         # position
         #  * stays as-is in the diagnostic record
         #  * valid positions are mapped to status.position
@@ -545,13 +549,15 @@ def test_gql_statuses_keep_order(
                 {("diagnostic_record", "_position"): pos},
                 {
                     "position": SummaryInputPosition(
-                        line=pos["line"], column=pos["column"],
-                        offset=pos["offset"]
+                        line=pos["line"],
+                        column=pos["column"],
+                        offset=pos["offset"],
                     )
-                }
+                },
             )
             for pos in t.cast(
-                t.Iterable[dict], (
+                t.Iterable[dict],
+                (
                     {"line": 1, "column": 1, "offset": 1},
                     {"line": 999999, "column": 1, "offset": 1},
                     {"line": 1, "column": 999999, "offset": 1},
@@ -570,14 +576,11 @@ def test_gql_statuses_keep_order(
                     {"line": 1, "column": 1, "offset": 1, "extra": 1},
                     {"line": 1, "column": 1, "offset": 1, "extra": 1.5},
                     {"line": 1, "column": 1, "offset": 1, "extra": []},
-                )
+                ),
             )
         ),
         *(
-            (
-                {("diagnostic_record", "_position"): pos},
-                {"position": None}
-            )
+            ({("diagnostic_record", "_position"): pos}, {"position": None})
             for pos in (
                 ...,
                 "1",
@@ -604,7 +607,7 @@ def test_gql_statuses_keep_order(
                 {"line": 1, "column": 1, "offset": [1]},
             )
         ),
-    )
+    ),
 )
 def test_status(
     raw_status_overwrite, expectation_overwrite, summary_args_kwargs
@@ -619,7 +622,7 @@ def test_status(
     default_title = "Cool Title"
     default_gql_status = "12345"
 
-    raw_status: t.Dict[str, t.Any] = {
+    raw_status: dict[str, t.Any] = {
         "gql_status": default_gql_status,
         "status_description": default_status_description,
         "description": default_description,
@@ -639,7 +642,7 @@ def test_status(
             },
         },
     }
-    key: t.Union[str, t.Tuple[str, ...]]
+    key: str | tuple[str, ...]
     for key, value in raw_status_overwrite.items():
         raw_status_part = raw_status
         while isinstance(key, tuple):
@@ -658,65 +661,83 @@ def test_status(
     summary = ResultSummary(*args, **kwargs)
 
     with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = \
+        status_objects: t.Sequence[GqlStatusObject] = (
             summary.gql_status_objects
+        )
 
     assert len(status_objects) == 1
     status = status_objects[0]
-    assert (status.is_notification
-            == expectation_overwrite.get("is_notification", True))
-    assert (status.gql_status
-            == expectation_overwrite.get("gql_status", default_gql_status))
-    assert (status.status_description
-            == expectation_overwrite.get("status_description",
-                                         default_status_description))
-    assert (status.position
-            == expectation_overwrite.get("position", default_position))
-    assert (status.raw_classification
-            == expectation_overwrite.get("raw_classification",
-                                         default_classification))
+    assert status.is_notification == expectation_overwrite.get(
+        "is_notification", True
+    )
+    assert status.gql_status == expectation_overwrite.get(
+        "gql_status", default_gql_status
+    )
+    assert status.status_description == expectation_overwrite.get(
+        "status_description", default_status_description
+    )
+    assert status.position == expectation_overwrite.get(
+        "position", default_position
+    )
+    assert status.raw_classification == expectation_overwrite.get(
+        "raw_classification", default_classification
+    )
     if status.classification is not None:
         assert isinstance(status.classification, NotificationClassification)
-    assert (status.classification
-            == expectation_overwrite.get("classification",
-                                         default_classification))
-    assert (status.raw_severity
-            == expectation_overwrite.get("raw_severity", default_severity))
+    assert status.classification == expectation_overwrite.get(
+        "classification", default_classification
+    )
+    assert status.raw_severity == expectation_overwrite.get(
+        "raw_severity", default_severity
+    )
     if status.severity is not None:
         assert isinstance(status.severity, NotificationSeverity)
-    assert (status.severity
-            == expectation_overwrite.get("severity", default_severity))
+    assert status.severity == expectation_overwrite.get(
+        "severity", default_severity
+    )
     assert status.diagnostic_record == raw_status["diagnostic_record"]
 
 
-@pytest.mark.parametrize("summary_in", (
-    [],
-    [{"code": "foobar"}],
-    [{"title": "foobar"}],
-    [{"description": "foobar"}],
-    *(
-        [{"severity": s}]
-        for s in ("WARNING", "INFORMATION", "UNKNOWN", "BANANA", "warning")
+@pytest.mark.parametrize(
+    "summary_in",
+    (
+        [],
+        [{"code": "foobar"}],
+        [{"title": "foobar"}],
+        [{"description": "foobar"}],
+        *(
+            [{"severity": s}]
+            for s in ("WARNING", "INFORMATION", "UNKNOWN", "BANANA", "warning")
+        ),
+        *(
+            [{"category": c}]
+            for c in (
+                "HINT",
+                "QUERY",
+                "UNRECOGNIZED",
+                "UNSUPPORTED",
+                "PERFORMANCE",
+                "DEPRECATION",
+                "GENERIC",
+                "UNKNOWN",
+                "BANANA",
+                "hint",
+            )
+        ),
+        [
+            {"code": "foobar"},
+            {"title": "foobar"},
+            {"description": "foobar"},
+            {"severity": "WARNING"},
+            {"category": "HINT"},
+        ],
+        [{"code": "foo"}, {"code": "bar"}],
+        [{"title": "foo"}, {"title": "bar"}],
+        [{"description": "foo"}, {"description": "bar"}],
+        [{"severity": "WARNING"}, {"severity": "INFORMATION"}],
+        [{"category": "HINT"}, {"category": "QUERY"}],
     ),
-    *(
-        [{"category": c}]
-        for c in ("HINT", "QUERY", "UNRECOGNIZED", "UNSUPPORTED",
-                  "PERFORMANCE", "DEPRECATION", "GENERIC", "UNKNOWN", "BANANA",
-                  "hint")
-    ),
-    [
-        {"code": "foobar"},
-        {"title": "foobar"},
-        {"description": "foobar"},
-        {"severity": "WARNING"},
-        {"category": "HINT"},
-    ],
-    [{"code": "foo"}, {"code": "bar"}],
-    [{"title": "foo"}, {"title": "bar"}],
-    [{"description": "foo"}, {"description": "bar"}],
-    [{"severity": "WARNING"}, {"severity": "INFORMATION"}],
-    [{"category": "HINT"}, {"category": "QUERY"}],
-))
+)
 def test_summary_summary_notifications(
     summary_args_kwargs, summary_in
 ) -> None:
@@ -725,7 +746,7 @@ def test_summary_summary_notifications(
         kwargs["metadata"]["notifications"] = summary_in
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.List[SummaryNotification] = summary.summary_notifications
+    summary_out: list[SummaryNotification] = summary.summary_notifications
 
     assert isinstance(summary_out, list)
     if summary_in is None:
@@ -785,25 +806,28 @@ SYSTEM_UPDATE_FIELDS = {
 }
 
 
-@pytest.mark.parametrize("counters_set", (
-    None,
-    {},
-    {"foo": -1},
-    *({k: v} for k in UPDATE_FIELDS for v in (0, 1, 42)),
-    *({k: v} for k in SYSTEM_UPDATE_FIELDS for v in (0, 1, 42)),
-    *(
-        {k: v, "contains-updates": c}
-        for k in UPDATE_FIELDS
-        for v in (0, 1, 42)
-        for c in (True, False)
+@pytest.mark.parametrize(
+    "counters_set",
+    (
+        None,
+        {},
+        {"foo": -1},
+        *({k: v} for k in UPDATE_FIELDS for v in (0, 1, 42)),
+        *({k: v} for k in SYSTEM_UPDATE_FIELDS for v in (0, 1, 42)),
+        *(
+            {k: v, "contains-updates": c}
+            for k in UPDATE_FIELDS
+            for v in (0, 1, 42)
+            for c in (True, False)
+        ),
+        *(
+            {k: v, "contains-system-updates": c}
+            for k in SYSTEM_UPDATE_FIELDS
+            for v in (0, 1, 42)
+            for c in (True, False)
+        ),
     ),
-    *(
-        {k: v, "contains-system-updates": c}
-        for k in SYSTEM_UPDATE_FIELDS
-        for v in (0, 1, 42)
-        for c in (True, False)
-    ),
-))
+)
 def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
     args, kwargs = summary_args_kwargs
     summary_in = {}
@@ -813,40 +837,49 @@ def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
     summary = ResultSummary(*args, **kwargs)
     summary_out: SummaryCounters = summary.counters
 
-    for field, summary_attr in (*UPDATE_FIELDS.items(),
-                               *SYSTEM_UPDATE_FIELDS.items()):
+    for field, summary_attr in (
+        *UPDATE_FIELDS.items(),
+        *SYSTEM_UPDATE_FIELDS.items(),
+    ):
         assert getattr(summary_out, summary_attr) == summary_in.get(field, 0)
 
-    contains_updates = any(getattr(summary_out, field) > 0
-                           for field in UPDATE_FIELDS.values())
-    assert (summary_out.contains_updates
-            == summary_in.get("contains-updates", contains_updates))
+    contains_updates = any(
+        getattr(summary_out, field) > 0 for field in UPDATE_FIELDS.values()
+    )
+    assert summary_out.contains_updates == summary_in.get(
+        "contains-updates", contains_updates
+    )
 
-    contains_system_updates = any(getattr(summary_out, field) > 0
-                                  for field in SYSTEM_UPDATE_FIELDS.values())
-    assert (summary_out.contains_system_updates
-            == summary_in.get("contains-system-updates",
-                              contains_system_updates))
+    contains_system_updates = any(
+        getattr(summary_out, field) > 0
+        for field in SYSTEM_UPDATE_FIELDS.values()
+    )
+    assert summary_out.contains_system_updates == summary_in.get(
+        "contains-system-updates", contains_system_updates
+    )
 
 
 # [bolt-version-bump] search tag when changing bolt version support
 @pytest.mark.parametrize("exists", (True, False))
-@pytest.mark.parametrize(("bolt_version", "meta_name"), (
-    ((2, 0), "result_available_after"),
-    ((3, 0), "t_first"),
-    ((4, 0), "t_first"),
-    ((4, 1), "t_first"),
-    ((4, 2), "t_first"),
-    ((4, 3), "t_first"),
-    ((4, 4), "t_first"),
-    ((5, 0), "t_first"),
-    ((5, 1), "t_first"),
-    ((5, 2), "t_first"),
-    ((5, 3), "t_first"),
-    ((5, 4), "t_first"),
-    ((5, 5), "t_first"),
-    ((5, 6), "t_first"),
-))
+@pytest.mark.parametrize(
+    ("bolt_version", "meta_name"),
+    (
+        ((2, 0), "result_available_after"),
+        ((3, 0), "t_first"),
+        ((4, 0), "t_first"),
+        ((4, 1), "t_first"),
+        ((4, 2), "t_first"),
+        ((4, 3), "t_first"),
+        ((4, 4), "t_first"),
+        ((5, 0), "t_first"),
+        ((5, 1), "t_first"),
+        ((5, 2), "t_first"),
+        ((5, 3), "t_first"),
+        ((5, 4), "t_first"),
+        ((5, 5), "t_first"),
+        ((5, 6), "t_first"),
+    ),
+)
 def test_summary_result_available_after(
     summary_args_kwargs, exists, bolt_version, meta_name
 ) -> None:
@@ -857,29 +890,32 @@ def test_summary_result_available_after(
         kwargs["metadata"][meta_name] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[int] = summary.result_available_after
+    summary_out: int | None = summary.result_available_after
 
     assert summary_out is summary_in
 
 
 # [bolt-version-bump] search tag when changing bolt version support
 @pytest.mark.parametrize("exists", (True, False))
-@pytest.mark.parametrize(("bolt_version", "meta_name"), (
-    ((2, 0), "result_consumed_after"),
-    ((3, 0), "t_last"),
-    ((4, 0), "t_last"),
-    ((4, 1), "t_last"),
-    ((4, 2), "t_last"),
-    ((4, 3), "t_last"),
-    ((4, 4), "t_last"),
-    ((5, 0), "t_last"),
-    ((5, 1), "t_last"),
-    ((5, 2), "t_last"),
-    ((5, 3), "t_last"),
-    ((5, 4), "t_last"),
-    ((5, 5), "t_last"),
-    ((5, 6), "t_last"),
-))
+@pytest.mark.parametrize(
+    ("bolt_version", "meta_name"),
+    (
+        ((2, 0), "result_consumed_after"),
+        ((3, 0), "t_last"),
+        ((4, 0), "t_last"),
+        ((4, 1), "t_last"),
+        ((4, 2), "t_last"),
+        ((4, 3), "t_last"),
+        ((4, 4), "t_last"),
+        ((5, 0), "t_last"),
+        ((5, 1), "t_last"),
+        ((5, 2), "t_last"),
+        ((5, 3), "t_last"),
+        ((5, 4), "t_last"),
+        ((5, 5), "t_last"),
+        ((5, 6), "t_last"),
+    ),
+)
 def test_summary_result_consumed_after(
     summary_args_kwargs, exists, bolt_version, meta_name
 ) -> None:
@@ -890,7 +926,7 @@ def test_summary_result_consumed_after(
         kwargs["metadata"][meta_name] = summary_in = object()
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: t.Optional[int] = summary.result_consumed_after
+    summary_out: int | None = summary.result_consumed_after
 
     assert summary_out is summary_in
 
@@ -901,17 +937,21 @@ def test_summary_result_consumed_after(
         (True, True, "00000", "note: successful completion"),
         (True, False, "02000", "note: no data"),
         (
-            False, False,
-            "00001", "note: successful completion - omitted result"
+            False,
+            False,
+            "00001",
+            "note: successful completion - omitted result",
         ),
         # (False, True, ...) is unspecified.
         # The server should never announce no keys and still return records.
-    )
+    ),
 )
 def test_status_from_no_notification(
-    had_key: bool, had_record: bool,
-    expected_status: str, expected_description: str,
-    summary_args_kwargs
+    had_key: bool,
+    had_record: bool,
+    expected_status: str,
+    expected_description: str,
+    summary_args_kwargs,
 ) -> None:
     args, kwargs = summary_args_kwargs
     kwargs["had_key"] = had_key
@@ -919,8 +959,9 @@ def test_status_from_no_notification(
     summary = ResultSummary(*args, **kwargs)
 
     with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = \
+        status_objects: t.Sequence[GqlStatusObject] = (
             summary.gql_status_objects
+        )
 
     assert len(status_objects) == 1
     status: GqlStatusObject = status_objects[0]
@@ -959,113 +1000,101 @@ FOOBAR_SEV_OVERWRITES = {
     ),
     (
         ({}, {}, {}),
-
         # title doesn't matter
         ({"title": "some other title, doesn't matter"}, {}, {}),
         ({"title": 1}, {}, {}),
         ({"title": None}, {}, {}),
         ({"title": ...}, {}, {}),
-
         # code doesn't matter
         ({"code": "Neo.ClientError.You.Suck"}, {}, {}),
         ({"code": 1}, {}, {}),
         ({"code": None}, {}, {}),
         ({"code": ...}, {}, {}),
-
         # description is inferred from severity
         (
             {"description": ""},
             {"status_description": "warn: unknown warning"},
-            {}
+            {},
         ),
         (
             {"description": 1},
             {"status_description": "warn: unknown warning"},
-            {}
+            {},
         ),
         (
             {"description": None},
             {"status_description": "warn: unknown warning"},
-            {}
+            {},
         ),
         (
             {"description": ...},
             {"status_description": "warn: unknown warning"},
-            {}
+            {},
         ),
         (
             {"description": "", "severity": "INFORMATION"},
             {
                 **INFORMATION_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "INFORMATION"}
+            {"_severity": "INFORMATION"},
         ),
         (
             {"description": 1, "severity": "INFORMATION"},
             {
                 **INFORMATION_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "INFORMATION"}
+            {"_severity": "INFORMATION"},
         ),
         (
             {"description": None, "severity": "INFORMATION"},
             {
                 **INFORMATION_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "INFORMATION"}
+            {"_severity": "INFORMATION"},
         ),
         (
             {"description": ..., "severity": "INFORMATION"},
             {
                 **INFORMATION_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "INFORMATION"}
+            {"_severity": "INFORMATION"},
         ),
         (
             {"description": "", "severity": "FOOBAR"},
             {
                 **FOOBAR_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "FOOBAR"}
+            {"_severity": "FOOBAR"},
         ),
         (
             {"description": 1, "severity": "FOOBAR"},
             {
                 **FOOBAR_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "FOOBAR"}
+            {"_severity": "FOOBAR"},
         ),
         (
             {"description": None, "severity": "FOOBAR"},
             {
                 **FOOBAR_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "FOOBAR"}
+            {"_severity": "FOOBAR"},
         ),
         (
             {"description": ..., "severity": "FOOBAR"},
             {
                 **FOOBAR_SEV_OVERWRITES,
-                "status_description":
-                    "info: unknown notification",
+                "status_description": "info: unknown notification",
             },
-            {"_severity": "FOOBAR"}
+            {"_severity": "FOOBAR"},
         ),
-
         # severity
         #  * know severities are mapped
         #  * stays as-is in the diagnostic record
@@ -1073,12 +1102,12 @@ FOOBAR_SEV_OVERWRITES = {
         (
             {"severity": "INFORMATION"},
             INFORMATION_SEV_OVERWRITES,
-            {"_severity": "INFORMATION"}
+            {"_severity": "INFORMATION"},
         ),
         (
             {"severity": "WARNING"},
             WARNING_SEV_OVERWRITES,
-            {"_severity": "WARNING"}
+            {"_severity": "WARNING"},
         ),
         *(
             (
@@ -1088,7 +1117,7 @@ FOOBAR_SEV_OVERWRITES = {
                     "severity": "UNKNOWN",
                     "raw_severity": severity,
                 },
-                {"_severity": severity}
+                {"_severity": severity},
             )
             for severity in ("FOOBAR", "")
         ),
@@ -1100,11 +1129,10 @@ FOOBAR_SEV_OVERWRITES = {
                     "severity": "UNKNOWN",
                     "raw_severity": None,
                 },
-                {"_severity": severity}
+                {"_severity": severity},
             )
             for severity in (1, None, ...)
         ),
-
         # category
         #  * know categories are mapped to classification
         #  * stays as-is in the diagnostic record
@@ -1113,7 +1141,7 @@ FOOBAR_SEV_OVERWRITES = {
             (
                 {"category": cat},
                 {"classification": cat, "raw_classification": cat},
-                {"_classification": cat}
+                {"_classification": cat},
             )
             for cat in NotificationCategory.__members__
             if cat != "UNKNOWN"
@@ -1122,7 +1150,7 @@ FOOBAR_SEV_OVERWRITES = {
             (
                 {"category": cat},
                 {"classification": "UNKNOWN", "raw_classification": cat},
-                {"_classification": cat}
+                {"_classification": cat},
             )
             for cat in ("", "FOOBAR")
         ),
@@ -1130,11 +1158,10 @@ FOOBAR_SEV_OVERWRITES = {
             (
                 {"category": cat},
                 {"classification": "UNKNOWN", "raw_classification": None},
-                {"_classification": cat}
+                {"_classification": cat},
             )
             for cat in (1, None, ...)
         ),
-
         # position
         #  * stays as-is in the diagnostic record
         #  * valid positions are mapped to status.position
@@ -1144,14 +1171,16 @@ FOOBAR_SEV_OVERWRITES = {
                 {"position": pos},
                 {
                     "position": SummaryInputPosition(
-                        line=pos["line"], column=pos["column"],
-                        offset=pos["offset"]
+                        line=pos["line"],
+                        column=pos["column"],
+                        offset=pos["offset"],
                     )
                 },
-                {"_position": pos}
+                {"_position": pos},
             )
             for pos in t.cast(
-                t.Iterable[dict], (
+                t.Iterable[dict],
+                (
                     {"line": 1, "column": 1, "offset": 1},
                     {"line": 999999, "column": 1, "offset": 1},
                     {"line": 1, "column": 999999, "offset": 1},
@@ -1170,15 +1199,11 @@ FOOBAR_SEV_OVERWRITES = {
                     {"line": 1, "column": 1, "offset": 1, "extra": 1},
                     {"line": 1, "column": 1, "offset": 1, "extra": 1.5},
                     {"line": 1, "column": 1, "offset": 1, "extra": []},
-                )
+                ),
             )
         ),
         *(
-            (
-                {"position": pos},
-                {"position": None},
-                {"_position": pos}
-            )
+            ({"position": pos}, {"position": None}, {"_position": pos})
             for pos in (
                 ...,
                 "1",
@@ -1205,11 +1230,13 @@ FOOBAR_SEV_OVERWRITES = {
                 {"line": 1, "column": 1, "offset": [1]},
             )
         ),
-    )
+    ),
 )
 def test_status_from_notifications(
-    raw_notification_overwrite, expectation_overwrite,
-    diag_record_expectation_overwrite, summary_args_kwargs
+    raw_notification_overwrite,
+    expectation_overwrite,
+    diag_record_expectation_overwrite,
+    summary_args_kwargs,
 ) -> None:
     args, kwargs = summary_args_kwargs
     default_position = SummaryInputPosition(line=1337, column=42, offset=420)
@@ -1237,8 +1264,9 @@ def test_status_from_notifications(
     summary = ResultSummary(*args, **kwargs)
 
     with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = \
+        status_objects: t.Sequence[GqlStatusObject] = (
             summary.gql_status_objects
+        )
     notifications = [s for s in status_objects if s.is_notification]
 
     if "diagnostic_record" in expectation_overwrite:
@@ -1254,7 +1282,7 @@ def test_status_from_notifications(
                 "line": default_position.line,
                 "column": default_position.column,
                 "offset": default_position.offset,
-            }
+            },
         }
         for key, value in diag_record_expectation_overwrite.items():
             if value is ...:
@@ -1264,31 +1292,37 @@ def test_status_from_notifications(
 
     assert len(notifications) == 1
     status = notifications[0]
-    assert (status.gql_status
-            == expectation_overwrite.get("gql_status", "01N42"))
-    assert (status.status_description
-            == expectation_overwrite.get("status_description",
-                                         default_description))
-    assert (status.position
-            == expectation_overwrite.get("position", default_position))
-    assert (status.raw_classification
-            == expectation_overwrite.get("raw_classification",
-                                         default_category))
+    assert status.gql_status == expectation_overwrite.get(
+        "gql_status", "01N42"
+    )
+    assert status.status_description == expectation_overwrite.get(
+        "status_description", default_description
+    )
+    assert status.position == expectation_overwrite.get(
+        "position", default_position
+    )
+    assert status.raw_classification == expectation_overwrite.get(
+        "raw_classification", default_category
+    )
     if status.classification is not None:
         assert isinstance(status.classification, NotificationClassification)
-    assert (status.classification
-            == expectation_overwrite.get("classification", default_category))
-    assert (status.raw_severity
-            == expectation_overwrite.get("raw_severity", default_severity))
+    assert status.classification == expectation_overwrite.get(
+        "classification", default_category
+    )
+    assert status.raw_severity == expectation_overwrite.get(
+        "raw_severity", default_severity
+    )
     if status.severity is not None:
         assert isinstance(status.severity, NotificationSeverity)
-    assert (status.severity
-            == expectation_overwrite.get("severity", default_severity))
+    assert status.severity == expectation_overwrite.get(
+        "severity", default_severity
+    )
     assert status.diagnostic_record == expected_diag_rec
+
 
 def update_summary_kwargs_result_type(
     kwargs: dict,
-    result_type: te.Literal["success", "no data", "omitted result"]
+    result_type: te.Literal["success", "no data", "omitted result"],
 ) -> dict:
     if result_type == "success":
         kwargs["had_key"] = True
@@ -1304,7 +1338,7 @@ def update_summary_kwargs_result_type(
     return kwargs
 
 
-def make_notification_metadata(severity) -> t.Dict[str, t.Any]:
+def make_notification_metadata(severity) -> dict[str, t.Any]:
     return {
         "title": "Some Title",
         "code": "Neo.ClientWarning.Foo.Bar",
@@ -1322,78 +1356,40 @@ def make_notification_metadata(severity) -> t.Dict[str, t.Any]:
 @pytest.mark.parametrize(
     ("result_type", "severities", "expected_statuses"),
     (
-        (
-            "success",
-            ["WARNING"],
-            ["01N42", "00000"]
-        ),
-        (
-            "no data",
-            ["WARNING"],
-            ["02000", "01N42"]
-        ),
-        (
-            "omitted result",
-            ["WARNING"],
-            ["01N42", "00001"]
-        ),
-        (
-            "success",
-            ["INFORMATION"],
-            ["00000", "03N42"]
-        ),
-        (
-            "no data",
-            ["INFORMATION"],
-            ["02000", "03N42"]
-        ),
-        (
-            "omitted result",
-            ["INFORMATION"],
-            ["00001", "03N42"]
-        ),
-        (
-            "success",
-            ["BANANA"],
-            ["00000", "03N42"]
-        ),
-        (
-            "no data",
-            ["BANANA"],
-            ["02000", "03N42"]
-        ),
-        (
-            "omitted result",
-            ["BANANA"],
-            ["00001", "03N42"]
-        ),
+        ("success", ["WARNING"], ["01N42", "00000"]),
+        ("no data", ["WARNING"], ["02000", "01N42"]),
+        ("omitted result", ["WARNING"], ["01N42", "00001"]),
+        ("success", ["INFORMATION"], ["00000", "03N42"]),
+        ("no data", ["INFORMATION"], ["02000", "03N42"]),
+        ("omitted result", ["INFORMATION"], ["00001", "03N42"]),
+        ("success", ["BANANA"], ["00000", "03N42"]),
+        ("no data", ["BANANA"], ["02000", "03N42"]),
+        ("omitted result", ["BANANA"], ["00001", "03N42"]),
         (
             "success",
             ["WARNING", "INFORMATION", "FOO", "WARNING", "INFORMATION", "FOO"],
-            ["01N42", "01N42", "00000", "03N42", "03N42", "03N42", "03N42"]
+            ["01N42", "01N42", "00000", "03N42", "03N42", "03N42", "03N42"],
         ),
         (
             "no data",
             ["WARNING", "INFORMATION", "FOO", "WARNING", "INFORMATION", "FOO"],
-            ["02000", "01N42", "01N42", "03N42", "03N42", "03N42", "03N42"]
+            ["02000", "01N42", "01N42", "03N42", "03N42", "03N42", "03N42"],
         ),
         (
             "omitted result",
             ["WARNING", "INFORMATION", "FOO", "WARNING", "INFORMATION", "FOO"],
-            ["01N42", "01N42", "00001", "03N42", "03N42", "03N42", "03N42"]
+            ["01N42", "01N42", "00001", "03N42", "03N42", "03N42", "03N42"],
         ),
-    )
+    ),
 )
 def test_status_precedence(
-    result_type, severities, expected_statuses,
-    summary_args_kwargs
+    result_type, severities, expected_statuses, summary_args_kwargs
 ) -> None:
     args, kwargs = summary_args_kwargs
     update_summary_kwargs_result_type(kwargs, result_type)
-    kwargs["metadata"]["notifications"] = list(
-        make_notification_metadata(severity)
-        for severity in severities
-    )
+    kwargs["metadata"]["notifications"] = [
+        make_notification_metadata(severity) for severity in severities
+    ]
 
     summary = ResultSummary(*args, **kwargs)
     with pytest.warns(PreviewWarning, match="GQLSTATUS"):
@@ -1404,17 +1400,17 @@ def test_status_precedence(
 
 
 @pytest.mark.parametrize(
-    "raw_status",
-    (STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA)
+    "raw_status", (STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA)
 )
 def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
     args, kwargs = summary_args_kwargs
     kwargs["metadata"]["statuses"] = [raw_status]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications: t.Optional[t.List[dict]] = summary.notifications
-    summary_notifications: t.List[SummaryNotification] = \
+    notifications: list[dict] | None = summary.notifications
+    summary_notifications: list[SummaryNotification] = (
         summary.summary_notifications
+    )
 
     assert notifications == []
     assert summary_notifications == []
@@ -1424,7 +1420,6 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
     ("status_overwrite", "diagnostic_record_overwrite", "expected_overwrite"),
     (
         ({}, {}, {}),
-
         # have no effect on the produced notification
         #  * gql_status
         #  * diagnostic_record OPERATION
@@ -1433,8 +1428,9 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
         #  * diagnostic_record _status_parameters
         *(
             ({"gql_status": status}, {}, {})
-            for status in t.cast(t.Iterable[t.Any],
-                                 ("", None, ..., -1, 1.6, False, [], {}))
+            for status in t.cast(
+                t.Iterable[t.Any], ("", None, ..., -1, 1.6, False, [], {})
+            )
         ),
         *(
             ({}, {key: value}, {})
@@ -1444,49 +1440,48 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
                 "CURRENT_SCHEMA",
                 "_status_parameters",
             )
-            for value in t.cast(t.Iterable[t.Any],
-                                ("FOOBAR", None, ..., -1, 1.6, False, [], {}))
+            for value in t.cast(
+                t.Iterable[t.Any],
+                ("FOOBAR", None, ..., -1, 1.6, False, [], {}),
+            )
         ),
-
         # copies description to description
         (
-            {"description": "something completely different 👀"}, {},
-            {"description": "something completely different 👀"}
+            {"description": "something completely different 👀"},
+            {},
+            {"description": "something completely different 👀"},
         ),
-
         # copies title
         (
-            {"title": "something completely different 👀"}, {},
-            {"title": "something completely different 👀"}
+            {"title": "something completely different 👀"},
+            {},
+            {"title": "something completely different 👀"},
         ),
-
         # _severity
         #  * unknown value gets turned into "" (raw) / "UNKNOWN" (parsed enum)
         #  * known value gets copied to raw and parsed
         (
-            {}, {"_severity": "FOOBAR"},
-            {"raw_severity": "FOOBAR", "severity": "UNKNOWN"}
+            {},
+            {"_severity": "FOOBAR"},
+            {"raw_severity": "FOOBAR", "severity": "UNKNOWN"},
         ),
         # (
         #     {}, {"_severity": ""},
         #     {"raw_severity": "", "severity": "UNKNOWN"}
         # ),
         *(
-            (
-                {}, {"_severity": sev},
-                {"raw_severity": sev, "severity": sev}
-            )
+            ({}, {"_severity": sev}, {"raw_severity": sev, "severity": sev})
             for sev in NotificationSeverity.__members__
             if sev != "UNKNOWN"
         ),
-
         # _classification
         #  * maps to raw_category/category
         #  * unknown value gets turned into "" (raw) / "UNKNOWN" (parsed enum)
         #  * known value gets copied to raw and parsed
         (
-            {}, {"_classification": "FOOBAR"},
-            {"raw_category": "FOOBAR", "category": "UNKNOWN"}
+            {},
+            {"_classification": "FOOBAR"},
+            {"raw_category": "FOOBAR", "category": "UNKNOWN"},
         ),
         # (
         #     {}, {"_classification": ""},
@@ -1494,13 +1489,13 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
         # ),
         *(
             (
-                {}, {"_classification": sev},
-                {"raw_category": sev, "category": sev}
+                {},
+                {"_classification": sev},
+                {"raw_category": sev, "category": sev},
             )
             for sev in NotificationCategory.__members__
             if sev != "UNKNOWN"
         ),
-
         # _position maps to position
         #  * extra fields are copied to raw data
         (
@@ -1511,46 +1506,59 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
                 "position": SummaryInputPosition(
                     line=1234, column=0, offset=-9999
                 ),
-            }
+            },
         ),
         (
             {},
             {
                 "_position": {
-                    "line": 1234, "column": 0, "offset": -9999,
-                    "extra": "hi :)"
+                    "line": 1234,
+                    "column": 0,
+                    "offset": -9999,
+                    "extra": "hi :)",
                 }
             },
             {
                 "raw_position": {
-                    "line": 1234, "column": 0, "offset": -9999,
-                    "extra": "hi :)"
+                    "line": 1234,
+                    "column": 0,
+                    "offset": -9999,
+                    "extra": "hi :)",
                 },
                 "position": SummaryInputPosition(
                     line=1234, column=0, offset=-9999
                 ),
-            }
+            },
         ),
-    )
+    ),
 )
-@pytest.mark.parametrize("filtered_statuses_front", (
-    [],
-    [STATUS_SUCCESS],
-    [STATUS_OMITTED_RESULT],
-    [STATUS_NO_DATA],
-    [STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA],
-))
-@pytest.mark.parametrize("filtered_statuses_back", (
-    [],
-    [STATUS_SUCCESS],
-    [STATUS_OMITTED_RESULT],
-    [STATUS_NO_DATA],
-    [STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA]
-))
+@pytest.mark.parametrize(
+    "filtered_statuses_front",
+    (
+        [],
+        [STATUS_SUCCESS],
+        [STATUS_OMITTED_RESULT],
+        [STATUS_NO_DATA],
+        [STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA],
+    ),
+)
+@pytest.mark.parametrize(
+    "filtered_statuses_back",
+    (
+        [],
+        [STATUS_SUCCESS],
+        [STATUS_OMITTED_RESULT],
+        [STATUS_NO_DATA],
+        [STATUS_SUCCESS, STATUS_OMITTED_RESULT, STATUS_NO_DATA],
+    ),
+)
 def test_notification_from_status(
-    status_overwrite, diagnostic_record_overwrite, expected_overwrite,
-    filtered_statuses_front, filtered_statuses_back,
-    summary_args_kwargs
+    status_overwrite,
+    diagnostic_record_overwrite,
+    expected_overwrite,
+    filtered_statuses_front,
+    filtered_statuses_back,
+    summary_args_kwargs,
 ) -> None:
     default_status = "03BAZ"
     default_status_description = "note: successful completion - custom stuff"
@@ -1560,7 +1568,7 @@ def test_notification_from_status(
     default_classification = "HINT"
     default_description = "nice message"
     default_position = SummaryInputPosition(line=1337, column=42, offset=420)
-    raw_status_obj: t.Dict[str, t.Any] = {
+    raw_status_obj: dict[str, t.Any] = {
         "gql_status": default_status,
         "status_description": default_status_description,
         "description": default_description,
@@ -1578,7 +1586,7 @@ def test_notification_from_status(
                 "column": default_position.column,
                 "offset": default_position.offset,
             },
-        }
+        },
     }
     for key, value in diagnostic_record_overwrite.items():
         if value is ...:
@@ -1593,7 +1601,9 @@ def test_notification_from_status(
 
     args, kwargs = summary_args_kwargs
     kwargs["metadata"]["statuses"] = [
-        *filtered_statuses_front, raw_status_obj, *filtered_statuses_back
+        *filtered_statuses_front,
+        raw_status_obj,
+        *filtered_statuses_back,
     ]
 
     summary = ResultSummary(*args, **kwargs)
@@ -1603,53 +1613,57 @@ def test_notification_from_status(
     expected_notification = {
         "code": expected_overwrite.get("code", default_code),
         "title": expected_overwrite.get("title", default_title),
-        "description":
-            expected_overwrite.get("description", default_description),
+        "description": expected_overwrite.get(
+            "description", default_description
+        ),
         "severity": expected_overwrite.get("raw_severity", default_severity),
-        "category":
-            expected_overwrite.get("raw_category", default_classification),
+        "category": expected_overwrite.get(
+            "raw_category", default_classification
+        ),
         "position": expected_overwrite.get(
             "raw_position",
             {
                 "line": default_position.line,
                 "column": default_position.column,
-                "offset": default_position.offset
-            }
+                "offset": default_position.offset,
+            },
         ),
     }
     assert notifications == [expected_notification]
     assert len(summary_notifications) == 1
     summary_notification = summary_notifications[0]
-    assert (summary_notification.title
-            == expected_overwrite.get("title", default_title))
-    assert (summary_notification.code
-            == expected_overwrite.get("code", default_code))
-    assert (summary_notification.description
-            == expected_overwrite.get("description", default_description))
-    assert isinstance(summary_notification.severity_level,
-                      NotificationSeverity)
-    assert (summary_notification.severity_level
-            == expected_overwrite.get("severity", default_severity))
+    assert summary_notification.title == expected_overwrite.get(
+        "title", default_title
+    )
+    assert summary_notification.code == expected_overwrite.get(
+        "code", default_code
+    )
+    assert summary_notification.description == expected_overwrite.get(
+        "description", default_description
+    )
+    assert isinstance(
+        summary_notification.severity_level, NotificationSeverity
+    )
+    assert summary_notification.severity_level == expected_overwrite.get(
+        "severity", default_severity
+    )
     assert isinstance(summary_notification.category, NotificationCategory)
-    assert (summary_notification.category
-            == expected_overwrite.get("category", default_classification))
-    assert (summary_notification.raw_severity_level
-            == expected_overwrite.get("raw_severity", default_severity))
-    assert (summary_notification.raw_category
-            == expected_overwrite.get("raw_category", default_classification))
-    assert (summary_notification.position
-            == expected_overwrite.get("position", default_position))
+    assert summary_notification.category == expected_overwrite.get(
+        "category", default_classification
+    )
+    assert summary_notification.raw_severity_level == expected_overwrite.get(
+        "raw_severity", default_severity
+    )
+    assert summary_notification.raw_category == expected_overwrite.get(
+        "raw_category", default_classification
+    )
+    assert summary_notification.position == expected_overwrite.get(
+        "position", default_position
+    )
 
 
 @pytest.mark.parametrize(
-    "status_in",
-    (
-        None,
-        1,
-        False,
-        ["neo4j_code"],
-        "neo4j_code"
-    )
+    "status_in", (None, 1, False, ["neo4j_code"], "neo4j_code")
 )
 def test_no_notification_from_wrong_type_status(
     status_in, summary_args_kwargs
@@ -1732,10 +1746,10 @@ def _set_in_dict(
 
 def _make_raw_status_obj(
     *,
-    del_keys: t.Iterable[t.Tuple[str, ...]] = (),
-    replace: t.Optional[t.Dict[t.Tuple[str, ...], t.Any]] = None
-) -> t.Dict[str, t.Any]:
-    raw_status: t.Dict[str, t.Any] = {
+    del_keys: t.Iterable[tuple[str, ...]] = (),
+    replace: dict[tuple[str, ...], t.Any] | None = None,
+) -> dict[str, t.Any]:
+    raw_status: dict[str, t.Any] = {
         "gql_status": "03BAZ",
         "status_description": "note: successful completion - custom stuff",
         "description": "nice message",
@@ -1753,7 +1767,7 @@ def _make_raw_status_obj(
                 "column": 42,
                 "offset": 420,
             },
-        }
+        },
     }
 
     if replace is None:
@@ -1769,10 +1783,10 @@ def _make_raw_status_obj(
 
 def _make_raw_notification_obj(
     *,
-    del_keys: t.Iterable[t.Tuple[str, ...]] = (),
-    replace: t.Optional[t.Dict[t.Tuple[str, ...], t.Any]] = None
-) -> t.Dict[str, t.Any]:
-    raw_notification_obj: t.Dict[str, t.Any] = {
+    del_keys: t.Iterable[tuple[str, ...]] = (),
+    replace: dict[tuple[str, ...], t.Any] | None = None,
+) -> dict[str, t.Any]:
+    raw_notification_obj: dict[str, t.Any] = {
         "code": "Neo.Foo.Bar.Baz",
         "description": "nice message",
         "title": "Some cool title which defo is dope!",
@@ -1785,39 +1799,22 @@ def _make_raw_notification_obj(
         },
     }
 
-    key_translation: t.Dict[
-        t.Tuple[str, ...],
-        t.Tuple[t.Tuple[str, ...], ...]
-    ] = {
-        ("neo4j_code",): (
-            ("code",),
-        ),
-        ("description",): (
-            ("description",),
-        ),
-        ("title",): (
-            ("title",),
-        ),
-        ("diagnostic_record", "_severity"): (
-            ("severity",),
-        ),
+    key_translation: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = {
+        ("neo4j_code",): (("code",),),
+        ("description",): (("description",),),
+        ("title",): (("title",),),
+        ("diagnostic_record", "_severity"): (("severity",),),
         ("diagnostic_record",): (
             ("severity",),
             ("category",),
             ("position",),
         ),
-        ("diagnostic_record", "_classification"): (
-            ("category",),
-        ),
-        ("diagnostic_record", "_position"): (
-            ("position",),
-        ),
+        ("diagnostic_record", "_classification"): (("category",),),
+        ("diagnostic_record", "_position"): (("position",),),
     }
 
     # dicts the driver will copy 1-to-1 including unknown keys
-    copied_dicts = (
-        ("diagnostic_record", "_position"),
-    )
+    copied_dicts = (("diagnostic_record", "_position"),)
 
     del_keys_list = list(del_keys)
 
@@ -1828,10 +1825,10 @@ def _make_raw_notification_obj(
         translated_keys = key_translation.get(key, ())
         if not translated_keys:
             for copied_dict in copied_dicts:
-                if key[:len(copied_dict)] == copied_dict:
+                if key[: len(copied_dict)] == copied_dict:
                     create_if_missing = True
                     translated_keys = tuple(
-                        (*k, *key[len(copied_dict):])
+                        (*k, *key[len(copied_dict) :])
                         for k in key_translation[copied_dict]
                     )
                     break
@@ -1849,21 +1846,19 @@ def _make_raw_notification_obj(
             translated_key,
             value,
             # position is copied as is
-            create_if_missing=create_if_missing
+            create_if_missing=create_if_missing,
         )
 
     for key in del_keys_list:
         translated_keys = key_translation.get(key, ())
         if not translated_keys:
             for copied_dict in copied_dicts:
-                if key[:len(copied_dict)] == copied_dict:
+                if key[: len(copied_dict)] == copied_dict:
                     translated_keys = tuple(
-                        (*k, *key[len(copied_dict):])
+                        (*k, *key[len(copied_dict) :])
                         for k in key_translation[copied_dict]
                     )
                     break
-                else:
-                    continue
         for translated_key in translated_keys:
             _del_from_dict(raw_notification_obj, translated_key)
 
@@ -1871,7 +1866,7 @@ def _make_raw_notification_obj(
 
 
 def test_no_notification_from_status_without_neo4j_code(
-    summary_args_kwargs
+    summary_args_kwargs,
 ) -> None:
     raw_status = _make_raw_status_obj(del_keys=(("neo4j_code",),))
 
@@ -1904,10 +1899,10 @@ def test_no_notification_from_status_without_neo4j_code(
         ("diagnostic_record", "_position", "line"),
         ("diagnostic_record", "_position", "column"),
         ("diagnostic_record", "_position", "offset"),
-    )
+    ),
 )
 def test_notification_from_incomplete_status(
-    del_key: t.Tuple[str, ...], summary_args_kwargs
+    del_key: tuple[str, ...], summary_args_kwargs
 ) -> None:
     raw_status = _make_raw_status_obj(del_keys=(del_key,))
     raw_notification = _make_raw_notification_obj(del_keys=(del_key,))
@@ -1948,12 +1943,15 @@ def test_notification_from_incomplete_status(
         ("diagnostic_record", "_position", "column"),
         ("diagnostic_record", "_position", "offset"),
         ("diagnostic_record", "_position", "<shouldn't exist>"),
-    )
+    ),
 )
-@pytest.mark.parametrize("set_value",
-                         (None, 1, 3.14159, False, [], {}, "", "hi :)"))
+@pytest.mark.parametrize(
+    "set_value", (None, 1, 3.14159, False, [], {}, "", "hi :)")
+)
 def test_notification_from_unexpected_status(
-    set_key: t.Tuple[str, ...], set_value: t.Any, summary_args_kwargs,
+    set_key: tuple[str, ...],
+    set_value: t.Any,
+    summary_args_kwargs,
 ) -> None:
     replace = {set_key: set_value}
     raw_status = _make_raw_status_obj(replace=replace)
@@ -1987,7 +1985,7 @@ def _test_status():
             "_severity": "WARNING",
             "_classification": "HINT",
             "_position": {"line": 1, "column": 2, "offset": 3},
-        }
+        },
     }
 
 
@@ -2018,7 +2016,7 @@ def _test_status_broken_key(key_path, value):
         {},
         [],
         True,
-    )
+    ),
 )
 def test_notification_from_broken_status(
     in_status,
@@ -2061,18 +2059,22 @@ def test_notifications_from_statuses_keep_order(
     helper.assert_notification_is_status(notifications[3], 1, "WARNING")
 
     assert len(summary_notifications) == 4
-    helper.assert_parsed_notification_is_status(summary_notifications[0],
-                                                4, "WARNING")
-    helper.assert_parsed_notification_is_status(summary_notifications[1],
-                                                2, "INFORMATION")
-    helper.assert_parsed_notification_is_status(summary_notifications[2],
-                                                3, "INFORMATION")
-    helper.assert_parsed_notification_is_status(summary_notifications[3],
-                                                1, "WARNING")
+    helper.assert_parsed_notification_is_status(
+        summary_notifications[0], 4, "WARNING"
+    )
+    helper.assert_parsed_notification_is_status(
+        summary_notifications[1], 2, "INFORMATION"
+    )
+    helper.assert_parsed_notification_is_status(
+        summary_notifications[2], 3, "INFORMATION"
+    )
+    helper.assert_parsed_notification_is_status(
+        summary_notifications[3], 1, "WARNING"
+    )
 
 
 def _make_summary_notification(
-    overwrite: t.Optional[t.Dict[str, t.Any]] = None
+    overwrite: dict[str, t.Any] | None = None,
 ) -> SummaryNotification:
     if overwrite is None:
         overwrite = {}
@@ -2083,12 +2085,10 @@ def _make_summary_notification(
         severity_level=overwrite.get(
             "severity_level", NotificationSeverity.UNKNOWN
         ),
-        category=overwrite.get(
-            "category", NotificationCategory.UNKNOWN
-        ),
+        category=overwrite.get("category", NotificationCategory.UNKNOWN),
         raw_severity_level=overwrite.get("raw_severity_level", ""),
         raw_category=overwrite.get("raw_category", ""),
-        position=overwrite.get("position")
+        position=overwrite.get("position"),
     )
 
 
@@ -2097,34 +2097,29 @@ def _make_summary_notification(
     (
         # empty meta data
         ({}, _make_summary_notification()),
-
         # all string fields
         *(
-            (
-                {key: str_value},
-                _make_summary_notification({key: str_value})
-            )
+            ({key: str_value}, _make_summary_notification({key: str_value}))
             for key in ("title", "code", "description")
             for str_value in ("", " ", "Foo Bar Baz")
         ),
         *(
-            (
-                {key: title},
-                _make_summary_notification()
-            )
+            ({key: title}, _make_summary_notification())
             for key in ("title", "code", "description")
-            for title in t.cast(t.Iterable,
-                                (True, False, 1, [], {}, 1.2345, None))
+            for title in t.cast(
+                t.Iterable, (True, False, 1, [], {}, 1.2345, None)
+            )
         ),
-
         # severity
         *(
             (
                 {"severity": raw_value},
-                _make_summary_notification({
-                    "raw_severity_level": raw_value,
-                    "severity_level": parsed_value,
-                })
+                _make_summary_notification(
+                    {
+                        "raw_severity_level": raw_value,
+                        "severity_level": parsed_value,
+                    }
+                ),
             )
             for raw_value, parsed_value in (
                 ("", NotificationSeverity.UNKNOWN),
@@ -2135,22 +2130,21 @@ def _make_summary_notification(
             )
         ),
         *(
-            (
-                {"severity": value},
-                _make_summary_notification()
+            ({"severity": value}, _make_summary_notification())
+            for value in t.cast(
+                t.Iterable, (True, False, 1, [], {}, 1.2345, None)
             )
-            for value in t.cast(t.Iterable,
-                                (True, False, 1, [], {}, 1.2345, None))
         ),
-
         # category
         *(
             (
                 {"category": raw_value},
-                _make_summary_notification({
-                    "raw_category": raw_value,
-                    "category": parsed_value,
-                })
+                _make_summary_notification(
+                    {
+                        "raw_category": raw_value,
+                        "category": parsed_value,
+                    }
+                ),
             )
             for raw_value, parsed_value in (
                 ("", NotificationCategory.UNKNOWN),
@@ -2168,68 +2162,63 @@ def _make_summary_notification(
             )
         ),
         *(
-            (
-                {"category": value},
-                _make_summary_notification()
+            ({"category": value}, _make_summary_notification())
+            for value in t.cast(
+                t.Iterable, (True, False, 1, [], {}, 1.2345, None)
             )
-            for value in t.cast(t.Iterable,
-                                (True, False, 1, [], {}, 1.2345, None))
         ),
-
         # position
         *(
             (
                 {"position": raw_value},
-                _make_summary_notification({"position": parsed_value})
+                _make_summary_notification({"position": parsed_value}),
             )
             for raw_value, parsed_value in (
                 (
                     {"line": 1, "column": 2, "offset": 3},
-                    SummaryInputPosition(line=1, column=2, offset=3)
+                    SummaryInputPosition(line=1, column=2, offset=3),
                 ),
                 (
                     {"line": -100, "column": -200, "offset": -300},
-                    SummaryInputPosition(line=-100, column=-200, offset=-300)
+                    SummaryInputPosition(line=-100, column=-200, offset=-300),
                 ),
                 (
                     {"line": 0, "column": 0, "offset": 0},
-                    SummaryInputPosition(line=0, column=0, offset=0)
+                    SummaryInputPosition(line=0, column=0, offset=0),
                 ),
                 # extraneous values are ignored
                 *(
                     (
                         {"line": 1, "column": 2, "offset": 3, "extra": extra},
-                        SummaryInputPosition(line=1, column=2, offset=3)
+                        SummaryInputPosition(line=1, column=2, offset=3),
                     )
                     for extra in t.cast(
                         t.Iterable,
-                        (None, 1, False, [], {}, "hi :)", "5", 1.2345)
+                        (None, 1, False, [], {}, "hi :)", "5", 1.2345),
                     )
                 ),
             )
         ),
         # missing field/field of wrong type => position is default value
         *(
-            (
-                {"position": value},
-                _make_summary_notification()
-            )
+            ({"position": value}, _make_summary_notification())
             for value in (
                 *(
                     {"line": 1, "column": 2, "offset": 3, key: value}
                     for key in ("line", "column", "offset")
-                    for value in t.cast(t.Iterable,
-                                        (1.2, None, False, True, [], {}, "1"))
+                    for value in t.cast(
+                        t.Iterable, (1.2, None, False, True, [], {}, "1")
+                    )
                 ),
                 {"column": 2, "offset": 3},
                 {"line": 1, "offset": 3},
                 {"line": 1, "column": 2},
             )
         ),
-    )
+    ),
 )
 def test_notification_from_meta_data(
-    meta: t.Dict,
+    meta: dict,
     expected: SummaryNotification,
 ) -> None:
     notification = SummaryNotification._from_metadata(meta)

@@ -28,7 +28,6 @@ from neo4j import GraphDatabase
 
 
 class ConfigTrustExample(DriverSetupExample):
-
     # tag::config-trust[]
     def __init__(self, uri, auth):
         # trusted_certificates:
@@ -39,9 +38,12 @@ class ConfigTrustExample(DriverSetupExample):
         # neo4j.TrustCustomCAs("<path>", ...)
         #     specify a list of paths to certificates to trust
         self.driver = GraphDatabase.driver(
-            uri, auth=auth, encrypted=True,
-            trusted_certificates=neo4j.TrustAll()
+            uri,
+            auth=auth,
+            encrypted=True,
+            trusted_certificates=neo4j.TrustAll(),
         )
+
     # end::config-trust[]
 
 

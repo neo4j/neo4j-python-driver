@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import sys
-import typing as t
 from functools import wraps
 
 import pytest
@@ -135,7 +134,7 @@ def bolt_protocol_version(server_info):
     return server_info.protocol_version
 
 
-def _parse_version(version: str) -> t.Tuple[float, ...]:
+def _parse_version(version: str) -> tuple[float, ...]:
     def parse_segment(seg: str) -> float:
         if seg == "dev":
             return float("inf")
@@ -148,15 +147,15 @@ def mark_requires_min_bolt_version(version="3.5"):
     return pytest.mark.skipif(
         _parse_version(env.NEO4J_VERSION) < _parse_version(version),
         reason=f"requires server version '{version}' or higher, "
-               f"found '{env.NEO4J_VERSION}'"
+        f"found '{env.NEO4J_VERSION}'",
     )
 
 
 def mark_requires_edition(edition):
     return pytest.mark.skipif(
-        env.NEO4J_EDITION != edition,
+        edition != env.NEO4J_EDITION,
         reason=f"requires server edition '{edition}', "
-               f"found '{env.NEO4J_EDITION}'"
+        f"found '{env.NEO4J_EDITION}'",
     )
 
 
@@ -184,6 +183,7 @@ def neo4j_session(neo4j_driver):
 def aio_benchmark(benchmark, event_loop):
     def _wrapper(func, *args, **kwargs):
         if asyncio.iscoroutinefunction(func):
+
             @benchmark
             def _():
                 return event_loop.run_until_complete(func(*args, **kwargs))

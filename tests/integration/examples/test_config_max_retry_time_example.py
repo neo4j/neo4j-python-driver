@@ -29,13 +29,13 @@ from neo4j import GraphDatabase
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_config_max_retry_time_example.py -s -v
-
 class ConfigMaxRetryTimeExample(DriverSetupExample):
-
     # tag::config-max-retry-time[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, max_transaction_retry_time=15)
+        self.driver = GraphDatabase.driver(
+            uri, auth=auth, max_transaction_retry_time=15
+        )
+
     # end::config-max-retry-time[]
 
 

@@ -32,5 +32,5 @@ deprecation_warn(
     "The module `neo4j.work.summary` was made internal and will "
     "no longer be available for import in future versions. "
     "Everything from there should be imported directly from `neo4j`.",
-    stack_level=2
+    stack_level=2,
 )

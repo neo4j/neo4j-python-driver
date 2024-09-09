@@ -56,7 +56,8 @@ log = getLogger("neo4j.io")
 
 
 class Bolt4x0(Bolt):
-    """ Protocol handler for Bolt 4.0.
+    """
+    Protocol handler for Bolt 4.0.
 
     This is supported by Neo4j versions 4.0-4.4.
     """
@@ -81,15 +82,23 @@ class Bolt4x0(Bolt):
         )
 
     def _on_server_state_change(self, old_state, new_state):
-        log.debug("[#%04X]  _: <CONNECTION> server state: %s > %s",
-                  self.local_port, old_state.name, new_state.name)
+        log.debug(
+            "[#%04X]  _: <CONNECTION> server state: %s > %s",
+            self.local_port,
+            old_state.name,
+            new_state.name,
+        )
 
     def _get_server_state_manager(self) -> ServerStateManagerBase:
         return self._server_state_manager
 
     def _on_client_state_change(self, old_state, new_state):
-        log.debug("[#%04X]  _: <CONNECTION> client state: %s > %s",
-                  self.local_port, old_state.name, new_state.name)
+        log.debug(
+            "[#%04X]  _: <CONNECTION> client state: %s > %s",
+            self.local_port,
+            old_state.name,
+            new_state.name,
+        )
 
     def _get_client_state_manager(self) -> ClientStateManagerBase:
         return self._client_state_manager
@@ -128,12 +137,17 @@ class Bolt4x0(Bolt):
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (headers,),
-                     response=InitResponse(
-                         self, "hello", hydration_hooks,
-                         on_success=self.server_info.update
-                     ),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x01",
+            (headers,),
+            response=InitResponse(
+                self,
+                "hello",
+                hydration_hooks,
+                on_success=self.server_info.update,
+            ),
+            dehydration_hooks=dehydration_hooks,
+        )
         self.send_all()
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
@@ -146,21 +160,29 @@ class Bolt4x0(Bolt):
         """Append a LOGOFF message to the outgoing queue."""
         self.assert_re_auth_support()
 
-    def telemetry(self, api: TelemetryAPI, dehydration_hooks=None,
-                  hydration_hooks=None, **handlers) -> None:
+    def telemetry(
+        self,
+        api: TelemetryAPI,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ) -> None:
         # TELEMETRY not support by this protocol version, so we ignore it.
         pass
 
     def route(
-        self, database=None, imp_user=None, bookmarks=None,
-        dehydration_hooks=None, hydration_hooks=None
+        self,
+        database=None,
+        imp_user=None,
+        bookmarks=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
     ):
         if imp_user is not None:
             raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
+                "Impersonation is not supported in Bolt Protocol "
+                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{imp_user!r}."
             )
         metadata = {}
         records = []
@@ -172,7 +194,7 @@ class Bolt4x0(Bolt):
                 mode="r",
                 bookmarks=bookmarks,
                 db=SYSTEM_DATABASE,
-                on_success=metadata.update
+                on_success=metadata.update,
             )
         else:
             self.run(
@@ -181,30 +203,41 @@ class Bolt4x0(Bolt):
                 mode="r",
                 bookmarks=bookmarks,
                 db=SYSTEM_DATABASE,
-                on_success=metadata.update
+                on_success=metadata.update,
             )
         self.pull(
             dehydration_hooks=dehydration_hooks,
             hydration_hooks=hydration_hooks,
             on_success=metadata.update,
-            on_records=records.extend
+            on_records=records.extend,
         )
         self.send_all()
         self.fetch_all()
-        routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
-        return routing_info
+        return [
+            dict(zip(metadata.get("fields", ()), values)) for values in records
+        ]
 
-    def run(self, query, parameters=None, mode=None, bookmarks=None,
-            metadata=None, timeout=None, db=None, imp_user=None,
-            notifications_min_severity=None,
-            notifications_disabled_classifications=None, dehydration_hooks=None,
-            hydration_hooks=None, **handlers):
+    def run(
+        self,
+        query,
+        parameters=None,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
         if imp_user is not None:
             raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
+                "Impersonation is not supported in Bolt Protocol "
+                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{imp_user!r}."
             )
         if (
             notifications_min_severity is not None
@@ -214,60 +247,101 @@ class Bolt4x0(Bolt):
         if not parameters:
             parameters = {}
         extra = {}
-        if mode in (READ_ACCESS, "r"):
-            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
+        if mode in {READ_ACCESS, "r"}:
+            extra["mode"] = (
+                "r"  # It will default to mode "w" if nothing is specified
+            )
         if db:
             extra["db"] = db
-        if self._client_state_manager.state != BoltStates.TX_READY_OR_TX_STREAMING:
+        if (
+            self._client_state_manager.state
+            != BoltStates.TX_READY_OR_TX_STREAMING
+        ):
             self.last_database = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
+                raise TypeError(
+                    "Bookmarks must be provided within an iterable"
+                ) from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError("Metadata must be coercible to a dict")
+                raise TypeError(
+                    "Metadata must be coercible to a dict"
+                ) from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
-        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
-        self._append(b"\x10", fields,
-                     Response(self, "run", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        log.debug(
+            "[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields))
+        )
+        self._append(
+            b"\x10",
+            fields,
+            Response(self, "run", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
-    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
-                hydration_hooks=None, **handlers):
+    def discard(
+        self,
+        n=-1,
+        qid=-1,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
         log.debug("[#%04X]  C: DISCARD %r", self.local_port, extra)
-        self._append(b"\x2F", (extra,),
-                     Response(self, "discard", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x2f",
+            (extra,),
+            Response(self, "discard", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
-    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
-             **handlers):
+    def pull(
+        self,
+        n=-1,
+        qid=-1,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
         log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
-        self._append(b"\x3F", (extra,),
-                     Response(self, "pull", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x3f",
+            (extra,),
+            Response(self, "pull", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_classifications=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
+    def begin(
+        self,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
         if imp_user is not None:
             raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
+                "Impersonation is not supported in Bolt Protocol "
+                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{imp_user!r}."
             )
         if (
             notifications_min_severity is not None
@@ -275,8 +349,10 @@ class Bolt4x0(Bolt):
         ):
             self.assert_notification_filtering_support()
         extra = {}
-        if mode in (READ_ACCESS, "r"):
-            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
+        if mode in {READ_ACCESS, "r"}:
+            extra["mode"] = (
+                "r"  # It will default to mode "w" if nothing is specified
+            )
         if db:
             extra["db"] = db
         self.last_database = db
@@ -284,43 +360,58 @@ class Bolt4x0(Bolt):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
+                raise TypeError(
+                    "Bookmarks must be provided within an iterable"
+                ) from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError("Metadata must be coercible to a dict")
+                raise TypeError(
+                    "Metadata must be coercible to a dict"
+                ) from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
-        self._append(b"\x11", (extra,),
-                     Response(self, "begin", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x11",
+            (extra,),
+            Response(self, "begin", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
     def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
         log.debug("[#%04X]  C: COMMIT", self.local_port)
-        self._append(b"\x12", (),
-                     CommitResponse(self, "commit", hydration_hooks,
-                                    **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x12",
+            (),
+            CommitResponse(self, "commit", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
-    def rollback(self, dehydration_hooks=None, hydration_hooks=None,
-                 **handlers):
+    def rollback(
+        self, dehydration_hooks=None, hydration_hooks=None, **handlers
+    ):
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
-        self._append(b"\x13", (),
-                     Response(self, "rollback", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x13",
+            (),
+            Response(self, "rollback", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
     def reset(self, dehydration_hooks=None, hydration_hooks=None):
-        """Reset the connection.
+        """
+        Reset the connection.
 
         Add a RESET message to the outgoing queue, send it and consume all
         remaining messages.
         """
         log.debug("[#%04X]  C: RESET", self.local_port)
         response = ResetResponse(self, "reset", hydration_hooks)
-        self._append(b"\x0F", response=response,
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x0f", response=response, dehydration_hooks=dehydration_hooks
+        )
         self.send_all()
         self.fetch_all()
 
@@ -329,7 +420,8 @@ class Bolt4x0(Bolt):
         self._append(b"\x02", (), dehydration_hooks=dehydration_hooks)
 
     def _process_message(self, tag, fields):
-        """ Process at most one message from the server, if available.
+        """
+        Process at most one message from the server, if available.
 
         :returns: 2-tuple of number of detail messages and number of summary
                  messages fetched
@@ -345,7 +437,9 @@ class Bolt4x0(Bolt):
             summary_signature = tag
 
         if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
+            log.debug(
+                "[#%04X]  S: RECORD * %d", self.local_port, len(details)
+            )  # Do not log any data
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -354,15 +448,20 @@ class Bolt4x0(Bolt):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == b"\x70":
-            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
-            self._server_state_manager.transition(response.message,
-                                                  summary_metadata)
+            log.debug(
+                "[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata
+            )
+            self._server_state_manager.transition(
+                response.message, summary_metadata
+            )
             response.on_success(summary_metadata or {})
-        elif summary_signature == b"\x7E":
+        elif summary_signature == b"\x7e":
             log.debug("[#%04X]  S: IGNORED", self.local_port)
             response.on_ignored(summary_metadata or {})
-        elif summary_signature == b"\x7F":
-            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
+        elif summary_signature == b"\x7f":
+            log.debug(
+                "[#%04X]  S: FAILURE %r", self.local_port, summary_metadata
+            )
             self._server_state_manager.state = BoltStates.FAILED
             try:
                 response.on_failure(summary_metadata or {})
@@ -374,7 +473,7 @@ class Bolt4x0(Bolt):
                 if self.pool:
                     self.pool.on_write_failure(
                         address=self.unresolved_address,
-                        database=self.last_database
+                        database=self.last_database,
                     )
                 raise
             except Neo4jError as e:
@@ -382,14 +481,18 @@ class Bolt4x0(Bolt):
                     self.pool.on_neo4j_error(e, self)
                 raise
         else:
-            raise BoltProtocolError("Unexpected response message with signature "
-                                    "%02X" % ord(summary_signature), self.unresolved_address)
+            sig_int = ord(summary_signature)
+            raise BoltProtocolError(
+                f"Unexpected response message with signature {sig_int:02X}",
+                self.unresolved_address,
+            )
 
         return len(details), 1
 
 
 class Bolt4x1(Bolt4x0):
-    """ Protocol handler for Bolt 4.1.
+    """
+    Protocol handler for Bolt 4.1.
 
     This is supported by Neo4j versions 4.1 - 4.4.
     """
@@ -397,11 +500,10 @@ class Bolt4x1(Bolt4x0):
     PROTOCOL_VERSION = Version(4, 1)
 
     def get_base_headers(self):
-        """ Bolt 4.1 passes the routing context, originally taken from
-        the URI, into the connection initialisation message. This
-        enables server-side routing to propagate the same behaviour
-        through its driver.
-        """
+        # Bolt 4.1 passes the routing context, originally taken from
+        # the URI, into the connection initialisation message. This
+        # enables server-side routing to propagate the same behaviour
+        # through its driver.
         headers = {
             "user_agent": self.user_agent,
         }
@@ -411,7 +513,8 @@ class Bolt4x1(Bolt4x0):
 
 
 class Bolt4x2(Bolt4x1):
-    """ Protocol handler for Bolt 4.2.
+    """
+    Protocol handler for Bolt 4.2.
 
     This is supported by Neo4j version 4.2 - 4.4.
     """
@@ -420,7 +523,8 @@ class Bolt4x2(Bolt4x1):
 
 
 class Bolt4x3(Bolt4x2):
-    """ Protocol handler for Bolt 4.3.
+    """
+    Protocol handler for Bolt 4.3.
 
     This is supported by Neo4j version 4.3 - 4.4.
     """
@@ -433,29 +537,38 @@ class Bolt4x3(Bolt4x2):
         return headers
 
     def route(
-        self, database=None, imp_user=None, bookmarks=None,
-        dehydration_hooks=None, hydration_hooks=None
+        self,
+        database=None,
+        imp_user=None,
+        bookmarks=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
     ):
         if imp_user is not None:
             raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
+                "Impersonation is not supported in Bolt Protocol "
+                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{imp_user!r}."
             )
 
         routing_context = self.routing_context or {}
-        log.debug("[#%04X]  C: ROUTE %r %r %r", self.local_port,
-                  routing_context, bookmarks, database)
+        log.debug(
+            "[#%04X]  C: ROUTE %r %r %r",
+            self.local_port,
+            routing_context,
+            bookmarks,
+            database,
+        )
         metadata = {}
-        if bookmarks is None:
-            bookmarks = []
-        else:
-            bookmarks = list(bookmarks)
-        self._append(b"\x66", (routing_context, bookmarks, database),
-                     response=Response(self, "route", hydration_hooks,
-                                       on_success=metadata.update),
-                     dehydration_hooks=dehydration_hooks)
+        bookmarks = [] if bookmarks is None else list(bookmarks)
+        self._append(
+            b"\x66",
+            (routing_context, bookmarks, database),
+            response=Response(
+                self, "route", hydration_hooks, on_success=metadata.update
+            ),
+            dehydration_hooks=dehydration_hooks,
+        )
         self.send_all()
         self.fetch_all()
         return [metadata.get("rt")]
@@ -477,11 +590,14 @@ class Bolt4x3(Bolt4x2):
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
                     self.socket.settimeout(recv_timeout)
                 else:
-                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
-                             "invalid value for "
-                             "connection.recv_timeout_seconds (%r). Make sure "
-                             "the server and network is set up correctly.",
-                             self.local_port, recv_timeout)
+                    log.info(
+                        "[#%04X]  _: <CONNECTION> Server supplied an "
+                        "invalid value for "
+                        "connection.recv_timeout_seconds (%r). Make sure "
+                        "the server and network is set up correctly.",
+                        self.local_port,
+                        recv_timeout,
+                    )
             self.patch = set(metadata.pop("patch_bolt", []))
             if "utc" in self.patch:
                 self.hydration_handler.patch_utc()
@@ -492,17 +608,22 @@ class Bolt4x3(Bolt4x2):
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (headers,),
-                     response=InitResponse(self, "hello", hydration_hooks,
-                                           on_success=on_success),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x01",
+            (headers,),
+            response=InitResponse(
+                self, "hello", hydration_hooks, on_success=on_success
+            ),
+            dehydration_hooks=dehydration_hooks,
+        )
         self.send_all()
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
 
 class Bolt4x4(Bolt4x3):
-    """ Protocol handler for Bolt 4.4.
+    """
+    Protocol handler for Bolt 4.4.
 
     This is supported by Neo4j version 4.4.
     """
@@ -510,8 +631,12 @@ class Bolt4x4(Bolt4x3):
     PROTOCOL_VERSION = Version(4, 4)
 
     def route(
-        self, database=None, imp_user=None, bookmarks=None,
-        dehydration_hooks=None, hydration_hooks=None
+        self,
+        database=None,
+        imp_user=None,
+        bookmarks=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
     ):
         routing_context = self.routing_context or {}
         db_context = {}
@@ -519,26 +644,43 @@ class Bolt4x4(Bolt4x3):
             db_context.update(db=database)
         if imp_user is not None:
             db_context.update(imp_user=imp_user)
-        log.debug("[#%04X]  C: ROUTE %r %r %r", self.local_port,
-                  routing_context, bookmarks, db_context)
+        log.debug(
+            "[#%04X]  C: ROUTE %r %r %r",
+            self.local_port,
+            routing_context,
+            bookmarks,
+            db_context,
+        )
         metadata = {}
-        if bookmarks is None:
-            bookmarks = []
-        else:
-            bookmarks = list(bookmarks)
-        self._append(b"\x66", (routing_context, bookmarks, db_context),
-                     response=Response(self, "route", hydration_hooks,
-                                       on_success=metadata.update),
-                     dehydration_hooks=dehydration_hooks)
+        bookmarks = [] if bookmarks is None else list(bookmarks)
+        self._append(
+            b"\x66",
+            (routing_context, bookmarks, db_context),
+            response=Response(
+                self, "route", hydration_hooks, on_success=metadata.update
+            ),
+            dehydration_hooks=dehydration_hooks,
+        )
         self.send_all()
         self.fetch_all()
         return [metadata.get("rt")]
 
-    def run(self, query, parameters=None, mode=None, bookmarks=None,
-            metadata=None, timeout=None, db=None, imp_user=None,
-            notifications_min_severity=None,
-            notifications_disabled_classifications=None, dehydration_hooks=None,
-            hydration_hooks=None, **handlers):
+    def run(
+        self,
+        query,
+        parameters=None,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
         if (
             notifications_min_severity is not None
             or notifications_disabled_classifications is not None
@@ -547,7 +689,7 @@ class Bolt4x4(Bolt4x3):
         if not parameters:
             parameters = {}
         extra = {}
-        if mode in (READ_ACCESS, "r"):
+        if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
             extra["mode"] = "r"
         if db:
@@ -563,32 +705,50 @@ class Bolt4x4(Bolt4x3):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
+                raise TypeError(
+                    "Bookmarks must be provided within an iterable"
+                ) from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError("Metadata must be coercible to a dict")
+                raise TypeError(
+                    "Metadata must be coercible to a dict"
+                ) from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
-        log.debug("[#%04X]  C: RUN %s", self.local_port,
-                  " ".join(map(repr, fields)))
-        self._append(b"\x10", fields,
-                     Response(self, "run", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        log.debug(
+            "[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields))
+        )
+        self._append(
+            b"\x10",
+            fields,
+            Response(self, "run", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notifications_min_severity=None,
-              notifications_disabled_classifications=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
+    def begin(
+        self,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        **handlers,
+    ):
         if (
             notifications_min_severity is not None
             or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
         extra = {}
-        if mode in (READ_ACCESS, "r"):
+        if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
             extra["mode"] = "r"
         if db:
@@ -600,15 +760,22 @@ class Bolt4x4(Bolt4x3):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
+                raise TypeError(
+                    "Bookmarks must be provided within an iterable"
+                ) from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError("Metadata must be coercible to a dict")
+                raise TypeError(
+                    "Metadata must be coercible to a dict"
+                ) from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
-        self._append(b"\x11", (extra,),
-                     Response(self, "begin", hydration_hooks, **handlers),
-                     dehydration_hooks=dehydration_hooks)
+        self._append(
+            b"\x11",
+            (extra,),
+            Response(self, "begin", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )

@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import typing as t
 from datetime import timedelta
 
 import pytz
@@ -45,6 +44,7 @@ from ._warning_check import warnings_check
 
 def to_cypher_and_params(data):
     from .backend import Request
+
     params = data.get("params")
     # Optional
     if params is None:
@@ -58,6 +58,7 @@ def to_cypher_and_params(data):
 
 def to_tx_kwargs(data):
     from .backend import Request
+
     kwargs = {}
     if "txMeta" in data:
         metadata = data["txMeta"]
@@ -81,8 +82,7 @@ def to_query_and_params(data):
 
 
 def to_param(m):
-    """ Converts testkit parameter format to driver (python) parameter
-    """
+    # Convert testkit parameter format to driver (python) parameter.
     data = m["data"]
     name = m["name"]
     if name == "CypherNull":
@@ -122,15 +122,27 @@ def to_param(m):
         if utc_offset_s is not None:
             utc_offset_m = utc_offset_s // 60
             if utc_offset_m * 60 != utc_offset_s:
-                raise ValueError("the used timezone library only supports "
-                                 "UTC offsets by minutes")
+                raise ValueError(
+                    "the used timezone library only supports "
+                    "UTC offsets by minutes"
+                )
             tz = pytz.FixedOffset(utc_offset_m)
-        return Time(data["hour"], data["minute"], data["second"],
-                    data["nanosecond"], tzinfo=tz)
+        return Time(
+            data["hour"],
+            data["minute"],
+            data["second"],
+            data["nanosecond"],
+            tzinfo=tz,
+        )
     if name == "CypherDateTime":
         datetime = DateTime(
-            data["year"], data["month"], data["day"],
-            data["hour"], data["minute"], data["second"], data["nanosecond"]
+            data["year"],
+            data["month"],
+            data["day"],
+            data["hour"],
+            data["minute"],
+            data["second"],
+            data["nanosecond"],
         )
         utc_offset_s = data["utc_offset_s"]
         timezone_id = data["timezone_id"]
@@ -144,21 +156,25 @@ def to_param(m):
             if localized_datetime.utcoffset() == utc_offset:
                 return localized_datetime
             raise ValueError(
-                "cannot localize datetime %s to timezone %s with UTC "
-                "offset %s" % (datetime, timezone_id, utc_offset)
+                f"cannot localize datetime {datetime} to timezone "
+                f"{timezone_id} with UTC offset {utc_offset}"
             )
         elif utc_offset_s is not None:
             utc_offset_m = utc_offset_s // 60
             if utc_offset_m * 60 != utc_offset_s:
-                raise ValueError("the used timezone library only supports "
-                                 "UTC offsets by minutes")
+                raise ValueError(
+                    "the used timezone library only supports "
+                    "UTC offsets by minutes"
+                )
             tz = pytz.FixedOffset(utc_offset_m)
             return tz.localize(datetime)
         return datetime
     if name == "CypherDuration":
         return Duration(
-            months=data["months"], days=data["days"],
-            seconds=data["seconds"], nanoseconds=data["nanoseconds"]
+            months=data["months"],
+            days=data["days"],
+            seconds=data["seconds"],
+            nanoseconds=data["nanoseconds"],
         )
     raise ValueError("Unknown param type " + name)
 
@@ -171,8 +187,9 @@ def to_auth_token(data, key):
     scheme = auth_token["scheme"]
     if scheme == "basic":
         auth = neo4j.basic_auth(
-            auth_token["principal"], auth_token["credentials"],
-            realm=auth_token.get("realm", None)
+            auth_token["principal"],
+            auth_token["credentials"],
+            realm=auth_token.get("realm", None),
         )
     elif scheme == "kerberos":
         auth = neo4j.kerberos_auth(auth_token["credentials"])
@@ -180,22 +197,24 @@ def to_auth_token(data, key):
         auth = neo4j.bearer_auth(auth_token["credentials"])
     else:
         auth = neo4j.custom_auth(
-            auth_token["principal"], auth_token["credentials"],
-            auth_token["realm"], auth_token["scheme"],
-            **auth_token.get("parameters", {})
+            auth_token["principal"],
+            auth_token["credentials"],
+            auth_token["realm"],
+            auth_token["scheme"],
+            **auth_token.get("parameters", {}),
         )
         auth_token.mark_item_as_read("parameters", recursive=True)
     return auth
 
 
-def to_client_cert(data, key) -> t.Optional[ClientCertificate]:
+def to_client_cert(data, key) -> ClientCertificate | None:
     if data[key] is None:
         return None
     data[key].mark_item_as_read_if_equals("name", "ClientCertificate")
     cert_data = data[key]["data"]
-    with warnings_check((
-        (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\."),
-    )):
+    with warnings_check(
+        ((neo4j.PreviewWarning, r"Mutual TLS is a preview feature\."),)
+    ):
         return ClientCertificate(
             cert_data["certfile"], cert_data["keyfile"], cert_data["password"]
         )
@@ -203,13 +222,16 @@ def to_client_cert(data, key) -> t.Optional[ClientCertificate]:
 
 def set_notifications_config(config, data):
     if "notificationsMinSeverity" in data:
-        config["notifications_min_severity"] = \
-            NotificationMinimumSeverity[data["notificationsMinSeverity"]]
+        config["notifications_min_severity"] = NotificationMinimumSeverity[
+            data["notificationsMinSeverity"]
+        ]
     if "notificationsDisabledCategories" in data:
-        config["notifications_disabled_categories"] = \
-            [NotificationDisabledCategory[c]
-             for c in data["notificationsDisabledCategories"]]
+        config["notifications_disabled_categories"] = [
+            NotificationDisabledCategory[c]
+            for c in data["notificationsDisabledCategories"]
+        ]
     if "notificationsDisabledClassifications" in data:
-        config["notifications_disabled_classifications"] = \
-            [NotificationDisabledClassification[c]
-             for c in data["notificationsDisabledClassifications"]]
+        config["notifications_disabled_classifications"] = [
+            NotificationDisabledClassification[c]
+            for c in data["notificationsDisabledClassifications"]
+        ]

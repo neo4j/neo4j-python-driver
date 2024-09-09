@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import math
-import typing as t
 
 import neo4j
 from neo4j.graph import (
@@ -40,10 +39,7 @@ from ._warning_check import warning_check
 
 
 def record(rec):
-    fields = []
-    for f in rec:
-        fields.append(field(f))
-    return {"values": fields}
+    return {"values": [field(f) for f in rec]}
 
 
 def summary(summary_: neo4j.ResultSummary) -> dict:
@@ -66,22 +62,23 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
             }
         return res
 
-    def serialize_notifications() -> t.Optional[t.List[dict]]:
+    def serialize_notifications() -> list[dict] | None:
         if summary_.notifications is None:
             return None
-        return [serialize_notification(n)
-                for n in summary_.summary_notifications]
+        return [
+            serialize_notification(n) for n in summary_.summary_notifications
+        ]
 
     def serialize_gql_status_object(o: neo4j.GqlStatusObject) -> dict:
         res: dict = {
             "isNotification": o.is_notification,
-            "gqlStatus" : o.gql_status,
-            "statusDescription" : o.status_description,
-            "rawClassification" : o.raw_classification,
-            "classification" : o.classification,
-            "rawSeverity" : o.raw_severity,
-            "severity" : o.severity,
-            "diagnosticRecord" : {
+            "gqlStatus": o.gql_status,
+            "statusDescription": o.status_description,
+            "rawClassification": o.raw_classification,
+            "classification": o.classification,
+            "rawSeverity": o.raw_severity,
+            "severity": o.severity,
+            "diagnosticRecord": {
                 k: field(v) for k, v in o.diagnostic_record.items()
             },
         }
@@ -96,10 +93,12 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
             res["position"] = None
         return res
 
-    def serialize_gql_status_objects() -> t.List[dict]:
+    def serialize_gql_status_objects() -> list[dict]:
         with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
-            return [serialize_gql_status_object(o)
-                    for o in summary_.gql_status_objects]
+            return [
+                serialize_gql_status_object(o)
+                for o in summary_.gql_status_objects
+            ]
 
     def format_address(address: neo4j.Address):
         if len(address) == 2:
@@ -113,10 +112,13 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         "serverInfo": {
             "address": format_address(summary_.server.address),
             "agent": summary_.server.agent,
-            "protocolVersion":
-                ".".join(map(str, summary_.server.protocol_version)),
+            "protocolVersion": ".".join(
+                map(str, summary_.server.protocol_version)
+            ),
         },
-        "counters": None if not summary_.counters else {
+        "counters": None
+        if not summary_.counters
+        else {
             "constraintsAdded": summary_.counters.constraints_added,
             "constraintsRemoved": summary_.counters.constraints_removed,
             "containsSystemUpdates": summary_.counters.contains_system_updates,
@@ -139,8 +141,9 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         "profile": summary_.profile,
         "query": {
             "text": summary_.query,
-            "parameters": {k: field(v)
-                           for k, v in (summary_.parameters or {}).items()},
+            "parameters": {
+                k: field(v) for k, v in (summary_.parameters or {}).items()
+            },
         },
         "queryType": summary_.query_type,
         "resultAvailableAfter": summary_.result_available_after,
@@ -166,18 +169,16 @@ def field(v):
         return to("CypherFloat", v)
     if isinstance(v, str):
         return to("CypherString", v)
-    if isinstance(v, list) or isinstance(v, frozenset) or isinstance(v, set):
-        ls = []
-        for x in v:
-            ls.append(field(x))
+    if isinstance(v, (list, frozenset, set)):
+        ls = [field(x) for x in v]
         return to("CypherList", ls)
     if isinstance(v, dict):
         mp = {}
-        for k, v in v.items():
-            mp[k] = field(v)
+        for k, x in v.items():
+            mp[k] = field(x)
         return to("CypherMap", mp)
     if isinstance(v, (bytes, bytearray)):
-        return to("CypherBytes", " ".join("{:02x}".format(byte) for byte in v))
+        return to("CypherBytes", " ".join(f"{byte:02x}" for byte in v))
     if isinstance(v, Node):
         with warning_check(
             DeprecationWarning, "`id` is deprecated, use `element_id` instead"
@@ -227,7 +228,7 @@ def field(v):
                 "system": "cartesian",
                 "x": v.x,
                 "y": v.y,
-                "z": getattr(v, "z", None)
+                "z": getattr(v, "z", None),
             },
         }
     if isinstance(v, WGS84Point):
@@ -237,31 +238,24 @@ def field(v):
                 "system": "wgs84",
                 "x": v.x,
                 "y": v.y,
-                "z": getattr(v, "z", None)
+                "z": getattr(v, "z", None),
             },
         }
     if isinstance(v, Date):
         return {
             "name": "CypherDate",
-            "data": {
-                "year": v.year,
-                "month": v.month,
-                "day": v.day
-            }
+            "data": {"year": v.year, "month": v.month, "day": v.day},
         }
     if isinstance(v, Time):
         data = {
             "hour": v.hour,
             "minute": v.minute,
             "second": v.second,
-            "nanosecond": v.nanosecond
+            "nanosecond": v.nanosecond,
         }
         if v.tzinfo is not None:
             data["utc_offset_s"] = v.tzinfo.utcoffset(v).total_seconds()
-        return {
-            "name": "CypherTime",
-            "data": data
-        }
+        return {"name": "CypherTime", "data": data}
     if isinstance(v, DateTime):
         data = {
             "year": v.year,
@@ -270,7 +264,7 @@ def field(v):
             "hour": v.hour,
             "minute": v.minute,
             "second": v.second,
-            "nanosecond": v.nanosecond
+            "nanosecond": v.nanosecond,
         }
         if v.tzinfo is not None:
             data["utc_offset_s"] = v.tzinfo.utcoffset(v).total_seconds()
@@ -289,8 +283,8 @@ def field(v):
                 "months": v.months,
                 "days": v.days,
                 "seconds": v.seconds,
-                "nanoseconds": v.nanoseconds
-             },
+                "nanoseconds": v.nanoseconds,
+            },
         }
 
     raise ValueError("Unhandled type:" + str(type(v)))

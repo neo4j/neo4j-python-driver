@@ -109,7 +109,6 @@ if t.TYPE_CHECKING:
     from .._api import T_RoutingControl
     from ..api import _TAuth
 
-
     class _DefaultEnum(Enum):
         default = "default"
 
@@ -122,8 +121,7 @@ _T = t.TypeVar("_T")
 
 
 class AsyncGraphDatabase:
-    """Accessor for :class:`neo4j.AsyncDriver` construction.
-    """
+    """Accessor for :class:`neo4j.AsyncDriver` construction."""
 
     if t.TYPE_CHECKING:
 
@@ -132,41 +130,40 @@ class AsyncGraphDatabase:
             cls,
             uri: str,
             *,
-            auth: t.Union[_TAuth, AsyncAuthManager] = ...,
+            auth: _TAuth | AsyncAuthManager = ...,
             max_connection_lifetime: float = ...,
-            liveness_check_timeout: t.Optional[float] = ...,
+            liveness_check_timeout: float | None = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
-            trust: t.Union[
-                te.Literal["TRUST_ALL_CERTIFICATES"],
-                te.Literal["TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"]
-            ] = ...,
-            resolver: t.Union[
-                t.Callable[[Address], t.Iterable[Address]],
-                t.Callable[[Address], t.Awaitable[t.Iterable[Address]]],
-            ] = ...,
+            trust: (
+                te.Literal["TRUST_ALL_CERTIFICATES"]
+                | te.Literal["TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"]
+            ) = ...,
+            resolver: (
+                t.Callable[[Address], t.Iterable[Address]]
+                | t.Callable[[Address], t.Awaitable[t.Iterable[Address]]]
+            ) = ...,
             encrypted: bool = ...,
             trusted_certificates: TrustStore = ...,
-            client_certificate: t.Union[
-                ClientCertificate, AsyncClientCertificateProvider, None
-            ] = ...,
-            ssl_context: t.Optional[ssl.SSLContext] = ...,
+            client_certificate: (
+                ClientCertificate | AsyncClientCertificateProvider | None
+            ) = ...,
+            ssl_context: ssl.SSLContext | None = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
-            notifications_min_severity: t.Optional[
-                T_NotificationMinimumSeverity
-            ] = ...,
-            notifications_disabled_categories: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-            notifications_disabled_classifications: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-            warn_notification_severity: t.Optional[
-                T_NotificationMinimumSeverity
-            ] = ...,
+            notifications_min_severity: (
+                T_NotificationMinimumSeverity | None
+            ) = ...,
+            notifications_disabled_categories: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
+            notifications_disabled_classifications: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
+            warn_notification_severity: (
+                T_NotificationMinimumSeverity | None
+            ) = ...,
             telemetry_disabled: bool = ...,
-
             # undocumented/unsupported options
             # they may be changed or removed any time without prior notice
             connection_acquisition_timeout: float = ...,
@@ -174,13 +171,13 @@ class AsyncGraphDatabase:
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,
-            database: t.Optional[str] = ...,
+            database: str | None = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...,
-            bookmark_manager: t.Union[AsyncBookmarkManager,
-                                      BookmarkManager, None] = ...,
-        ) -> AsyncDriver:
-            ...
+            impersonated_user: str | None = ...,
+            bookmark_manager: (
+                AsyncBookmarkManager | BookmarkManager | None
+            ) = ...,
+        ) -> AsyncDriver: ...
 
     else:
 
@@ -189,10 +186,11 @@ class AsyncGraphDatabase:
             cls,
             uri: str,
             *,
-            auth: t.Union[_TAuth, AsyncAuthManager] = None,
-            **config
+            auth: _TAuth | AsyncAuthManager = None,
+            **config,
         ) -> AsyncDriver:
-            """Create a driver.
+            """
+            Create a driver.
 
             :param uri: the connection URI for the driver,
                 see :ref:`async-uri-ref` for available URIs.
@@ -202,7 +200,6 @@ class AsyncGraphDatabase:
                 see :ref:`async-driver-configuration-ref` for available
                 key-word arguments.
             """
-
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
             if not isinstance(auth, AsyncAuthManager):
@@ -213,31 +210,29 @@ class AsyncGraphDatabase:
             if isinstance(client_certificate, ClientCertificate):
                 # using internal class until public factory is GA:
                 # AsyncClientCertificateProviders.static
-                config["client_certificate"] = \
+                config["client_certificate"] = (
                     _AsyncStaticClientCertificateProvider(client_certificate)
+                )
             if client_certificate is not None:
-                preview_warn("Mutual TLS is a preview feature.",
-                             stack_level=2)
+                preview_warn("Mutual TLS is a preview feature.", stack_level=2)
 
             # TODO: 6.0 - remove "trust" config option
-            if "trust" in config.keys():
-                if config["trust"] not in (
-                    TRUST_ALL_CERTIFICATES,
-                    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-                ):
-                    raise ConfigurationError(
-                        "The config setting `trust` values are {!r}"
-                        .format(
-                            [
-                                TRUST_ALL_CERTIFICATES,
-                                TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-                            ]
-                        )
+            if "trust" in config and config["trust"] not in {
+                TRUST_ALL_CERTIFICATES,
+                TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+            }:
+                raise ConfigurationError(
+                    "The config setting `trust` values are {!r}".format(
+                        [
+                            TRUST_ALL_CERTIFICATES,
+                            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+                        ]
                     )
+                )
 
-            if ("trusted_certificates" in config.keys()
-                and not isinstance(config["trusted_certificates"],
-                                   TrustStore)):
+            if "trusted_certificates" in config and not isinstance(
+                config["trusted_certificates"], TrustStore
+            ):
                 raise ConfigurationError(
                     'The config setting "trusted_certificates" must be of '
                     "type neo4j.TrustAll, neo4j.TrustCustomCAs, or"
@@ -246,20 +241,21 @@ class AsyncGraphDatabase:
                     )
                 )
 
-            if (security_type in (SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
-                                  SECURITY_TYPE_SECURE)
-                and ("encrypted" in config
-                     or "trust" in config
-                     or "trusted_certificates" in config
-                     or "ssl_context" in config)):
-
+            if security_type in {
+                SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+                SECURITY_TYPE_SECURE,
+            } and (
+                "encrypted" in config
+                or "trust" in config
+                or "trusted_certificates" in config
+                or "ssl_context" in config
+            ):
                 # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(
                     'The config settings "encrypted", "trust", '
                     '"trusted_certificates", and "ssl_context" can only be '
                     "used with the URI schemes {!r}. Use the other URI "
-                    "schemes {!r} for setting encryption settings."
-                    .format(
+                    "schemes {!r} for setting encryption settings.".format(
                         [
                             URI_SCHEME_BOLT,
                             URI_SCHEME_NEO4J,
@@ -269,7 +265,7 @@ class AsyncGraphDatabase:
                             URI_SCHEME_BOLT_SECURE,
                             URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
                             URI_SCHEME_NEO4J_SECURE,
-                        ]
+                        ],
                     )
                 )
 
@@ -283,11 +279,13 @@ class AsyncGraphDatabase:
                 preview_warn(
                     "notifications_disabled_classifications "
                     "is a preview feature.",
-                    stack_level=2
+                    stack_level=2,
                 )
             if "warn_notification_severity" in config:
-                preview_warn("notification warnings are a preview feature.",
-                             stack_level=2)
+                preview_warn(
+                    "notification warnings are a preview feature.",
+                    stack_level=2,
+                )
             _normalize_notifications_config(config, driver_level=True)
 
             liveness_check_timeout = config.get("liveness_check_timeout")
@@ -301,15 +299,15 @@ class AsyncGraphDatabase:
                     f"{liveness_check_timeout}."
                 )
 
-            assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
+            assert driver_type in {DRIVER_BOLT, DRIVER_NEO4J}
             if driver_type == DRIVER_BOLT:
                 if parse_routing_context(parsed.query):
                     deprecation_warn(
                         'Creating a direct driver ("bolt://" scheme) with '
                         "routing context (URI parameters) is deprecated. They "
                         "will be ignored. This will raise an error in a "
-                        'future release. Given URI "{}"'.format(uri),
-                        stack_level=2
+                        f'future release. Given URI "{uri}"',
+                        stack_level=2,
                     )
                     # TODO: 6.0 - raise instead of warning
                     # raise ValueError(
@@ -319,17 +317,19 @@ class AsyncGraphDatabase:
                 return cls.bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc,
-                                    routing_context=routing_context, **config)
+            return cls.neo4j_driver(
+                parsed.netloc, routing_context=routing_context, **config
+            )
 
     @classmethod
     def bookmark_manager(
         cls,
-        initial_bookmarks: t.Union[None, Bookmarks, t.Iterable[str]] = None,
-        bookmarks_supplier: t.Optional[_TBmSupplier] = None,
-        bookmarks_consumer: t.Optional[_TBmConsumer] = None
+        initial_bookmarks: Bookmarks | t.Iterable[str] | None = None,
+        bookmarks_supplier: _TBmSupplier | None = None,
+        bookmarks_consumer: _TBmConsumer | None = None,
     ) -> AsyncBookmarkManager:
-        """Create a :class:`.AsyncBookmarkManager` with default implementation.
+        """
+        Create a :class:`.AsyncBookmarkManager` with default implementation.
 
         Basic usage example to configure sessions with the built-in bookmark
         manager implementation so that all work is automatically causally
@@ -402,12 +402,15 @@ class AsyncGraphDatabase:
         return AsyncNeo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
             bookmarks_supplier=bookmarks_supplier,
-            bookmarks_consumer=bookmarks_consumer
+            bookmarks_consumer=bookmarks_consumer,
         )
 
     @classmethod
     def bolt_driver(cls, target, **config):
-        """ Create a driver for direct Bolt server access that uses
+        """
+        Create a direct driver.
+
+        Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
         from .._exceptions import (
@@ -419,14 +422,17 @@ class AsyncGraphDatabase:
             return AsyncBoltDriver.open(target, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
+
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
     def neo4j_driver(cls, *targets, routing_context=None, **config):
-        """ Create a driver for routing-capable Neo4j service access
+        """
+        Create a routing driver.
+
+        Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
-
         # TODO: 6.0 - adjust signature to only take one target
         if len(targets) > 1:
             deprecation_warn(
@@ -441,14 +447,16 @@ class AsyncGraphDatabase:
         )
 
         try:
-            return AsyncNeo4jDriver.open(*targets, routing_context=routing_context, **config)
+            return AsyncNeo4jDriver.open(
+                *targets, routing_context=routing_context, **config
+            )
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
+
             raise ServiceUnavailable(str(error)) from error
 
 
 class _Direct:
-
     # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
@@ -463,17 +471,17 @@ class _Direct:
 
     @classmethod
     def parse_target(cls, target):
-        """ Parse a target string to produce an address.
-        """
+        """Parse a target string to produce an address."""
         if not target:
             target = cls.default_target
-        address = Address.parse(target, default_host=cls.default_host,
-                                default_port=cls.default_port)
-        return address
+        return Address.parse(
+            target,
+            default_host=cls.default_host,
+            default_port=cls.default_port,
+        )
 
 
 class _Routing:
-
     # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
@@ -488,19 +496,22 @@ class _Routing:
 
     @classmethod
     def parse_targets(cls, *targets):
-        """ Parse a sequence of target strings to produce an address
-        list.
-        """
+        """Parse a sequence of target strings to produce an address list."""
         targets = " ".join(targets)
         if not targets:
             targets = cls.default_targets
-        addresses = Address.parse_list(targets, default_host=cls.default_host, default_port=cls.default_port)
-        return addresses
+        return Address.parse_list(
+            targets,
+            default_host=cls.default_host,
+            default_port=cls.default_port,
+        )
 
 
 class AsyncDriver:
-    """ Base class for all types of :class:`neo4j.AsyncDriver`, instances of
-    which are used as the primary access point to Neo4j.
+    """
+    Base class for all driver types.
+
+    Drivers are used as the primary access point to Neo4j.
     """
 
     #: Connection pool
@@ -525,7 +536,8 @@ class AsyncDriver:
     # Copy globals as function locals to make sure that they are available
     # during Python shutdown when the Pool is destroyed.
     def __del__(
-        self, _unclosed_resource_warn=unclosed_resource_warn,
+        self,
+        _unclosed_resource_warn=unclosed_resource_warn,
         _is_async_code=AsyncUtil.is_async_code,
         _deprecation_warn=deprecation_warn,
     ):
@@ -551,7 +563,7 @@ class AsyncDriver:
             deprecation_warn(
                 "Using a driver after it has been closed is deprecated. "
                 "Future versions of the driver will raise an error.",
-                stack_level=3
+                stack_level=3,
             )
 
     @property
@@ -566,36 +578,38 @@ class AsyncDriver:
             *,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
-            database: t.Optional[str] = ...,
+            database: str | None = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...,
-            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            impersonated_user: str | None = ...,
+            bookmarks: t.Iterable[str] | Bookmarks | None = ...,
             default_access_mode: str = ...,
-            bookmark_manager: t.Union[AsyncBookmarkManager,
-                                      BookmarkManager, None] = ...,
+            bookmark_manager: (
+                AsyncBookmarkManager | BookmarkManager | None
+            ) = ...,
             auth: _TAuth = ...,
-            notifications_min_severity: t.Optional[
-                T_NotificationMinimumSeverity
-            ] = ...,
-            notifications_disabled_categories: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-            notifications_disabled_classifications: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-
+            notifications_min_severity: (
+                T_NotificationMinimumSeverity | None
+            ) = ...,
+            notifications_disabled_categories: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
+            notifications_disabled_classifications: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,
-        ) -> AsyncSession:
-            ...
+        ) -> AsyncSession: ...
 
     else:
 
         def session(self, **config) -> AsyncSession:
-            """Create a session, see :ref:`async-session-construction-ref`
+            """
+            Create a session.
+
+            See :ref:`async-session-construction-ref` for details.
 
             :param config: session configuration key-word arguments,
                 see :ref:`async-session-configuration-ref` for available
@@ -612,7 +626,7 @@ class AsyncDriver:
                 preview_warn(
                     "notifications_disabled_classifications "
                     "is a preview feature.",
-                    stack_level=2
+                    stack_level=2,
                 )
             session_config = self._read_session_config(config)
             return self._session(session_config)
@@ -622,9 +636,7 @@ class AsyncDriver:
 
     def _read_session_config(self, config_kwargs):
         config = self._prepare_session_config(config_kwargs)
-        session_config = SessionConfig(self._default_workspace_config,
-                                       config)
-        return session_config
+        return SessionConfig(self._default_workspace_config, config)
 
     @classmethod
     def _prepare_session_config(cls, config_kwargs):
@@ -632,8 +644,7 @@ class AsyncDriver:
         return config_kwargs
 
     async def close(self) -> None:
-        """ Shut down, closing any open connections in the pool.
-        """
+        """Shut down, closing any open connections in the pool."""
         # TODO: 6.0 - NOOP if already closed
         # if self._closed:
         #     return
@@ -648,59 +659,58 @@ class AsyncDriver:
     @t.overload
     async def execute_query(
         self,
-        query_: t.Union[te.LiteralString, Query],
-        parameters_: t.Optional[t.Dict[str, t.Any]] = None,
+        query_: te.LiteralString | Query,
+        parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
-        database_: t.Optional[str] = None,
-        impersonated_user_: t.Optional[str] = None,
-        bookmark_manager_: t.Union[
-            AsyncBookmarkManager, BookmarkManager, None
-        ] = ...,
+        database_: str | None = None,
+        impersonated_user_: str | None = None,
+        bookmark_manager_: (
+            AsyncBookmarkManager | BookmarkManager | None
+        ) = ...,
         auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[EagerResult]
         ] = ...,
-        **kwargs: t.Any
-    ) -> EagerResult:
-        ...
+        **kwargs: t.Any,
+    ) -> EagerResult: ...
 
     @t.overload
     async def execute_query(
         self,
-        query_: t.Union[te.LiteralString, Query],
-        parameters_: t.Optional[t.Dict[str, t.Any]] = None,
+        query_: te.LiteralString | Query,
+        parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
-        database_: t.Optional[str] = None,
-        impersonated_user_: t.Optional[str] = None,
-        bookmark_manager_: t.Union[
-            AsyncBookmarkManager, BookmarkManager, None
-        ] = ...,
+        database_: str | None = None,
+        impersonated_user_: str | None = None,
+        bookmark_manager_: (
+            AsyncBookmarkManager | BookmarkManager | None
+        ) = ...,
         auth_: _TAuth = None,
-        result_transformer_: t.Callable[
-            [AsyncResult], t.Awaitable[_T]
-        ] = ...,
-        **kwargs: t.Any
-    ) -> _T:
-        ...
+        result_transformer_: t.Callable[[AsyncResult], t.Awaitable[_T]] = ...,
+        **kwargs: t.Any,
+    ) -> _T: ...
 
     async def execute_query(
         self,
-        query_: t.Union[te.LiteralString, Query],
-        parameters_: t.Optional[t.Dict[str, t.Any]] = None,
+        query_: te.LiteralString | Query,
+        parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
-        database_: t.Optional[str] = None,
-        impersonated_user_: t.Optional[str] = None,
-        bookmark_manager_: t.Union[
-            AsyncBookmarkManager, BookmarkManager, None,
-            te.Literal[_DefaultEnum.default]
-        ] = _default,
+        database_: str | None = None,
+        impersonated_user_: str | None = None,
+        bookmark_manager_: (
+            AsyncBookmarkManager
+            | BookmarkManager
+            | None
+            | te.Literal[_DefaultEnum.default]
+        ) = _default,
         auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[t.Any]
         ] = AsyncResult.to_eager_result,
-        **kwargs: t.Any
+        **kwargs: t.Any,
     ) -> t.Any:
-        """Execute a query in a transaction function and return all results.
+        '''
+        Execute a query in a transaction function and return all results.
 
         This method is a handy wrapper for lower-level driver APIs like
         sessions, transactions, and transaction functions. It is intended
@@ -742,7 +752,7 @@ class AsyncDriver:
 
 
             async def example(driver: neo4j.AsyncDriver) -> List[str]:
-                \"""Get the name of all 42 year-olds.\"""
+                """Get the name of all 42 year-olds."""
                 records, summary, keys = await driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
@@ -761,7 +771,7 @@ class AsyncDriver:
 
 
             async def example(driver: neo4j.AsyncDriver) -> int:
-                \"""Call all young people "My dear" and get their count.\"""
+                """Call all young people "My dear" and get their count."""
                 record = await driver.execute_query(
                     "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
@@ -913,17 +923,18 @@ class AsyncDriver:
         .. versionchanged:: 5.15
             The ``query_`` parameter now also accepts a :class:`.Query` object
             instead of only :class:`str`.
-        """
+        '''  # noqa: E501 example code isn't too long
         self._check_state()
-        invalid_kwargs = [k for k in kwargs if
-                          k[-2:-1] != "_" and k[-1:] == "_"]
+        invalid_kwargs = [
+            k for k in kwargs if k[-2:-1] != "_" and k[-1:] == "_"
+        ]
         if invalid_kwargs:
             raise ValueError(
-                "keyword parameters must not end with a single '_'. Found: %r"
+                "keyword parameters must not end with a single '_'. "
+                f"Found: {invalid_kwargs!r}\n"
                 "\nYou either misspelled an existing configuration parameter "
                 "or tried to send a query parameter that is reserved. In the "
                 "latter case, use the `parameters_` dictionary instead."
-                % invalid_kwargs
             )
         if isinstance(query_, Query):
             timeout = query_.timeout
@@ -954,17 +965,22 @@ class AsyncDriver:
             elif routing_ == RoutingControl.READ:
                 access_mode = READ_ACCESS
             else:
-                raise ValueError("Invalid routing control value: %r"
-                                 % routing_)
+                raise ValueError(
+                    f"Invalid routing control value: {routing_!r}"
+                )
             with session._pipelined_begin:
                 return await session._run_transaction(
-                    access_mode, TelemetryAPI.DRIVER,
-                    work, (query_str, parameters, result_transformer_), {}
+                    access_mode,
+                    TelemetryAPI.DRIVER,
+                    work,
+                    (query_str, parameters, result_transformer_),
+                    {},
                 )
 
     @property
     def execute_query_bookmark_manager(self) -> AsyncBookmarkManager:
-        """The driver's default query bookmark manager.
+        """
+        The driver's default query bookmark manager.
 
         This is the default :class:`.AsyncBookmarkManager` used by
         :meth:`.execute_query`. This can be used to causally chain
@@ -1002,35 +1018,35 @@ class AsyncDriver:
             session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
-            database: t.Optional[str] = ...,
+            database: str | None = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...,
-            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            impersonated_user: str | None = ...,
+            bookmarks: t.Iterable[str] | Bookmarks | None = ...,
             default_access_mode: str = ...,
-            bookmark_manager: t.Union[AsyncBookmarkManager,
-                                      BookmarkManager, None] = ...,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
-            notifications_min_severity: t.Optional[
-                T_NotificationMinimumSeverity
-            ] = ...,
-            notifications_disabled_categories: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-            notifications_disabled_classifications: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-
+            bookmark_manager: (
+                AsyncBookmarkManager | BookmarkManager | None
+            ) = ...,
+            auth: Auth | tuple[t.Any, t.Any] = ...,
+            notifications_min_severity: (
+                T_NotificationMinimumSeverity | None
+            ) = ...,
+            notifications_disabled_categories: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
+            notifications_disabled_classifications: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...
-        ) -> None:
-            ...
+            retry_delay_jitter_factor: float = ...,
+        ) -> None: ...
 
     else:
 
         async def verify_connectivity(self, **config) -> None:
-            """Verify that the driver can establish a connection to the server.
+            """
+            Verify that the driver can establish a connection to the server.
 
             This verifies if the driver can establish a reading connection to a
             remote server or a cluster. Some data will be exchanged.
@@ -1077,35 +1093,35 @@ class AsyncDriver:
             session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
-            database: t.Optional[str] = ...,
+            database: str | None = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...,
-            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            impersonated_user: str | None = ...,
+            bookmarks: t.Iterable[str] | Bookmarks | None = ...,
             default_access_mode: str = ...,
-            bookmark_manager: t.Union[AsyncBookmarkManager,
-                                      BookmarkManager, None] = ...,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
-            notifications_min_severity: t.Optional[
-                T_NotificationMinimumSeverity
-            ] = ...,
-            notifications_disabled_categories: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-            notifications_disabled_classifications: t.Optional[
-                t.Iterable[T_NotificationDisabledCategory]
-            ] = ...,
-
+            bookmark_manager: (
+                AsyncBookmarkManager | BookmarkManager | None
+            ) = ...,
+            auth: Auth | tuple[t.Any, t.Any] = ...,
+            notifications_min_severity: (
+                T_NotificationMinimumSeverity | None
+            ) = ...,
+            notifications_disabled_categories: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
+            notifications_disabled_classifications: (
+                t.Iterable[T_NotificationDisabledCategory] | None
+            ) = ...,
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...
-        ) -> ServerInfo:
-            ...
+            retry_delay_jitter_factor: float = ...,
+        ) -> ServerInfo: ...
 
     else:
 
         async def get_server_info(self, **config) -> ServerInfo:
-            """Get information about the connected Neo4j server.
+            """
+            Get information about the connected Neo4j server.
 
             Try to establish a working read connection to the remote server or
             a member of a cluster and exchange some data. Then return the
@@ -1144,7 +1160,8 @@ class AsyncDriver:
             return await self._get_server_info(session_config)
 
     async def supports_multi_db(self) -> bool:
-        """ Check if the server or cluster supports multi-databases.
+        """
+        Check if the server or cluster supports multi-databases.
 
         :returns: Returns true if the server or cluster the driver connects to
             supports multi-databases, otherwise false.
@@ -1167,36 +1184,35 @@ class AsyncDriver:
 
         async def verify_authentication(
             self,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
+            auth: Auth | tuple[t.Any, t.Any] | None = None,
             # all other arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
-            database: t.Optional[str] = ...,
+            database: str | None = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...,
-            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            impersonated_user: str | None = ...,
+            bookmarks: t.Iterable[str] | Bookmarks | None = ...,
             default_access_mode: str = ...,
-            bookmark_manager: t.Union[
-                AsyncBookmarkManager, BookmarkManager, None
-            ] = ...,
-
+            bookmark_manager: (
+                AsyncBookmarkManager | BookmarkManager | None
+            ) = ...,
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...
-        ) -> bool:
-            ...
+            retry_delay_jitter_factor: float = ...,
+        ) -> bool: ...
 
     else:
 
         async def verify_authentication(
             self,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
-            **config
+            auth: Auth | tuple[t.Any, t.Any] | None = None,
+            **config,
         ) -> bool:
-            """Verify that the authentication information is valid.
+            """
+            Verify that the authentication information is valid.
 
             Like :meth:`.verify_connectivity`, but for checking authentication.
 
@@ -1244,18 +1260,19 @@ class AsyncDriver:
                 try:
                     await session._verify_authentication()
                 except Neo4jError as exc:
-                    if exc.code in (
+                    if exc.code in {
                         "Neo.ClientError.Security.CredentialsExpired",
                         "Neo.ClientError.Security.Forbidden",
                         "Neo.ClientError.Security.TokenExpired",
                         "Neo.ClientError.Security.Unauthorized",
-                    ):
+                    }:
                         return False
                     raise
             return True
 
     async def supports_session_auth(self) -> bool:
-        """Check if the remote supports connection re-authentication.
+        """
+        Check if the remote supports connection re-authentication.
 
         :returns: Returns true if the server or cluster the driver connects to
             supports re-authentication of existing connections, otherwise
@@ -1285,16 +1302,18 @@ class AsyncDriver:
 async def _work(
     tx: AsyncManagedTransaction,
     query: te.LiteralString,
-    parameters: t.Dict[str, t.Any],
-    transformer: t.Callable[[AsyncResult], t.Awaitable[_T]]
+    parameters: dict[str, t.Any],
+    transformer: t.Callable[[AsyncResult], t.Awaitable[_T]],
 ) -> _T:
     res = await tx.run(query, parameters)
     return await transformer(res)
 
 
 class AsyncBoltDriver(_Direct, AsyncDriver):
-    """:class:`.AsyncBoltDriver` is instantiated for ``bolt`` URIs and
-    addresses a single database machine. This may be a standalone server or
+    """
+    :class:`.AsyncBoltDriver` is instantiated for ``bolt`` URIs.
+
+    It addresses a single database machine. This may be a standalone server or
     could be a specific member of a cluster.
 
     Connections established by a :class:`.AsyncBoltDriver` are always made to
@@ -1306,18 +1325,17 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
 
     @classmethod
     def open(cls, target, **config):
-        """
-        :param target:
-        :param auth:
-        :param config: The values that can be specified are found in :class: `neo4j.PoolConfig` and :class: `neo4j.WorkspaceConfig`
-
-        :returns:
-        :rtype: :class: `neo4j.BoltDriver`
-        """
         from .io import AsyncBoltPool
+
         address = cls.parse_target(target)
-        pool_config, default_workspace_config = Config.consume_chain(config, AsyncPoolConfig, WorkspaceConfig)
-        pool = AsyncBoltPool.open(address, pool_config=pool_config, workspace_config=default_workspace_config)
+        pool_config, default_workspace_config = Config.consume_chain(
+            config, AsyncPoolConfig, WorkspaceConfig
+        )
+        pool = AsyncBoltPool.open(
+            address,
+            pool_config=pool_config,
+            workspace_config=default_workspace_config,
+        )
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
@@ -1327,8 +1345,10 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
 
 
 class AsyncNeo4jDriver(_Routing, AsyncDriver):
-    """:class:`.AsyncNeo4jDriver` is instantiated for ``neo4j`` URIs. The
-    routing behaviour works in tandem with Neo4j's `Causal Clustering
+    """
+    :class:`.AsyncNeo4jDriver` is instantiated for ``neo4j`` URIs.
+
+    The routing behaviour works in tandem with Neo4j's `Causal Clustering
     <https://neo4j.com/docs/operations-manual/current/clustering/>`_
     feature by directing read and write behaviour to appropriate
     cluster members.
@@ -1340,9 +1360,17 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
     @classmethod
     def open(cls, *targets, routing_context=None, **config):
         from .io import AsyncNeo4jPool
+
         addresses = cls.parse_targets(*targets)
-        pool_config, default_workspace_config = Config.consume_chain(config, AsyncPoolConfig, WorkspaceConfig)
-        pool = AsyncNeo4jPool.open(*addresses, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
+        pool_config, default_workspace_config = Config.consume_chain(
+            config, AsyncPoolConfig, WorkspaceConfig
+        )
+        pool = AsyncNeo4jPool.open(
+            *addresses,
+            routing_context=routing_context,
+            pool_config=pool_config,
+            workspace_config=default_workspace_config,
+        )
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
@@ -1373,9 +1401,9 @@ def _normalize_notifications_config(config_kwargs, *, driver_level=False):
             disabled_classifications = list(
                 {*disabled_categories, *disabled_classifications}
             )
-        config_kwargs["notifications_disabled_classifications"] = \
+        config_kwargs["notifications_disabled_classifications"] = (
             disabled_classifications
-
+        )
 
     single_config_keys = (
         "notifications_min_severity",
@@ -1387,7 +1415,7 @@ def _normalize_notifications_config(config_kwargs, *, driver_level=False):
             config_kwargs[key] = getattr(value, "value", value)
 
     value = config_kwargs.get("warn_notification_severity")
-    if value not in (*NotificationMinimumSeverity, None):
+    if value not in {*NotificationMinimumSeverity, None}:
         raise ValueError(
             f"Invalid value for configuration "
             f"warn_notification_severity: {value}. Should be None, a "
@@ -1397,7 +1425,8 @@ def _normalize_notifications_config(config_kwargs, *, driver_level=False):
     if driver_level:
         if value is None:
             if DEBUG_ENABLED:
-                config_kwargs["warn_notification_severity"] = \
+                config_kwargs["warn_notification_severity"] = (
                     NotificationMinimumSeverity.INFORMATION
+                )
         elif value == NotificationMinimumSeverity.OFF:
             config_kwargs["warn_notification_severity"] = None

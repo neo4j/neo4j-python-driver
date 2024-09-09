@@ -22,7 +22,6 @@ They take the subtest parameters as arguments and return
  - None if the subtest should be run
 """
 
-
 import pytz
 
 from . import fromtestkit
@@ -52,8 +51,9 @@ def tz_id(**params):
         "SystemV/YST9YDT",
     }:
         return (
-            "timezone id %s is not supported by the system" % params["tz_id"]
+            f"timezone id %s is not supported by the system{params['tz_id']}"
         )
+    return None
 
 
 def dt_conversion(**params):
@@ -61,4 +61,4 @@ def dt_conversion(**params):
     try:
         fromtestkit.to_param(dt)
     except (pytz.UnknownTimeZoneError, ValueError) as e:
-        return "cannot create desired dt %s: %r" % (dt, e)
+        return f"cannot create desired dt {dt}: {e!r}"
