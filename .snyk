@@ -3,5 +3,6 @@
 exclude:
  code:
   - tests/**
+  - benchkit/**
   - testkitbackend/**
   - testkit/**
