@@ -20,6 +20,7 @@ import re
 import ssl
 import typing as t
 import warnings
+from functools import wraps
 from os import path
 
 from freezegun import freeze_time
@@ -43,6 +44,18 @@ from .. import (
 )
 from .._warning_check import warnings_check
 from ..exceptions import MarkdAsDriverError
+
+
+def handler_name(name: str):
+    def decorator(func):
+        @wraps(func)
+        def inner(self, data):
+            return func(self, data)
+
+        func.__handler_name__ = name
+        return func
+
+    return decorator
 
 
 class FrontendError(Exception):
@@ -419,6 +432,7 @@ async def get_server_info(backend, data):
     )
 
 
+@handler_name("CheckMultiDBSupport")
 async def check_multi_db_support(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]

@@ -15,7 +15,6 @@
 
 
 import asyncio
-import re
 import traceback
 from inspect import (
     getmembers,
@@ -48,8 +47,15 @@ TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
 DRIVER_PATH = Path(neo4j.__path__[0]).absolute().resolve()
 
 
-def pascal_to_snake_case(name: str) -> str:
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+def snake_case_to_pascal_case(name: str) -> str:
+    return "".join(word.capitalize() for word in name.split("_"))
+
+
+def get_handler_name(handler):
+    name = getattr(handler, "__handler_name__", None)
+    if name is not None:
+        return name
+    return snake_case_to_pascal_case(handler.__name__)
 
 
 class Backend:
@@ -79,8 +85,8 @@ class Backend:
         self.fake_time_ticker = None
         # Collect all request handlers
         self._requestHandlers = {
-            pascal_to_snake_case(name): func
-            for (name, func) in getmembers(requests, isfunction)
+            get_handler_name(func): func
+            for _, func in getmembers(requests, isfunction)
         }
 
     def close(self):
