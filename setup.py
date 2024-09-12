@@ -45,8 +45,7 @@ if deprecated:
     )
 
 readme_path = THIS_DIR / "README.rst"
-with readme_path.open(encoding="utf-8") as fr:
-    readme = fr.read()
+readme = readme_path.read_text(encoding="utf-8")
 
 if deprecated:
     readme = (
@@ -62,8 +61,11 @@ if deprecated:
     )
 
 
+pyproject_path = THIS_DIR / "pyproject.toml"
+
+
 def change_project_name(new_name):
-    with open("pyproject.toml", "a+", encoding="utf-8") as fd:
+    with pyproject_path.open("a+", encoding="utf-8") as fd:
         fd.seek(0)
         pyproject = tomlkit.parse(fd.read())
         old_name = pyproject["project"]["name"]
