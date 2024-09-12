@@ -278,7 +278,6 @@ class Transaction(TransactionBase):
 
         with session.begin_transaction() as tx:
             ...
-
     """
 
     def __enter__(self) -> Transaction:
@@ -346,7 +345,6 @@ class Transaction(TransactionBase):
                 except asyncio.CancelledError:
                     tx.cancel()
                     raise
-
             """
             return self._cancel()
 

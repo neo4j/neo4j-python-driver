@@ -184,8 +184,7 @@ class NotificationDisabledClassification(str, Enum):
     **This is a preview**.
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. seealso::
@@ -198,7 +197,6 @@ class NotificationDisabledClassification(str, Enum):
 
     .. versionchanged:: 5.24
         Added classification :attr:`.SCHEMA`.
-
     """
 
     HINT = "HINT"
@@ -283,8 +281,7 @@ class NotificationClassification(str, Enum):
     **This is a preview**.
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. seealso:: :attr:`.GqlStatusObject.classification`
@@ -293,7 +290,6 @@ class NotificationClassification(str, Enum):
 
     .. versionchanged:: 5.24
         Added classification :attr:`.SCHEMA`.
-
     """
 
     HINT = "HINT"

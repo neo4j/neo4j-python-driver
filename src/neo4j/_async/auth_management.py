@@ -334,8 +334,7 @@ class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     Example::
@@ -387,7 +386,6 @@ class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
         implementation internal. This entails removing the possibility to
         directly instantiate this class. Please use the factory method
         :meth:`.AsyncClientCertificateProviders.rotating` instead.
-
     """
 
     @abc.abstractmethod
@@ -419,12 +417,10 @@ class AsyncClientCertificateProviders:
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
-
     """
 
     @staticmethod

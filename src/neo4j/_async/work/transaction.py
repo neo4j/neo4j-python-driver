@@ -278,7 +278,6 @@ class AsyncTransaction(AsyncTransactionBase):
 
         async with await session.begin_transaction() as tx:
             ...
-
     """
 
     async def __aenter__(self) -> AsyncTransaction:
@@ -346,7 +345,6 @@ class AsyncTransaction(AsyncTransactionBase):
                 except asyncio.CancelledError:
                     tx.cancel()
                     raise
-
             """
             return self._cancel()
 

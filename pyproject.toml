@@ -215,6 +215,8 @@ select = [
     "N",
     # pydocstyle
     "D",
+    # pydocstyle: explicit rules not selected by the chosen convention
+    "D404",
     # Does not yet fully support sphinx style docstrings
     # https://github.com/astral-sh/ruff/pull/13286
     # # pydoclint
@@ -285,3 +287,6 @@ extend-ignore-names = ["mcs"]
 
 [tool.ruff.lint.flake8-copyright]
 notice-rgx = "# Copyright \\(c\\) \"Neo4j\""
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"

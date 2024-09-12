@@ -231,7 +231,7 @@ class ResultSummary:
     @preview("GQLSTATUS support is a preview feature.")
     def gql_status_objects(self) -> t.Sequence[GqlStatusObject]:
         """
-        The GqlStatusObjects that arose when executing the query.
+        Get GqlStatusObjects that arose when executing the query.
 
         The sequence always contains at least 1 status representing the
         Success, No Data or Omitted Result.
@@ -249,12 +249,10 @@ class ResultSummary:
         **This is a preview** (see :ref:`filter-warnings-ref`).
         It might be changed without following the deprecation policy.
 
-        See Also
-        --------
+        See also
         https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
         .. versionadded:: 5.22
-
         """
         raw_status_objects = self.metadata.get("statuses")
         if isinstance(raw_status_objects, list):

@@ -107,7 +107,6 @@ def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
         @deprecated("'foo' has been deprecated in favour of 'bar'")
         def foo(x):
             pass
-
     """
     return _make_warning_decorator(message, deprecation_warn)
 

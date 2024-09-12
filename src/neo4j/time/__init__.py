@@ -287,7 +287,6 @@ class Clock:
         neo4j.time.clock_implementations.LibCClock
         >>> clock.local_time()                                 # doctest: +SKIP
         ClockTime(seconds=1525265942, nanoseconds=506844026)
-
     """
 
     __implementations = None

@@ -250,7 +250,6 @@ class Session(Workspace):
                 except asyncio.CancelledError:
                     session.cancel()
                     raise
-
             """
             self._handle_cancellation(message="manual cancel")
 

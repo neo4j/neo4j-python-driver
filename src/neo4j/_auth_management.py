@@ -227,12 +227,10 @@ class ClientCertificate:
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
-
     """
 
     certfile: str | bytes | PathLike[str] | PathLike[bytes]
@@ -272,12 +270,10 @@ class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
-
     """
 
     @abc.abstractmethod
@@ -307,8 +303,7 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
 
-    See Also
-    --------
+    See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. seealso::
@@ -316,7 +311,6 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
         :class:`.AsyncClientCertificateProviders`
 
     .. versionadded:: 5.19
-
     """
 
     @abc.abstractmethod

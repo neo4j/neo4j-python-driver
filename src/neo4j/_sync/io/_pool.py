@@ -1014,10 +1014,9 @@ class Neo4jPool(IOPool):
             return True
 
     def _select_address(self, *, access_mode, database):
+        """Select the address with the fewest in-use connections."""
         from ...api import READ_ACCESS
 
-        """ Selects the address with the fewest in-use connections.
-        """
         with self.refresh_lock:
             routing_table = self.routing_tables.get(database)
             if routing_table:
