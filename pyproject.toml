@@ -127,7 +127,6 @@ asyncio_mode = "auto"
 [[tool.mypy.overrides]]
 module = [
     "pandas.*",
-    "numpy.*",
     "neo4j._codec.packstream._rust",
     "neo4j._codec.packstream._rust.*",
 ]
