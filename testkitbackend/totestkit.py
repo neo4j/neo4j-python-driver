@@ -108,6 +108,8 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         else:
             raise ValueError(f"Unexpected address format: {address}")
 
+    counters = summary_.counters
+
     return {
         "serverInfo": {
             "address": format_address(summary_.server.address),
@@ -116,24 +118,26 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
                 map(str, summary_.server.protocol_version)
             ),
         },
-        "counters": None
-        if not summary_.counters
-        else {
-            "constraintsAdded": summary_.counters.constraints_added,
-            "constraintsRemoved": summary_.counters.constraints_removed,
-            "containsSystemUpdates": summary_.counters.contains_system_updates,
-            "containsUpdates": summary_.counters.contains_updates,
-            "indexesAdded": summary_.counters.indexes_added,
-            "indexesRemoved": summary_.counters.indexes_removed,
-            "labelsAdded": summary_.counters.labels_added,
-            "labelsRemoved": summary_.counters.labels_removed,
-            "nodesCreated": summary_.counters.nodes_created,
-            "nodesDeleted": summary_.counters.nodes_deleted,
-            "propertiesSet": summary_.counters.properties_set,
-            "relationshipsCreated": summary_.counters.relationships_created,
-            "relationshipsDeleted": summary_.counters.relationships_deleted,
-            "systemUpdates": summary_.counters.system_updates,
-        },
+        "counters": (
+            None
+            if not counters
+            else {
+                "constraintsAdded": counters.constraints_added,
+                "constraintsRemoved": counters.constraints_removed,
+                "containsSystemUpdates": counters.contains_system_updates,
+                "containsUpdates": counters.contains_updates,
+                "indexesAdded": counters.indexes_added,
+                "indexesRemoved": counters.indexes_removed,
+                "labelsAdded": counters.labels_added,
+                "labelsRemoved": counters.labels_removed,
+                "nodesCreated": counters.nodes_created,
+                "nodesDeleted": counters.nodes_deleted,
+                "propertiesSet": counters.properties_set,
+                "relationshipsCreated": counters.relationships_created,
+                "relationshipsDeleted": counters.relationships_deleted,
+                "systemUpdates": counters.system_updates,
+            }
+        ),
         "database": summary_.database,
         "notifications": serialize_notifications(),
         "gqlStatusObjects": serialize_gql_status_objects(),
@@ -170,13 +174,9 @@ def field(v):
     if isinstance(v, str):
         return to("CypherString", v)
     if isinstance(v, (list, frozenset, set)):
-        ls = [field(x) for x in v]
-        return to("CypherList", ls)
+        return to("CypherList", list(map(field, v)))
     if isinstance(v, dict):
-        mp = {}
-        for k, x in v.items():
-            mp[k] = field(x)
-        return to("CypherMap", mp)
+        return to("CypherMap", {k: field(x) for k, x in v.items()})
     if isinstance(v, (bytes, bytearray)):
         return to("CypherBytes", " ".join(f"{byte:02x}" for byte in v))
     if isinstance(v, Node):

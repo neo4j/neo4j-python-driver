@@ -19,6 +19,7 @@ import logging
 import socket
 
 from ... import addressing
+from ..util import AsyncUtil
 
 
 log = logging.getLogger("neo4j.io")
@@ -94,31 +95,33 @@ class AsyncNetworkUtil:
 
         log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
-            if asyncio.iscoroutinefunction(resolver):
-                resolved_addresses = await resolver(address)
-            else:
-                resolved_addresses = resolver(address)
-            for address in map(addressing.Address, resolved_addresses):
+            addresses_resolved = map(
+                addressing.Address,
+                await AsyncUtil.callback(resolver, address),
+            )
+            for address_resolved in addresses_resolved:
                 log.debug(
-                    "[#0000]  _: <RESOLVE> custom resolver out: %s", address
+                    "[#0000]  _: <RESOLVE> custom resolver out: %s",
+                    address_resolved,
                 )
-                for resolved_address in await AsyncNetworkUtil._dns_resolver(
-                    address, family=family
-                ):
+                addresses_dns_resolved = await AsyncNetworkUtil._dns_resolver(
+                    address_resolved, family=family
+                )
+                for address_dns_resolved in addresses_dns_resolved:
                     log.debug(
                         "[#0000]  _: <RESOLVE> dns resolver out: %s",
-                        resolved_address,
+                        address_dns_resolved,
                     )
-                    yield resolved_address
+                    yield address_dns_resolved
         else:
-            for resolved_address in await AsyncNetworkUtil._dns_resolver(
+            for address_dns_resolved in await AsyncNetworkUtil._dns_resolver(
                 address, family=family
             ):
                 log.debug(
                     "[#0000]  _: <RESOLVE> dns resolver out: %s",
-                    resolved_address,
+                    address_dns_resolved,
                 )
-                yield resolved_address
+                yield address_dns_resolved
 
 
 class NetworkUtil:
@@ -174,14 +177,16 @@ class NetworkUtil:
 
         log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
-            for address_resolved in map(addressing.Address, resolver(address)):
+            addresses_resolved = map(addressing.Address, resolver(address))
+            for address_resolved in addresses_resolved:
                 log.debug(
                     "[#0000]  _: <RESOLVE> custom resolver out: %s",
                     address_resolved,
                 )
-                for address_dns_resolved in NetworkUtil._dns_resolver(
+                addresses_dns_resolved = NetworkUtil._dns_resolver(
                     address_resolved, family=family
-                ):
+                )
+                for address_dns_resolved in addresses_dns_resolved:
                     log.debug(
                         "[#0000]  _: <RESOLVE> dns resolver out: %s",
                         address_dns_resolved,

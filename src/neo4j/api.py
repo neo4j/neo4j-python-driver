@@ -263,9 +263,8 @@ class Bookmark:
 
         :returns: repr string with sorted values
         """
-        return "<Bookmark values={{{}}}>".format(
-            ", ".join([f"'{ix}'" for ix in sorted(self._values)])
-        )
+        values = ", ".join([f"'{ix}'" for ix in sorted(self._values)])
+        return f"<Bookmark values={{{values}}}>"
 
     def __bool__(self) -> bool:
         return bool(self._values)

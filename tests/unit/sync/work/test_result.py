@@ -327,18 +327,27 @@ def test_result_iteration_mixed_methods():
     result._run("CYPHER", {}, None, None, "r", None, None, None)
     iter1 = Util.iter(result)
     iter2 = Util.iter(result)
-    assert (Util.next(iter1)).get("x") == records[0][0]
-    assert (Util.next(iter2)).get("x") == records[1][0]
-    assert (Util.next(iter2)).get("x") == records[2][0]
-    assert (Util.next(iter1)).get("x") == records[3][0]
-    assert (Util.next(iter1)).get("x") == records[4][0]
-    assert (Util.next(result)).get("x") == records[5][0]
-    assert (Util.next(iter2)).get("x") == records[6][0]
-    assert (Util.next(iter1)).get("x") == records[7][0]
-    assert (Util.next(Util.iter(result))).get("x") == records[
-        8
-    ][0]
+
+    record = Util.next(iter1)
+    assert record.get("x") == records[0][0]
+    record = Util.next(iter2)
+    assert record.get("x") == records[1][0]
+    record = Util.next(iter2)
+    assert record.get("x") == records[2][0]
+    record = Util.next(iter1)
+    assert record.get("x") == records[3][0]
+    record = Util.next(iter1)
+    assert record.get("x") == records[4][0]
+    record = Util.next(result)
+    assert record.get("x") == records[5][0]
+    record = Util.next(iter2)
+    assert record.get("x") == records[6][0]
+    record = Util.next(iter1)
+    assert record.get("x") == records[7][0]
+    record = Util.next(Util.iter(result))
+    assert record.get("x") == records[8][0]
     assert [r.get("x") for r in result] == [records[9][0]]
+
     with pytest.raises(StopIteration):
         Util.next(iter1)
     with pytest.raises(StopIteration):
@@ -347,6 +356,7 @@ def test_result_iteration_mixed_methods():
         Util.next(result)
     with pytest.raises(StopIteration):
         Util.next(Util.iter(result))
+
     assert [r.get("x") for r in result] == []
 
 

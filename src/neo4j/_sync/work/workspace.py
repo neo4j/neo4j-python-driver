@@ -116,14 +116,9 @@ class Workspace(NonConcurrentMethodChecker):
         if self._bookmark_manager is None:
             return self._bookmarks
 
-        self._last_from_bookmark_manager = tuple(
-            {
-                *Util.callback(
-                    self._bookmark_manager.get_bookmarks
-                ),
-                *self._initial_bookmarks,
-            }
-        )
+        bmm = Util.callback(self._bookmark_manager.get_bookmarks)
+        initial = self._initial_bookmarks
+        self._last_from_bookmark_manager = tuple({*bmm, *initial})
         return self._last_from_bookmark_manager
 
     def _update_bookmarks(self, new_bookmarks):

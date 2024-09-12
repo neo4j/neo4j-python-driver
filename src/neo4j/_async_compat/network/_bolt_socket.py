@@ -238,7 +238,7 @@ class AsyncBoltSocket:
             if s:
                 cls._kill_raw_socket(s)
             raise ServiceUnavailable(
-                f"Timed out trying to establish connection to "
+                "Timed out trying to establish connection to "
                 f"{resolved_address!r}"
             ) from None
         except asyncio.CancelledError:
@@ -442,13 +442,12 @@ class AsyncBoltSocket:
                 if s:
                     await cls.close_socket(s)
                 raise
+        address_strs = tuple(map(str, failed_addresses))
         if not errors:
-            address_strs = tuple(map(str, failed_addresses))
             raise ServiceUnavailable(
                 f"Couldn't connect to {address} (resolved to {address_strs})"
             )
         else:
-            address_strs = tuple(map(str, failed_addresses))
             error_strs = "\n".join(map(str, errors))
             raise ServiceUnavailable(
                 f"Couldn't connect to {address} (resolved to {address_strs}):"
@@ -556,7 +555,7 @@ class BoltSocket:
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             cls._kill_raw_socket(s)
             raise ServiceUnavailable(
-                f"Timed out trying to establish connection to "
+                "Timed out trying to establish connection to "
                 f"{resolved_address!r}"
             ) from None
         except Exception as error:

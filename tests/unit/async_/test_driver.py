@@ -612,7 +612,6 @@ def get_notification_filter_expectation(
     return expected_min_sev, expected_dis_clss
 
 
-# TODO: Test merging of categories and classifications
 @pytest.mark.parametrize(
     "min_sev",
     (

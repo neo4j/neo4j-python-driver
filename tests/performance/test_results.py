@@ -28,11 +28,10 @@ def work(driver, *units_of_work):
 
 def unit_of_work(record_count, record_width, value):
     def transaction_function(tx):
-        s = "UNWIND range(1, $record_count) AS _ RETURN {}".format(
-            ", ".join(f"$x AS x{i}" for i in range(record_width))
-        )
-        p = {"record_count": record_count, "x": value}
-        for record in tx.run(s, p):
+        returns = ", ".join(f"$x AS x{i}" for i in range(record_width))
+        query = f"UNWIND range(1, $record_count) AS _ RETURN {returns}"
+        params = {"record_count": record_count, "x": value}
+        for record in tx.run(query, params):
             assert all(x == value for x in record.values())
 
     return transaction_function

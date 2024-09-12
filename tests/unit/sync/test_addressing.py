@@ -111,6 +111,6 @@ def test_address_unresolve() -> None:
     custom_resolved_addresses = sorted(Address(a) for a in custom_resolved)
     unresolved_list = sorted(a._unresolved for a in resolved_list)
     assert custom_resolved_addresses == unresolved_list
-    assert list(map(lambda a: a.__class__, custom_resolved_addresses)) == list(
-        map(lambda a: a.__class__, unresolved_list)
-    )
+    resolved_classes = [a.__class__ for a in custom_resolved_addresses]
+    unresolved_classes = [a.__class__ for a in unresolved_list]
+    assert resolved_classes == unresolved_classes

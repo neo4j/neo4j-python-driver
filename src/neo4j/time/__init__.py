@@ -1377,8 +1377,8 @@ class Date(date_base_class, metaclass=DateType):
         """
         try:
             return ClockTime(86400 * (self.to_ordinal() - epoch.to_ordinal()))
-        except AttributeError as e:
-            raise TypeError("Epoch has no ordinal value") from e
+        except AttributeError:
+            raise TypeError("Epoch has no ordinal value") from None
 
     def to_native(self) -> date:
         """Convert to a native Python :class:`datetime.date` value."""
@@ -1625,13 +1625,8 @@ class Time(time_base_class, metaclass=TimeType):
                 # so we can ignore this part
                 # offset_second = float(m.group(13) or 0.0)
                 offset = 60 * offset_hour + offset_minute
-                return cls(
-                    hour,
-                    minute,
-                    second,
-                    nanosecond,
-                    tzinfo=FixedOffset(offset_multiplier * offset),
-                )
+                tz = FixedOffset(offset_multiplier * offset)
+                return cls(hour, minute, second, nanosecond, tzinfo=tz)
         raise ValueError("Time string is not in ISO format")
 
     @classmethod
@@ -1721,9 +1716,7 @@ class Time(time_base_class, metaclass=TimeType):
         hour, minute, second = cls.__normalize_second(hour, minute, second)
         if 0 <= nanosecond < NANO_SECONDS:
             return hour, minute, second, nanosecond
-        raise ValueError(
-            "Nanosecond out of range (0..%s)" % (NANO_SECONDS - 1)
-        )
+        raise ValueError(f"Nanosecond out of range (0..{NANO_SECONDS - 1})")
 
     # CLASS METHOD ALIASES #
 

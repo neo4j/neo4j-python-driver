@@ -60,27 +60,23 @@ def custom_routing_opener(fake_connection_generator, mocker):
             nonlocal failures
             res = next(failures, None)
             if res is None:
+                routers = [
+                    str(ROUTER1_ADDRESS),
+                    str(ROUTER2_ADDRESS),
+                    str(ROUTER3_ADDRESS),
+                ]
                 if get_readers is not None:
                     readers = get_readers(kwargs.get("database"))
                 else:
                     readers = [str(READER1_ADDRESS)]
+                writers = [str(WRITER1_ADDRESS)]
                 return [
                     {
                         "ttl": 1000,
                         "servers": [
-                            {
-                                "addresses": [
-                                    str(ROUTER1_ADDRESS),
-                                    str(ROUTER2_ADDRESS),
-                                    str(ROUTER3_ADDRESS),
-                                ],
-                                "role": "ROUTE",
-                            },
+                            {"addresses": routers, "role": "ROUTE"},
                             {"addresses": readers, "role": "READ"},
-                            {
-                                "addresses": [str(WRITER1_ADDRESS)],
-                                "role": "WRITE",
-                            },
+                            {"addresses": writers, "role": "WRITE"},
                         ],
                     }
                 ]
@@ -169,9 +165,8 @@ def test_removes_old_routing_table(opener):
 
     old_value = pool.routing_tables["test_db1"].last_updated_time
     pool.routing_tables["test_db1"].ttl = 0
-    pool.routing_tables[
-        "test_db2"
-    ].ttl = -RoutingConfig.routing_table_purge_delay
+    db2_rt = pool.routing_tables["test_db2"]
+    db2_rt.ttl = -RoutingConfig.routing_table_purge_delay
 
     cx = pool.acquire(READ_ACCESS, 30, "test_db1", None, None, None)
     pool.release(cx)

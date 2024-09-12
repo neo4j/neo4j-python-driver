@@ -196,9 +196,9 @@ class ConfigType(ABCMeta):
             return set(fields)
 
         def _deprecated_keys(_):
-            return set(deprecated_aliases.keys()) | set(
-                deprecated_alternatives.keys()
-            )
+            aliases = set(deprecated_aliases.keys())
+            alternatives = set(deprecated_alternatives.keys())
+            return aliases | alternatives
 
         def _get_new(_, key):
             return deprecated_aliases.get(
@@ -217,23 +217,16 @@ class ConfigType(ABCMeta):
         def _experimental_options(_):
             return experimental_options
 
-        attributes.setdefault("keys", classmethod(keys))
-        attributes.setdefault("_get_new", classmethod(_get_new))
-        attributes.setdefault(
-            "_deprecated_keys", classmethod(_deprecated_keys)
-        )
-        attributes.setdefault(
-            "_deprecated_aliases", classmethod(_deprecated_aliases)
-        )
-        attributes.setdefault(
-            "_deprecated_alternatives", classmethod(_deprecated_alternatives)
-        )
-        attributes.setdefault(
-            "_deprecated_options", classmethod(_deprecated_options)
-        )
-        attributes.setdefault(
-            "_experimental_options", classmethod(_experimental_options)
-        )
+        for func in (
+            keys,
+            _get_new,
+            _deprecated_keys,
+            _deprecated_aliases,
+            _deprecated_alternatives,
+            _deprecated_options,
+            _experimental_options,
+        ):
+            attributes.setdefault(func.__name__, classmethod(func))
 
         return super().__new__(
             mcs,

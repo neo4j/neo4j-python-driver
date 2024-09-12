@@ -23,12 +23,11 @@ def result_consume_example(driver):
         session.run("MATCH (_) DETACH DELETE _").consume()
 
     with driver.session() as session:
-        session.run(
-            "CREATE (a:Person {name: $name}) RETURN a", name="Alice"
-        ).single().value()
-        session.run(
-            "CREATE (a:Person {name: $name}) RETURN a", name="Bob"
-        ).single().value()
+        for name in ("Alice", "Bob"):
+            res = session.run(
+                "CREATE (a:Person {name: $name}) RETURN a", name=name
+            )
+            res.consume()
 
     # tag::result-consume[]
     def match_person_nodes(tx):

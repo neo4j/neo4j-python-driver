@@ -165,21 +165,21 @@ class RoutingTable:
         from ._conf import RoutingConfig
 
         perf_time = monotonic()
-        res = (
+        valid_until = (
             self.last_updated_time
             + self.ttl
             + RoutingConfig.routing_table_purge_delay
-            <= perf_time
         )
+        should_be_purged = valid_until <= perf_time
         log.debug(
             "[#0000]  _: <ROUTING> purge check: "
             "last_updated_time=%r, ttl=%r, perf_time=%r => %r",
             self.last_updated_time,
             self.ttl,
             perf_time,
-            res,
+            should_be_purged,
         )
-        return res
+        return should_be_purged
 
     def update(self, new_routing_table):
         """Update the routing table with new routing information."""

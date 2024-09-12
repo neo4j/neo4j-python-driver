@@ -276,10 +276,8 @@ def apply_unasync(files):
         paths += list(ASYNC_TESTKIT_BACKEND_DIR.rglob("*"))
     else:
         paths = [ROOT_DIR / Path(f) for f in files]
-    filtered_paths = (
-        path for path in paths if path.suffix in PY_FILE_EXTENSIONS
-    )
 
+    filtered_paths = filter(lambda p: p.suffix in PY_FILE_EXTENSIONS, paths)
     unasync.unasync_files(map(str, filtered_paths), rules)
 
     return [Path(path) for rule in rules for path in rule.out_files]

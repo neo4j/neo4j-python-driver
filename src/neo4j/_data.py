@@ -363,6 +363,10 @@ class RecordExporter(DataTransformer):
 class RecordTableRowExporter(DataTransformer):
     """Transformer class used by the :meth:`.Result.to_df` method."""
 
+    @staticmethod
+    def _escape_map_key(key: str) -> str:
+        return key.replace("\\", "\\\\").replace(".", "\\.")
+
     def transform(self, x):
         assert isinstance(x, Mapping)
         typ = type(x)
@@ -370,13 +374,9 @@ class RecordTableRowExporter(DataTransformer):
             item
             for k, v in x.items()
             for item in self._transform(
-                v, prefix=k.replace("\\", "\\\\").replace(".", "\\.")
+                v, prefix=self._escape_map_key(k)
             ).items()
         )
-
-    @staticmethod
-    def _escape_map_key(key: str) -> str:
-        return key.replace("\\", "\\\\").replace(".", "\\.")
 
     def _transform(self, x, prefix):
         if isinstance(x, Node):

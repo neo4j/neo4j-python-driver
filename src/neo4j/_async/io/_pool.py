@@ -1095,7 +1095,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired(
                     f"Failed to obtain connection towards '{access_mode}' "
-                    f"server."
+                    "server."
                 ) from err
             try:
                 log.debug(

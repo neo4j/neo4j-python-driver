@@ -396,6 +396,7 @@ class ForbiddenOnReadOnlyDatabase(TransientError):
     pass
 
 
+# TODO: 6.0 - Make map private
 client_errors: dict[str, type[Neo4jError]] = {
     # ConstraintError
     "Neo.ClientError.Schema.ConstraintValidationFailed": ConstraintError,
@@ -425,6 +426,7 @@ client_errors: dict[str, type[Neo4jError]] = {
     "Neo.ClientError.Cluster.NotALeader": NotALeader,
 }
 
+# TODO: 6.0 - Make map private
 transient_errors: dict[str, type[Neo4jError]] = {
     # DatabaseUnavailableError
     "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailable

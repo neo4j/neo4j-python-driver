@@ -14,17 +14,20 @@
 # limitations under the License.
 
 
-from ..v1.temporal import (
-    Date,
-    DateTime,
+from datetime import (
     datetime,
-    get_date_unix_epoch_ordinal,
-    NANO_SECONDS,
-    pd,
-    Structure,
-    Time,
     timezone,
 )
+
+from ...._optional_deps import pd
+from ....time import (
+    Date,
+    DateTime,
+    NANO_SECONDS,
+    Time,
+)
+from ...packstream import Structure
+from ..v1.temporal import get_date_unix_epoch_ordinal
 
 
 def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]

@@ -167,7 +167,8 @@ class AsyncSession(AsyncWorkspace):
     async def _result_error(self, error):
         if isinstance(error, asyncio.CancelledError):
             self._handle_cancellation(message="_result_error")
-        elif self._auto_result:
+            return
+        if self._auto_result:
             self._auto_result = None
             await self._disconnect()
 

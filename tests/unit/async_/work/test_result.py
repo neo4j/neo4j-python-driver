@@ -327,18 +327,27 @@ async def test_result_iteration_mixed_methods():
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     iter1 = AsyncUtil.iter(result)
     iter2 = AsyncUtil.iter(result)
-    assert (await AsyncUtil.next(iter1)).get("x") == records[0][0]
-    assert (await AsyncUtil.next(iter2)).get("x") == records[1][0]
-    assert (await AsyncUtil.next(iter2)).get("x") == records[2][0]
-    assert (await AsyncUtil.next(iter1)).get("x") == records[3][0]
-    assert (await AsyncUtil.next(iter1)).get("x") == records[4][0]
-    assert (await AsyncUtil.next(result)).get("x") == records[5][0]
-    assert (await AsyncUtil.next(iter2)).get("x") == records[6][0]
-    assert (await AsyncUtil.next(iter1)).get("x") == records[7][0]
-    assert (await AsyncUtil.next(AsyncUtil.iter(result))).get("x") == records[
-        8
-    ][0]
+
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[0][0]
+    record = await AsyncUtil.next(iter2)
+    assert record.get("x") == records[1][0]
+    record = await AsyncUtil.next(iter2)
+    assert record.get("x") == records[2][0]
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[3][0]
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[4][0]
+    record = await AsyncUtil.next(result)
+    assert record.get("x") == records[5][0]
+    record = await AsyncUtil.next(iter2)
+    assert record.get("x") == records[6][0]
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[7][0]
+    record = await AsyncUtil.next(AsyncUtil.iter(result))
+    assert record.get("x") == records[8][0]
     assert [r.get("x") async for r in result] == [records[9][0]]
+
     with pytest.raises(StopAsyncIteration):
         await AsyncUtil.next(iter1)
     with pytest.raises(StopAsyncIteration):
@@ -347,6 +356,7 @@ async def test_result_iteration_mixed_methods():
         await AsyncUtil.next(result)
     with pytest.raises(StopAsyncIteration):
         await AsyncUtil.next(AsyncUtil.iter(result))
+
     assert [r.get("x") async for r in result] == []
 
 

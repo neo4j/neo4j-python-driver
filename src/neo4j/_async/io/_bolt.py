@@ -375,9 +375,8 @@ class AsyncBolt:
             cls.protocol_handlers().keys(), reverse=True
         )
         offered_versions = cls.version_list(supported_versions)
-        return b"".join(
-            version.to_bytes() for version in offered_versions
-        ).ljust(16, b"\x00")
+        versions_bytes = (v.to_bytes() for v in offered_versions)
+        return b"".join(versions_bytes).ljust(16, b"\x00")
 
     @classmethod
     async def ping(cls, address, *, deadline=None, pool_config=None):

@@ -195,10 +195,8 @@ class AsyncBackend:
             unused_keys = request.unseen_keys
             if unused_keys:
                 raise NotImplementedError(
-                    "Backend does not support some properties of the "
-                    + name
-                    + " request: "
-                    + ", ".join(unused_keys)
+                    f"Backend does not support some properties of the {name} "
+                    f"request: {', '.join(unused_keys)}"
                 )
         except (
             Neo4jError,

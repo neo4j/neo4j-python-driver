@@ -116,14 +116,9 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         if self._bookmark_manager is None:
             return self._bookmarks
 
-        self._last_from_bookmark_manager = tuple(
-            {
-                *await AsyncUtil.callback(
-                    self._bookmark_manager.get_bookmarks
-                ),
-                *self._initial_bookmarks,
-            }
-        )
+        bmm = await AsyncUtil.callback(self._bookmark_manager.get_bookmarks)
+        initial = self._initial_bookmarks
+        self._last_from_bookmark_manager = tuple({*bmm, *initial})
         return self._last_from_bookmark_manager
 
     async def _update_bookmarks(self, new_bookmarks):
