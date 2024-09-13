@@ -282,6 +282,9 @@ select = [
     "T20",  # print statements are ok in our helper scripts
 ]
 
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 83 # 79 (max line length) + 4 indentation of code blocks
+
 [tool.ruff.lint.pep8-naming]
 extend-ignore-names = ["mcs"]
 
