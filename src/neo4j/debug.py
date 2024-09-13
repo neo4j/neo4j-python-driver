@@ -33,7 +33,10 @@ from logging import (
 from sys import stderr
 
 
-__all__ = ["Watcher", "watch"]
+__all__ = [
+    "Watcher",
+    "watch",
+]
 
 
 class ColourFormatter(Formatter):

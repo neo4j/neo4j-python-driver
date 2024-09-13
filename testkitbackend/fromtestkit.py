@@ -123,8 +123,8 @@ def to_param(m):
             utc_offset_m = utc_offset_s // 60
             if utc_offset_m * 60 != utc_offset_s:
                 raise ValueError(
-                    "the used timezone library only supports "
-                    "UTC offsets by minutes"
+                    "the used timezone library only supports UTC offsets by "
+                    "minutes"
                 )
             tz = pytz.FixedOffset(utc_offset_m)
         return Time(
@@ -163,8 +163,8 @@ def to_param(m):
             utc_offset_m = utc_offset_s // 60
             if utc_offset_m * 60 != utc_offset_s:
                 raise ValueError(
-                    "the used timezone library only supports "
-                    "UTC offsets by minutes"
+                    "the used timezone library only supports UTC offsets by "
+                    "minutes"
                 )
             tz = pytz.FixedOffset(utc_offset_m)
             return tz.localize(datetime)

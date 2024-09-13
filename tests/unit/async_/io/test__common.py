@@ -35,8 +35,16 @@ from ...._async_compat import mark_async_test
             bytes(range(10, 15)),
             bytes((0, 2, 10, 11, 0, 2, 12, 13, 0, 1, 14)),
         ),
-        (2, bytes(range(10, 14)), bytes((0, 2, 10, 11, 0, 2, 12, 13))),
-        (2, bytes((5,)), bytes((0, 1, 5))),
+        (
+            2,
+            bytes(range(10, 14)),
+            bytes((0, 2, 10, 11, 0, 2, 12, 13)),
+        ),
+        (
+            2,
+            bytes((5,)),
+            bytes((0, 1, 5)),
+        ),
     ),
 )
 @mark_async_test

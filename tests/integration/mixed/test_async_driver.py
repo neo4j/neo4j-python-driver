@@ -32,9 +32,11 @@ from ..._async_compat import mark_async_test
 @pytest.mark.xfail(
     # direct driver is not making use of `asyncio.Lock`.
     sys.version_info < (3, 10) and env.NEO4J_SCHEME == "neo4j",
-    reason="asyncio's synchronization primitives can create a new event loop "
-    "if instantiated while there is no running event loop. This "
-    "changed with Python 3.10.",
+    reason=(
+        "asyncio's synchronization primitives can create a new event loop "
+        "if instantiated while there is no running event loop. This "
+        "changed with Python 3.10."
+    ),
     raises=RuntimeError,
     strict=True,
 )

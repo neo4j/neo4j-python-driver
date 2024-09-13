@@ -100,11 +100,10 @@ else:
 
 
 __all__ = [
-    # TODO: 6.0 - make these constants private
-    "CLASSIFICATION_CLIENT",
-    "CLASSIFICATION_DATABASE",
-    "CLASSIFICATION_TRANSIENT",
-    "ERROR_REWRITE_MAP",
+    "CLASSIFICATION_CLIENT",  # TODO: 6.0 - make constant private
+    "CLASSIFICATION_DATABASE",  # TODO: 6.0 - make constant private
+    "CLASSIFICATION_TRANSIENT",  # TODO: 6.0 - make constant private
+    "ERROR_REWRITE_MAP",  # TODO: 6.0 - make constant private
     "AuthConfigurationError",
     "AuthError",
     "BrokenRecordError",
@@ -303,7 +302,7 @@ class Neo4jError(Exception):
             return True
         return (
             self.code.startswith("Neo.ClientError.Security.")
-            and self.code != "Neo.ClientError.Security." "AuthorizationExpired"
+            and self.code != "Neo.ClientError.Security.AuthorizationExpired"
         )
 
     def _has_security_code(self) -> bool:

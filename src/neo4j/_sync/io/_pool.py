@@ -760,7 +760,7 @@ class Neo4jPool(IOPool):
             pass
         if not new_routing_info:
             log.debug(
-                "[#0000]  _: <POOL> failed to fetch routing info " "from %r",
+                "[#0000]  _: <POOL> failed to fetch routing info from %r",
                 address,
             )
             return None

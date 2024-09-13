@@ -248,9 +248,8 @@ class AsyncBolt4x0(AsyncBolt):
             parameters = {}
         extra = {}
         if mode in {READ_ACCESS, "r"}:
-            extra["mode"] = (
-                "r"  # It will default to mode "w" if nothing is specified
-            )
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
         if db:
             extra["db"] = db
         if (
@@ -350,9 +349,8 @@ class AsyncBolt4x0(AsyncBolt):
             self.assert_notification_filtering_support()
         extra = {}
         if mode in {READ_ACCESS, "r"}:
-            extra["mode"] = (
-                "r"  # It will default to mode "w" if nothing is specified
-            )
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
         if db:
             extra["db"] = db
         self.last_database = db
@@ -437,9 +435,8 @@ class AsyncBolt4x0(AsyncBolt):
             summary_signature = tag
 
         if details:
-            log.debug(
-                "[#%04X]  S: RECORD * %d", self.local_port, len(details)
-            )  # Do not log any data
+            # Do not log any data
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
             await self.responses[0].on_records(details)
 
         if summary_signature is None:

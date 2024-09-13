@@ -341,9 +341,8 @@ class Bolt3(Bolt):
             parameters = {}
         extra = {}
         if mode in {READ_ACCESS, "r"}:
-            extra["mode"] = (
-                "r"  # It will default to mode "w" if nothing is specified
-            )
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -438,9 +437,8 @@ class Bolt3(Bolt):
             self.assert_notification_filtering_support()
         extra = {}
         if mode in {READ_ACCESS, "r"}:
-            extra["mode"] = (
-                "r"  # It will default to mode "w" if nothing is specified
-            )
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -522,9 +520,8 @@ class Bolt3(Bolt):
             summary_signature = tag
 
         if details:
-            log.debug(
-                "[#%04X]  S: RECORD * %d", self.local_port, len(details)
-            )  # Do not log any data
+            # Do not log any data
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
             self.responses[0].on_records(details)
 
         if summary_signature is None:

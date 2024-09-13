@@ -28,15 +28,12 @@ from neo4j import Address
 
 
 mock_socket_ipv4 = mock.Mock()
-mock_socket_ipv4.getpeername = lambda: ("127.0.0.1", 7687)  # (address, port)
+#                                      (address, port)
+mock_socket_ipv4.getpeername = lambda: ("127.0.0.1", 7687)
 
 mock_socket_ipv6 = mock.Mock()
-mock_socket_ipv6.getpeername = lambda: (
-    "[::1]",
-    7687,
-    0,
-    0,
-)  # (address, port, flow info, scope id)
+#                                      (address, port, flow info, scope id)
+mock_socket_ipv6.getpeername = lambda: ("[::1]", 7687, 0, 0)
 
 
 @pytest.mark.parametrize(

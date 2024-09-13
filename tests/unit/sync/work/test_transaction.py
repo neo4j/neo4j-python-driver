@@ -280,7 +280,9 @@ def test_transaction_begin_pipelining(
                 "metadata": metadata,
                 "timeout": timeout,
                 "notifications_min_severity": notifications_min_severity,
-                "notifications_disabled_classifications": notifications_disabled_classifications,  # noqa: E501
+                "notifications_disabled_classifications": (
+                    notifications_disabled_classifications
+                ),
             },
         ),
     ]

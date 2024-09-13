@@ -81,8 +81,10 @@ NEO4J_EDITION = _LazyEvalEnv("TEST_NEO4J_EDITION")
 NEO4J_VERSION = _LazyEvalEnv("TEST_NEO4J_VERSION")
 NEO4J_IS_CLUSTER = _LazyEvalEnv("TEST_NEO4J_IS_CLUSTER", bool)
 NEO4J_SERVER_URI = _LazyEvalFunc(
-    lambda: f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:"
-    f"{_module.NEO4J_PORT}"
+    lambda: (
+        f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:"
+        f"{_module.NEO4J_PORT}"
+    )
 )
 
 

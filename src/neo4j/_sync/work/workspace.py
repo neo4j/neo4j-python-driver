@@ -110,9 +110,7 @@ class Workspace(NonConcurrentMethodChecker):
             )
         self._initial_bookmarks = self._bookmarks = prepared_bookmarks
 
-    def _get_bookmarks(
-        self,
-    ):
+    def _get_bookmarks(self):
         if self._bookmark_manager is None:
             return self._bookmarks
 

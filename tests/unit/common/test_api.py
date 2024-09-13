@@ -45,8 +45,18 @@ def test_bookmark_initialization_with_no_values() -> None:
 @pytest.mark.parametrize(
     ("test_input", "expected_values", "expected_bool", "expected_repr"),
     [
-        ((None,), frozenset(), False, "<Bookmark values={}>"),
-        ((None, None), frozenset(), False, "<Bookmark values={}>"),
+        (
+            (None,),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
+        (
+            (None, None),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
         (
             ("bookmark1", None),
             frozenset({"bookmark1"}),
@@ -80,8 +90,18 @@ def test_bookmark_initialization_with_values_none(
 @pytest.mark.parametrize(
     ("test_input", "expected_values", "expected_bool", "expected_repr"),
     [
-        (("",), frozenset(), False, "<Bookmark values={}>"),
-        (("", ""), frozenset(), False, "<Bookmark values={}>"),
+        (
+            ("",),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
+        (
+            ("", ""),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
         (
             ("bookmark1", ""),
             frozenset({"bookmark1"}),
@@ -151,20 +171,8 @@ _bm_input_mark = pytest.mark.parametrize(
     ("test_input", "expected"),
     [
         ((not_ascii,), ValueError),
-        (
-            (
-                "",
-                not_ascii,
-            ),
-            ValueError,
-        ),
-        (
-            (
-                "bookmark1",
-                chr(129),
-            ),
-            ValueError,
-        ),
+        (("", not_ascii), ValueError),
+        (("bookmark1", chr(129)), ValueError),
     ],
 )
 

@@ -110,9 +110,7 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
             )
         self._initial_bookmarks = self._bookmarks = prepared_bookmarks
 
-    async def _get_bookmarks(
-        self,
-    ):
+    async def _get_bookmarks(self):
         if self._bookmark_manager is None:
             return self._bookmarks
 

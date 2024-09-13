@@ -455,49 +455,41 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
+
+        # avoid new lines after imports for better readability and conciseness
+        # fmt: off
         if protocol_version == (5, 6):
             from ._bolt5 import Bolt5x6
-
             bolt_cls = Bolt5x6
         elif protocol_version == (5, 5):
             from ._bolt5 import Bolt5x5
-
             bolt_cls = Bolt5x5
         elif protocol_version == (5, 4):
             from ._bolt5 import Bolt5x4
-
             bolt_cls = Bolt5x4
         elif protocol_version == (5, 3):
             from ._bolt5 import Bolt5x3
-
             bolt_cls = Bolt5x3
         elif protocol_version == (5, 2):
             from ._bolt5 import Bolt5x2
-
             bolt_cls = Bolt5x2
         elif protocol_version == (5, 1):
             from ._bolt5 import Bolt5x1
-
             bolt_cls = Bolt5x1
         elif protocol_version == (5, 0):
             from ._bolt5 import Bolt5x0
-
             bolt_cls = Bolt5x0
         elif protocol_version == (4, 4):
             from ._bolt4 import Bolt4x4
-
             bolt_cls = Bolt4x4
         elif protocol_version == (4, 3):
             from ._bolt4 import Bolt4x3
-
             bolt_cls = Bolt4x3
         elif protocol_version == (4, 2):
             from ._bolt4 import Bolt4x2
-
             bolt_cls = Bolt4x2
         elif protocol_version == (4, 1):
             from ._bolt4 import Bolt4x1
-
             bolt_cls = Bolt4x1
         # Implementation for 4.0 exists, but there was no space left in the
         # handshake to offer this version to the server. Hence, the server
@@ -507,8 +499,8 @@ class Bolt:
         #     bolt_cls = AsyncBolt4x0
         elif protocol_version == (3, 0):
             from ._bolt3 import Bolt3
-
             bolt_cls = Bolt3
+        # fmt: on
         else:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             BoltSocket.close_socket(s)

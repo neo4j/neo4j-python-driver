@@ -447,8 +447,7 @@ class SummaryInputPosition:
 
     def __str__(self) -> str:
         return (
-            f"line: {self.line}, column: {self.column}, "
-            f"offset: {self.offset}"
+            f"line: {self.line}, column: {self.column}, offset: {self.offset}"
         )
 
 

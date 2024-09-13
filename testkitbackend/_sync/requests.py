@@ -543,11 +543,9 @@ def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
                         "Backend did not receive expected "
                         f"DomainNameResolutionCompleted message for id {key}"
                     )
-                dns_resolved_addresses += list(
-                    map(
-                        lambda a: ":".join((a, *address[1:])),
-                        backend.dns_resolutions.pop(key),
-                    )
+                dns_resolved_addresses.extend(
+                    ":".join((addr, *address[1:]))
+                    for addr in backend.dns_resolutions.pop(key)
                 )
 
             addresses = dns_resolved_addresses

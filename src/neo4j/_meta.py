@@ -47,14 +47,18 @@ def _compute_bolt_agent() -> dict[str, str]:
 
     return {
         "product": f"neo4j-python/{version}",
-        "platform": f"{platform.system() or 'Unknown'} "
-        f"{platform.release() or 'unknown'}; "
-        f"{platform.machine() or 'unknown'}",
+        "platform": (
+            f"{platform.system() or 'Unknown'} "
+            f"{platform.release() or 'unknown'}; "
+            f"{platform.machine() or 'unknown'}"
+        ),
         "language": f"{language}/{format_version_info(sys.version_info)}",
-        "language_details": f"{platform.python_implementation()}; "
-        f"{format_version_info(sys.implementation.version)} "
-        f"({', '.join(platform.python_build())}) "
-        f"[{platform.python_compiler()}]",
+        "language_details": (
+            f"{platform.python_implementation()}; "
+            f"{format_version_info(sys.implementation.version)} "
+            f"({', '.join(platform.python_build())}) "
+            f"[{platform.python_compiler()}]"
+        ),
     }
 
 

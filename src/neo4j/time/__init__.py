@@ -1255,8 +1255,8 @@ class Date(date_base_class, metaclass=DateType):
         if isinstance(other, Duration):
             if other.seconds or other.nanoseconds:
                 raise ValueError(
-                    "Cannot add a Duration with seconds or "
-                    "nanoseconds to a Date"
+                    "Cannot add a Duration with seconds or nanoseconds to a "
+                    "Date"
                 )
             if other.months == other.days == 0:
                 return self
@@ -1812,7 +1812,7 @@ class Time(time_base_class, metaclass=TimeType):
         ):
             if strict:
                 raise TypeError(
-                    "can't compare offset-naive and offset-aware " "times"
+                    "can't compare offset-naive and offset-aware times"
                 )
             else:
                 return None, None
@@ -2490,7 +2490,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         ):
             if strict:
                 raise TypeError(
-                    "can't compare offset-naive and offset-aware " "datetimes"
+                    "can't compare offset-naive and offset-aware datetimes"
                 )
             else:
                 return None, None
@@ -2544,7 +2544,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return not self.__eq__(other)
 
     def __lt__(  # type: ignore[override]
-        self, other: object
+        self, other: datetime | DateTime
     ) -> bool:
         """
         ``<`` comparison with another datetime.
@@ -2564,7 +2564,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         )
 
     def __le__(  # type: ignore[override]
-        self, other: object
+        self, other: datetime | DateTime
     ) -> bool:
         """
         ``<=`` comparison with another datetime.
@@ -2581,7 +2581,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return self_norm <= other_norm
 
     def __ge__(  # type: ignore[override]
-        self, other: object
+        self, other: datetime | DateTime
     ) -> bool:
         """
         ``>=`` comparison with another datetime.
@@ -2766,11 +2766,8 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             native_utc = utc.to_native()
             native_res = tz.fromutc(native_utc)
             res = self.from_native(native_res)
-            return res.replace(
-                nanosecond=(
-                    native_res.microsecond * 1000 + self.nanosecond % 1000
-                )
-            )
+            ns = native_res.microsecond * 1000 + self.nanosecond % 1000
+            return res.replace(nanosecond=ns)
 
     def utc_offset(self) -> timedelta | None:
         """
@@ -2880,28 +2877,12 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return s
 
     def __repr__(self) -> str:
-        fields: tuple[str, ...]
-        if self.tzinfo is None:
-            fields = tuple(
-                map(
-                    repr,
-                    (
-                        *self.year_month_day,
-                        *self.hour_minute_second_nanosecond,
-                    ),
-                )
-            )
-        else:
-            fields = (
-                *map(
-                    repr,
-                    (
-                        *self.year_month_day,
-                        *self.hour_minute_second_nanosecond,
-                    ),
-                ),
-                f"tzinfo={self.tzinfo!r}",
-            )
+        fields: list[str] = [
+            *map(repr, self.year_month_day),
+            *map(repr, self.hour_minute_second_nanosecond),
+        ]
+        if self.tzinfo is not None:
+            fields.append(f"tzinfo={self.tzinfo!r}")
         return f"neo4j.time.DateTime({', '.join(fields)})"
 
     def __str__(self) -> str:

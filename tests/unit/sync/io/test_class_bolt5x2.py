@@ -671,7 +671,10 @@ def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
         (3.0005, 3000),
         (3.456, 3456),
         (1, 1000),
-        (-1e-15, ValueError("Timeout must be a positive number or 0")),
+        (
+            -1e-15,
+            ValueError("Timeout must be a positive number or 0"),
+        ),
         (
             "foo",
             ValueError("Timeout must be specified as a number of seconds"),

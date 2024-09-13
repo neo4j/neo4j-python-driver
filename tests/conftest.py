@@ -146,16 +146,20 @@ def _parse_version(version: str) -> tuple[float, ...]:
 def mark_requires_min_bolt_version(version="3.5"):
     return pytest.mark.skipif(
         _parse_version(env.NEO4J_VERSION) < _parse_version(version),
-        reason=f"requires server version '{version}' or higher, "
-        f"found '{env.NEO4J_VERSION}'",
+        reason=(
+            f"requires server version '{version}' or higher, "
+            f"found '{env.NEO4J_VERSION}'"
+        ),
     )
 
 
 def mark_requires_edition(edition):
     return pytest.mark.skipif(
         edition != env.NEO4J_EDITION,
-        reason=f"requires server edition '{edition}', "
-        f"found '{env.NEO4J_EDITION}'",
+        reason=(
+            f"requires server edition '{edition}', "
+            f"found '{env.NEO4J_EDITION}'"
+        ),
     )
 
 

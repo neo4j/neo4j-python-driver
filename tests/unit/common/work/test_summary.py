@@ -319,8 +319,9 @@ class StatusOrderHelper:
         gql_status = f"{category}N{i:02d}"
         return {
             "gql_status": gql_status,
-            "status_description": "note: successful completion - "
-            f"custom stuff {i}",
+            "status_description": (
+                f"note: successful completion - custom stuff {i}"
+            ),
             "description": f"notification description {i}",
             "neo4j_code": f"Neo.Foo.Bar.{type_}-{i}",
             "title": f"Some cool title which defo is dope! {i}",
@@ -453,6 +454,7 @@ def test_gql_statuses_keep_order(
     ),
     (
         ({}, {}),
+        # ---------------------------------------------------------------------
         # gql_status
         #  * string values stay as is
         #  * invalid values get turned into ""
@@ -466,6 +468,7 @@ def test_gql_statuses_keep_order(
             ({"gql_status": value}, {"gql_status": ""})
             for value in t.cast(t.Iterable, (1, None, False, ..., {}, []))
         ),
+        # ---------------------------------------------------------------------
         # status_description is handled like gql_status
         ({"status_description": ""}, {"status_description": ""}),
         ({"status_description": "test"}, {"status_description": "test"}),
@@ -477,17 +480,20 @@ def test_gql_statuses_keep_order(
             ({"status_description": value}, {"status_description": ""})
             for value in t.cast(t.Iterable, (1, None, False, ..., {}, []))
         ),
+        # ---------------------------------------------------------------------
         # title doesn't matter
         ({"title": "some other title, doesn't matter"}, {}),
         ({"title": 1}, {}),
         ({"title": None}, {}),
         ({"title": ...}, {}),
+        # ---------------------------------------------------------------------
         # neo4j_code doesn't matter except for determining is_notification
         ({"neo4j_code": "Neo.ClientError.You.Suck"}, {}),
         ({"neo4j_code": ""}, {"is_notification": False}),
         ({"neo4j_code": 1}, {"is_notification": False}),
         ({"neo4j_code": None}, {"is_notification": False}),
         ({"neo4j_code": ...}, {"is_notification": False}),
+        # ---------------------------------------------------------------------
         # severity
         #  * know severities are mapped
         #  * stays as-is in the diagnostic record
@@ -514,6 +520,7 @@ def test_gql_statuses_keep_order(
             )
             for severity in (1, None, ...)
         ),
+        # ---------------------------------------------------------------------
         # classification
         #  * know classifications are mapped to classification
         #  * stays as-is in the diagnostic record
@@ -540,6 +547,7 @@ def test_gql_statuses_keep_order(
             )
             for cls in (1, None, ...)
         ),
+        # ---------------------------------------------------------------------
         # position
         #  * stays as-is in the diagnostic record
         #  * valid positions are mapped to status.position
@@ -580,7 +588,10 @@ def test_gql_statuses_keep_order(
             )
         ),
         *(
-            ({("diagnostic_record", "_position"): pos}, {"position": None})
+            (
+                {("diagnostic_record", "_position"): pos},
+                {"position": None},
+            )
             for pos in (
                 ...,
                 "1",
@@ -1000,16 +1011,19 @@ FOOBAR_SEV_OVERWRITES = {
     ),
     (
         ({}, {}, {}),
+        # ---------------------------------------------------------------------
         # title doesn't matter
         ({"title": "some other title, doesn't matter"}, {}, {}),
         ({"title": 1}, {}, {}),
         ({"title": None}, {}, {}),
         ({"title": ...}, {}, {}),
+        # ---------------------------------------------------------------------
         # code doesn't matter
         ({"code": "Neo.ClientError.You.Suck"}, {}, {}),
         ({"code": 1}, {}, {}),
         ({"code": None}, {}, {}),
         ({"code": ...}, {}, {}),
+        # ---------------------------------------------------------------------
         # description is inferred from severity
         (
             {"description": ""},
@@ -1095,6 +1109,7 @@ FOOBAR_SEV_OVERWRITES = {
             },
             {"_severity": "FOOBAR"},
         ),
+        # ---------------------------------------------------------------------
         # severity
         #  * know severities are mapped
         #  * stays as-is in the diagnostic record
@@ -1133,6 +1148,7 @@ FOOBAR_SEV_OVERWRITES = {
             )
             for severity in (1, None, ...)
         ),
+        # ---------------------------------------------------------------------
         # category
         #  * know categories are mapped to classification
         #  * stays as-is in the diagnostic record
@@ -1162,6 +1178,7 @@ FOOBAR_SEV_OVERWRITES = {
             )
             for cat in (1, None, ...)
         ),
+        # ---------------------------------------------------------------------
         # position
         #  * stays as-is in the diagnostic record
         #  * valid positions are mapped to status.position
@@ -1356,15 +1373,51 @@ def make_notification_metadata(severity) -> dict[str, t.Any]:
 @pytest.mark.parametrize(
     ("result_type", "severities", "expected_statuses"),
     (
-        ("success", ["WARNING"], ["01N42", "00000"]),
-        ("no data", ["WARNING"], ["02000", "01N42"]),
-        ("omitted result", ["WARNING"], ["01N42", "00001"]),
-        ("success", ["INFORMATION"], ["00000", "03N42"]),
-        ("no data", ["INFORMATION"], ["02000", "03N42"]),
-        ("omitted result", ["INFORMATION"], ["00001", "03N42"]),
-        ("success", ["BANANA"], ["00000", "03N42"]),
-        ("no data", ["BANANA"], ["02000", "03N42"]),
-        ("omitted result", ["BANANA"], ["00001", "03N42"]),
+        (
+            "success",
+            ["WARNING"],
+            ["01N42", "00000"],
+        ),
+        (
+            "no data",
+            ["WARNING"],
+            ["02000", "01N42"],
+        ),
+        (
+            "omitted result",
+            ["WARNING"],
+            ["01N42", "00001"],
+        ),
+        (
+            "success",
+            ["INFORMATION"],
+            ["00000", "03N42"],
+        ),
+        (
+            "no data",
+            ["INFORMATION"],
+            ["02000", "03N42"],
+        ),
+        (
+            "omitted result",
+            ["INFORMATION"],
+            ["00001", "03N42"],
+        ),
+        (
+            "success",
+            ["BANANA"],
+            ["00000", "03N42"],
+        ),
+        (
+            "no data",
+            ["BANANA"],
+            ["02000", "03N42"],
+        ),
+        (
+            "omitted result",
+            ["BANANA"],
+            ["00001", "03N42"],
+        ),
         (
             "success",
             ["WARNING", "INFORMATION", "FOO", "WARNING", "INFORMATION", "FOO"],
@@ -1420,6 +1473,7 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
     ("status_overwrite", "diagnostic_record_overwrite", "expected_overwrite"),
     (
         ({}, {}, {}),
+        # ---------------------------------------------------------------------
         # have no effect on the produced notification
         #  * gql_status
         #  * diagnostic_record OPERATION
@@ -1445,18 +1499,21 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
                 ("FOOBAR", None, ..., -1, 1.6, False, [], {}),
             )
         ),
+        # ---------------------------------------------------------------------
         # copies description to description
         (
             {"description": "something completely different 👀"},
             {},
             {"description": "something completely different 👀"},
         ),
+        # ---------------------------------------------------------------------
         # copies title
         (
             {"title": "something completely different 👀"},
             {},
             {"title": "something completely different 👀"},
         ),
+        # ---------------------------------------------------------------------
         # _severity
         #  * unknown value gets turned into "" (raw) / "UNKNOWN" (parsed enum)
         #  * known value gets copied to raw and parsed
@@ -1465,6 +1522,7 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
             {"_severity": "FOOBAR"},
             {"raw_severity": "FOOBAR", "severity": "UNKNOWN"},
         ),
+        # ---------------------------------------------------------------------
         # (
         #     {}, {"_severity": ""},
         #     {"raw_severity": "", "severity": "UNKNOWN"}
@@ -1474,6 +1532,7 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
             for sev in NotificationSeverity.__members__
             if sev != "UNKNOWN"
         ),
+        # ---------------------------------------------------------------------
         # _classification
         #  * maps to raw_category/category
         #  * unknown value gets turned into "" (raw) / "UNKNOWN" (parsed enum)
@@ -1483,6 +1542,7 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
             {"_classification": "FOOBAR"},
             {"raw_category": "FOOBAR", "category": "UNKNOWN"},
         ),
+        # ---------------------------------------------------------------------
         # (
         #     {}, {"_classification": ""},
         #     {"raw_category": "", "category": "UNKNOWN"}
@@ -1496,6 +1556,7 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
             for sev in NotificationCategory.__members__
             if sev != "UNKNOWN"
         ),
+        # ---------------------------------------------------------------------
         # _position maps to position
         #  * extra fields are copied to raw data
         (
@@ -1792,11 +1853,7 @@ def _make_raw_notification_obj(
         "title": "Some cool title which defo is dope!",
         "severity": "INFORMATION",
         "category": "HINT",
-        "position": {
-            "line": 1337,
-            "column": 42,
-            "offset": 420,
-        },
+        "position": {"line": 1337, "column": 42, "offset": 420},
     }
 
     key_translation: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = {
@@ -1804,11 +1861,7 @@ def _make_raw_notification_obj(
         ("description",): (("description",),),
         ("title",): (("title",),),
         ("diagnostic_record", "_severity"): (("severity",),),
-        ("diagnostic_record",): (
-            ("severity",),
-            ("category",),
-            ("position",),
-        ),
+        ("diagnostic_record",): (("severity",), ("category",), ("position",)),
         ("diagnostic_record", "_classification"): (("category",),),
         ("diagnostic_record", "_position"): (("position",),),
     }
@@ -2096,7 +2149,11 @@ def _make_summary_notification(
     ("meta", "expected"),
     (
         # empty meta data
-        ({}, _make_summary_notification()),
+        (
+            {},
+            _make_summary_notification(),
+        ),
+        # ---------------------------------------------------------------------
         # all string fields
         *(
             ({key: str_value}, _make_summary_notification({key: str_value}))
@@ -2104,12 +2161,16 @@ def _make_summary_notification(
             for str_value in ("", " ", "Foo Bar Baz")
         ),
         *(
-            ({key: title}, _make_summary_notification())
+            (
+                {key: title},
+                _make_summary_notification(),
+            )
             for key in ("title", "code", "description")
             for title in t.cast(
                 t.Iterable, (True, False, 1, [], {}, 1.2345, None)
             )
         ),
+        # ---------------------------------------------------------------------
         # severity
         *(
             (
@@ -2130,11 +2191,15 @@ def _make_summary_notification(
             )
         ),
         *(
-            ({"severity": value}, _make_summary_notification())
+            (
+                {"severity": value},
+                _make_summary_notification(),
+            )
             for value in t.cast(
                 t.Iterable, (True, False, 1, [], {}, 1.2345, None)
             )
         ),
+        # ---------------------------------------------------------------------
         # category
         *(
             (
@@ -2162,11 +2227,15 @@ def _make_summary_notification(
             )
         ),
         *(
-            ({"category": value}, _make_summary_notification())
+            (
+                {"category": value},
+                _make_summary_notification(),
+            )
             for value in t.cast(
                 t.Iterable, (True, False, 1, [], {}, 1.2345, None)
             )
         ),
+        # ---------------------------------------------------------------------
         # position
         *(
             (
@@ -2199,9 +2268,13 @@ def _make_summary_notification(
                 ),
             )
         ),
+        # ---------------------------------------------------------------------
         # missing field/field of wrong type => position is default value
         *(
-            ({"position": value}, _make_summary_notification())
+            (
+                {"position": value},
+                _make_summary_notification(),
+            )
             for value in (
                 *(
                     {"line": 1, "column": 2, "offset": 3, key: value}

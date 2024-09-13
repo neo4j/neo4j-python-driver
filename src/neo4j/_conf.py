@@ -280,7 +280,7 @@ class Config(Mapping, metaclass=ConfigType):
         def set_attr(k, v):
             if k in self.keys():
                 if warn and k in self._deprecated_options():
-                    deprecation_warn(f"The '{k}' config key is " "deprecated.")
+                    deprecation_warn(f"The '{k}' config key is deprecated.")
                 if warn and k in self._experimental_options():
                     experimental_warn(
                         f"The '{k}' config key is experimental. "

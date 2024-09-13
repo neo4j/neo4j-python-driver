@@ -386,36 +386,32 @@ class TestDateTime:
         assert expected == actual
 
     def test_from_iso_format_with_positive_tz(self) -> None:
-        expected = DateTime(
-            2018, 10, 1, 12, 34, 56, 123456789, tzinfo=FixedOffset(754)
-        )
+        tz = FixedOffset(754)
+        expected = DateTime(2018, 10, 1, 12, 34, 56, 123456789, tzinfo=tz)
         actual = DateTime.from_iso_format(
             "2018-10-01T12:34:56.123456789+12:34"
         )
         assert expected == actual
 
     def test_from_iso_format_with_negative_tz(self) -> None:
-        expected = DateTime(
-            2018, 10, 1, 12, 34, 56, 123456789, tzinfo=FixedOffset(-754)
-        )
+        tz = FixedOffset(-754)
+        expected = DateTime(2018, 10, 1, 12, 34, 56, 123456789, tzinfo=tz)
         actual = DateTime.from_iso_format(
             "2018-10-01T12:34:56.123456789-12:34"
         )
         assert expected == actual
 
     def test_from_iso_format_with_positive_long_tz(self) -> None:
-        expected = DateTime(
-            2018, 10, 1, 12, 34, 56, 123456789, tzinfo=FixedOffset(754)
-        )
+        tz = FixedOffset(754)
+        expected = DateTime(2018, 10, 1, 12, 34, 56, 123456789, tzinfo=tz)
         actual = DateTime.from_iso_format(
             "2018-10-01T12:34:56.123456789+12:34:56.123456"
         )
         assert expected == actual
 
     def test_from_iso_format_with_negative_long_tz(self) -> None:
-        expected = DateTime(
-            2018, 10, 1, 12, 34, 56, 123456789, tzinfo=FixedOffset(-754)
-        )
+        tz = FixedOffset(-754)
+        expected = DateTime(2018, 10, 1, 12, 34, 56, 123456789, tzinfo=tz)
         actual = DateTime.from_iso_format(
             "2018-10-01T12:34:56.123456789-12:34:56.123456"
         )
@@ -550,10 +546,7 @@ def test_transition_to_summertime(datetime_cls) -> None:
 @pytest.mark.parametrize("datetime_cls", (DateTime, datetime))
 @pytest.mark.parametrize(
     "utc_impl",
-    (
-        utc,
-        datetime_timezone(timedelta(0)),
-    ),
+    (utc, datetime_timezone(timedelta(0))),
 )
 @pytest.mark.parametrize(
     "tz", (timezone_berlin, datetime_timezone(timedelta(hours=-1)))
@@ -818,21 +811,11 @@ def test_hashed_equality(dt1, dt2) -> None:
 )
 @pytest.mark.parametrize(
     "tz",
-    (
-        FixedOffset(0),
-        FixedOffset(1),
-        FixedOffset(-1),
-        utc,
-    ),
+    (FixedOffset(0), FixedOffset(1), FixedOffset(-1), utc),
 )
 @pytest.mark.parametrize(
     "op",
-    (
-        operator.lt,
-        operator.le,
-        operator.gt,
-        operator.ge,
-    ),
+    (operator.lt, operator.le, operator.gt, operator.ge),
 )
 def test_comparison_with_only_one_naive_fails(dt1, dt2, tz, op) -> None:
     dt1 = dt1.replace(tzinfo=tz)

@@ -103,7 +103,7 @@ def dehydrate_datetime(value):  # type: ignore[no-redef]
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         if offset.microseconds:
             raise ValueError(
-                "Bolt protocol does not support sub-second " "UTC offsets."
+                "Bolt protocol does not support sub-second UTC offsets."
             )
         offset_seconds = offset.days * 86400 + offset.seconds
         return Structure(b"I", seconds, nanoseconds, offset_seconds)
@@ -136,7 +136,7 @@ if pd is not None:
             offset = tz.utcoffset(value)
             if offset.microseconds:
                 raise ValueError(
-                    "Bolt protocol does not support sub-second " "UTC offsets."
+                    "Bolt protocol does not support sub-second UTC offsets."
                 )
             offset_seconds = offset.days * 86400 + offset.seconds
             return Structure(b"I", seconds, nanoseconds, offset_seconds)
