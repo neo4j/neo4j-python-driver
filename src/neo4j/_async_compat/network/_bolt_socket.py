@@ -21,15 +21,22 @@ import logging
 import struct
 import typing as t
 from contextlib import suppress
-from socket import (  # noqa: N812 (it is a class)
+
+
+# fmt: off
+# isort: off
+# isort seems buggy with the noqa comment
+from socket import (
     AF_INET,
     AF_INET6,
     SHUT_RDWR,
     SO_KEEPALIVE,
     socket,
     SOL_SOCKET,
-    timeout as SocketTimeout,
+    timeout as SocketTimeout,  # noqa: N812 (it is a class)
 )
+# isort: on
+# fmt: on
 from ssl import (
     CertificateError,
     HAS_SNI,
