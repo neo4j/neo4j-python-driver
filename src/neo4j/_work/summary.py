@@ -119,8 +119,8 @@ class ResultSummary:
             self.query_type = metadata["type"]
             if self.query_type not in {"r", "w", "rw", "s"}:
                 raise BoltProtocolError(
-                    "Unexpected query type '%s' received from server. "
-                    "Consider updating the driver.",
+                    f"Unexpected query type {self.query_type!r} received from "
+                    "server. Consider updating the driver.",
                     address,
                 )
         self.query_type = metadata.get("type")
