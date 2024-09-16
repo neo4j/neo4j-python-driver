@@ -550,7 +550,7 @@ def parse_neo4j_uri(uri):
 
     if parsed.scheme == URI_SCHEME_BOLT_ROUTING:
         raise ConfigurationError(
-            f"Uri scheme {parsed.scheme!r} have been renamed. "
+            f"Uri scheme {parsed.scheme!r} has been renamed. "
             f"Use {URI_SCHEME_NEO4J!r}"
         )
     elif parsed.scheme == URI_SCHEME_BOLT:
