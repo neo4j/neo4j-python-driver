@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import typing as t
-from contextlib import suppress
+from contextlib import suppress as _suppress
 from socket import (
     AddressFamily,
     AF_INET,
@@ -172,7 +172,7 @@ class Address(tuple, metaclass=_AddressMeta):
             port: str | int
             host, _, port = s[1:].rpartition("]")
             port = port.lstrip(":")
-            with suppress(TypeError, ValueError):
+            with _suppress(TypeError, ValueError):
                 port = int(port)
             host = host or default_host or "localhost"
             port = port or default_port or 0
@@ -180,7 +180,7 @@ class Address(tuple, metaclass=_AddressMeta):
         else:
             # IPv4
             host, _, port = s.partition(":")
-            with suppress(TypeError, ValueError):
+            with _suppress(TypeError, ValueError):
                 port = int(port)
             host = host or default_host or "localhost"
             port = port or default_port or 0

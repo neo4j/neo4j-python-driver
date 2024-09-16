@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
-from contextlib import suppress
+from contextlib import suppress as _suppress
 from logging import (
     CRITICAL,
     DEBUG,
@@ -178,7 +178,7 @@ class Watcher:
     def stop(self) -> None:
         """Disable logging for all loggers."""
         for logger in self._loggers:
-            with suppress(KeyError):
+            with _suppress(KeyError):
                 logger.removeHandler(self._handlers.pop(logger.name))
 
 
