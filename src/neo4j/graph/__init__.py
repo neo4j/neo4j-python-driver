@@ -105,6 +105,7 @@ class Entity(t.Mapping[str, t.Any]):
         }
 
     def __eq__(self, other: t.Any) -> bool:
+        # TODO: 6.0 - return NotImplemented on type mismatch instead of False
         try:
             return (
                 type(self) is type(other)
@@ -313,6 +314,7 @@ class Path:
         )
 
     def __eq__(self, other: t.Any) -> bool:
+        # TODO: 6.0 - return NotImplemented on type mismatch instead of False
         try:
             return (
                 self.start_node == other.start_node

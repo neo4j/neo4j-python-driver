@@ -1195,37 +1195,60 @@ class Date(date_base_class, metaclass=DateType):
     def __eq__(self, other: object) -> bool:
         """``==`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, date)):
-            return NotImplemented
+            # TODO: 6.0 - return NotImplemented for non-Date objects
+            # return NotImplemented
+            return False
         return self.toordinal() == other.toordinal()
 
     def __ne__(self, other: object) -> bool:
         """``!=`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        if not isinstance(other, (Date, date)):
-            return NotImplemented
+        # TODO: 6.0 - return NotImplemented for non-Date objects
+        # if not isinstance(other, (Date, date)):
+        #     return NotImplemented
         return not self.__eq__(other)
 
     def __lt__(self, other: Date | date) -> bool:
         """``<`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, date)):
-            return NotImplemented
+            # TODO: 6.0 - return NotImplemented for non-Date objects
+            # return NotImplemented
+            raise TypeError(
+                "'<' not supported between instances of 'Date' and "
+                f"{type(other).__name__!r}"
+            )
         return self.toordinal() < other.toordinal()
 
     def __le__(self, other: Date | date) -> bool:
         """``<=`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, date)):
-            return NotImplemented
+            # TODO: 6.0 - return NotImplemented for non-Date objects
+            # return NotImplemented
+            raise TypeError(
+                "'<=' not supported between instances of 'Date' and "
+                f"{type(other).__name__!r}"
+            )
         return self.toordinal() <= other.toordinal()
 
     def __ge__(self, other: Date | date) -> bool:
         """``>=`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, date)):
-            return NotImplemented
+            # TODO: 6.0 - return NotImplemented for non-Date objects
+            # return NotImplemented
+            raise TypeError(
+                "'>=' not supported between instances of 'Date' and "
+                f"{type(other).__name__!r}"
+            )
         return self.toordinal() >= other.toordinal()
 
     def __gt__(self, other: Date | date) -> bool:
         """``>`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, date)):
-            return NotImplemented
+            # TODO: 6.0 - return NotImplemented for non-Date objects
+            # return NotImplemented
+            raise TypeError(
+                "'>' not supported between instances of 'Date' and "
+                f"{type(other).__name__!r}"
+            )
         return self.toordinal() > other.toordinal()
 
     def __add__(self, other: Duration) -> Date:  # type: ignore[override]
