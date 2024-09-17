@@ -46,7 +46,6 @@ from ..._work import (
     EagerResult,
     ResultSummary,
 )
-from ...addressing import Address
 from ...exceptions import (
     ResultConsumedError,
     ResultFailedError,
@@ -67,6 +66,7 @@ from ..io import ConnectionErrorHandler
 if t.TYPE_CHECKING:
     import pandas  # type: ignore[import]
 
+    from ...addressing import Address
     from ...graph import Graph
 
 
@@ -97,18 +97,23 @@ _RESULT_CONSUMED_ERROR = (
 
 
 class Result(NonConcurrentMethodChecker):
-    """Handler for the result of Cypher query execution.
+    """
+    Handler for the result of Cypher query execution.
 
     Instances of this class are typically constructed and returned by
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    _creation_stack: t.Optional[t.List[inspect.FrameInfo]]
-    _creation_frame_cache: t.Union[None, t.Literal[False], inspect.FrameInfo]
+    _creation_stack: list[inspect.FrameInfo] | None
+    _creation_frame_cache: None | t.Literal[False] | inspect.FrameInfo
 
     def __init__(
-        self, connection, fetch_size, warn_notification_severity,
-        on_closed, on_error
+        self,
+        connection,
+        fetch_size,
+        warn_notification_severity,
+        on_closed,
+        on_error,
     ) -> None:
         self._connection_cls = connection.__class__
         self._connection = ConnectionErrorHandler(
@@ -119,16 +124,15 @@ class Result(NonConcurrentMethodChecker):
         self._on_closed = on_closed
         self._metadata: dict = {}
         self._address: Address = self._connection.unresolved_address
-        self._keys: t.Tuple[str, ...] = ()
+        self._keys: tuple[str, ...] = ()
         self._had_record = False
-        self._record_buffer: t.Deque[Record] = deque()
-        self._summary: t.Optional[ResultSummary] = None
+        self._record_buffer: deque[Record] = deque()
+        self._summary: ResultSummary | None = None
         self._database = None
         self._bookmark = None
         self._raw_qid = -1
         self._fetch_size = fetch_size
-        self._warn_notification_severity = \
-            warn_notification_severity
+        self._warn_notification_severity = warn_notification_severity
         if warn_notification_severity is not None:
             self._creation_stack = inspect.stack()
         else:
@@ -136,8 +140,8 @@ class Result(NonConcurrentMethodChecker):
         self._creation_frame_cache = None
 
         # states
-        self._discarding = False    # discard the remainder of records
-        self._attached = False      # attached to a connection
+        self._discarding = False  # discard the remainder of records
+        self._attached = False  # attached to a connection
         # there are still more response messages we wait for
         self._streaming = False
         # there ar more records available to pull from the server
@@ -171,8 +175,15 @@ class Result(NonConcurrentMethodChecker):
         self._run(query, parameters, None, None, None, None, None, None)
 
     def _run(
-        self, query, parameters, db, imp_user, access_mode, bookmarks,
-        notifications_min_severity, notifications_disabled_classifications
+        self,
+        query,
+        parameters,
+        db,
+        imp_user,
+        access_mode,
+        bookmarks,
+        notifications_min_severity,
+        notifications_disabled_classifications,
     ):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
@@ -210,8 +221,7 @@ class Result(NonConcurrentMethodChecker):
             db=db,
             imp_user=imp_user,
             notifications_min_severity=notifications_min_severity,
-            notifications_disabled_classifications=
-                notifications_disabled_classifications,
+            notifications_disabled_classifications=notifications_disabled_classifications,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,
@@ -227,13 +237,13 @@ class Result(NonConcurrentMethodChecker):
             if not self._discarding:
                 records = (
                     record.raw_data
-                    if isinstance(record, BrokenHydrationObject) else record
+                    if isinstance(record, BrokenHydrationObject)
+                    else record
                     for record in records
                 )
-                self._record_buffer.extend((
-                    Record(zip(self._keys, record))
-                    for record in records
-                ))
+                self._record_buffer.extend(
+                    Record(zip(self._keys, record)) for record in records
+                )
 
         def _on_summary():
             self._attached = False
@@ -253,7 +263,6 @@ class Result(NonConcurrentMethodChecker):
             self._database = summary_metadata.get("db", self._database)
             _on_summary()
             self._handle_warnings()
-
 
         self._connection.pull(
             n=self._fetch_size,
@@ -297,7 +306,7 @@ class Result(NonConcurrentMethodChecker):
         self._streaming = True
 
     def _handle_warnings(self) -> None:
-        sev_filter: t.Tuple[NotificationMinimumSeverity, ...] = ()
+        sev_filter: tuple[NotificationMinimumSeverity, ...] = ()
         if (
             self._warn_notification_severity
             == NotificationMinimumSeverity.WARNING
@@ -307,8 +316,10 @@ class Result(NonConcurrentMethodChecker):
             self._warn_notification_severity
             == NotificationMinimumSeverity.INFORMATION
         ):
-            sev_filter = (NotificationMinimumSeverity.INFORMATION,
-                          NotificationMinimumSeverity.WARNING)
+            sev_filter = (
+                NotificationMinimumSeverity.INFORMATION,
+                NotificationMinimumSeverity.WARNING,
+            )
 
         summary = self._obtain_summary()
         query = self._metadata.get("query")
@@ -320,12 +331,12 @@ class Result(NonConcurrentMethodChecker):
                 log_call = notification_log.warning
             log_call(
                 "Received notification from DBMS server: %s",
-                NotificationPrinter(notification, query, one_line=True)
+                NotificationPrinter(notification, query, one_line=True),
             )
 
             if notification.severity_level not in sev_filter:
                 continue
-            warning_cls: te.Type[Warning] = Neo4jWarning
+            warning_cls: type[Warning] = Neo4jWarning
             if notification.category == NotificationCategory.DEPRECATION:
                 warning_cls = Neo4jDeprecationWarning
             creation_frame = self._creation_frame
@@ -341,11 +352,11 @@ class Result(NonConcurrentMethodChecker):
                     creation_frame.lineno,
                     module=globals_["__name__"],
                     registry=warning_registry,
-                    module_globals=globals_
+                    module_globals=globals_,
                 )
 
     @property
-    def _creation_frame(self) -> t.Union[t.Literal[False], inspect.FrameInfo]:
+    def _creation_frame(self) -> t.Literal[False] | inspect.FrameInfo:
         if self._creation_frame_cache is not None:
             return self._creation_frame_cache
 
@@ -353,9 +364,12 @@ class Result(NonConcurrentMethodChecker):
             self._creation_frame_cache = False
         else:
             self._creation_frame_cache = next(
-                (frame for frame in self._creation_stack
-                 if not frame.filename.startswith(str(_driver_dir))),
-                False
+                (
+                    frame
+                    for frame in self._creation_stack
+                    if not frame.filename.startswith(str(_driver_dir))
+                ),
+                False,
             )
 
         assert self._creation_frame_cache is not None  # help mypy a little
@@ -363,7 +377,8 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_iter
     def __iter__(self) -> t.Iterator[Record]:
-        """Iterator returning Records.
+        """
+        Create an iterator returning records.
 
         Advancing the iterator advances the underlying result stream.
         So even when creating multiple iterators from the same result, each
@@ -385,8 +400,9 @@ class Result(NonConcurrentMethodChecker):
 
         self._exhausted = True
         if self._exception is not None:
-            raise ResultFailedError(self, _RESULT_FAILED_ERROR) \
-                from self._exception
+            raise ResultFailedError(
+                self, _RESULT_FAILED_ERROR
+            ) from self._exception
         if self._out_of_scope:
             raise ResultConsumedError(self, _RESULT_OUT_OF_SCOPE_ERROR)
         if self._consumed:
@@ -394,22 +410,23 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def __next__(self) -> Record:
-        """Advance the result stream and return the record.
+        """
+        Advance the result stream and return the record.
 
         :raises StopIteration: if no more records are available.
         """
         return self.__iter__().__next__()
 
     def _attach(self):
-        """Sets the Result object in an attached state by fetching messages from
-        the connection to the buffer.
-        """
+        # Set the Result object in an attached state by fetching messages
+        # from the connection to the buffer.
         if self._exhausted is False:
             while self._attached is False:
                 self._connection.fetch_message()
 
     def _buffer(self, n=None):
-        """Try to fill `self._record_buffer` with n records.
+        """
+        Try to fill `self._record_buffer` with n records.
 
         Might end up with more records in the buffer if the fetch size makes it
         overshoot.
@@ -434,13 +451,11 @@ class Result(NonConcurrentMethodChecker):
         self._exhausted = not self._record_buffer
 
     def _buffer_all(self):
-        """Sets the Result object in an detached state by fetching all records
-        from the connection to the buffer.
-        """
         self._buffer()
 
     def _obtain_summary(self) -> ResultSummary:
-        """Obtain the summary of this result.
+        """
+        Obtain the summary of this result.
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
@@ -449,12 +464,13 @@ class Result(NonConcurrentMethodChecker):
                 self._address,
                 had_key=bool(self._keys),
                 had_record=self._had_record,
-                metadata=self._metadata
+                metadata=self._metadata,
             )
         return self._summary
 
-    def keys(self) -> t.Tuple[str, ...]:
-        """The keys for the records in this result.
+    def keys(self) -> tuple[str, ...]:
+        """
+        Get the keys for the records in this result.
 
         :returns: tuple of key names
         :rtype: tuple
@@ -484,7 +500,8 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def consume(self) -> ResultSummary:
-        """Consume the remainder of this result and return a :class:`neo4j.ResultSummary`.
+        """
+        Consume the remainder of this result and return the summary.
 
         Example::
 
@@ -543,16 +560,15 @@ class Result(NonConcurrentMethodChecker):
     @t.overload
     def single(
         self, strict: te.Literal[False] = False
-    ) -> t.Optional[Record]:
-        ...
+    ) -> Record | None: ...
 
     @t.overload
-    def single(self, strict: te.Literal[True]) -> Record:
-        ...
+    def single(self, strict: te.Literal[True]) -> Record: ...
 
     @NonConcurrentMethodChecker.non_concurrent_method
-    def single(self, strict: bool = False) -> t.Optional[Record]:
-        """Obtain the next and only remaining record or None.
+    def single(self, strict: bool = False) -> Record | None:
+        """
+        Obtain the next and only remaining record or None.
 
         Calling this method always exhausts the result.
 
@@ -596,25 +612,29 @@ class Result(NonConcurrentMethodChecker):
             raise ResultNotSingleError(
                 self,
                 "No records found. "
-                "Make sure your query returns exactly one record."
+                "Make sure your query returns exactly one record.",
             )
         elif len(buffer) > 1:
             res = buffer.popleft()
             if not strict:
-                warn("Expected a result with a single record, "
-                     "but found multiple.")
+                warn(
+                    "Expected a result with a single record, "
+                    "but found multiple.",
+                    stacklevel=1,
+                )
                 return res
             else:
                 raise ResultNotSingleError(
                     self,
                     "More than one record found. "
-                    "Make sure your query returns exactly one record."
+                    "Make sure your query returns exactly one record.",
                 )
         return buffer.popleft()
 
     @NonConcurrentMethodChecker.non_concurrent_method
-    def fetch(self, n: int) -> t.List[Record]:
-        """Obtain up to n records from this result.
+    def fetch(self, n: int) -> list[Record]:
+        """
+        Obtain up to n records from this result.
 
         Fetch ``min(n, records_left)`` records from this result and return them
         as a list.
@@ -636,8 +656,9 @@ class Result(NonConcurrentMethodChecker):
         ]
 
     @NonConcurrentMethodChecker.non_concurrent_method
-    def peek(self) -> t.Optional[Record]:
-        """Obtain the next record from this result without consuming it.
+    def peek(self) -> Record | None:
+        """
+        Obtain the next record from this result without consuming it.
 
         This leaves the record in the buffer for further processing.
 
@@ -658,7 +679,8 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def graph(self) -> Graph:
-        """Turn the result into a :class:`.Graph`.
+        """
+        Turn the result into a :class:`.Graph`.
 
         Return a :class:`.Graph` instance containing all the graph objects in
         the result.
@@ -681,12 +703,14 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def value(
-        self, key: _TResultKey = 0, default: t.Optional[object] = None
-    ) -> t.List[t.Any]:
-        """Return the remainder of the result as a list of values.
+        self, key: _TResultKey = 0, default: object = None
+    ) -> list[t.Any]:
+        """
+        Return the remainder of the result as a list of values.
 
-        :param key: field to return for each remaining record. Obtain a single value from the record by index or key.
-        :param default: default value, used if the index of key is unavailable
+        :param key: field to return for each remaining record. Obtain a single
+            value from the record by index or key.
+        :param default: default value, used if the index of key is unavailable.
 
         :returns: list of individual values
 
@@ -702,12 +726,12 @@ class Result(NonConcurrentMethodChecker):
         return [record.value(key, default) for record in self]
 
     @NonConcurrentMethodChecker.non_concurrent_method
-    def values(
-        self, *keys: _TResultKey
-    ) -> t.List[t.List[t.Any]]:
-        """Return the remainder of the result as a list of values lists.
+    def values(self, *keys: _TResultKey) -> list[list[t.Any]]:
+        """
+        Return the remainder of the result as a list of values lists.
 
-        :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
+        :param keys: fields to return for each remaining record. Optionally
+            filtering to include only certain values by index or key.
 
         :returns: list of values lists
 
@@ -723,8 +747,9 @@ class Result(NonConcurrentMethodChecker):
         return [record.values(*keys) for record in self]
 
     @NonConcurrentMethodChecker.non_concurrent_method
-    def data(self, *keys: _TResultKey) -> t.List[t.Dict[str, t.Any]]:
-        """Return the remainder of the result as a list of dictionaries.
+    def data(self, *keys: _TResultKey) -> list[dict[str, t.Any]]:
+        """
+        Return the remainder of the result as a list of dictionaries.
 
         Each dictionary represents a record
 
@@ -753,7 +778,8 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def to_eager_result(self) -> EagerResult:
-        """Convert this result to an :class:`.EagerResult`.
+        """
+        Convert this result to an :class:`.EagerResult`.
 
         This method exhausts the result and triggers a :meth:`.consume`.
 
@@ -768,21 +794,19 @@ class Result(NonConcurrentMethodChecker):
 
         .. versionchanged:: 5.8 Stabilized from experimental.
         """
-
         self._buffer_all()
         return EagerResult(
             keys=list(self.keys()),
             records=Util.list(self),
-            summary=self.consume()
+            summary=self.consume(),
         )
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def to_df(
-        self,
-        expand: bool = False,
-        parse_dates: bool = False
+        self, expand: bool = False, parse_dates: bool = False
     ) -> pandas.DataFrame:
-        r"""Convert (the rest of) the result to a pandas DataFrame.
+        r"""
+        Convert (the rest of) the result to a pandas DataFrame.
 
         This method is only available if the `pandas` library is installed.
 
@@ -886,7 +910,7 @@ class Result(NonConcurrentMethodChecker):
                 else:
                     # The rows have different keys. We need to pass a list
                     # of dicts to pandas
-                    rows = [{k: v for k, v in zip(df_keys, r)} for r in rows]
+                    rows = [dict(zip(df_keys, r)) for r in rows]
                     df_keys = False
                     rows.append(row)
             if df_keys is False:
@@ -899,23 +923,28 @@ class Result(NonConcurrentMethodChecker):
                 df = pd.DataFrame(rows, columns=columns)
         if not parse_dates:
             return df
-        dt_columns = df.columns[df.apply(
-            lambda col: pd.api.types.infer_dtype(col) == "mixed" and col.map(
-                lambda x: isinstance(x, (DateTime, Date, type(None)))
-            ).all()
-        )]
+        dt_columns = df.columns[
+            df.apply(
+                lambda col: pd.api.types.infer_dtype(col) == "mixed"
+                and col.map(
+                    lambda x: isinstance(x, (DateTime, Date, type(None)))
+                ).all()
+            )
+        ]
         df[dt_columns] = df[dt_columns].apply(
             lambda col: col.map(
-                lambda x:
-                pd.Timestamp(x.iso_format())
-                .replace(tzinfo=getattr(x, "tzinfo", None))
-                if x else pd.NaT
+                lambda x: pd.Timestamp(x.iso_format()).replace(
+                    tzinfo=getattr(x, "tzinfo", None)
+                )
+                if x
+                else pd.NaT
             )
         )
         return df
 
     def closed(self) -> bool:
-        """Return True if the result has been closed.
+        """
+        Return True if the result has been closed.
 
         When a result gets consumed :meth:`consume` or the transaction that
         owns the result gets closed (committed, rolled back, closed), the

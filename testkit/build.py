@@ -14,17 +14,14 @@
 # limitations under the License.
 
 
-"""
-Executed in driver container.
-Responsible for building driver and test backend.
-"""
-
+"""Building driver and test backend inside driver container."""
 
 from _common import run_python
 
 
 if __name__ == "__main__":
-    run_python(["-m", "pip", "install", "-U", "pip"],
-               warning_as_error=False)
-    run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
-               warning_as_error=False)
+    run_python(["-m", "pip", "install", "-U", "pip"], warning_as_error=False)
+    run_python(
+        ["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
+        warning_as_error=False,
+    )

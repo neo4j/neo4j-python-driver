@@ -14,11 +14,25 @@
 # limitations under the License.
 
 
-from ..v1.temporal import *
+from datetime import (
+    datetime,
+    timezone,
+)
+
+from ...._optional_deps import pd
+from ....time import (
+    Date,
+    DateTime,
+    NANO_SECONDS,
+    Time,
+)
+from ...packstream import Structure
+from ..v1.temporal import get_date_unix_epoch_ordinal
 
 
 def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
-    """ Hydrator for `DateTime` and `LocalDateTime` values.
+    """
+    Hydrator for `DateTime` and `LocalDateTime` values.
 
     :param seconds:
     :param nanoseconds:
@@ -32,12 +46,12 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
     days, hours = map(int, divmod(hours, 24))
     t = DateTime.combine(
         Date.from_ordinal(get_date_unix_epoch_ordinal() + days),
-        Time(hours, minutes, seconds, nanoseconds)
+        Time(hours, minutes, seconds, nanoseconds),
     )
     if tz is None:
         return t
     if isinstance(tz, int):
-        tz_offset_minutes, tz_offset_seconds = divmod(tz, 60)
+        tz_offset_minutes, _tz_offset_seconds = divmod(tz, 60)
         zone = pytz.FixedOffset(tz_offset_minutes)
     else:
         zone = pytz.timezone(tz)
@@ -46,13 +60,13 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
 
 
 def dehydrate_datetime(value):  # type: ignore[no-redef]
-    """ Dehydrator for `datetime` values.
+    """
+    Dehydrator for `datetime` values.
 
     :param value:
     :type value: datetime
     :returns:
     """
-
     import pytz
 
     def seconds_and_nanoseconds(dt):
@@ -88,23 +102,24 @@ def dehydrate_datetime(value):  # type: ignore[no-redef]
             offset = tz.utcoffset(value)
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         if offset.microseconds:
-            raise ValueError("Bolt protocol does not support sub-second "
-                             "UTC offsets.")
+            raise ValueError(
+                "Bolt protocol does not support sub-second UTC offsets."
+            )
         offset_seconds = offset.days * 86400 + offset.seconds
         return Structure(b"I", seconds, nanoseconds, offset_seconds)
 
 
 if pd is not None:
+
     def dehydrate_pandas_datetime(value):
-        """ Dehydrator for `pandas.Timestamp` values.
+        """
+        Dehydrator for `pandas.Timestamp` values.
 
         :param value:
         :type value: pandas.Timestamp
         :returns:
         """
         seconds, nanoseconds = divmod(value.value, NANO_SECONDS)
-
-        import pytz
 
         tz = value.tzinfo
         if tz is None:
@@ -120,8 +135,9 @@ if pd is not None:
             # with time offset
             offset = tz.utcoffset(value)
             if offset.microseconds:
-                raise ValueError("Bolt protocol does not support sub-second "
-                                 "UTC offsets.")
+                raise ValueError(
+                    "Bolt protocol does not support sub-second UTC offsets."
+                )
             offset_seconds = offset.days * 86400 + offset.seconds
             return Structure(b"I", seconds, nanoseconds, offset_seconds)
 

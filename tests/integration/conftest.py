@@ -17,7 +17,7 @@
 import pytest
 
 
-class ForcedRollback(Exception):
+class ForcedRollback(Exception):  # noqa: N818 not really an error
     def __init__(self, return_value):
         super().__init__()
         self.return_value = return_value

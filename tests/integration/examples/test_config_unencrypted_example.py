@@ -29,13 +29,11 @@ from neo4j import GraphDatabase
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_config_unencrypted_example.py -s -v
-
 class ConfigUnencryptedExample(DriverSetupExample):
-
     # tag::config-unencrypted[]
     def __init__(self, uri, auth):
         self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=False)
+
     # end::config-unencrypted[]
 
 

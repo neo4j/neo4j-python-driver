@@ -23,13 +23,13 @@ from ._metaclasses import (
 
 
 __all__ = [
+    "DateTimeType",
     "DateType",
     "TimeType",
-    "DateTimeType",
 ]
 
 deprecation_warn(
     "The module `neo4j.time.metaclasses` was made internal and will "
     "no longer be available for import in future versions.",
-    stack_level=2
+    stack_level=2,
 )

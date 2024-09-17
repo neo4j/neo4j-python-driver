@@ -32,11 +32,12 @@ from neo4j import (
 
 # python -m pytest tests/integration/examples/test_bearer_auth_example.py -s -v
 
-class BearerAuthExample(DriverSetupExample):
 
+class BearerAuthExample(DriverSetupExample):
     # tag::bearer-auth[]
     def __init__(self, uri, token):
         self.driver = GraphDatabase.driver(uri, auth=bearer_auth(token))
+
     # end::bearer-auth[]
 
 
@@ -48,10 +49,12 @@ def test_example(uri, mocker):
 
     token = "myToken"
     BearerAuthExample(uri, token)
-    calls = (neo4j.GraphDatabase.bolt_driver.call_args_list
-             + neo4j.GraphDatabase.neo4j_driver.call_args_list)
+    calls = (
+        neo4j.GraphDatabase.bolt_driver.call_args_list
+        + neo4j.GraphDatabase.neo4j_driver.call_args_list
+    )
     assert len(calls) == 1
-    args_, kwargs = calls[0]
+    _args, kwargs = calls[0]
     auth = kwargs.get("auth")
     assert isinstance(auth, StaticAuthManager)
     auth = auth._auth

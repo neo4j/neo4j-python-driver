@@ -22,10 +22,11 @@ from ...packstream import Structure
 
 
 def hydrate_point(srid, *coordinates):
-    """ Create a new instance of a Point subclass from a raw
-    set of fields. The subclass chosen is determined by the
-    given SRID; a ValueError will be raised if no such
-    subclass can be found.
+    """
+    Create a new instance of a Point subclass from a raw set of fields.
+
+    The subclass chosen is determined by the given SRID; a ValueError will be
+    raised if no such subclass can be found.
     """
     try:
         point_class, dim = srid_table[srid]
@@ -35,12 +36,16 @@ def hydrate_point(srid, *coordinates):
         return point
     else:
         if len(coordinates) != dim:
-            raise ValueError("SRID %d requires %d coordinates (%d provided)" % (srid, dim, len(coordinates)))
+            raise ValueError(
+                f"SRID {srid} requires {dim} coordinates "
+                f"({len(coordinates)} provided)"
+            )
         return point_class(coordinates)
 
 
 def dehydrate_point(value):
-    """ Dehydrator for Point data.
+    """
+    Dehydrator for Point data.
 
     :param value:
     :type value: Point
@@ -52,10 +57,10 @@ def dehydrate_point(value):
     elif dim == 3:
         return Structure(b"Y", value.srid, *value)
     else:
-        raise ValueError("Cannot dehydrate Point with %d dimensions" % dim)
+        raise ValueError(f"Cannot dehydrate Point with {dim} dimensions")
 
 
 __all__ = [
-    "hydrate_point",
     "dehydrate_point",
+    "hydrate_point",
 ]

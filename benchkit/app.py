@@ -1,16 +1,31 @@
+# Copyright (c) "Neo4j"
+# Neo4j Sweden AB [https://neo4j.com]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
+import typing as t
 from contextlib import contextmanager
 from multiprocessing import Semaphore
 
 import typing_extensions as te
 from sanic import Sanic
-from sanic.config import Config
 from sanic.exceptions import (
     BadRequest,
     NotFound,
 )
-from sanic.request import Request
 from sanic.response import (
     empty,
     HTTPResponse,
@@ -19,7 +34,13 @@ from sanic.response import (
 
 from .context import BenchKitContext
 from .env import env
-from .workloads import Workload
+
+
+if t.TYPE_CHECKING:
+    from sanic.config import Config
+    from sanic.request import Request
+
+    from .workloads import Workload
 
 
 T_App: te.TypeAlias = "Sanic[Config, BenchKitContext]"
@@ -29,13 +50,14 @@ def create_app() -> T_App:
     app: T_App = Sanic("Python_BenchKit", ctx=BenchKitContext())
 
     @app.main_process_start
-    async def main_process_start(app: T_App) -> None:
+    def main_process_start(app: T_App) -> None:
         app.shared_ctx.running = Semaphore(1)
 
     @app.before_server_start
-    async def before_server_start(app: T_App) -> None:
+    def before_server_start(app: T_App) -> None:
         if env.driver_debug:
             from neo4j.debug import watch
+
             watch("neo4j")
 
         running = app.shared_ctx.running
@@ -57,13 +79,13 @@ def create_app() -> T_App:
             yield
         except (ValueError, TypeError) as e:
             print(e)
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from None
 
     def _get_workload(app: T_App, name: str) -> Workload:
         try:
             workload = app.ctx.workloads[name]
         except KeyError:
-            raise NotFound(f"Workload {name} not found")
+            raise NotFound(f"Workload {name} not found") from None
         return workload
 
     @app.get("/ready")
@@ -72,14 +94,16 @@ def create_app() -> T_App:
         return empty()
 
     @app.post("/workload")
-    async def post_workload(request: Request) -> HTTPResponse:
+    def post_workload(request: Request) -> HTTPResponse:
         data = request.json
         with _loading_workload():
             name = app.ctx.workloads.store_workload(data)
         location = f"/workload/{name}"
-        return text(f"created at {location}",
-                    status=204,
-                    headers={"location": location})
+        return text(
+            f"created at {location}",
+            status=204,
+            headers={"location": location},
+        )
 
     @app.put("/workload")
     async def put_workload(request: Request) -> HTTPResponse:
@@ -98,7 +122,7 @@ def create_app() -> T_App:
         return empty()
 
     @app.patch("/workload/<name>")
-    async def patch_workload(request: Request, name: str) -> HTTPResponse:
+    def patch_workload(request: Request, name: str) -> HTTPResponse:
         data = request.json
         workload = _get_workload(app, name)
         with _loading_workload():
@@ -106,7 +130,7 @@ def create_app() -> T_App:
         return empty()
 
     @app.delete("/workload/<name>")
-    async def delete_workload(_: Request, name: str) -> HTTPResponse:
+    def delete_workload(_: Request, name: str) -> HTTPResponse:
         _get_workload(app, name)
         del app.ctx.workloads[name]
         return empty()

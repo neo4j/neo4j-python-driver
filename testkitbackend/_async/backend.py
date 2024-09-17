@@ -39,7 +39,7 @@ from .._driver_logger import (
     log,
 )
 from ..backend import Request
-from ..exceptions import MarkdAsDriverException
+from ..exceptions import MarkdAsDriverError
 from . import requests
 
 
@@ -73,8 +73,13 @@ class AsyncBackend:
         self.fake_time = None
         self.fake_time_ticker = None
         # Collect all request handlers
-        self._requestHandlers = dict(
-            [m for m in getmembers(requests, isfunction)])
+        self._requestHandlers = {
+            func.__handler_name__: func
+            for _, func in getmembers(
+                requests,
+                lambda x: isfunction(x) and hasattr(x, "__handler_name__"),
+            )
+        }
 
     async def close(self):
         for dict_of_closables in (
@@ -91,30 +96,30 @@ class AsyncBackend:
                     log.error(
                         "Error during TestKit backend garbage collection. "
                         "While collecting: (key: %s) %s\n%s",
-                        key, closable, traceback.format_exc()
+                        key,
+                        closable,
+                        traceback.format_exc(),
                     )
             dict_of_closables.clear()
 
     def next_key(self):
-        self.key = self.key + 1
+        self.key += 1
         return self.key
 
     async def process_request(self):
-        """ Reads next request from the stream and processes it.
-        """
+        # Read next request from the stream and processes it.
         in_request = False
         request = ""
         async for line in self._rd:
             # Remove trailing newline
-            line = line.decode('UTF-8').rstrip()
+            line = line.decode("UTF-8").rstrip()
             if line == "#request begin":
                 in_request = True
             elif line == "#request end":
                 await self._process(request)
                 return True
-            else:
-                if in_request:
-                    request = request + line
+            elif in_request:
+                request += line
         return False
 
     @staticmethod
@@ -126,6 +131,7 @@ class AsyncBackend:
                 return False
             if DRIVER_PATH in p.parents:
                 return True
+        return None
 
     @staticmethod
     def _exc_msg(exc, max_depth=10):
@@ -150,7 +156,7 @@ class AsyncBackend:
 
         payload = {"id": key, "msg": ""}
 
-        if isinstance(exc, MarkdAsDriverException):
+        if isinstance(exc, MarkdAsDriverError):
             wrapped_exc = exc.wrapped_exc
             payload["errorType"] = str(type(wrapped_exc))
             if wrapped_exc.args:
@@ -166,28 +172,31 @@ class AsyncBackend:
         await self.send_response("DriverError", payload)
 
     async def _process(self, request):
-        """ Process a received request by retrieving handler that
-        corresponds to the request name.
-        """
+        # Process a received request.
         try:
             request = loads(request, object_pairs_hook=Request)
             if not isinstance(request, Request):
-                raise Exception("Request is not an object")
-            name = request.get('name', 'invalid')
+                raise TypeError("Request is not an object")
+            name = request.get("name", "invalid")
             handler = self._requestHandlers.get(name)
             if not handler:
-                raise Exception("No request handler for " + name)
+                raise ValueError("No request handler for " + name)
             data = request["data"]
             log.info("<<< " + name + dumps(data))
             await handler(self, data)
             unused_keys = request.unseen_keys
             if unused_keys:
                 raise NotImplementedError(
-                    "Backend does not support some properties of the " + name +
-                    " request: " + ", ".join(unused_keys)
+                    f"Backend does not support some properties of the {name} "
+                    f"request: {', '.join(unused_keys)}"
                 )
-        except (Neo4jError, DriverError, UnsupportedServerProduct,
-                BoltError, MarkdAsDriverException) as e:
+        except (
+            Neo4jError,
+            DriverError,
+            UnsupportedServerProduct,
+            BoltError,
+            MarkdAsDriverError,
+        ) as e:
             await self.write_driver_exc(e)
         except requests.FrontendError as e:
             await self.send_response("FrontendError", {"msg": str(e)})
@@ -200,8 +209,7 @@ class AsyncBackend:
                 await self.send_response("BackendError", {"msg": tb})
 
     async def send_response(self, name, data):
-        """ Sends a response to backend.
-        """
+        """Send a response to backend."""
         with buffer_handler.lock:
             log_output = buffer_handler.stream.getvalue()
             buffer_handler.stream.truncate(0)

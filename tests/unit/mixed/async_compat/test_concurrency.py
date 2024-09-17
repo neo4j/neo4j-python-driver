@@ -175,8 +175,9 @@ async def test_async_r_lock_acquire_non_blocking_exception(mocker):
 
     # Not sure asyncio.Lock.acquire is even fallible, but should it be or ever
     # become, our AsyncRLock should re-raise the exception.
-    acquire_mock = mocker.patch("asyncio.Lock.acquire", autospec=True,
-                                side_effect=asyncio.Lock.acquire)
+    acquire_mock = mocker.patch(
+        "asyncio.Lock.acquire", autospec=True, side_effect=asyncio.Lock.acquire
+    )
     awaits = 0
 
     async def blocker():
@@ -242,11 +243,8 @@ async def test_async_r_lock_acquire_cancellation(waits):
             except asyncio.CancelledError:
                 assert lock._count == count
                 raise
-            try:
-                # we're also ok with a deferred cancellation
-                await asyncio.sleep(0)
-            except asyncio.CancelledError:
-                raise
+            # we're also ok with a deferred cancellation
+            await asyncio.sleep(0)
             assert count < 50  # safety guard, we shouldn't ever get there!
 
     fut = asyncio.ensure_future(acquire_task())

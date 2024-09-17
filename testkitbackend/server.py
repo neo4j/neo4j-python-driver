@@ -30,7 +30,7 @@ class Server(TCPServer):
     def __init__(self, address):
         class Handler(StreamRequestHandler):
             # undocumented config but unbearably slow without
-            wbufsize = 2 ** 16  # 64 KiB
+            wbufsize = 2**16  # 64 KiB
 
             def handle(self):
                 backend = Backend(self.rfile, self.wfile)
@@ -40,7 +40,8 @@ class Server(TCPServer):
                 finally:
                     backend.close()
                 print("Disconnected")
-        super(Server, self).__init__(address, Handler)
+
+        super().__init__(address, Handler)
 
 
 class AsyncServer:
@@ -61,8 +62,10 @@ class AsyncServer:
 
     async def start(self):
         self._server = await asyncio.start_server(
-            self._handler, host=self._address[0], port=self._address[1],
-            limit=float("inf")  # this is dirty but works (for now)
+            self._handler,
+            host=self._address[0],
+            port=self._address[1],
+            limit=float("inf"),  # this is dirty but works (for now)
         )
 
     async def serve_forever(self):

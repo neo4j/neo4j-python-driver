@@ -18,9 +18,9 @@ import pytest
 
 
 class HydrationHandlerTestBase:
-    @pytest.fixture()
+    @pytest.fixture
     def hydration_handler(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @pytest.fixture
     def hydration_scope(self, hydration_handler):

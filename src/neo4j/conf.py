@@ -36,16 +36,16 @@ __all__ = [
     "ConfigType",
     "DeprecatedAlias",
     "DeprecatedAlternative",
-    "iter_items",
     "PoolConfig",
     "RoutingConfig",
     "SessionConfig",
     "TransactionConfig",
     "WorkspaceConfig",
+    "iter_items",
 ]
 
 _deprecation_warn(
     "The module `neo4j.conf` was made internal and will "
     "no longer be available for import in future versions.",
-    stack_level=2
+    stack_level=2,
 )

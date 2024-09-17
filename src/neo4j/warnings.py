@@ -19,12 +19,15 @@ from __future__ import annotations
 import typing as t
 
 from ._debug import NotificationPrinter
-from ._work.summary import SummaryNotification
+
+
+if t.TYPE_CHECKING:
+    from ._work.summary import SummaryNotification
 
 
 __all__ = [
-    "Neo4jWarning",
     "Neo4jDeprecationWarning",
+    "Neo4jWarning",
 ]
 
 
@@ -46,13 +49,14 @@ class Neo4jWarning(Warning):
 
     .. seealso:: :ref:`development-environment-ref`
     """
+
     #: The notification that triggered the warning.
     notification: SummaryNotification
 
     def __init__(
         self,
         notification: SummaryNotification,
-        query: t.Optional[str] = None,
+        query: str | None = None,
     ) -> None:
         msg = str(NotificationPrinter(notification, query))
         super().__init__(msg)
@@ -75,4 +79,3 @@ class Neo4jDeprecationWarning(Neo4jWarning, DeprecationWarning):
 
     .. versionadded:: 5.21
     """
-    pass

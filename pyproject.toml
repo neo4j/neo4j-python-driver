@@ -131,3 +131,165 @@ module = [
     "neo4j._codec.packstream._rust.*",
 ]
 ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 79
+extend-exclude = [
+    "src/neo4j/_sync",
+    "tests/unit/sync",
+    "tests/integration/sync",
+    "testkitbackend/_sync",
+]
+
+[tool.ruff.lint]
+preview = true  # to get CPY lints
+extend-ignore = [
+    "RUF002",  # allow ’ (RIGHT SINGLE QUOTATION MARK) to be used as an apostrophe (e.g. "it’s")
+    "SIM117",  # TODO: when Python 3.10+ is the minimum,
+               #       we can start to use multi-item `with` statements
+    # pydocstyle
+    "D1",   # disable check for undocumented items (way too noisy)
+    "D203", # `one-blank-line-before-class`
+    "D212", # `multi-line-summary-first-line`
+
+    # comprehensions
+    "C417", # map is ok, no need to rewrite to list comprehension
+
+    # too noisy and opinionated pytest lints
+    "PT007",
+    "PT011",
+    "PT012",
+    "PT018",
+
+    # too noisy and opinionated pylint lints
+    "PLC0415",
+    "PLC1901",
+    "PLC2401",
+    "PLC2701",
+    "PLR09",
+    "PLR1702",
+    "PLR1704",
+    "PLR2004",
+    "PLR6301",
+    "PLW2901",
+    "PLW1641",
+
+    # too noisy and opinionated tryceratops lints
+    "TRY003",
+    "TRY300",
+    "TRY301",
+    "TRY400",
+
+    # too noisy and opinionated return statement lints
+    "RET505",
+    "RET506",
+    "RET507",
+    "RET508",
+
+    "PERF203",  # try-except within loop is fine. Especially in a retry scenario
+
+    # too noisy and opinionated FURB lints
+    "FURB113",
+    "FURB118",
+    "FURB140",
+    "FURB154",
+    # needs fixing in ruff to work with typing.Protocol
+    # https://github.com/astral-sh/ruff/issues/13307
+    "FURB180",
+]
+select = [
+    # ruff
+    "RUF",
+    # pycodestyle
+    "E",
+    "W",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # pep8-naming
+    "N",
+    # pydocstyle
+    "D",
+    # pydocstyle: explicit rules not selected by the chosen convention
+    "D404",
+    # Does not yet fully support sphinx style docstrings
+    # https://github.com/astral-sh/ruff/pull/13286
+    # # pydoclint
+    # "DOC",
+    # pylint
+    "PL",
+    # tryceratops
+    "TRY",
+    # flynt
+    "FLY",
+    # Perflint
+    "PERF",
+    # refurb
+    "FURB",
+    # async checks
+    "ASYNC",
+    # check comprehensions
+    "C4",
+    # check for left-over debugger calls
+    "T100",
+    # check for left-over print calls
+    "T20",
+    # qoute styles
+    "Q",
+    # check for unnecessary parantheses in raise statements
+    "RSE",
+    # check return statements
+    "RET",
+    # TODO: 6.0 - enable and add __slots__ to applicable classes
+    # # check __slots__ usage
+    # "SLOT",
+    # check type-checking usage
+    "TCH",
+    # copyright notice
+    "CPY",
+    # check shebangs
+    "EXE",
+    # logging calls + formats
+    "LOG",
+    "G",
+    # flake8-pie
+    "PIE",
+    # pytest lints
+    "PT",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"{testkit,testkitbackend,benchkit}/**" = [
+    "T20",  # print statements are ok in the testing infrastructure
+]
+"tests/integration/examples/**" = [
+    "T20",  # print statements are part of the examples
+]
+"tests/unit/**" = [
+    "PLW1641",  # no need for production grade test code
+    "FURB152",  # don't tell us to use math.pi, when all we need is just some random float
+]
+"{tests/unit,testkitbackend}/**" = [
+    # allow async functions without await to enable type checking, pretending to be async, matching type signatures
+    "RUF029",
+]
+"bin/**" = [
+    "T20",  # print statements are ok in our helper scripts
+]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 83 # 79 (max line length) + 4 indentation of code blocks
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = ["mcs"]
+
+[tool.ruff.lint.flake8-copyright]
+notice-rgx = "# Copyright \\(c\\) \"Neo4j\""
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"

@@ -1,3 +1,19 @@
+# Copyright (c) "Neo4j"
+# Neo4j Sweden AB [https://neo4j.com]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
 import asyncio
@@ -8,24 +24,24 @@ from typing import Iterator
 
 import typing_extensions as te
 
-import neo4j
-from neo4j import (
-    AsyncDriver,
-    AsyncManagedTransaction,
-    AsyncSession,
-    Record,
-)
+
+if t.TYPE_CHECKING:
+    from neo4j import (
+        AsyncDriver,
+        AsyncManagedTransaction,
+        Record,
+    )
 
 
 __all__ = [
-    "Workloads",
     "Workload",
+    "Workloads",
 ]
 
 
 class Workloads(t.Mapping):
     def __init__(self) -> None:
-        self._workloads: t.Dict[str, Workload] = {}
+        self._workloads: dict[str, Workload] = {}
         self._current_id: int = 0
 
     def store_workload(self, data: t.Any) -> str:
@@ -53,7 +69,7 @@ class Workloads(t.Mapping):
 
 class Workload:
     _method: _WorkloadMethod
-    _queries: t.List[_WorkloadQuery]
+    _queries: list[_WorkloadQuery]
     _config: _WorkloadConfig
 
     def __init__(self, data: t.Any) -> None:
@@ -172,57 +188,57 @@ class _WorkloadMethod(enum.Enum):
 
     def _to_data(self) -> dict:
         data = {}
-        if self in (
+        if self in {
             _WorkloadMethod.EXECUTE_QUERY_PARALLEL_SESSIONS,
             _WorkloadMethod.EXECUTE_QUERY_SEQUENTIAL_SESSIONS,
-        ):
+        }:
             data["method"] = "executeQuery"
-        elif self in (
+        elif self in {
             _WorkloadMethod.SESSION_RUN_PARALLEL_SESSIONS,
             _WorkloadMethod.SESSION_RUN_SEQUENTIAL_SESSIONS,
             _WorkloadMethod.SESSION_RUN_SEQUENTIAL_TRANSACTIONS,
-        ):
+        }:
             data["method"] = "sessionRun"
-        elif self in (
+        elif self in {
             _WorkloadMethod.EXECUTE_READ_PARALLEL_SESSIONS,
             _WorkloadMethod.EXECUTE_READ_SEQUENTIAL_SESSIONS,
             _WorkloadMethod.EXECUTE_READ_SEQUENTIAL_TRANSACTIONS,
             _WorkloadMethod.EXECUTE_READ_SEQUENTIAL_QUERIES,
-        ):
+        }:
             data["method"] = "executeRead"
-        elif self in (
+        elif self in {
             _WorkloadMethod.EXECUTE_WRITE_PARALLEL_SESSIONS,
             _WorkloadMethod.EXECUTE_WRITE_SEQUENTIAL_SESSIONS,
             _WorkloadMethod.EXECUTE_WRITE_SEQUENTIAL_TRANSACTIONS,
             _WorkloadMethod.EXECUTE_WRITE_SEQUENTIAL_QUERIES,
-        ):
+        }:
             data["method"] = "executeWrite"
         else:
             raise NotImplementedError(f"Unhandled workload method: {self}")
-        if self in (
+        if self in {
             _WorkloadMethod.EXECUTE_QUERY_PARALLEL_SESSIONS,
             _WorkloadMethod.SESSION_RUN_PARALLEL_SESSIONS,
             _WorkloadMethod.EXECUTE_READ_PARALLEL_SESSIONS,
             _WorkloadMethod.EXECUTE_WRITE_PARALLEL_SESSIONS,
-        ):
+        }:
             data["mode"] = "parallelSessions"
-        elif self in (
+        elif self in {
             _WorkloadMethod.EXECUTE_QUERY_SEQUENTIAL_SESSIONS,
             _WorkloadMethod.SESSION_RUN_SEQUENTIAL_SESSIONS,
             _WorkloadMethod.EXECUTE_READ_SEQUENTIAL_SESSIONS,
             _WorkloadMethod.EXECUTE_WRITE_SEQUENTIAL_SESSIONS,
-        ):
+        }:
             data["mode"] = "sequentialSessions"
-        elif self in (
+        elif self in {
             _WorkloadMethod.SESSION_RUN_SEQUENTIAL_TRANSACTIONS,
             _WorkloadMethod.EXECUTE_READ_SEQUENTIAL_TRANSACTIONS,
             _WorkloadMethod.EXECUTE_WRITE_SEQUENTIAL_TRANSACTIONS,
-        ):
+        }:
             data["mode"] = "sequentialTransactions"
-        elif self in (
+        elif self in {
             _WorkloadMethod.EXECUTE_READ_SEQUENTIAL_QUERIES,
             _WorkloadMethod.EXECUTE_WRITE_SEQUENTIAL_QUERIES,
-        ):
+        }:
             data["mode"] = "sequentialQueries"
         else:
             raise NotImplementedError(f"Unhandled workload mode: {self}")
@@ -242,8 +258,8 @@ class _WorkloadMethod(enum.Enum):
     def prepare(
         self,
     ) -> t.Callable[
-        [AsyncDriver, t.List[_WorkloadQuery], _WorkloadConfig],
-        t.Awaitable[None]
+        [AsyncDriver, list[_WorkloadQuery], _WorkloadConfig],
+        t.Awaitable[None],
     ]:
         if self == _WorkloadMethod.EXECUTE_QUERY_PARALLEL_SESSIONS:
             return self._execute_query_parallel_sessions
@@ -279,7 +295,7 @@ class _WorkloadMethod(enum.Enum):
         cls,
         driver: AsyncDriver,
         query: _WorkloadQuery,
-        config: _WorkloadConfig
+        config: _WorkloadConfig,
     ) -> None:
         await driver.execute_query(
             query.query,
@@ -292,14 +308,11 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_query_parallel_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         await asyncio.gather(
-            *(
-                cls._execute_query(driver, query, config)
-                for query in queries
-            ),
+            *(cls._execute_query(driver, query, config) for query in queries),
             return_exceptions=True,
         )
 
@@ -307,8 +320,8 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_query_sequential_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         for query in queries:
             await cls._execute_query(driver, query, config)
@@ -318,7 +331,7 @@ class _WorkloadMethod(enum.Enum):
         cls,
         driver: AsyncDriver,
         query: _WorkloadQuery,
-        config: _WorkloadConfig
+        config: _WorkloadConfig,
     ) -> None:
         async with driver.session(
             default_access_mode=config.routing,
@@ -331,14 +344,11 @@ class _WorkloadMethod(enum.Enum):
     async def _session_run_parallel_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         await asyncio.gather(
-            *(
-                cls._session_run(driver, query, config)
-                for query in queries
-            ),
+            *(cls._session_run(driver, query, config) for query in queries),
             return_exceptions=True,
         )
 
@@ -346,8 +356,8 @@ class _WorkloadMethod(enum.Enum):
     async def _session_run_sequential_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         for query in queries:
             await cls._session_run(driver, query, config)
@@ -356,16 +366,16 @@ class _WorkloadMethod(enum.Enum):
     async def _session_run_sequential_transactions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         async with driver.session(
-            database=config.database,
-            default_access_mode=config.routing
+            database=config.database, default_access_mode=config.routing
         ) as session:
             for query in queries:
-                res = await session.run(query.query,
-                                        parameters=query.parameters)
+                res = await session.run(
+                    query.query, parameters=query.parameters
+                )
                 _ = [record async for record in res]
 
     @classmethod
@@ -373,7 +383,7 @@ class _WorkloadMethod(enum.Enum):
         cls,
         tx: AsyncManagedTransaction,
         query: _WorkloadQuery,
-    ) -> t.List[Record]:
+    ) -> list[Record]:
         res = await tx.run(query.query, parameters=query.parameters)
         return [record async for record in res]
 
@@ -381,8 +391,8 @@ class _WorkloadMethod(enum.Enum):
     async def _work_sequential(
         cls,
         tx: AsyncManagedTransaction,
-        queries: t.List[_WorkloadQuery],
-    ) -> t.List[t.List[Record]]:
+        queries: list[_WorkloadQuery],
+    ) -> list[list[Record]]:
         return [await cls._work(tx, query) for query in queries]
 
     @classmethod
@@ -390,8 +400,8 @@ class _WorkloadMethod(enum.Enum):
         cls,
         driver: AsyncDriver,
         query: _WorkloadQuery,
-        config: _WorkloadConfig
-    ) -> t.List[Record]:
+        config: _WorkloadConfig,
+    ) -> list[Record]:
         async with driver.session(database=config.database) as session:
             return await session.execute_read(cls._work, query)
 
@@ -399,14 +409,11 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_read_parallel_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         await asyncio.gather(
-            *(
-                cls._execute_read(driver, query, config)
-                for query in queries
-            ),
+            *(cls._execute_read(driver, query, config) for query in queries),
             return_exceptions=True,
         )
 
@@ -414,20 +421,19 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_read_sequential_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         _ = [
-            await cls._execute_read(driver, query, config)
-            for query in queries
+            await cls._execute_read(driver, query, config) for query in queries
         ]
 
     @classmethod
     async def _execute_read_sequential_transactions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         async with driver.session(database=config.database) as session:
             _ = [
@@ -439,8 +445,8 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_read_sequential_queries(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         async with driver.session(database=config.database) as session:
             await session.execute_read(cls._work_sequential, queries)
@@ -450,8 +456,8 @@ class _WorkloadMethod(enum.Enum):
         cls,
         driver: AsyncDriver,
         query: _WorkloadQuery,
-        config: _WorkloadConfig
-    ) -> t.List[Record]:
+        config: _WorkloadConfig,
+    ) -> list[Record]:
         async with driver.session(database=config.database) as session:
             return await session.execute_write(cls._work, query)
 
@@ -459,14 +465,11 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_write_parallel_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         await asyncio.gather(
-            *(
-                cls._execute_write(driver, query, config)
-                for query in queries
-            ),
+            *(cls._execute_write(driver, query, config) for query in queries),
             return_exceptions=True,
         )
 
@@ -474,8 +477,8 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_write_sequential_sessions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         _ = [
             await cls._execute_write(driver, query, config)
@@ -486,8 +489,8 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_write_sequential_transactions(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         async with driver.session(database=config.database) as session:
             _ = [
@@ -499,8 +502,8 @@ class _WorkloadMethod(enum.Enum):
     async def _execute_write_sequential_queries(
         cls,
         driver: AsyncDriver,
-        queries: t.List[_WorkloadQuery],
-        config: _WorkloadConfig
+        queries: list[_WorkloadQuery],
+        config: _WorkloadConfig,
     ) -> None:
         async with driver.session(database=config.database) as session:
             await session.execute_write(cls._work_sequential, queries)
@@ -509,10 +512,10 @@ class _WorkloadMethod(enum.Enum):
 @dataclass
 class _WorkloadQuery:
     query: str
-    parameters: t.Optional[t.Dict[str, t.Any]]
+    parameters: dict[str, t.Any] | None
 
     @classmethod
-    def parse_multiple(cls, queries: t.Any) -> t.List[te.Self]:
+    def parse_multiple(cls, queries: t.Any) -> list[te.Self]:
         if not isinstance(queries, t.Iterable):
             raise TypeError("Workload queries must be a list")
         return [cls.parse(query) for query in queries]
@@ -539,7 +542,7 @@ class _WorkloadQuery:
 
 @dataclass
 class _WorkloadConfig:
-    database: t.Optional[str]
+    database: str | None
     routing: t.Literal["r", "w"]
 
     @classmethod

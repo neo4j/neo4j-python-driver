@@ -14,10 +14,9 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import pytest
-
-
-# python -m pytest tests/integration/examples/test_geospatial_types_example.py -s -v
 
 
 def _echo(tx, x):
@@ -35,7 +34,7 @@ def test_cartesian_point(driver):
     # Creating a 2D point in Cartesian space
     point2d = CartesianPoint((1, 5.1))
     # Or in 3D
-    point3d = CartesianPoint((1, -2., 3.1))
+    point3d = CartesianPoint((1, -2.0, 3.1))
     # end::geospatial-types-cartesian[]
 
     # storing points for later assertions
@@ -49,21 +48,21 @@ def test_cartesian_point(driver):
     # tag::geospatial-types-cartesian[]
 
     # Reading a 2D point from a record
-    point2d = record_with_2d_point.get("fieldName")  # type: CartesianPoint
+    point2d: CartesianPoint = record_with_2d_point.get("fieldName")
     str(point2d)  # POINT(1.0 5.1)
-    point2d.x  # 1.0
-    point2d.y  # 5.1
+    _ = point2d.x  # 1.0
+    _ = point2d.y  # 5.1
     # point2d.z raises AttributeError
-    point2d.srid  # 7203
+    _ = point2d.srid  # 7203
     len(point2d)  # 2
 
     # Reading a 3D point from a record
-    point3d = record_with_3d_point.get("fieldName")  # type: CartesianPoint
+    point3d: CartesianPoint = record_with_3d_point.get("fieldName")
     str(point3d)  # POINT(1.0 -2.0 3.1)
-    point3d.x  # 1.0
-    point3d.y  # -2.0
-    point3d.z  # 3.1
-    point3d.srid  # 9157
+    _ = point3d.x  # 1.0
+    _ = point3d.y  # -2.0
+    _ = point3d.z  # 3.1
+    _ = point3d.srid  # 9157
     len(point2d)  # 3
     # end::geospatial-types-cartesian[]
 
@@ -71,7 +70,7 @@ def test_cartesian_point(driver):
     assert isinstance(point2d.x, float) and point2d.x == 1.0
     assert isinstance(point2d.y, float) and point2d.y == 5.1
     with pytest.raises(AttributeError):
-        point2d.z
+        _ = point2d.z
     assert point2d.srid == 7203
     assert len(point2d) == 2
     assert point2d == in_point2d
@@ -96,7 +95,7 @@ def test_wgs84_point(driver):
     # Creating a 2D point in WSG84 space
     point2d = WGS84Point((1, 5.1))
     # Or in 3D
-    point3d = WGS84Point((1, -2., 3.1))
+    point3d = WGS84Point((1, -2.0, 3.1))
     # end::geospatial-types-wgs84[]
 
     # storing points for later assertions
@@ -110,21 +109,21 @@ def test_wgs84_point(driver):
     # tag::geospatial-types-wgs84[]
 
     # Reading a 2D point from a record
-    point2d = record_with_2d_point.get("fieldName")  # type: WGS84Point
+    point2d: WGS84Point = record_with_2d_point.get("fieldName")
     str(point2d)  # POINT(1.0 5.1)
-    point2d.longitude  # 1.0 (point2d.x is an alias for longitude)
-    point2d.latitude  # 5.1 (point2d.y is an alias for latitude)
+    _ = point2d.longitude  # 1.0 (point2d.x is an alias for longitude)
+    _ = point2d.latitude  # 5.1 (point2d.y is an alias for latitude)
     # point2d.height raises AttributeError (same with point2d.z)
-    point2d.srid  # 4326
+    _ = point2d.srid  # 4326
     len(point2d)  # 2
 
     # Reading a 3D point from a record
     point3d = record_with_3d_point.get("fieldName")  # type: WGS84Point
     str(point3d)  # POINT(1.0 -2.0 3.1)
-    point3d.longitude  # 1.0 (point3d.x is an alias for longitude)
-    point3d.latitude  # -2.0 (point3d.y is an alias for latitude)
-    point3d.height  # 3.1 (point3d.z is an alias for height)
-    point3d.srid  # 4979
+    _ = point3d.longitude  # 1.0 (point3d.x is an alias for longitude)
+    _ = point3d.latitude  # -2.0 (point3d.y is an alias for latitude)
+    _ = point3d.height  # 3.1 (point3d.z is an alias for height)
+    _ = point3d.srid  # 4979
     len(point2d)  # 3
     # end::geospatial-types-wgs84[]
 
@@ -134,9 +133,9 @@ def test_wgs84_point(driver):
     assert isinstance(point2d.latitude, float) and point2d.latitude == 5.1
     assert isinstance(point2d.y, float) and point2d.y == 5.1
     with pytest.raises(AttributeError):
-        point2d.height
+        _ = point2d.height
     with pytest.raises(AttributeError):
-        point2d.z
+        _ = point2d.z
     assert point2d.srid == 4326
     assert len(point2d) == 2
     assert point2d == in_point2d

@@ -17,24 +17,25 @@
 from neo4j import unit_of_work
 
 
-# python -m pytest tests/integration/examples/test_transaction_metadata_config_example.py -s -v
-
 # tag::transaction-metadata-config[]
 @unit_of_work(timeout=5, metadata={"applicationId": "123"})
 def create_person(tx, name):
-    return tx.run(
-        "CREATE (a:Person {name: $name}) RETURN id(a)", name=name
-    ).single().value()
+    return (
+        tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name)
+        .single()
+        .value()
+    )
 
 
 def add_person(driver, name):
     with driver.session() as session:
         return session.execute_write(create_person, name)
+
+
 # end::transaction-metadata-config[]
 
 
 class TransactionMetadataConfigExample:
-
     def __init__(self, driver):
         self.driver = driver
 

@@ -39,13 +39,12 @@ class _LazyEvalEnv(_LazyEval):
             try:
                 value = environ[self.env_key]
             except KeyError as e:
-                raise Exception(
+                raise RuntimeError(
                     f"Missing environment variable {self.env_key}"
                 ) from e
         if self.type_ is bool:
-            return value.lower() in ("yes", "y", "1", "on", "true")
-        if self.type_ is not None:
-            return self.type_(value)
+            return value.lower() in {"yes", "y", "1", "on", "true"}
+        return self.type_(value)
 
 
 class _LazyEvalFunc(_LazyEval):
@@ -82,19 +81,21 @@ NEO4J_EDITION = _LazyEvalEnv("TEST_NEO4J_EDITION")
 NEO4J_VERSION = _LazyEvalEnv("TEST_NEO4J_VERSION")
 NEO4J_IS_CLUSTER = _LazyEvalEnv("TEST_NEO4J_IS_CLUSTER", bool)
 NEO4J_SERVER_URI = _LazyEvalFunc(
-    lambda: f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:"
-            f"{_module.NEO4J_PORT}"
+    lambda: (
+        f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:"
+        f"{_module.NEO4J_PORT}"
+    )
 )
 
 
 __all__ = (
-    "NEO4J_HOST",
-    "NEO4J_PORT",
-    "NEO4J_USER",
-    "NEO4J_PASS",
-    "NEO4J_SCHEME",
     "NEO4J_EDITION",
-    "NEO4J_VERSION",
+    "NEO4J_HOST",
     "NEO4J_IS_CLUSTER",
+    "NEO4J_PASS",
+    "NEO4J_PORT",
+    "NEO4J_SCHEME",
     "NEO4J_SERVER_URI",
+    "NEO4J_USER",
+    "NEO4J_VERSION",
 )

@@ -34,11 +34,13 @@ from ...._async_compat import (
 
 # [bolt-version-bump] search tag when changing bolt version support
 def test_class_method_protocol_handlers():
+    # fmt: off
     expected_handlers = {
         (3, 0),
         (4, 1), (4, 2), (4, 3), (4, 4),
         (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6),
     }
+    # fmt: on
 
     protocol_handlers = Bolt.protocol_handlers()
 
@@ -48,7 +50,7 @@ def test_class_method_protocol_handlers():
 
 # [bolt-version-bump] search tag when changing bolt version support
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         ((0, 0), 0),
         ((1, 0), 0),
@@ -68,10 +70,11 @@ def test_class_method_protocol_handlers():
         ((5, 6), 1),
         ((5, 7), 0),
         ((6, 0), 0),
-    ]
+    ],
 )
-def test_class_method_protocol_handlers_with_protocol_version(test_input,
-                                                              expected):
+def test_class_method_protocol_handlers_with_protocol_version(
+    test_input, expected
+):
     protocol_handlers = Bolt.protocol_handlers(
         protocol_version=test_input
     )
@@ -86,14 +89,16 @@ def test_class_method_protocol_handlers_with_invalid_protocol_version():
 # [bolt-version-bump] search tag when changing bolt version support
 def test_class_method_get_handshake():
     handshake = Bolt.get_handshake()
-    assert (b"\x00\x06\x06\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
-            == handshake)
+    assert (
+        handshake
+        == b"\x00\x06\x06\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
+    )
 
 
 def test_magic_preamble():
     preamble = 0x6060B017
     preamble_bytes = preamble.to_bytes(4, byteorder="big")
-    assert Bolt.MAGIC_PREAMBLE == preamble_bytes
+    assert preamble_bytes == Bolt.MAGIC_PREAMBLE
 
 
 @TestDecorators.mark_async_only_test
@@ -101,14 +106,14 @@ def test_cancel_hello_in_open(mocker, none_auth):
     address = ("localhost", 7687)
     socket_mock = mocker.MagicMock(spec=BoltSocket)
 
-    socket_cls_mock = mocker.patch("neo4j._sync.io._bolt.BoltSocket",
-                                   autospec=True)
-    socket_cls_mock.connect.return_value = (
-        socket_mock, (5, 0), None, None
+    socket_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
+    socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
     socket_mock.getpeername.return_value = address
-    bolt_cls_mock = mocker.patch("neo4j._sync.io._bolt5.Bolt5x0",
-                                 autospec=True)
+    bolt_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt5.Bolt5x0", autospec=True
+    )
     bolt_mock = bolt_cls_mock.return_value
     bolt_mock.socket = socket_mock
     bolt_mock.hello.side_effect = asyncio.CancelledError()
@@ -145,10 +150,14 @@ def test_version_negotiation(
     address = ("localhost", 7687)
     socket_mock = mocker.MagicMock(spec=BoltSocket)
 
-    socket_cls_mock = mocker.patch("neo4j._sync.io._bolt.BoltSocket",
-                                   autospec=True)
+    socket_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt.BoltSocket", autospec=True
+    )
     socket_cls_mock.connect.return_value = (
-        socket_mock, bolt_version, None, None
+        socket_mock,
+        bolt_version,
+        None,
+        None,
     )
     socket_mock.getpeername.return_value = address
     bolt_cls_mock = mocker.patch(bolt_cls_path, autospec=True)
@@ -163,14 +172,17 @@ def test_version_negotiation(
 
 
 # [bolt-version-bump] search tag when changing bolt version support
-@pytest.mark.parametrize("bolt_version", (
-    (0, 0),
-    (2, 0),
-    (4, 0),
-    (3, 1),
-    (5, 7),
-    (6, 0),
-))
+@pytest.mark.parametrize(
+    "bolt_version",
+    (
+        (0, 0),
+        (2, 0),
+        (4, 0),
+        (3, 1),
+        (5, 7),
+        (6, 0),
+    ),
+)
 @mark_sync_test
 def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     supported_protocols = (
@@ -181,10 +193,14 @@ def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     address = ("localhost", 7687)
     socket_mock = mocker.MagicMock(spec=BoltSocket)
 
-    socket_cls_mock = mocker.patch("neo4j._sync.io._bolt.BoltSocket",
-                                   autospec=True)
+    socket_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt.BoltSocket", autospec=True
+    )
     socket_cls_mock.connect.return_value = (
-        socket_mock, bolt_version, None, None
+        socket_mock,
+        bolt_version,
+        None,
+        None,
     )
     socket_mock.getpeername.return_value = address
 
@@ -199,14 +215,14 @@ def test_cancel_manager_in_open(mocker):
     address = ("localhost", 7687)
     socket_mock = mocker.MagicMock(spec=BoltSocket)
 
-    socket_cls_mock = mocker.patch("neo4j._sync.io._bolt.BoltSocket",
-                                   autospec=True)
-    socket_cls_mock.connect.return_value = (
-        socket_mock, (5, 0), None, None
+    socket_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
+    socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
     socket_mock.getpeername.return_value = address
-    bolt_cls_mock = mocker.patch("neo4j._sync.io._bolt5.Bolt5x0",
-                                 autospec=True)
+    bolt_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt5.Bolt5x0", autospec=True
+    )
     bolt_mock = bolt_cls_mock.return_value
     bolt_mock.socket = socket_mock
     bolt_mock.local_port = 1234
@@ -227,14 +243,14 @@ def test_fail_manager_in_open(mocker):
     address = ("localhost", 7687)
     socket_mock = mocker.MagicMock(spec=BoltSocket)
 
-    socket_cls_mock = mocker.patch("neo4j._sync.io._bolt.BoltSocket",
-                                   autospec=True)
-    socket_cls_mock.connect.return_value = (
-        socket_mock, (5, 0), None, None
+    socket_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
+    socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
     socket_mock.getpeername.return_value = address
-    bolt_cls_mock = mocker.patch("neo4j._sync.io._bolt5.Bolt5x0",
-                                 autospec=True)
+    bolt_cls_mock = mocker.patch(
+        "neo4j._sync.io._bolt5.Bolt5x0", autospec=True
+    )
     bolt_mock = bolt_cls_mock.return_value
     bolt_mock.socket = socket_mock
     bolt_mock.local_port = 1234

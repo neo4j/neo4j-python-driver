@@ -58,15 +58,15 @@ class AsyncStaticAuthManager(AsyncAuthManager):
 
 
 class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
-    _current_auth: t.Optional[ExpiringAuth]
+    _current_auth: ExpiringAuth | None
     _provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
-    _handled_codes: t.FrozenSet[str]
+    _handled_codes: frozenset[str]
     _lock: AsyncLock
 
     def __init__(
         self,
         provider: t.Callable[[], t.Awaitable[ExpiringAuth]],
-        handled_codes: t.FrozenSet[str]
+        handled_codes: frozenset[str],
     ) -> None:
         self._provider = provider
         self._handled_codes = handled_codes
@@ -89,8 +89,10 @@ class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
         async with self._lock:
             auth = self._current_auth
             if auth is None or expiring_auth_has_expired(auth):
-                log.debug("[     ]  _: <AUTH MANAGER> refreshing (%s)",
-                          "init" if auth is None else "time out")
+                log.debug(
+                    "[     ]  _: <AUTH MANAGER> refreshing (%s)",
+                    "init" if auth is None else "time out",
+                )
                 await self._refresh_auth()
                 auth = self._current_auth
                 assert auth is not None
@@ -104,8 +106,10 @@ class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
         async with self._lock:
             cur_auth = self._current_auth
             if cur_auth is not None and cur_auth.auth == auth:
-                log.debug("[     ]  _: <AUTH MANAGER> refreshing (error %s)",
-                          error.code)
+                log.debug(
+                    "[     ]  _: <AUTH MANAGER> refreshing (error %s)",
+                    error.code,
+                )
                 await self._refresh_auth()
             return True
 
@@ -164,7 +168,7 @@ class AsyncAuthManagers:
 
     @staticmethod
     def basic(
-        provider: t.Callable[[], t.Awaitable[_TAuth]]
+        provider: t.Callable[[], t.Awaitable[_TAuth]],
     ) -> AsyncAuthManager:
         """
         Create an auth manager handling basic auth password rotation.
@@ -232,7 +236,7 @@ class AsyncAuthManagers:
 
     @staticmethod
     def bearer(
-        provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
+        provider: t.Callable[[], t.Awaitable[ExpiringAuth]],
     ) -> AsyncAuthManager:
         """
         Create an auth manager for potentially expiring bearer auth tokens.
@@ -297,20 +301,22 @@ class AsyncAuthManagers:
 
         .. versionchanged:: 5.14 Stabilized from preview.
         """
-        handled_codes = frozenset((
-            "Neo.ClientError.Security.TokenExpired",
-            "Neo.ClientError.Security.Unauthorized",
-        ))
+        handled_codes = frozenset(
+            (
+                "Neo.ClientError.Security.TokenExpired",
+                "Neo.ClientError.Security.Unauthorized",
+            )
+        )
         return AsyncNeo4jAuthTokenManager(provider, handled_codes)
 
 
 class _AsyncStaticClientCertificateProvider(AsyncClientCertificateProvider):
-    _cert: t.Optional[ClientCertificate]
+    _cert: ClientCertificate | None
 
     def __init__(self, cert: ClientCertificate) -> None:
         self._cert = cert
 
-    async def get_certificate(self) -> t.Optional[ClientCertificate]:
+    async def get_certificate(self) -> ClientCertificate | None:
         cert, self._cert = self._cert, None
         return cert
 
@@ -327,6 +333,7 @@ class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
+
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
@@ -383,19 +390,17 @@ class AsyncRotatingClientCertificateProvider(AsyncClientCertificateProvider):
 
     @abc.abstractmethod
     async def update_certificate(self, cert: ClientCertificate) -> None:
-        """
-        Update the certificate to use for new connections.
-        """
+        """Update the certificate to use for new connections."""
 
 
 class _AsyncNeo4jRotatingClientCertificateProvider(
     AsyncRotatingClientCertificateProvider
 ):
     def __init__(self, initial_cert: ClientCertificate) -> None:
-        self._cert: t.Optional[ClientCertificate] = initial_cert
+        self._cert: ClientCertificate | None = initial_cert
         self._lock = AsyncCooperativeLock()
 
-    async def get_certificate(self) -> t.Optional[ClientCertificate]:
+    async def get_certificate(self) -> ClientCertificate | None:
         async with self._lock:
             cert, self._cert = self._cert, None
             return cert
@@ -411,11 +416,13 @@ class AsyncClientCertificateProviders:
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
+
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
     """
+
     @staticmethod
     @preview("Mutual TLS is a preview feature.")
     def static(cert: ClientCertificate) -> AsyncClientCertificateProvider:
@@ -430,7 +437,7 @@ class AsyncClientCertificateProviders:
     @staticmethod
     @preview("Mutual TLS is a preview feature.")
     def rotating(
-        initial_cert: ClientCertificate
+        initial_cert: ClientCertificate,
     ) -> AsyncRotatingClientCertificateProvider:
         """
         Create certificate provider that allows for rotating certificates.

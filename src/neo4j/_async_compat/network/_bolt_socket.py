@@ -20,6 +20,12 @@ import asyncio
 import logging
 import struct
 import typing as t
+from contextlib import suppress
+
+
+# fmt: off
+# isort: off
+# isort seems buggy with the noqa comment
 from socket import (
     AF_INET,
     AF_INET6,
@@ -27,8 +33,10 @@ from socket import (
     SO_KEEPALIVE,
     socket,
     SOL_SOCKET,
-    timeout as SocketTimeout,
+    timeout as SocketTimeout,  # noqa: N812 (it is a class)
 )
+# isort: on
+# fmt: on
 from ssl import (
     CertificateError,
     HAS_SNI,
@@ -42,7 +50,7 @@ from ..._exceptions import (
     BoltError,
     BoltProtocolError,
     BoltSecurityError,
-    SocketDeadlineExceeded,
+    SocketDeadlineExceededError,
 )
 from ...exceptions import (
     DriverError,
@@ -75,7 +83,7 @@ def _sanitize_deadline(deadline):
 
 
 class AsyncBoltSocket:
-    Bolt: te.Final[t.Type[AsyncBolt]] = None  # type: ignore[assignment]
+    Bolt: te.Final[type[AsyncBolt]] = None  # type: ignore[assignment]
 
     def __init__(self, reader, protocol, writer):
         self._reader = reader  # type: asyncio.StreamReader
@@ -93,10 +101,10 @@ class AsyncBoltSocket:
         if self._deadline is not None:
             deadline_timeout = self._deadline.to_timeout()
             if deadline_timeout <= 0:
-                raise SocketDeadlineExceeded("timed out")
+                raise SocketDeadlineExceededError("timed out")
             if timeout is None or deadline_timeout <= timeout:
                 timeout = deadline_timeout
-                to_raise = SocketDeadlineExceeded
+                to_raise = SocketDeadlineExceededError
 
         if timeout is not None and timeout <= 0:
             # give the io-operation time for one loop cycle to do its thing
@@ -131,8 +139,9 @@ class AsyncBoltSocket:
         return self._writer.transport.get_extra_info("peername")
 
     def getpeercert(self, *args, **kwargs):
-        return self._writer.transport.get_extra_info("ssl_object")\
-            .getpeercert(*args, **kwargs)
+        return self._writer.transport.get_extra_info("ssl_object").getpeercert(
+            *args, **kwargs
+        )
 
     def gettimeout(self):
         return self._timeout
@@ -152,7 +161,7 @@ class AsyncBoltSocket:
         # FIXME: not particularly memory or time efficient
         io_fut = self._reader.read(nbytes)
         res = await self._wait_for_io(io_fut)
-        buffer[:len(res)] = res
+        buffer[: len(res)] = res
         return len(res)
 
     async def sendall(self, data):
@@ -170,6 +179,7 @@ class AsyncBoltSocket:
     @classmethod
     async def _connect_secure(cls, resolved_address, timeout, keep_alive, ssl):
         """
+        Connect to the address and return the socket.
 
         :param resolved_address:
         :param timeout: seconds
@@ -178,7 +188,6 @@ class AsyncBoltSocket:
 
         :returns: AsyncBoltSocket object
         """
-
         loop = asyncio.get_event_loop()
         s = None
 
@@ -189,14 +198,10 @@ class AsyncBoltSocket:
             elif len(resolved_address) == 4:
                 s = socket(AF_INET6)
             else:
-                raise ValueError(
-                    "Unsupported address {!r}".format(resolved_address))
+                raise ValueError(f"Unsupported address {resolved_address!r}")
             s.setblocking(False)  # asyncio + blocking = no-no!
             log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-            await wait_for(
-                loop.sock_connect(s, resolved_address),
-                timeout
-            )
+            await wait_for(loop.sock_connect(s, resolved_address), timeout)
 
             keep_alive = 1 if keep_alive else 0
             s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
@@ -210,8 +215,8 @@ class AsyncBoltSocket:
                 )
 
             reader = asyncio.StreamReader(
-                limit=2 ** 16,  # 64 KiB,
-                loop=loop
+                limit=2**16,  # 64 KiB,
+                loop=loop,
             )
             protocol = asyncio.StreamReaderProtocol(reader, loop=loop)
             transport, _ = await loop.create_connection(
@@ -221,15 +226,15 @@ class AsyncBoltSocket:
 
             if ssl is not None:
                 # Check that the server provides a certificate
-                der_encoded_server_certificate = \
-                    transport.get_extra_info("ssl_object").getpeercert(
-                        binary_form=True)
+                der_encoded_server_certificate = transport.get_extra_info(
+                    "ssl_object"
+                ).getpeercert(binary_form=True)
                 if der_encoded_server_certificate is None:
                     local_port = s.getsockname()[1]
                     raise BoltProtocolError(
                         "When using an encrypted socket, the server should "
                         "always provide a certificate",
-                        address=(resolved_address._host_name, local_port)
+                        address=(resolved_address._host_name, local_port),
                     )
 
             return cls(reader, protocol, writer)
@@ -240,8 +245,9 @@ class AsyncBoltSocket:
             if s:
                 cls._kill_raw_socket(s)
             raise ServiceUnavailable(
-                "Timed out trying to establish connection to {!r}".format(
-                    resolved_address)) from None
+                "Timed out trying to establish connection to "
+                f"{resolved_address!r}"
+            ) from None
         except asyncio.CancelledError:
             log.debug("[#0000]  S: <CANCELLED> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
@@ -254,23 +260,27 @@ class AsyncBoltSocket:
                 cls._kill_raw_socket(s)
             raise BoltSecurityError(
                 message="Failed to establish encrypted connection.",
-                address=(resolved_address._host_name, local_port)
+                address=(resolved_address._host_name, local_port),
             ) from error
         except Exception as error:
-            log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
-                      " ".join(map(repr, error.args)))
+            log.debug(
+                "[#0000]  S: <ERROR> %s %s",
+                type(error).__name__,
+                " ".join(map(repr, error.args)),
+            )
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
                 cls._kill_raw_socket(s)
             if isinstance(error, OSError):
                 raise ServiceUnavailable(
-                    "Failed to establish connection to {!r} (reason {})"
-                    .format(resolved_address, error)
+                    f"Failed to establish connection to {resolved_address!r} "
+                    f"(reason {error})"
                 ) from error
             raise
 
     async def _handshake(self, resolved_address, deadline):
         """
+        Perform BOLT handshake.
 
         :param resolved_address:
         :param deadline: Deadline for handshake
@@ -282,16 +292,23 @@ class AsyncBoltSocket:
         # TODO: Optimize logging code
         handshake = self.Bolt.get_handshake()
         handshake = struct.unpack(">16B", handshake)
-        handshake = [handshake[i:i + 4] for i in range(0, len(handshake), 4)]
+        handshake = [handshake[i : i + 4] for i in range(0, len(handshake), 4)]
 
         supported_versions = [
-            ("0x%02X%02X%02X%02X" % (vx[0], vx[1], vx[2], vx[3])) for vx in
-            handshake]
+            f"0x{vx[0]:02X}{vx[1]:02X}{vx[2]:02X}{vx[3]:02X}"
+            for vx in handshake
+        ]
 
-        log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port,
-                  int.from_bytes(self.Bolt.MAGIC_PREAMBLE, byteorder="big"))
-        log.debug("[#%04X]  C: <HANDSHAKE> %s %s %s %s", local_port,
-                  *supported_versions)
+        log.debug(
+            "[#%04X]  C: <MAGIC> 0x%08X",
+            local_port,
+            int.from_bytes(self.Bolt.MAGIC_PREAMBLE, byteorder="big"),
+        )
+        log.debug(
+            "[#%04X]  C: <HANDSHAKE> %s %s %s %s",
+            local_port,
+            *supported_versions,
+        )
 
         request = self.Bolt.MAGIC_PREAMBLE + self.Bolt.get_handshake()
 
@@ -325,8 +342,8 @@ class AsyncBoltSocket:
             raise BoltProtocolError(
                 "Expected four byte Bolt handshake response from "
                 f"{resolved_address!r}, received {response!r} instead; "
-                "check for incorrect port number"
-                , address=resolved_address
+                "check for incorrect port number",
+                address=resolved_address,
             )
         elif response == b"HTTP":
             log.debug("[#%04X]  S: <CLOSE>", local_port)
@@ -336,36 +353,45 @@ class AsyncBoltSocket:
                 "(looks like HTTP)"
             )
         agreed_version = response[-1], response[-2]
-        log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port,
-                  agreed_version[1], agreed_version[0])
+        log.debug(
+            "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
+            local_port,
+            agreed_version[1],
+            agreed_version[0],
+        )
         return self, agreed_version, handshake, response
 
     @classmethod
     async def close_socket(cls, socket_):
         if isinstance(socket_, AsyncBoltSocket):
-            try:
+            with suppress(OSError):
                 await socket_.close()
-            except OSError:
-                pass
         else:
             cls._kill_raw_socket(socket_)
 
     @classmethod
     def _kill_raw_socket(cls, socket_):
-        try:
+        with suppress(OSError):
             socket_.shutdown(SHUT_RDWR)
-        except OSError:
-            pass
-        try:
+        with suppress(OSError):
             socket_.close()
-        except OSError:
-            pass
 
     @classmethod
-    async def connect(cls, address, *, tcp_timeout, deadline,
-                      custom_resolver, ssl_context, keep_alive):
-        """ Connect and perform a handshake and return a valid Connection object,
-        assuming a protocol version can be agreed.
+    async def connect(
+        cls,
+        address,
+        *,
+        tcp_timeout,
+        deadline,
+        custom_resolver,
+        ssl_context,
+        keep_alive,
+    ):
+        """
+        Connect and perform a handshake.
+
+        Return a valid Connection object, assuming a protocol version can be
+        agreed.
         """
         errors = []
         failed_addresses = []
@@ -397,8 +423,12 @@ class AsyncBoltSocket:
                 err_str = error.__class__.__name__
                 if str(error):
                     err_str += ": " + str(error)
-                log.debug("[#%04X]  C: <CONNECTION FAILED> %s %s", local_port,
-                          resolved_address, err_str)
+                log.debug(
+                    "[#%04X]  C: <CONNECTION FAILED> %s %s",
+                    local_port,
+                    resolved_address,
+                    err_str,
+                )
                 if s:
                     await cls.close_socket(s)
                 errors.append(error)
@@ -408,34 +438,32 @@ class AsyncBoltSocket:
                     local_port = s.getsockname()[1]
                 except (OSError, AttributeError, TypeError):
                     local_port = 0
-                log.debug("[#%04X]  C: <CANCELED> %s", local_port,
-                          resolved_address)
+                log.debug(
+                    "[#%04X]  C: <CANCELED> %s", local_port, resolved_address
+                )
                 if s:
-                    try:
+                    with suppress(OSError):
                         s.kill()
-                    except OSError:
-                        pass
                 raise
             except Exception:
                 if s:
                     await cls.close_socket(s)
                 raise
+        address_strs = tuple(map(str, failed_addresses))
         if not errors:
             raise ServiceUnavailable(
-                "Couldn't connect to %s (resolved to %s)" % (
-                    str(address), tuple(map(str, failed_addresses)))
+                f"Couldn't connect to {address} (resolved to {address_strs})"
             )
         else:
+            error_strs = "\n".join(map(str, errors))
             raise ServiceUnavailable(
-                "Couldn't connect to %s (resolved to %s):\n%s" % (
-                    str(address), tuple(map(str, failed_addresses)),
-                    "\n".join(map(str, errors))
-                )
+                f"Couldn't connect to {address} (resolved to {address_strs}):"
+                f"\n{error_strs}"
             ) from errors[0]
 
 
 class BoltSocket:
-    Bolt: te.Final[t.Type[Bolt]] = None  # type: ignore[assignment]
+    Bolt: te.Final[type[Bolt]] = None  # type: ignore[assignment]
 
     def __init__(self, socket_: socket):
         self._socket = socket_
@@ -446,7 +474,7 @@ class BoltSocket:
         return self.__socket
 
     @_socket.setter
-    def _socket(self, socket_: t.Union[socket, SSLSocket]):
+    def _socket(self, socket_: socket | SSLSocket):
         self.__socket = socket_
         self.getsockname = socket_.getsockname
         self.getpeername = socket_.getpeername
@@ -469,13 +497,13 @@ class BoltSocket:
         timeout = self._socket.gettimeout()
         deadline_timeout = self._deadline.to_timeout()
         if deadline_timeout <= 0:
-            raise SocketDeadlineExceeded("timed out")
+            raise SocketDeadlineExceededError("timed out")
         if timeout is None or deadline_timeout <= timeout:
             self._socket.settimeout(deadline_timeout)
             try:
                 return func(*args, **kwargs)
             except SocketTimeout as e:
-                raise SocketDeadlineExceeded("timed out") from e
+                raise SocketDeadlineExceededError("timed out") from e
             finally:
                 self._socket.settimeout(timeout)
         return func(*args, **kwargs)
@@ -504,13 +532,13 @@ class BoltSocket:
     @classmethod
     def _connect(cls, resolved_address, timeout, keep_alive):
         """
+        Connect to the address and return the socket.
 
         :param resolved_address:
         :param timeout: seconds
         :param keep_alive: True or False
         :returns: socket object
         """
-
         s = None  # The socket
 
         try:
@@ -519,8 +547,7 @@ class BoltSocket:
             elif len(resolved_address) == 4:
                 s = socket(AF_INET6)
             else:
-                raise ValueError(
-                    "Unsupported address {!r}".format(resolved_address))
+                raise ValueError(f"Unsupported address {resolved_address!r}")
             t = s.gettimeout()
             if timeout:
                 s.settimeout(timeout)
@@ -535,17 +562,21 @@ class BoltSocket:
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             cls._kill_raw_socket(s)
             raise ServiceUnavailable(
-                "Timed out trying to establish connection to {!r}".format(
-                    resolved_address))
+                "Timed out trying to establish connection to "
+                f"{resolved_address!r}"
+            ) from None
         except Exception as error:
-            log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
-                      " ".join(map(repr, error.args)))
+            log.debug(
+                "[#0000]  S: <ERROR> %s %s",
+                type(error).__name__,
+                " ".join(map(repr, error.args)),
+            )
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             cls._kill_raw_socket(s)
             if isinstance(error, OSError):
                 raise ServiceUnavailable(
-                    "Failed to establish connection to {!r} (reason {})"
-                    .format(resolved_address, error)
+                    f"Failed to establish connection to {resolved_address!r} "
+                    f"(reason {error})"
                 ) from error
             raise
 
@@ -562,14 +593,15 @@ class BoltSocket:
                 cls._kill_raw_socket(s)
                 raise BoltSecurityError(
                     message="Failed to establish encrypted connection.",
-                    address=(host, local_port)
+                    address=(host, local_port),
                 ) from cause
             # Check that the server provides a certificate
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 raise BoltProtocolError(
                     "When using an encrypted socket, the server should always "
-                    "provide a certificate", address=(host, local_port)
+                    "provide a certificate",
+                    address=(host, local_port),
                 )
             return s
         return s
@@ -577,6 +609,7 @@ class BoltSocket:
     @classmethod
     def _handshake(cls, s, resolved_address, deadline):
         """
+        Perform BOLT handshake.
 
         :param s: Socket
         :param resolved_address:
@@ -589,16 +622,23 @@ class BoltSocket:
         # TODO: Optimize logging code
         handshake = cls.Bolt.get_handshake()
         handshake = struct.unpack(">16B", handshake)
-        handshake = [handshake[i:i + 4] for i in range(0, len(handshake), 4)]
+        handshake = [handshake[i : i + 4] for i in range(0, len(handshake), 4)]
 
         supported_versions = [
-            ("0x%02X%02X%02X%02X" % (vx[0], vx[1], vx[2], vx[3])) for vx in
-            handshake]
+            f"0x{vx[0]:02X}{vx[1]:02X}{vx[2]:02X}{vx[3]:02X}"
+            for vx in handshake
+        ]
 
-        log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port,
-                  int.from_bytes(cls.Bolt.MAGIC_PREAMBLE, byteorder="big"))
-        log.debug("[#%04X]  C: <HANDSHAKE> %s %s %s %s", local_port,
-                  *supported_versions)
+        log.debug(
+            "[#%04X]  C: <MAGIC> 0x%08X",
+            local_port,
+            int.from_bytes(cls.Bolt.MAGIC_PREAMBLE, byteorder="big"),
+        )
+        log.debug(
+            "[#%04X]  C: <HANDSHAKE> %s %s %s %s",
+            local_port,
+            *supported_versions,
+        )
 
         request = cls.Bolt.MAGIC_PREAMBLE + cls.Bolt.get_handshake()
 
@@ -632,8 +672,8 @@ class BoltSocket:
             raise BoltProtocolError(
                 "Expected four byte Bolt handshake response from "
                 f"{resolved_address!r}, received {response!r} instead; "
-                "check for incorrect port number"
-                , address=resolved_address
+                "check for incorrect port number",
+                address=resolved_address,
             )
         elif response == b"HTTP":
             log.debug("[#%04X]  S: <CLOSE>", local_port)
@@ -643,8 +683,12 @@ class BoltSocket:
                 "(looks like HTTP)"
             )
         agreed_version = response[-1], response[-2]
-        log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port,
-                  agreed_version[1], agreed_version[0])
+        log.debug(
+            "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
+            local_port,
+            agreed_version[1],
+            agreed_version[0],
+        )
         return cls(s), agreed_version, handshake, response
 
     @classmethod
@@ -655,20 +699,27 @@ class BoltSocket:
 
     @classmethod
     def _kill_raw_socket(cls, socket_):
-        try:
+        with suppress(OSError):
             socket_.shutdown(SHUT_RDWR)
-        except OSError:
-            pass
-        try:
+        with suppress(OSError):
             socket_.close()
-        except OSError:
-            pass
 
     @classmethod
-    def connect(cls, address, *, tcp_timeout, deadline, custom_resolver,
-                ssl_context, keep_alive):
-        """ Connect and perform a handshake and return a valid Connection object,
-        assuming a protocol version can be agreed.
+    def connect(
+        cls,
+        address,
+        *,
+        tcp_timeout,
+        deadline,
+        custom_resolver,
+        ssl_context,
+        keep_alive,
+    ):
+        """
+        Connect and perform a handshake.
+
+        Return a valid Connection object, assuming a protocol version can be
+        agreed.
         """
         errors = []
         # Establish a connection to the host and port specified
@@ -687,10 +738,12 @@ class BoltSocket:
                 tcp_timeout = deadline_timeout
             s = None
             try:
-                s = BoltSocket._connect(resolved_address, tcp_timeout,
-                                        keep_alive)
-                s = BoltSocket._secure(s, resolved_address._host_name,
-                                       ssl_context)
+                s = BoltSocket._connect(
+                    resolved_address, tcp_timeout, keep_alive
+                )
+                s = BoltSocket._secure(
+                    s, resolved_address._host_name, ssl_context
+                )
                 return BoltSocket._handshake(s, resolved_address, deadline)
             except (BoltError, DriverError, OSError) as error:
                 try:
@@ -700,8 +753,9 @@ class BoltSocket:
                 err_str = error.__class__.__name__
                 if str(error):
                     err_str += ": " + str(error)
-                log.debug("[#%04X]  S: <CONNECTION FAILED> %s", local_port,
-                          err_str)
+                log.debug(
+                    "[#%04X]  S: <CONNECTION FAILED> %s", local_port, err_str
+                )
                 if s:
                     cls.close_socket(s)
                 errors.append(error)
@@ -710,14 +764,16 @@ class BoltSocket:
                     cls.close_socket(s)
                 raise
         if not errors:
+            resolved_address_strs = tuple(map(str, resolved_addresses))
             raise ServiceUnavailable(
-                "Couldn't connect to %s (resolved to %s)" % (
-                    str(address), tuple(map(str, resolved_addresses)))
+                f"Couldn't connect to {address} "
+                f"(resolved to {resolved_address_strs})"
             )
         else:
+            resolved_address_strs = tuple(map(str, resolved_addresses))
+            error_strs = "\n".join(map(str, errors))
             raise ServiceUnavailable(
-                "Couldn't connect to %s (resolved to %s):\n%s" % (
-                    str(address), tuple(map(str, resolved_addresses)),
-                    "\n".join(map(str, errors))
-                )
+                f"Couldn't connect to {address} "
+                f"(resolved to {resolved_address_strs}):\n"
+                f"{error_strs}"
             ) from errors[0]

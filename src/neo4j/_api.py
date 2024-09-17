@@ -25,8 +25,8 @@ if t.TYPE_CHECKING:
 
 
 __all__ = [
-    "NotificationClassification",
     "NotificationCategory",
+    "NotificationClassification",
     "NotificationDisabledCategory",
     "NotificationDisabledClassification",
     "NotificationMinimumSeverity",
@@ -183,6 +183,7 @@ class NotificationDisabledClassification(str, Enum):
 
     **This is a preview**.
     It might be changed without following the deprecation policy.
+
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
@@ -279,6 +280,7 @@ class NotificationClassification(str, Enum):
 
     **This is a preview**.
     It might be changed without following the deprecation policy.
+
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
@@ -306,7 +308,8 @@ class NotificationClassification(str, Enum):
 
 
 class RoutingControl(str, Enum):
-    """Selection which cluster members to route a query connect to.
+    """
+    Selection which cluster members to route a query connect to.
 
     Inherits from :class:`str` and :class:`enum.Enum`.
     Every driver API accepting a :class:`.RoutingControl` value will also
@@ -327,6 +330,7 @@ class RoutingControl(str, Enum):
         * Renamed ``READERS`` to ``READ`` and ``WRITERS`` to ``WRITE``.
         * Stabilized from experimental.
     """
+
     READ = "r"
     WRITE = "w"
 

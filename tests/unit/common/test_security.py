@@ -75,7 +75,9 @@ def test_should_generate_base_auth_with_keyword_realm_correctly() -> None:
 
 
 def test_should_generate_custom_auth_correctly() -> None:
-    auth = custom_auth("molly", "meoooow", "cat_cafe", "cat", age="1", color="white")
+    auth = custom_auth(
+        "molly", "meoooow", "cat_cafe", "cat", age="1", color="white"
+    )
     assert auth.scheme == "cat"
     assert auth.principal == "molly"
     assert auth.credentials == "meoooow"

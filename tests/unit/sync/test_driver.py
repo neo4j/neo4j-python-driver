@@ -45,7 +45,6 @@ from neo4j import (
     TrustSystemCAs,
 )
 from neo4j._api import TelemetryAPI
-from neo4j._conf import SessionConfig
 from neo4j._debug import ENABLED as DEBUG_ENABLED
 from neo4j._sync.auth_management import _StaticClientCertificateProvider
 from neo4j._sync.config import PoolConfig
@@ -74,28 +73,31 @@ from ..._preview_imports import NotificationDisabledClassification
 
 @pytest.fixture
 def session_cls_mock(mocker):
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
-    session_cls_mock.return_value.attach_mock(mocker.NonCallableMagicMock(),
-                                              "_pipelined_begin")
-    yield session_cls_mock
+    session_cls_mock = mocker.patch(
+        "neo4j._sync.driver.Session", autospec=True
+    )
+    session_cls_mock.return_value.attach_mock(
+        mocker.NonCallableMagicMock(), "_pipelined_begin"
+    )
+    return session_cls_mock
 
 
 @pytest.fixture
 def unit_of_work_mock(mocker):
-    unit_of_work_mock = mocker.patch("neo4j._sync.driver.unit_of_work",
-                                     autospec=True)
-    yield unit_of_work_mock
+    return mocker.patch("neo4j._sync.driver.unit_of_work", autospec=True)
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
-@pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
-                                  "[::1]", "[0:0:0:0:0:0:0:1]"))
+@pytest.mark.parametrize(
+    "host", ("localhost", "127.0.0.1", "[::1]", "[0:0:0:0:0:0:0:1]")
+)
 @pytest.mark.parametrize("port", (":1234", "", ":7687"))
 @pytest.mark.parametrize("params", ("", "?routing_context=test"))
 @pytest.mark.parametrize("auth_token", (("test", "test"), None))
 @mark_sync_test
-def test_direct_driver_constructor(protocol, host, port, params, auth_token):
+def test_direct_driver_constructor(
+    protocol, host, port, params, auth_token
+):
     uri = protocol + host + port + params
     if params:
         with pytest.warns(DeprecationWarning, match="routing context"):
@@ -106,29 +108,36 @@ def test_direct_driver_constructor(protocol, host, port, params, auth_token):
     driver.close()
 
 
-@pytest.mark.parametrize("protocol",
-                         ("neo4j://", "neo4j+s://", "neo4j+ssc://"))
-@pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
-                                  "[::1]", "[0:0:0:0:0:0:0:1]"))
+@pytest.mark.parametrize(
+    "protocol", ("neo4j://", "neo4j+s://", "neo4j+ssc://")
+)
+@pytest.mark.parametrize(
+    "host", ("localhost", "127.0.0.1", "[::1]", "[0:0:0:0:0:0:0:1]")
+)
 @pytest.mark.parametrize("port", (":1234", "", ":7687"))
 @pytest.mark.parametrize("params", ("", "?routing_context=test"))
 @pytest.mark.parametrize("auth_token", (("test", "test"), None))
 @mark_sync_test
-def test_routing_driver_constructor(protocol, host, port, params, auth_token):
+def test_routing_driver_constructor(
+    protocol, host, port, params, auth_token
+):
     uri = protocol + host + port + params
     driver = GraphDatabase.driver(uri, auth=auth_token)
     assert isinstance(driver, Neo4jDriver)
     driver.close()
 
 
-@pytest.mark.parametrize("test_uri", (
-    "bolt+ssc://127.0.0.1:9001",
-    "bolt+s://127.0.0.1:9001",
-    "bolt://127.0.0.1:9001",
-    "neo4j+ssc://127.0.0.1:9001",
-    "neo4j+s://127.0.0.1:9001",
-    "neo4j://127.0.0.1:9001",
-))
+@pytest.mark.parametrize(
+    "test_uri",
+    (
+        "bolt+ssc://127.0.0.1:9001",
+        "bolt+s://127.0.0.1:9001",
+        "bolt://127.0.0.1:9001",
+        "neo4j+ssc://127.0.0.1:9001",
+        "neo4j+s://127.0.0.1:9001",
+        "neo4j://127.0.0.1:9001",
+    ),
+)
 @pytest.mark.parametrize(
     ("test_config", "expected_failure", "expected_failure_message"),
     (
@@ -136,41 +145,42 @@ def test_routing_driver_constructor(protocol, host, port, params, auth_token):
         ({"encrypted": True}, ConfigurationError, '"encrypted"'),
         (
             {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
-            ConfigurationError, '"encrypted"'
+            ConfigurationError,
+            '"encrypted"',
         ),
-        (
-            {"trust": TRUST_ALL_CERTIFICATES},
-            ConfigurationError, '"trust"'
-        ),
+        ({"trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, '"trust"'),
         (
             {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
-            ConfigurationError, '"trust"'
+            ConfigurationError,
+            '"trust"',
         ),
         (
             {"encrypted": True, "trusted_certificates": TrustAll()},
-            ConfigurationError, '"encrypted"'
+            ConfigurationError,
+            '"encrypted"',
         ),
         (
             {"trusted_certificates": TrustAll()},
-            ConfigurationError, '"trusted_certificates"'
+            ConfigurationError,
+            '"trusted_certificates"',
         ),
         (
             {"trusted_certificates": TrustSystemCAs()},
-            ConfigurationError, '"trusted_certificates"'
+            ConfigurationError,
+            '"trusted_certificates"',
         ),
         (
             {"trusted_certificates": TrustCustomCAs("foo", "bar")},
-            ConfigurationError, '"trusted_certificates"'
+            ConfigurationError,
+            '"trusted_certificates"',
         ),
-        (
-            {"ssl_context": None},
-            ConfigurationError, '"ssl_context"'
-        ),
+        ({"ssl_context": None}, ConfigurationError, '"ssl_context"'),
         (
             {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)},
-            ConfigurationError, '"ssl_context"'
+            ConfigurationError,
+            '"ssl_context"',
         ),
-    )
+    ),
 )
 @mark_sync_test
 def test_driver_config_error_uri_conflict(
@@ -193,11 +203,14 @@ def test_driver_config_error_uri_conflict(
         driver.close()
 
 
-@pytest.mark.parametrize("test_uri", (
-    "http://localhost:9001",
-    "ftp://localhost:9001",
-    "x://localhost:9001",
-))
+@pytest.mark.parametrize(
+    "test_uri",
+    (
+        "http://localhost:9001",
+        "ftp://localhost:9001",
+        "x://localhost:9001",
+    ),
+)
 def test_invalid_protocol(test_uri):
     with pytest.raises(ConfigurationError, match="scheme"):
         GraphDatabase.driver(test_uri)
@@ -209,7 +222,7 @@ def test_invalid_protocol(test_uri):
         ({"trust": 1}, ConfigurationError, "The config setting `trust`"),
         ({"trust": True}, ConfigurationError, "The config setting `trust`"),
         ({"trust": None}, ConfigurationError, "The config setting `trust`"),
-    )
+    ),
 )
 def test_driver_trust_config_error(
     test_config, expected_failure, expected_failure_message
@@ -223,9 +236,10 @@ def test_driver_trust_config_error(
     (
         (
             {"liveness_check_timeout": -1},
-            ConfigurationError, '"liveness_check_timeout"'
+            ConfigurationError,
+            '"liveness_check_timeout"',
         ),
-    )
+    ),
 )
 def test_driver_liveness_timeout_config_error(
     test_config, expected_failure, expected_failure_message
@@ -234,20 +248,26 @@ def test_driver_liveness_timeout_config_error(
         GraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
 
 
-@pytest.mark.parametrize("uri", (
-    "bolt://127.0.0.1:9000",
-    "neo4j://127.0.0.1:9000",
-))
+@pytest.mark.parametrize(
+    "uri",
+    (
+        "bolt://127.0.0.1:9000",
+        "neo4j://127.0.0.1:9000",
+    ),
+)
 @mark_sync_test
-def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
+def test_driver_opens_write_session_by_default(
+    uri, fake_pool, mocker
+):
     driver = GraphDatabase.driver(uri)
     # we set a specific db, because else the driver would try to fetch a RT
     # to get hold of the actual home database (which won't work in this
     # unittest)
     driver._pool = fake_pool
     with driver.session(database="foobar") as session:
-        mocker.patch("neo4j._sync.work.session.Transaction",
-                     autospec=True)
+        mocker.patch(
+            "neo4j._sync.work.session.Transaction", autospec=True
+        )
         tx = session.begin_transaction()
     fake_pool.acquire.assert_called_once_with(
         access_mode=WRITE_ACCESS,
@@ -255,7 +275,7 @@ def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         database=mocker.ANY,
         bookmarks=mocker.ANY,
         auth=mocker.ANY,
-        liveness_check_timeout=mocker.ANY
+        liveness_check_timeout=mocker.ANY,
     )
     tx._begin.assert_called_once_with(
         mocker.ANY,
@@ -272,10 +292,13 @@ def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
     driver.close()
 
 
-@pytest.mark.parametrize("uri", (
-    "bolt://127.0.0.1:9000",
-    "neo4j://127.0.0.1:9000",
-))
+@pytest.mark.parametrize(
+    "uri",
+    (
+        "bolt://127.0.0.1:9000",
+        "neo4j://127.0.0.1:9000",
+    ),
+)
 @mark_sync_test
 def test_verify_connectivity(uri, mocker):
     driver = GraphDatabase.driver(uri)
@@ -292,15 +315,21 @@ def test_verify_connectivity(uri, mocker):
     pool_mock.release.assert_called_once()
 
 
-@pytest.mark.parametrize("uri", (
-    "bolt://127.0.0.1:9000",
-    "neo4j://127.0.0.1:9000",
-))
-@pytest.mark.parametrize("kwargs", (
-    {"default_access_mode": WRITE_ACCESS},
-    {"default_access_mode": READ_ACCESS},
-    {"fetch_size": 69},
-))
+@pytest.mark.parametrize(
+    "uri",
+    (
+        "bolt://127.0.0.1:9000",
+        "neo4j://127.0.0.1:9000",
+    ),
+)
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"default_access_mode": WRITE_ACCESS},
+        {"default_access_mode": READ_ACCESS},
+        {"fetch_size": 69},
+    ),
+)
 @mark_sync_test
 def test_verify_connectivity_parameters_are_deprecated(
     uri, kwargs, mocker
@@ -315,15 +344,21 @@ def test_verify_connectivity_parameters_are_deprecated(
         driver.close()
 
 
-@pytest.mark.parametrize("uri", (
-    "bolt://127.0.0.1:9000",
-    "neo4j://127.0.0.1:9000",
-))
-@pytest.mark.parametrize("kwargs", (
-    {"default_access_mode": WRITE_ACCESS},
-    {"default_access_mode": READ_ACCESS},
-    {"fetch_size": 69},
-))
+@pytest.mark.parametrize(
+    "uri",
+    (
+        "bolt://127.0.0.1:9000",
+        "neo4j://127.0.0.1:9000",
+    ),
+)
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"default_access_mode": WRITE_ACCESS},
+        {"default_access_mode": READ_ACCESS},
+        {"fetch_size": 69},
+    ),
+)
 @mark_sync_test
 def test_get_server_info_parameters_are_experimental(
     uri, kwargs, mocker
@@ -352,20 +387,19 @@ def test_with_builtin_bookmark_manager(session_cls_mock) -> None:
 
 @TestDecorators.mark_async_only_test
 def test_with_custom_inherited_async_bookmark_manager(
-    session_cls_mock
+    session_cls_mock,
 ) -> None:
     class BMM(BookmarkManager):
         def update_bookmarks(
-            self, previous_bookmarks: t.Iterable[str],
-            new_bookmarks: t.Iterable[str]
-        ) -> None:
-            ...
+            self,
+            previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str],
+        ) -> None: ...
 
         def get_bookmarks(self) -> t.Collection[str]:
             return []
 
-        def forget(self, databases: t.Iterable[str]) -> None:
-            ...
+        def forget(self, databases: t.Iterable[str]) -> None: ...
 
     bmm = BMM()
     driver = GraphDatabase.driver("bolt://localhost")
@@ -377,20 +411,19 @@ def test_with_custom_inherited_async_bookmark_manager(
 
 @mark_sync_test
 def test_with_custom_inherited_sync_bookmark_manager(
-    session_cls_mock
+    session_cls_mock,
 ) -> None:
     class BMM(BookmarkManager):
         def update_bookmarks(
-            self, previous_bookmarks: t.Iterable[str],
-            new_bookmarks: t.Iterable[str]
-        ) -> None:
-            ...
+            self,
+            previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str],
+        ) -> None: ...
 
         def get_bookmarks(self) -> t.Collection[str]:
             return []
 
-        def forget(self, databases: t.Iterable[str]) -> None:
-            ...
+        def forget(self, databases: t.Iterable[str]) -> None: ...
 
     bmm = BMM()
     driver = GraphDatabase.driver("bolt://localhost")
@@ -402,20 +435,19 @@ def test_with_custom_inherited_sync_bookmark_manager(
 
 @TestDecorators.mark_async_only_test
 def test_with_custom_ducktype_async_bookmark_manager(
-    session_cls_mock
+    session_cls_mock,
 ) -> None:
     class BMM:
         def update_bookmarks(
-            self, previous_bookmarks: t.Iterable[str],
-            new_bookmarks: t.Iterable[str]
-        ) -> None:
-            ...
+            self,
+            previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str],
+        ) -> None: ...
 
         def get_bookmarks(self) -> t.Collection[str]:
             return []
 
-        def forget(self, databases: t.Iterable[str]) -> None:
-            ...
+        def forget(self, databases: t.Iterable[str]) -> None: ...
 
     bmm = BMM()
     driver = GraphDatabase.driver("bolt://localhost")
@@ -427,20 +459,19 @@ def test_with_custom_ducktype_async_bookmark_manager(
 
 @mark_sync_test
 def test_with_custom_ducktype_sync_bookmark_manager(
-    session_cls_mock
+    session_cls_mock,
 ) -> None:
     class BMM:
         def update_bookmarks(
-            self, previous_bookmarks: t.Iterable[str],
-            new_bookmarks: t.Iterable[str]
-        ) -> None:
-            ...
+            self,
+            previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str],
+        ) -> None: ...
 
         def get_bookmarks(self) -> t.Collection[str]:
             return []
 
-        def forget(self, databases: t.Iterable[str]) -> None:
-            ...
+        def forget(self, databases: t.Iterable[str]) -> None: ...
 
     bmm = BMM()
     driver = GraphDatabase.driver("bolt://localhost")
@@ -459,17 +490,18 @@ def test_with_static_client_certificate() -> None:
             "bolt://localhost", client_certificate=cert
         ) as driver:
             passed_provider = driver._pool.pool_config.client_certificate
-            assert isinstance(passed_provider,
-                              _StaticClientCertificateProvider)
+            assert isinstance(
+                passed_provider, _StaticClientCertificateProvider
+            )
             assert passed_provider._cert is cert
 
 
 @mark_sync_test
 def test_with_custom_inherited_client_certificate_provider(
-    session_cls_mock
+    session_cls_mock,
 ) -> None:
     class Provider(ClientCertificateProvider):
-        def get_certificate(self) -> t.Optional[ClientCertificate]:
+        def get_certificate(self) -> ClientCertificate | None:
             return None
 
     provider = Provider()
@@ -482,10 +514,10 @@ def test_with_custom_inherited_client_certificate_provider(
 
 @mark_sync_test
 def test_with_custom_ducktype_client_certificate_provider(
-    session_cls_mock
+    session_cls_mock,
 ) -> None:
     class Provider:
-        def get_certificate(self) -> t.Optional[ClientCertificate]:
+        def get_certificate(self) -> ClientCertificate | None:
             return None
 
     provider = Provider()
@@ -503,7 +535,7 @@ if t.TYPE_CHECKING:
             "OFF",
             "WARNING",
             "INFORMATION",
-        ]
+        ],
     ]
 
     _T_NotificationDisabledCategory = t.Union[
@@ -515,7 +547,7 @@ if t.TYPE_CHECKING:
             "PERFORMANCE",
             "DEPRECATION",
             "GENERIC",
-        ]
+        ],
     ]
 
     _T_NotificationDisabledClassification = t.Union[
@@ -527,30 +559,31 @@ if t.TYPE_CHECKING:
             "PERFORMANCE",
             "DEPRECATION",
             "GENERIC",
-        ]
+        ],
     ]
 
 
 if t.TYPE_CHECKING:
+
     class NotificationFilter(te.TypedDict):
         notifications_min_severity: te.NotRequired[
-            t.Optional[_T_NotificationMinimumSeverity]
+            _T_NotificationMinimumSeverity | None
         ]
         notifications_disabled_categories: te.NotRequired[
-            t.Optional[t.Iterable[_T_NotificationDisabledCategory]]
+            t.Iterable[_T_NotificationDisabledCategory] | None
         ]
         notifications_disabled_classifications: te.NotRequired[
-            t.Optional[t.Iterable[_T_NotificationDisabledClassification]]
+            t.Iterable[_T_NotificationDisabledClassification] | None
         ]
 
 
 def get_notification_filter_expectation(
-    min_sev: t.Optional[_T_NotificationMinimumSeverity],
-    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
-    dis_clss: t.Optional[t.Iterable[_T_NotificationDisabledClassification]],
-) -> t.Tuple[
-    t.Optional[_T_NotificationMinimumSeverity],
-    t.Optional[t.Iterable[_T_NotificationDisabledClassification]]
+    min_sev: _T_NotificationMinimumSeverity | None,
+    dis_cats: t.Iterable[_T_NotificationDisabledCategory] | None,
+    dis_clss: t.Iterable[_T_NotificationDisabledClassification] | None,
+) -> tuple[
+    _T_NotificationMinimumSeverity | None,
+    t.Iterable[_T_NotificationDisabledClassification] | None,
 ]:
     default_conf = PoolConfig()
 
@@ -566,79 +599,91 @@ def get_notification_filter_expectation(
     elif dis_clss is not ...:
         expected_dis_clss = [getattr(d, "value", d) for d in dis_clss]
     else:
-        expected_dis_clss = \
-            default_conf.notifications_disabled_classifications
+        expected_dis_clss = default_conf.notifications_disabled_classifications
 
     if dis_cats is not ... and dis_cats is not None:
         expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
         if isinstance(expected_dis_clss, list):
-            expected_dis_clss = list(
-                {*expected_dis_cats, *expected_dis_clss}
-            )
+            expected_dis_clss = list({*expected_dis_cats, *expected_dis_clss})
         else:
             expected_dis_clss = expected_dis_cats
 
     return expected_min_sev, expected_dis_clss
 
 
-
-# TODO: Test merging of categories and classifications
-@pytest.mark.parametrize("min_sev", (
-    ...,
-    None,
-    "OFF",
-    NotificationMinimumSeverity.OFF,
-    "WARNING",
-    NotificationMinimumSeverity.INFORMATION,
-))
-@pytest.mark.parametrize("dis_cats", (
-    ...,
-    None,
-    [],
-    ["GENERIC"],
-    [NotificationDisabledCategory.GENERIC],
-    [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
-    (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
-    (NotificationDisabledCategory.GENERIC, "HINT"),
-    {"GENERIC", "HINT"},
-    # please no :/
-    {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
-))
-@pytest.mark.parametrize("dis_clss", (
-    ...,
-    None,
-    [],
-    ["GENERIC"],
-    [NotificationDisabledClassification.GENERIC],
-    [
-        NotificationDisabledClassification.GENERIC,
-        NotificationDisabledClassification.HINT,
-    ],
+@pytest.mark.parametrize(
+    "min_sev",
     (
-        NotificationDisabledClassification.GENERIC,
-        NotificationDisabledClassification.HINT,
+        ...,
+        None,
+        "OFF",
+        NotificationMinimumSeverity.OFF,
+        "WARNING",
+        NotificationMinimumSeverity.INFORMATION,
     ),
-    (NotificationDisabledClassification.GENERIC, "HINT"),
-    {"GENERIC", "HINT"},
-    # please no :/
-    {"GENERIC": True, NotificationDisabledClassification.HINT: 0},
-))
-@pytest.mark.parametrize("uri", [
-    "bolt://localhost:7687",
-    "neo4j://localhost:7687",
-])
+)
+@pytest.mark.parametrize(
+    "dis_cats",
+    (
+        ...,
+        None,
+        [],
+        ["GENERIC"],
+        [NotificationDisabledCategory.GENERIC],
+        [
+            NotificationDisabledCategory.GENERIC,
+            NotificationDisabledCategory.HINT,
+        ],
+        (
+            NotificationDisabledCategory.GENERIC,
+            NotificationDisabledCategory.HINT,
+        ),
+        (NotificationDisabledCategory.GENERIC, "HINT"),
+        {"GENERIC", "HINT"},
+        # please no :/
+        {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
+    ),
+)
+@pytest.mark.parametrize(
+    "dis_clss",
+    (
+        ...,
+        None,
+        [],
+        ["GENERIC"],
+        [NotificationDisabledClassification.GENERIC],
+        [
+            NotificationDisabledClassification.GENERIC,
+            NotificationDisabledClassification.HINT,
+        ],
+        (
+            NotificationDisabledClassification.GENERIC,
+            NotificationDisabledClassification.HINT,
+        ),
+        (NotificationDisabledClassification.GENERIC, "HINT"),
+        {"GENERIC", "HINT"},
+        # please no :/
+        {"GENERIC": True, NotificationDisabledClassification.HINT: 0},
+    ),
+)
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "bolt://localhost:7687",
+        "neo4j://localhost:7687",
+    ],
+)
 @mark_sync_test
 def test_driver_factory_with_notification_filters(
     uri: str,
     mocker,
-    min_sev: t.Optional[_T_NotificationMinimumSeverity],
-    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
-    dis_clss: t.Optional[t.Iterable[_T_NotificationDisabledClassification]],
+    min_sev: _T_NotificationMinimumSeverity | None,
+    dis_cats: t.Iterable[_T_NotificationDisabledCategory] | None,
+    dis_clss: t.Iterable[_T_NotificationDisabledClassification] | None,
 ) -> None:
     pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
     open_mock = mocker.patch.object(
-        pool_cls, "open",
-        return_value=mocker.MagicMock(spec=pool_cls)
+        pool_cls, "open", return_value=mocker.MagicMock(spec=pool_cls)
     )
     open_mock.return_value.address = mocker.Mock()
     mocker.patch.object(BoltPool, "open", new=open_mock)
@@ -652,15 +697,17 @@ def test_driver_factory_with_notification_filters(
         filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
     if "notifications_disabled_classifications" in filter_kwargs:
-        with pytest.warns(PreviewWarning,
-                          match="notifications_disabled_classifications"):
+        with pytest.warns(
+            PreviewWarning, match="notifications_disabled_classifications"
+        ):
             driver = GraphDatabase.driver(uri, auth=None, **filter_kwargs)
     else:
         driver = GraphDatabase.driver(uri, auth=None, **filter_kwargs)
 
-    with (driver):
-        expected_min_sev, expected_dis_clss = \
+    with driver:
+        expected_min_sev, expected_dis_clss = (
             get_notification_filter_expectation(min_sev, dis_cats, dis_clss)
+        )
 
         open_mock.assert_called_once()
         open_pool_conf = open_mock.call_args.kwargs["pool_config"]
@@ -672,10 +719,13 @@ def test_driver_factory_with_notification_filters(
             assert sorted(actual_dis_clss) == sorted(expected_dis_clss)
 
 
-@pytest.mark.parametrize("uri", [
-    "bolt://localhost:7687",
-    "neo4j://localhost:7687",
-])
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "bolt://localhost:7687",
+        "neo4j://localhost:7687",
+    ],
+)
 @pytest.mark.parametrize(
     ("min_sev", "expected"),
     (
@@ -689,7 +739,7 @@ def test_driver_factory_with_notification_filters(
         (NotificationMinimumSeverity.WARNING, "WARNING"),
         ("FOO", ValueError),
         (NotificationDisabledCategory.GENERIC, ValueError),
-    )
+    ),
 )
 @pytest.mark.parametrize(
     "min_sev_session",
@@ -704,15 +754,15 @@ def test_driver_factory_with_notification_filters(
         NotificationMinimumSeverity.WARNING,
         "FOO",
         NotificationDisabledCategory.GENERIC,
-    )
+    ),
 )
 @mark_sync_test
 def test_warn_notification_severity_driver_config(
     uri: str,
     session_cls_mock,
-    min_sev: t.Optional[_T_NotificationMinimumSeverity],
-    min_sev_session: t.Optional[_T_NotificationMinimumSeverity],
-    expected: t.Union[None, NotificationMinimumSeverity, te.Type[Exception]],
+    min_sev: _T_NotificationMinimumSeverity | None,
+    min_sev_session: _T_NotificationMinimumSeverity | None,
+    expected: NotificationMinimumSeverity | type[Exception] | None,
 ) -> None:
     if inspect.isclass(expected) and issubclass(expected, Exception):
         assert min_sev is not ...  # makes no sense to test
@@ -745,58 +795,76 @@ def test_warn_notification_severity_driver_config(
             assert session_config.warn_notification_severity == expected
 
 
-@pytest.mark.parametrize("min_sev", (
-    ...,
-    None,
-    "OFF",
-    NotificationMinimumSeverity.OFF,
-    "WARNING",
-    NotificationMinimumSeverity.INFORMATION,
-))
-@pytest.mark.parametrize("dis_cats", (
-    ...,
-    None,
-    [],
-    ["GENERIC"],
-    [NotificationDisabledCategory.GENERIC],
-    [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
-    (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
-    (NotificationDisabledCategory.GENERIC, "HINT"),
-    {"GENERIC", "HINT"},
-    # please no :/
-    {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
-))
-@pytest.mark.parametrize("dis_clss", (
-    ...,
-    None,
-    [],
-    ["GENERIC"],
-    [NotificationDisabledClassification.GENERIC],
-    [
-        NotificationDisabledClassification.GENERIC,
-        NotificationDisabledClassification.HINT,
-    ],
+@pytest.mark.parametrize(
+    "min_sev",
     (
-        NotificationDisabledClassification.GENERIC,
-        NotificationDisabledClassification.HINT,
+        ...,
+        None,
+        "OFF",
+        NotificationMinimumSeverity.OFF,
+        "WARNING",
+        NotificationMinimumSeverity.INFORMATION,
     ),
-    (NotificationDisabledClassification.GENERIC, "HINT"),
-    {"GENERIC", "HINT"},
-    # please no :/
-    {"GENERIC": True, NotificationDisabledClassification.HINT: 0},
-))
-@pytest.mark.parametrize("uri", [
-    "bolt://localhost:7687",
-    "neo4j://localhost:7687",
-])
+)
+@pytest.mark.parametrize(
+    "dis_cats",
+    (
+        ...,
+        None,
+        [],
+        ["GENERIC"],
+        [NotificationDisabledCategory.GENERIC],
+        [
+            NotificationDisabledCategory.GENERIC,
+            NotificationDisabledCategory.HINT,
+        ],
+        (
+            NotificationDisabledCategory.GENERIC,
+            NotificationDisabledCategory.HINT,
+        ),
+        (NotificationDisabledCategory.GENERIC, "HINT"),
+        {"GENERIC", "HINT"},
+        # please no :/
+        {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
+    ),
+)
+@pytest.mark.parametrize(
+    "dis_clss",
+    (
+        ...,
+        None,
+        [],
+        ["GENERIC"],
+        [NotificationDisabledClassification.GENERIC],
+        [
+            NotificationDisabledClassification.GENERIC,
+            NotificationDisabledClassification.HINT,
+        ],
+        (
+            NotificationDisabledClassification.GENERIC,
+            NotificationDisabledClassification.HINT,
+        ),
+        (NotificationDisabledClassification.GENERIC, "HINT"),
+        {"GENERIC", "HINT"},
+        # please no :/
+        {"GENERIC": True, NotificationDisabledClassification.HINT: 0},
+    ),
+)
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "bolt://localhost:7687",
+        "neo4j://localhost:7687",
+    ],
+)
 @mark_sync_test
 def test_session_factory_with_notification_filter(
     uri: str,
     session_cls_mock,
     mocker,
-    min_sev: t.Optional[_T_NotificationMinimumSeverity],
-    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
-    dis_clss: t.Optional[t.Iterable[_T_NotificationDisabledClassification]],
+    min_sev: _T_NotificationMinimumSeverity | None,
+    dis_cats: t.Iterable[_T_NotificationDisabledCategory] | None,
+    dis_clss: t.Iterable[_T_NotificationDisabledClassification] | None,
 ) -> None:
     pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
     pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
@@ -813,8 +881,9 @@ def test_session_factory_with_notification_filter(
 
     with GraphDatabase.driver(uri, auth=None) as driver:
         if "notifications_disabled_classifications" in filter_kwargs:
-            with pytest.warns(PreviewWarning,
-                              match="notifications_disabled_classifications"):
+            with pytest.warns(
+                PreviewWarning, match="notifications_disabled_classifications"
+            ):
                 session = driver.session(**filter_kwargs)
         else:
             session = driver.session(**filter_kwargs)
@@ -822,14 +891,19 @@ def test_session_factory_with_notification_filter(
             session_cls_mock.assert_called_once()
             (_, session_config), _ = session_cls_mock.call_args
 
-            expected_min_sev, expected_dis_clss = \
-                get_notification_filter_expectation(min_sev,
-                                                    dis_cats, dis_clss)
+            expected_min_sev, expected_dis_clss = (
+                get_notification_filter_expectation(
+                    min_sev, dis_cats, dis_clss
+                )
+            )
 
-            assert (session_config.notifications_min_severity
-                    == expected_min_sev)
-            assert (session_config.notifications_disabled_classifications
-                    == expected_dis_clss)
+            assert (
+                session_config.notifications_min_severity == expected_min_sev
+            )
+            assert (
+                session_config.notifications_disabled_classifications
+                == expected_dis_clss
+            )
 
 
 class SomeClass:
@@ -840,8 +914,9 @@ class SomeClass:
 def test_execute_query_work(mocker) -> None:
     tx_mock = mocker.MagicMock(spec=neo4j.ManagedTransaction)
     transformer_mock = mocker.MagicMock()
-    transformer: t.Callable[[Result], t.Union[SomeClass]] = \
+    transformer: t.Callable[[Result], t.Union[SomeClass]] = (
         transformer_mock
+    )
     query = "QUERY"
     parameters = {"para": "meters", "foo": object}
 
@@ -852,20 +927,26 @@ def test_execute_query_work(mocker) -> None:
     assert res is transformer_mock.return_value
 
 
-@pytest.mark.parametrize("query", (
-    "foo",
-    "bar",
-    "RETURN 1 AS n",
-    Query("RETURN 1 AS n"),
-    Query("RETURN 1 AS n", metadata={"key": "value"}),
-    Query("RETURN 1 AS n", timeout=1234),
-    Query("RETURN 1 AS n", metadata={"key": "value"}, timeout=1234),
-))
+@pytest.mark.parametrize(
+    "query",
+    (
+        "foo",
+        "bar",
+        "RETURN 1 AS n",
+        Query("RETURN 1 AS n"),
+        Query("RETURN 1 AS n", metadata={"key": "value"}),
+        Query("RETURN 1 AS n", timeout=1234),
+        Query("RETURN 1 AS n", metadata={"key": "value"}, timeout=1234),
+    ),
+)
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_query(
-    query: te.LiteralString | Query, positional: bool, session_cls_mock,
-    unit_of_work_mock, mocker
+    query: te.LiteralString | Query,
+    positional: bool,
+    session_cls_mock,
+    unit_of_work_mock,
+    mocker,
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
 
@@ -881,31 +962,40 @@ def test_execute_query_query(
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
     if isinstance(query, Query):
-        unit_of_work_mock.assert_called_once_with(query.metadata,
-                                                  query.timeout)
+        unit_of_work_mock.assert_called_once_with(
+            query.metadata, query.timeout
+        )
         unit_of_work = unit_of_work_mock.return_value
         unit_of_work.assert_called_once_with(_work)
         session_executor_mock.assert_called_once_with(
-            WRITE_ACCESS, TelemetryAPI.DRIVER, unit_of_work.return_value,
-            (query.text, mocker.ANY, mocker.ANY), {}
+            WRITE_ACCESS,
+            TelemetryAPI.DRIVER,
+            unit_of_work.return_value,
+            (query.text, mocker.ANY, mocker.ANY),
+            {},
         )
     else:
         unit_of_work_mock.assert_not_called()
         session_executor_mock.assert_called_once_with(
-            WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-            (query, mocker.ANY, mocker.ANY), {}
+            WRITE_ACCESS,
+            TelemetryAPI.DRIVER,
+            _work,
+            (query, mocker.ANY, mocker.ANY),
+            {},
         )
     assert res is session_executor_mock.return_value
 
 
-@pytest.mark.parametrize("parameters", (
-    ..., None, {}, {"foo": 1}, {"foo": 1, "bar": object()}
-))
+@pytest.mark.parametrize(
+    "parameters", (..., None, {}, {"foo": 1}, {"foo": 1, "bar": object()})
+)
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_parameters(
-    parameters: t.Optional[t.Dict[str, t.Any]], positional: bool,
-    session_cls_mock, mocker
+    parameters: dict[str, t.Any] | None,
+    positional: bool,
+    session_cls_mock,
+    mocker,
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
 
@@ -913,11 +1003,10 @@ def test_execute_query_parameters(
         if parameters is Ellipsis:
             parameters = None
             res = driver.execute_query("")
+        elif positional:
+            res = driver.execute_query("", parameters)
         else:
-            if positional:
-                res = driver.execute_query("", parameters)
-            else:
-                res = driver.execute_query("", parameters_=parameters)
+            res = driver.execute_query("", parameters_=parameters)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -925,18 +1014,29 @@ def test_execute_query_parameters(
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_called_once_with(
-        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-        (mocker.ANY, parameters or {}, mocker.ANY), {}
+        WRITE_ACCESS,
+        TelemetryAPI.DRIVER,
+        _work,
+        (mocker.ANY, parameters or {}, mocker.ANY),
+        {},
     )
     assert res is session_executor_mock.return_value
 
 
-@pytest.mark.parametrize("parameters", (
-    None, {}, {"foo": 1}, {"foo": 1, "_bar": object()}, {"__": 1}, {"baz__": 2}
-))
+@pytest.mark.parametrize(
+    "parameters",
+    (
+        None,
+        {},
+        {"foo": 1},
+        {"foo": 1, "_bar": object()},
+        {"__": 1},
+        {"baz__": 2},
+    ),
+)
 @mark_sync_test
 def test_execute_query_keyword_parameters(
-    parameters: t.Optional[t.Dict[str, t.Any]], session_cls_mock, mocker
+    parameters: dict[str, t.Any] | None, session_cls_mock, mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
 
@@ -952,18 +1052,22 @@ def test_execute_query_keyword_parameters(
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_called_once_with(
-        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-        (mocker.ANY, parameters or {}, mocker.ANY), {}
+        WRITE_ACCESS,
+        TelemetryAPI.DRIVER,
+        _work,
+        (mocker.ANY, parameters or {}, mocker.ANY),
+        {},
     )
     assert res is session_executor_mock.return_value
 
 
-@pytest.mark.parametrize("parameters", (
-    {"_": "a"}, {"foo_": None}, {"foo_": 1, "bar_": 2}
-))
+@pytest.mark.parametrize(
+    "parameters", ({"_": "a"}, {"foo_": None}, {"foo_": 1, "bar_": 2})
+)
 @mark_sync_test
 def test_reserved_query_keyword_parameters(
-    mocker, parameters: t.Dict[str, t.Any],
+    mocker,
+    parameters: dict[str, t.Any],
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     mocker.patch("neo4j._sync.driver.Session", autospec=True)
@@ -981,7 +1085,6 @@ def test_reserved_query_keyword_parameters(
         ({}, {"x": 1}, {"x": 1}),
         (None, {"x": 1}, {"x": 1}),
         ({"x": 1}, {"y": 2}, {"x": 1, "y": 2}),
-        ({"x": 1}, {"x": 2}, {"x": 2}),
         ({"x": 1}, {"x": 2}, {"x": 2}),
         ({"x": 1, "y": 3}, {"x": 2}, {"x": 2, "y": 3}),
         ({"x": 1}, {"x": 2, "y": 3}, {"x": 2, "y": 3}),
@@ -1001,29 +1104,29 @@ def test_reserved_query_keyword_parameters(
         # already taken keyword arguments
         ({}, {"database_": "neo4j"}, {}),
         ({"database_": "neo4j"}, {}, {"database_": "neo4j"}),
-    )
+    ),
 )
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_parameter_precedence(
-    params: t.Optional[t.Dict[str, t.Any]],
-    kw_params: t.Dict[str, t.Any],
-    expected_params: t.Dict[str, t.Any],
+    params: dict[str, t.Any] | None,
+    kw_params: dict[str, t.Any],
+    expected_params: dict[str, t.Any],
     positional: bool,
     session_cls_mock,
-    mocker
+    mocker,
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
 
     with driver as driver:
         if params is None:
             res = driver.execute_query("", **kw_params)
+        elif positional:
+            res = driver.execute_query("", params, **kw_params)
         else:
-            if positional:
-                res = driver.execute_query("", params, **kw_params)
-            else:
-                res = driver.execute_query("", parameters_=params,
-                                                 **kw_params)
+            res = driver.execute_query(
+                "", parameters_=params, **kw_params
+            )
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -1031,8 +1134,11 @@ def test_execute_query_parameter_precedence(
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_called_once_with(
-        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-        (mocker.ANY, expected_params, mocker.ANY), {}
+        WRITE_ACCESS,
+        TelemetryAPI.DRIVER,
+        _work,
+        (mocker.ANY, expected_params, mocker.ANY),
+        {},
     )
     assert res is session_executor_mock.return_value
 
@@ -1045,24 +1151,25 @@ def test_execute_query_parameter_precedence(
         ("w", WRITE_ACCESS),
         (neo4j.RoutingControl.READ, READ_ACCESS),
         (neo4j.RoutingControl.WRITE, WRITE_ACCESS),
-    )
+    ),
 )
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_routing_control(
-    mode: str, positional: bool,
-    routing_mode: t.Union[neo4j.RoutingControl, te.Literal["r", "w"], None],
-    session_cls_mock, mocker
+    mode: str,
+    positional: bool,
+    routing_mode: neo4j.RoutingControl | te.Literal["r", "w"] | None,
+    session_cls_mock,
+    mocker,
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         if routing_mode is None:
             res = driver.execute_query("")
+        elif positional:
+            res = driver.execute_query("", None, routing_mode)
         else:
-            if positional:
-                res = driver.execute_query("", None, routing_mode)
-            else:
-                res = driver.execute_query("", routing_=routing_mode)
+            res = driver.execute_query("", routing_=routing_mode)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -1070,30 +1177,32 @@ def test_execute_query_routing_control(
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_called_once_with(
-        mode, TelemetryAPI.DRIVER, _work,
-        (mocker.ANY, mocker.ANY, mocker.ANY), {}
+        mode,
+        TelemetryAPI.DRIVER,
+        _work,
+        (mocker.ANY, mocker.ANY, mocker.ANY),
+        {},
     )
     assert res is session_executor_mock.return_value
 
 
-@pytest.mark.parametrize("database", (
-    ..., None, "foo", "baz", "neo4j", "system"
-))
+@pytest.mark.parametrize(
+    "database", (..., None, "foo", "baz", "neo4j", "system")
+)
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_database(
-    database: t.Optional[str], positional: bool, session_cls_mock
+    database: str | None, positional: bool, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         if database is Ellipsis:
             database = None
             driver.execute_query("")
+        elif positional:
+            driver.execute_query("", None, "w", database)
         else:
-            if positional:
-                driver.execute_query("", None, "w", database)
-            else:
-                driver.execute_query("", database_=database)
+            driver.execute_query("", database_=database)
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -1104,22 +1213,19 @@ def test_execute_query_database(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_impersonated_user(
-    impersonated_user: t.Optional[str], positional: bool, session_cls_mock
+    impersonated_user: str | None, positional: bool, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         if impersonated_user is Ellipsis:
             impersonated_user = None
             driver.execute_query("")
+        elif positional:
+            driver.execute_query("", None, "w", None, impersonated_user)
         else:
-            if positional:
-                driver.execute_query(
-                    "", None, "w", None, impersonated_user
-                )
-            else:
-                driver.execute_query(
-                    "", impersonated_user_=impersonated_user
-                )
+            driver.execute_query(
+                "", impersonated_user_=impersonated_user
+            )
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -1131,23 +1237,20 @@ def test_execute_query_impersonated_user(
 @mark_sync_test
 def test_execute_query_bookmark_manager(
     positional: bool,
-    bookmark_manager: t.Union[BookmarkManager, BookmarkManager, None],
-    session_cls_mock
+    bookmark_manager: BookmarkManager | BookmarkManager | None,
+    session_cls_mock,
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         if bookmark_manager is Ellipsis:
             bookmark_manager = driver.execute_query_bookmark_manager
             driver.execute_query("")
+        elif positional:
+            driver.execute_query(
+                "", None, "w", None, None, bookmark_manager
+            )
         else:
-            if positional:
-                driver.execute_query(
-                    "", None, "w", None, None, bookmark_manager
-                )
-            else:
-                driver.execute_query(
-                    "", bookmark_manager_=bookmark_manager
-                )
+            driver.execute_query("", bookmark_manager_=bookmark_manager)
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -1161,7 +1264,7 @@ def test_execute_query_result_transformer(
     positional: bool,
     result_transformer: t.Callable[[Result], t.Union[SomeClass]],
     session_cls_mock,
-    mocker
+    mocker,
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     res: t.Any
@@ -1190,8 +1293,11 @@ def test_execute_query_result_transformer(
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_called_once_with(
-        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-        (mocker.ANY, mocker.ANY, expected_transformer), {}
+        WRITE_ACCESS,
+        TelemetryAPI.DRIVER,
+        _work,
+        (mocker.ANY, mocker.ANY, expected_transformer),
+        {},
     )
     assert res is session_executor_mock.return_value
 
@@ -1218,8 +1324,7 @@ def test_supports_session_auth(session_cls_mock) -> None:
         ("get_server_info", (), {}),
         ("supports_multi_db", (), {}),
         ("supports_session_auth", (), {}),
-
-    )
+    ),
 )
 @mark_sync_test
 def test_using_closed_driver_where_deprecated(
@@ -1231,7 +1336,7 @@ def test_using_closed_driver_where_deprecated(
     method = getattr(driver, method_name)
     with pytest.warns(
         DeprecationWarning,
-        match="Using a driver after it has been closed is deprecated."
+        match="Using a driver after it has been closed is deprecated.",
     ):
         if inspect.iscoroutinefunction(method):
             method(*args, **kwargs)
@@ -1240,10 +1345,7 @@ def test_using_closed_driver_where_deprecated(
 
 
 @pytest.mark.parametrize(
-    ("method_name", "args", "kwargs"),
-    (
-        ("close", (), {}),
-    )
+    ("method_name", "args", "kwargs"), (("close", (), {}),)
 )
 @mark_sync_test
 def test_using_closed_driver_where_not_deprecated(

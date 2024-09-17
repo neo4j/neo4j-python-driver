@@ -35,7 +35,9 @@ from ....iter_util import powerset
 def test_conn_is_stale(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
-    connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
+    connection = Bolt3(
+        address, fake_socket(address), max_connection_lifetime
+    )
     if set_stale:
         connection.set_stale()
     assert connection.stale() is True
@@ -45,7 +47,9 @@ def test_conn_is_stale(fake_socket, set_stale):
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
-    connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
+    connection = Bolt3(
+        address, fake_socket(address), max_connection_lifetime
+    )
     if set_stale:
         connection.set_stale()
     assert connection.stale() is set_stale
@@ -55,7 +59,9 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 def test_conn_is_not_stale(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
-    connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
+    connection = Bolt3(
+        address, fake_socket(address), max_connection_lifetime
+    )
     if set_stale:
         connection.set_stale()
     assert connection.stale() is set_stale
@@ -63,14 +69,18 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 
 def test_db_extra_not_supported_in_begin(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
+    connection = Bolt3(
+        address, fake_socket(address), PoolConfig.max_connection_lifetime
+    )
     with pytest.raises(ConfigurationError):
         connection.begin(db="something")
 
 
 def test_db_extra_not_supported_in_run(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
+    connection = Bolt3(
+        address, fake_socket(address), PoolConfig.max_connection_lifetime
+    )
     with pytest.raises(ConfigurationError):
         connection.run("", db="something")
 
@@ -79,11 +89,13 @@ def test_db_extra_not_supported_in_run(fake_socket):
 def test_simple_discard(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
-    connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
+    connection = Bolt3(
+        address, socket, PoolConfig.max_connection_lifetime
+    )
     connection.discard()
     connection.send_all()
     tag, fields = socket.pop_message()
-    assert tag == b"\x2F"
+    assert tag == b"\x2f"
     assert len(fields) == 0
 
 
@@ -91,11 +103,13 @@ def test_simple_discard(fake_socket):
 def test_simple_pull(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
-    connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
+    connection = Bolt3(
+        address, socket, PoolConfig.max_connection_lifetime
+    )
     connection.pull()
     connection.send_all()
     tag, fields = socket.pop_message()
-    assert tag == b"\x3F"
+    assert tag == b"\x3f"
     assert len(fields) == 0
 
 
@@ -109,8 +123,10 @@ def test_telemetry_message(
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(
-        address, socket, PoolConfig.max_connection_lifetime,
-        telemetry_disabled=driver_disabled
+        address,
+        socket,
+        PoolConfig.max_connection_lifetime,
+        telemetry_disabled=driver_disabled,
     )
     if serv_enabled:
         connection.configuration_hints["telemetry.enabled"] = True
@@ -131,10 +147,13 @@ def test_hint_recv_timeout_seconds_gets_ignored(
         address, Bolt3.PACKER_CLS, Bolt3.UNPACKER_CLS
     )
     sockets.client.settimeout = mocker.MagicMock()
-    sockets.server.send_message(b"\x70", {
-        "server": "Neo4j/3.5.0",
-        "hints": {"connection.recv_timeout_seconds": recv_timeout},
-    })
+    sockets.server.send_message(
+        b"\x70",
+        {
+            "server": "Neo4j/3.5.0",
+            "hints": {"connection.recv_timeout_seconds": recv_timeout},
+        },
+    )
     connection = Bolt3(
         address, sockets.client, PoolConfig.max_connection_lifetime
     )
@@ -145,26 +164,34 @@ def test_hint_recv_timeout_seconds_gets_ignored(
 CREDENTIALS = "+++super-secret-sauce+++"
 
 
-@pytest.mark.parametrize("auth", (
-    ("user", CREDENTIALS),
-    neo4j.basic_auth("user", CREDENTIALS),
-    neo4j.kerberos_auth(CREDENTIALS),
-    neo4j.bearer_auth(CREDENTIALS),
-    neo4j.custom_auth("user", CREDENTIALS, "realm", "scheme"),
-    neo4j.Auth("scheme", "principal", CREDENTIALS, "realm", foo="bar"),
-))
+@pytest.mark.parametrize(
+    "auth",
+    (
+        ("user", CREDENTIALS),
+        neo4j.basic_auth("user", CREDENTIALS),
+        neo4j.kerberos_auth(CREDENTIALS),
+        neo4j.bearer_auth(CREDENTIALS),
+        neo4j.custom_auth("user", CREDENTIALS, "realm", "scheme"),
+        neo4j.Auth("scheme", "principal", CREDENTIALS, "realm", foo="bar"),
+    ),
+)
 @mark_sync_test
 def test_credentials_are_not_logged(
     auth, fake_socket_pair, mocker, caplog
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt3.PACKER_CLS,
-                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt3.PACKER_CLS,
+        unpacker_cls=Bolt3.UNPACKER_CLS,
+    )
     sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
     connection = Bolt3(
-        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+        address,
+        sockets.client,
+        PoolConfig.max_connection_lifetime,
+        auth=auth,
     )
     with caplog.at_level(logging.DEBUG):
         connection.hello()
@@ -181,23 +208,32 @@ def test_credentials_are_not_logged(
 @pytest.mark.parametrize("message", ("logon", "logoff"))
 def test_auth_message_raises_configuration_error(message, fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = Bolt3(address, fake_socket(address),
-                            PoolConfig.max_connection_lifetime)
-    with pytest.raises(ConfigurationError,
-                       match="User switching is not supported"):
+    connection = Bolt3(
+        address, fake_socket(address), PoolConfig.max_connection_lifetime
+    )
+    with pytest.raises(
+        ConfigurationError, match="User switching is not supported"
+    ):
         getattr(connection, message)()
 
 
-@pytest.mark.parametrize("auth", (
-    None,
-    neo4j.Auth("scheme", "principal", "credentials", "realm"),
-    ("user", "password"),
-))
+@pytest.mark.parametrize(
+    "auth",
+    (
+        None,
+        neo4j.Auth("scheme", "principal", "credentials", "realm"),
+        ("user", "password"),
+    ),
+)
 @mark_sync_test
 def test_re_auth_noop(auth, fake_socket, mocker):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = Bolt3(address, fake_socket(address),
-                            PoolConfig.max_connection_lifetime, auth=auth)
+    connection = Bolt3(
+        address,
+        fake_socket(address),
+        PoolConfig.max_connection_lifetime,
+        auth=auth,
+    )
     logon_spy = mocker.spy(connection, "logon")
     logoff_spy = mocker.spy(connection, "logoff")
     res = connection.re_auth(auth, None)
@@ -215,61 +251,76 @@ def test_re_auth_noop(auth, fake_socket, mocker):
             neo4j.Auth("scheme", "principal", "credentials", "realm"),
             ("user", "password"),
         ),
-        2
-    )
+        2,
+    ),
 )
 @mark_sync_test
 def test_re_auth(auth1, auth2, fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = Bolt3(address, fake_socket(address),
-                            PoolConfig.max_connection_lifetime, auth=auth1)
-    with pytest.raises(ConfigurationError,
-                       match="User switching is not supported"):
+    connection = Bolt3(
+        address,
+        fake_socket(address),
+        PoolConfig.max_connection_lifetime,
+        auth=auth1,
+    )
+    with pytest.raises(
+        ConfigurationError, match="User switching is not supported"
+    ):
         connection.re_auth(auth2, None)
 
 
-@pytest.mark.parametrize(("method", "args"), (
-    ("run", ("RETURN 1",)),
-    ("begin", ()),
-))
-@pytest.mark.parametrize("kwargs", (
-    {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_classifications": ["HINT"]},
-    {"notifications_disabled_classifications": []},
-    {
-        "notifications_min_severity": "WARNING",
-        "notifications_disabled_classifications": ["HINT"]
-    },
-))
-def test_does_not_support_notification_filters(fake_socket, method,
-                                               args, kwargs):
+@pytest.mark.parametrize(
+    ("method", "args"),
+    (
+        ("run", ("RETURN 1",)),
+        ("begin", ()),
+    ),
+)
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"notifications_min_severity": "WARNING"},
+        {"notifications_disabled_classifications": ["HINT"]},
+        {"notifications_disabled_classifications": []},
+        {
+            "notifications_min_severity": "WARNING",
+            "notifications_disabled_classifications": ["HINT"],
+        },
+    ),
+)
+def test_does_not_support_notification_filters(
+    fake_socket, method, args, kwargs
+):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
-    connection = Bolt3(address, socket,
-                            PoolConfig.max_connection_lifetime)
+    connection = Bolt3(
+        address, socket, PoolConfig.max_connection_lifetime
+    )
     method = getattr(connection, method)
     with pytest.raises(ConfigurationError, match="Notification filtering"):
         method(*args, **kwargs)
 
 
 @mark_sync_test
-@pytest.mark.parametrize("kwargs", (
-    {"notifications_min_severity": "WARNING"},
-    {"notifications_disabled_classifications": ["HINT"]},
-    {"notifications_disabled_classifications": []},
-    {
-        "notifications_min_severity": "WARNING",
-        "notifications_disabled_classifications": ["HINT"]
-    },
-))
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"notifications_min_severity": "WARNING"},
+        {"notifications_disabled_classifications": ["HINT"]},
+        {"notifications_disabled_classifications": []},
+        {
+            "notifications_min_severity": "WARNING",
+            "notifications_disabled_classifications": ["HINT"],
+        },
+    ),
+)
 def test_hello_does_not_support_notification_filters(
     fake_socket, kwargs
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(
-        address, socket, PoolConfig.max_connection_lifetime,
-        **kwargs
+        address, socket, PoolConfig.max_connection_lifetime, **kwargs
     )
     with pytest.raises(ConfigurationError, match="Notification filtering"):
         connection.hello()
@@ -281,9 +332,11 @@ def test_hello_does_not_support_notification_filters(
 )
 def test_user_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt3.PACKER_CLS,
-                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt3.PACKER_CLS,
+        unpacker_cls=Bolt3.UNPACKER_CLS,
+    )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
@@ -292,7 +345,7 @@ def test_user_agent(fake_socket_pair, user_agent):
     )
     connection.hello()
 
-    tag, fields = sockets.server.pop_message()
+    _tag, fields = sockets.server.pop_message()
     extra = fields[0]
     if not user_agent:
         assert extra["user_agent"] == USER_AGENT
@@ -306,9 +359,11 @@ def test_user_agent(fake_socket_pair, user_agent):
 )
 def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt3.PACKER_CLS,
-                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt3.PACKER_CLS,
+        unpacker_cls=Bolt3.UNPACKER_CLS,
+    )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
@@ -317,7 +372,7 @@ def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
     )
     connection.hello()
 
-    tag, fields = sockets.server.pop_message()
+    _tag, fields = sockets.server.pop_message()
     extra = fields[0]
     assert "bolt_agent" not in extra
 
@@ -328,7 +383,7 @@ def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
     (
         ("run", ("RETURN 1",), 2),
         ("begin", (), 0),
-    )
+    ),
 )
 @pytest.mark.parametrize(
     ("timeout", "res"),
@@ -348,25 +403,27 @@ def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
         (1, 1000),
         (
             -1e-15,
-            ValueError("Timeout must be a positive number or 0")
+            ValueError("Timeout must be a positive number or 0"),
         ),
         (
             "foo",
-            ValueError("Timeout must be specified as a number of seconds")
+            ValueError("Timeout must be specified as a number of seconds"),
         ),
         (
             [1, 2],
-            TypeError("Timeout must be specified as a number of seconds")
-        )
-    )
+            TypeError("Timeout must be specified as a number of seconds"),
+        ),
+    ),
 )
 def test_tx_timeout(
     fake_socket_pair, func, args, extra_idx, timeout, res
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt3.PACKER_CLS,
-                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt3.PACKER_CLS,
+        unpacker_cls=Bolt3.UNPACKER_CLS,
+    )
     sockets.server.send_message(b"\x70", {})
     connection = Bolt3(address, sockets.client, 0)
     func = getattr(connection, func)
@@ -376,7 +433,7 @@ def test_tx_timeout(
     else:
         func(*args, timeout=timeout)
         connection.send_all()
-        tag, fields = sockets.server.pop_message()
+        _tag, fields = sockets.server.pop_message()
         extra = fields[extra_idx]
         if timeout is None:
             assert "tx_timeout" not in extra
@@ -392,15 +449,17 @@ def test_tx_timeout(
             ("reset", "commit", "rollback"),
             (None, "some_db", "another_db"),
         ),
-        2
-    )
+        2,
+    ),
 )
 @mark_sync_test
 def test_tracks_last_database(fake_socket_pair, actions):
     address = neo4j.Address(("127.0.0.1", 7687))
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt3.PACKER_CLS,
-                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt3.PACKER_CLS,
+        unpacker_cls=Bolt3.UNPACKER_CLS,
+    )
     connection = Bolt3(address, sockets.client, 0)
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     connection.hello()
@@ -454,8 +513,9 @@ def raises_if_db(db):
     if db is None:
         yield
     else:
-        with pytest.raises(ConfigurationError,
-                           match="selecting database is not supported"):
+        with pytest.raises(
+            ConfigurationError, match="selecting database is not supported"
+        ):
             yield
 
 
@@ -473,7 +533,7 @@ def raises_if_db(db):
             {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
         ),
         limit=3,
-    )
+    ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))
 @mark_sync_test
@@ -483,9 +543,11 @@ def test_does_not_enrich_diagnostic_record(
     fake_socket_pair,
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt3.PACKER_CLS,
-                               unpacker_cls=Bolt3.UNPACKER_CLS)
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt3.PACKER_CLS,
+        unpacker_cls=Bolt3.UNPACKER_CLS,
+    )
     connection = Bolt3(address, sockets.client, 0)
 
     sent_metadata = {

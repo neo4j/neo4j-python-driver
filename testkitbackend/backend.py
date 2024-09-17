@@ -25,7 +25,7 @@ class Request(dict):
 
     def get(self, item, default=None):
         self._seen_keys.add(item)
-        return super(Request, self).get(item, default)
+        return super().get(item, default)
 
     def mark_all_as_read(self, recursive=False):
         self._seen_keys = set(self.keys())
@@ -47,8 +47,10 @@ class Request(dict):
 
     @property
     def unseen_keys(self):
-        assert not any(isinstance(v, dict) and not isinstance(v, Request)
-                       for v in self.values())
+        assert not any(
+            isinstance(v, dict) and not isinstance(v, Request)
+            for v in self.values()
+        )
         unseen = set(self.keys()) - self._seen_keys
         for k, v in self.items():
             if isinstance(v, Request):

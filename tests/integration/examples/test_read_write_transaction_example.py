@@ -17,7 +17,6 @@
 # tag::read-write-transaction-import[]
 # end::read-write-transaction-import[]
 
-# python -m pytest tests/integration/examples/test_read_write_transaction_example.py -s -v
 
 def read_write_transaction_example(driver):
     with driver.session() as session:
@@ -28,14 +27,16 @@ def read_write_transaction_example(driver):
         tx.run("CREATE (a:Person {name: $name})", name=name)
 
     def match_person_node(tx, name):
-        result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", name=name)
+        result = tx.run(
+            "MATCH (a:Person {name: $name}) RETURN count(a)", name=name
+        )
         return result.single()[0]
 
     def add_person(name):
         with driver.session() as session:
             session.execute_write(create_person_node, name)
-            persons = session.execute_read(match_person_node, name)
-            return persons
+            return session.execute_read(match_person_node, name)
+
     # end::read-write-transaction[]
 
     result = add_person("Alice")

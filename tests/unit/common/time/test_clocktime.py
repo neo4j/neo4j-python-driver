@@ -23,7 +23,6 @@ from neo4j.time import (
 
 
 class TestClockTime:
-
     def test_zero_(self):
         ct = ClockTime()
         assert ct.seconds == 0

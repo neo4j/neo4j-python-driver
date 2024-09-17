@@ -28,8 +28,6 @@ from neo4j.debug import watch
 from neo4j.exceptions import ConfigurationError
 
 
-# python -m pytest tests/unit/test_conf.py -s -v
-
 watch("neo4j")
 
 test_session_config = {
@@ -52,24 +50,33 @@ test_session_config = {
 
 
 def test_init_session_config_merge():
-    # python -m pytest tests/unit/test_conf.py -s -v -k test_init_session_config
-
     test_config_a = {"connection_acquisition_timeout": 111}
     test_config_c = {"max_transaction_retry_time": 222}
 
-    workspace_config = WorkspaceConfig(test_config_a, WorkspaceConfig.consume(test_config_c))
+    workspace_config = WorkspaceConfig(
+        test_config_a, WorkspaceConfig.consume(test_config_c)
+    )
     assert len(test_config_a) == 1
     assert len(test_config_c) == 0
     assert isinstance(workspace_config, WorkspaceConfig)
-    assert workspace_config.connection_acquisition_timeout == WorkspaceConfig.connection_acquisition_timeout
+    assert (
+        workspace_config.connection_acquisition_timeout
+        == WorkspaceConfig.connection_acquisition_timeout
+    )
     assert workspace_config.max_transaction_retry_time == 222
 
     workspace_config = WorkspaceConfig(test_config_c, test_config_a)
     assert isinstance(workspace_config, WorkspaceConfig)
     assert workspace_config.connection_acquisition_timeout == 111
-    assert workspace_config.max_transaction_retry_time == WorkspaceConfig.max_transaction_retry_time
+    assert (
+        workspace_config.max_transaction_retry_time
+        == WorkspaceConfig.max_transaction_retry_time
+    )
 
-    test_config_b = {"default_access_mode": READ_ACCESS, "connection_acquisition_timeout": 333}
+    test_config_b = {
+        "default_access_mode": READ_ACCESS,
+        "connection_acquisition_timeout": 333,
+    }
 
     session_config = SessionConfig(workspace_config, test_config_b)
     assert session_config.connection_acquisition_timeout == 333
@@ -81,12 +88,14 @@ def test_init_session_config_merge():
 
 
 def test_init_session_config_with_not_valid_key():
-    # python -m pytest tests/unit/test_conf.py -s -v -k test_init_session_config_with_not_valid_key
-
     test_config_a = {"connection_acquisition_timeout": 111}
     workspace_config = WorkspaceConfig.consume(test_config_a)
 
-    test_config_b = {"default_access_mode": READ_ACCESS, "connection_acquisition_timeout": 333, "not_valid_key": None}
+    test_config_b = {
+        "default_access_mode": READ_ACCESS,
+        "connection_acquisition_timeout": 333,
+        "not_valid_key": None,
+    }
     session_config = SessionConfig(workspace_config, test_config_b)
 
     with pytest.raises(AttributeError):

@@ -18,17 +18,19 @@ from __future__ import annotations
 
 import typing as t
 
-from .._work import SummaryNotification
+
+if t.TYPE_CHECKING:
+    from .._work import SummaryNotification
 
 
 class NotificationPrinter:
     notification: SummaryNotification
-    query: t.Optional[str]
+    query: str | None
 
     def __init__(
         self,
         notification: SummaryNotification,
-        query: t.Optional[str] = None,
+        query: str | None = None,
         one_line: bool = False,
     ) -> None:
         self.notification = notification
@@ -48,9 +50,9 @@ class NotificationPrinter:
         if pos.line <= 0 or pos.line > len(query_lines) or pos.column <= 0:
             return s + self.query
         query_lines = (
-            query_lines[:pos.line]
+            query_lines[: pos.line]
             + [" " * (pos.column - 1) + "^"]
-            + query_lines[pos.line:]
+            + query_lines[pos.line :]
         )
         s += "\n".join(query_lines)
         return s

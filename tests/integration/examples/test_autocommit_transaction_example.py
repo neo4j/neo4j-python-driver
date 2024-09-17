@@ -21,10 +21,7 @@ from neo4j import Query
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_autocommit_transaction_example.py -s -v
-
 class AutocommitTransactionExample:
-
     def __init__(self, driver):
         self.driver = driver
 
@@ -36,7 +33,11 @@ class AutocommitTransactionExample:
     # Alternative implementation, with a one second timeout
     def add_person_within_a_second(self, name):
         with self.driver.session() as session:
-            session.run(Query("CREATE (a:Person {name: $name})", timeout=1.0), name=name)
+            session.run(
+                Query("CREATE (a:Person {name: $name})", timeout=1.0),
+                name=name,
+            )
+
     # end::autocommit-transaction[]
 
 

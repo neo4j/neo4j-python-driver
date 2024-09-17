@@ -47,9 +47,10 @@ AsyncLock = asyncio.Lock
 
 
 class AsyncRLock(asyncio.Lock):
-    """Reentrant asyncio.lock
+    """
+    Reentrant asyncio.lock.
 
-    Inspired by Python's RLock implementation
+    Inspired by Python's RLock implementation.
 
     .. warning::
         In async Python there are no threads. This implementation uses
@@ -75,7 +76,7 @@ class AsyncRLock(asyncio.Lock):
             extra += f" waiters={waiters_match.group(1)}"
         if self._owner:
             extra += f" owner={self._owner}"
-        return f'<{res[1:-1]} [{extra}]>'
+        return f"<{res[1:-1]} [{extra}]>"
 
     def is_owner(self, task=None):
         if task is None:
@@ -160,7 +161,7 @@ class AsyncRLock(asyncio.Lock):
             super().release()
 
     def release(self):
-        """Release the lock"""
+        """Release the lock."""
         me = asyncio.current_task()
         return self._release(me)
 
@@ -169,7 +170,8 @@ class AsyncRLock(asyncio.Lock):
 
 
 class AsyncCooperativeLock:
-    """Lock placeholder for asyncio Python when working fully cooperatively.
+    """
+    Lock placeholder for asyncio Python when working fully cooperatively.
 
     This lock doesn't do anything in async Python. Its threaded counterpart,
     however, is an ordinary :class:`threading.Lock`.
@@ -190,7 +192,8 @@ class AsyncCooperativeLock:
         return self._locked
 
     def acquire(self):
-        """Acquire a lock.
+        """
+        Acquire a lock.
 
         This method will raise a RuntimeError where an ordinary
         (non-placeholder) lock would need to block. I.e., when the lock is
@@ -204,7 +207,8 @@ class AsyncCooperativeLock:
         return True
 
     def release(self):
-        """Release a lock.
+        """
+        Release a lock.
 
         When the lock is locked, reset it to unlocked, and return.
 
@@ -230,7 +234,8 @@ class AsyncCooperativeLock:
 
 
 class AsyncCooperativeRLock:
-    """Reentrant lock placeholder for cooperative asyncio Python.
+    """
+    Reentrant lock placeholder for cooperative asyncio Python.
 
     This lock doesn't do anything in async Python. It's threaded counterpart,
     however, is an ordinary :class:`threading.Lock`.
@@ -248,14 +253,15 @@ class AsyncCooperativeRLock:
             extra = f"locked {self._count} times by owner:{self._owner}"
         else:
             extra = "unlocked"
-        return f'<{res[1:-1]} [{extra}]>'
+        return f"<{res[1:-1]} [{extra}]>"
 
     def locked(self):
         """Return True if lock is acquired."""
         return self._owner is not None
 
     def acquire(self):
-        """Acquire a lock.
+        """
+        Acquire a lock.
 
         This method will raise a RuntimeError where an ordinary
         (non-placeholder) lock would need to block. I.e., when the lock is
@@ -271,12 +277,11 @@ class AsyncCooperativeRLock:
         if self._owner is me:
             self._count += 1
             return True
-        raise RuntimeError(
-            "Cannot acquire a foreign locked cooperative lock."
-        )
+        raise RuntimeError("Cannot acquire a foreign locked cooperative lock.")
 
     def release(self):
-        """Release a lock.
+        """
+        Release a lock.
 
         When the lock is locked, reset it to unlocked, and return.
 
@@ -300,7 +305,8 @@ class AsyncCooperativeRLock:
 
 
 class AsyncCondition:
-    """Asynchronous equivalent to threading.Condition.
+    """
+    Asynchronous equivalent to threading.Condition.
 
     This class implements condition variable objects. A condition variable
     allows one or more coroutines to wait until they are notified by another
@@ -343,31 +349,30 @@ class AsyncCondition:
                 if self._loop is None:
                     self._loop = loop
         if loop is not self._loop:
-            raise RuntimeError(f'{self!r} is bound to a different event loop')
+            raise RuntimeError(f"{self!r} is bound to a different event loop")
         return loop
 
     async def __aenter__(self):
-        if isinstance(self._lock, (AsyncCooperativeLock,
-                                   AsyncCooperativeRLock)):
+        if isinstance(
+            self._lock, (AsyncCooperativeLock, AsyncCooperativeRLock)
+        ):
             self._lock.acquire()
         else:
             await self.acquire()
-        # We have no use for the "as ..."  clause in the with
-        # statement for locks.
-        return None
 
     async def __aexit__(self, exc_type, exc, tb):
         self.release()
 
     def __repr__(self):
         res = super().__repr__()
-        extra = 'locked' if self.locked() else 'unlocked'
+        extra = "locked" if self.locked() else "unlocked"
         if self._waiters:
-            extra = f'{extra}, waiters:{len(self._waiters)}'
-        return f'<{res[1:-1]} [{extra}]>'
+            extra = f"{extra}, waiters:{len(self._waiters)}"
+        return f"<{res[1:-1]} [{extra}]>"
 
     async def _wait(self, timeout=None, me=None):
-        """Wait until notified.
+        """
+        Wait until notified.
 
         If the calling coroutine has not acquired the lock when this
         method is called, a RuntimeError is raised.
@@ -378,7 +383,7 @@ class AsyncCondition:
         awakened, it re-acquires the lock and returns True.
         """
         if not self.locked():
-            raise RuntimeError('cannot wait on un-acquired lock')
+            raise RuntimeError("cannot wait on un-acquired lock")
 
         cancelled = False
         if isinstance(self._lock, AsyncRLock):
@@ -401,8 +406,9 @@ class AsyncCondition:
 
         finally:
             # Must reacquire lock even if wait is cancelled
-            if isinstance(self._lock, (AsyncCooperativeLock,
-                                       AsyncCooperativeRLock)):
+            if isinstance(
+                self._lock, (AsyncCooperativeLock, AsyncCooperativeRLock)
+            ):
                 self._lock.acquire()
             else:
                 while True:
@@ -422,7 +428,8 @@ class AsyncCondition:
         return await self._wait(timeout=timeout, me=me)
 
     async def wait_for(self, predicate):
-        """Wait until a predicate becomes true.
+        """
+        Wait until a predicate becomes true.
 
         The predicate should be a callable which result will be
         interpreted as a boolean value.  The final predicate value is
@@ -435,7 +442,10 @@ class AsyncCondition:
         return result
 
     def notify(self, n=1):
-        """By default, wake up one coroutine waiting on this condition, if any.
+        """
+        Wake up a single threads waiting on this condition.
+
+        By default, wake up one coroutine waiting on this condition, if any.
         If the calling coroutine has not acquired the lock when this method
         is called, a RuntimeError is raised.
 
@@ -447,7 +457,7 @@ class AsyncCondition:
         not release the lock, its caller should.
         """
         if not self.locked():
-            raise RuntimeError('cannot notify on un-acquired lock')
+            raise RuntimeError("cannot notify on un-acquired lock")
 
         idx = 0
         for fut in self._waiters:
@@ -459,10 +469,12 @@ class AsyncCondition:
                 fut.set_result(False)
 
     def notify_all(self):
-        """Wake up all threads waiting on this condition. This method acts
-        like notify(), but wakes up all waiting threads instead of one. If the
-        calling thread has not acquired the lock when this method is called,
-        a RuntimeError is raised.
+        """
+        Wake up all threads waiting on this condition.
+
+        This method acts like notify(), but wakes up all waiting threads
+        instead of one. If the calling thread has not acquired the lock when
+        this method is called, a RuntimeError is raised.
         """
         self.notify(len(self._waiters))
 

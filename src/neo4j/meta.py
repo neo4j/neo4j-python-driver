@@ -28,13 +28,13 @@ from ._meta import (
 
 
 __all__ = [
+    "ExperimentalWarning",
+    "deprecated",
+    "deprecation_warn",
+    "experimental",
+    "get_user_agent",
     "package",
     "version",
-    "get_user_agent",
-    "deprecation_warn",
-    "deprecated",
-    "ExperimentalWarning",
-    "experimental",
 ]
 
 deprecation_warn(
@@ -42,5 +42,5 @@ deprecation_warn(
     "no longer be available for import in future versions."
     "`ExperimentalWarning` can be imported from `neo4j.warnings` and "
     "`neo4j.meta.version` is exposed through `neo4j.__version__`.",
-    stack_level=2
+    stack_level=2,
 )

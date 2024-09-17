@@ -19,7 +19,6 @@ import pytest
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j.graph import (
-    Graph,
     Node,
     Relationship,
 )
@@ -33,7 +32,7 @@ class TestGraphHydration(HydrationHandlerTestBase):
         return HydrationHandler()
 
     def test_can_hydrate_node_structure(self, hydration_scope):
-        struct = Structure(b'N', 123, ["Person"], {"name": "Alice"})
+        struct = Structure(b"N", 123, ["Person"], {"name": "Alice"})
         alice = hydration_scope.hydration_hooks[Structure](struct)
 
         assert isinstance(alice, Node)
@@ -46,7 +45,7 @@ class TestGraphHydration(HydrationHandlerTestBase):
         assert alice.get("name") == "Alice"
 
     def test_can_hydrate_relationship_structure(self, hydration_scope):
-        struct = Structure(b'R', 123, 456, 789, "KNOWS", {"since": 1999})
+        struct = Structure(b"R", 123, 456, 789, "KNOWS", {"since": 1999})
         rel = hydration_scope.hydration_hooks[Structure](struct)
 
         assert isinstance(rel, Relationship)

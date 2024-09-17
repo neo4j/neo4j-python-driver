@@ -36,8 +36,7 @@ from ..._async_compat import mark_async_test
 if t.TYPE_CHECKING:
 
     class _TSetupMockProtocol(te.Protocol):
-        def __call__(self, *args: str) -> t.Sequence[t.Any]:
-            ...
+        def __call__(self, *args: str) -> t.Sequence[t.Any]: ...
 
 
 @pytest.fixture
@@ -68,8 +67,9 @@ def test_watch_returns_watcher(logger_mocker) -> None:
     assert isinstance(watcher, neo4j_debug.Watcher)
 
 
-@pytest.mark.parametrize("logger_names",
-                         (("neo4j",), ("foobar",), ("neo4j", "foobar")))
+@pytest.mark.parametrize(
+    "logger_names", (("neo4j",), ("foobar",), ("neo4j", "foobar"))
+)
 def test_watch_enables_logging(logger_names, logger_mocker) -> None:
     loggers = logger_mocker(*logger_names)
     neo4j_debug.watch(*logger_names)
@@ -113,7 +113,7 @@ def test_watcher_context_manager(mocker) -> None:
 
 
 WATCH_ARGS = (
-    #default_level, level, expected_level
+    # default_level, level, expected_level
     (None, None, logging.DEBUG),
     (logging.WARNING, None, logging.WARNING),
     (logging.WARNING, logging.DEBUG, logging.DEBUG),
@@ -138,15 +138,18 @@ def _setup_watch(logger_name, default_level, level):
 
 
 @pytest.mark.parametrize(
-    ("default_level", "level", "expected_level"),
-    WATCH_ARGS
+    ("default_level", "level", "expected_level"), WATCH_ARGS
 )
 @pytest.mark.parametrize(
     "effective_level",
-    (logging.DEBUG, logging.WARNING, logging.INFO, logging.ERROR)
+    (logging.DEBUG, logging.WARNING, logging.INFO, logging.ERROR),
 )
 def test_watcher_level(
-    logger_mocker, default_level, level, expected_level, effective_level,
+    logger_mocker,
+    default_level,
+    level,
+    expected_level,
+    effective_level,
 ) -> None:
     logger_name = "neo4j"
     logger = logger_mocker(logger_name)[0]
@@ -163,20 +166,23 @@ def test_watcher_level(
 
 
 @pytest.mark.parametrize(
-    ("default_level1", "level1", "expected_level1"),
-    WATCH_ARGS
+    ("default_level1", "level1", "expected_level1"), WATCH_ARGS
 )
 @pytest.mark.parametrize(
-    ("default_level2", "level2", "expected_level2"),
-    WATCH_ARGS
+    ("default_level2", "level2", "expected_level2"), WATCH_ARGS
 )
 @pytest.mark.parametrize(
     "effective_level",
-    (logging.DEBUG, logging.WARNING, logging.INFO, logging.ERROR)
+    (logging.DEBUG, logging.WARNING, logging.INFO, logging.ERROR),
 )
 def test_watcher_level_multiple_watchers(
-    logger_mocker, default_level1, level1, expected_level1,
-    default_level2, level2, expected_level2,
+    logger_mocker,
+    default_level1,
+    level1,
+    expected_level1,
+    default_level2,
+    level2,
+    expected_level2,
     effective_level,
 ) -> None:
     logger_name = "neo4j"
@@ -217,11 +223,9 @@ custom_log_out = io.StringIO()
         ("stderr", "stdout", "stdout"),
         (custom_log_out, None, custom_log_out),
         (None, custom_log_out, custom_log_out),
-    )
+    ),
 )
-def test_watcher_out(
-    logger_mocker, default_out, out, expected_out
-) -> None:
+def test_watcher_out(logger_mocker, default_out, out, expected_out) -> None:
     def normalize_stream(stream):
         # For some reason (probably a change in pytest), sys.stdout and
         # sys.stderr are replaced with a custom io.TextIOWrapper.
@@ -258,8 +262,9 @@ def test_watcher_out(
 def test_watcher_colour(logger_mocker, colour, thread, task) -> None:
     logger_name = "neo4j"
     logger = logger_mocker(logger_name)[0]
-    watcher = neo4j_debug.Watcher(logger_name, colour=colour,
-                                  thread_info=thread, task_info=task)
+    watcher = neo4j_debug.Watcher(
+        logger_name, colour=colour, thread_info=thread, task_info=task
+    )
     watcher.watch()
 
     logger.addHandler.assert_called_once()
@@ -278,8 +283,9 @@ def test_watcher_colour(logger_mocker, colour, thread, task) -> None:
 def test_watcher_format(logger_mocker, colour, thread, task) -> None:
     logger_name = "neo4j"
     logger = logger_mocker(logger_name)[0]
-    watcher = neo4j_debug.Watcher(logger_name, colour=colour,
-                                  thread_info=thread, task_info=task)
+    watcher = neo4j_debug.Watcher(
+        logger_name, colour=colour, thread_info=thread, task_info=task
+    )
     watcher.watch()
 
     logger.addHandler.assert_called_once()
@@ -305,8 +311,9 @@ def _assert_task_injection(
     handler_mock = handler_cls_mock.return_value
     logger_name = "neo4j"
     logger_mocker(logger_name)[0]
-    watcher = neo4j_debug.Watcher(logger_name, colour=colour,
-                                  thread_info=thread, task_info=task)
+    watcher = neo4j_debug.Watcher(
+        logger_name, colour=colour, thread_info=thread, task_info=task
+    )
     record_mock = mocker.Mock(spec=logging.LogRecord)
     assert not hasattr(record_mock, "task")
 

@@ -14,12 +14,6 @@
 # limitations under the License.
 
 
-from io import BytesIO
-from struct import (
-    pack as struct_pack,
-    unpack as struct_unpack,
-)
-
 import pytest
 
 from neo4j._async.io._common import (
@@ -30,7 +24,6 @@ from neo4j.auth_management import AsyncAuthManagers
 
 
 class AsyncFakeSocket:
-
     def __init__(self, address, unpacker_cls=None):
         self.address = address
         self.captured = b""
@@ -65,9 +58,9 @@ class AsyncFakeSocket:
 
 
 class AsyncFakeSocket2:
-
-    def __init__(self, address=None, on_send=None,
-                 packer_cls=None, unpacker_cls=None):
+    def __init__(
+        self, address=None, on_send=None, packer_cls=None, unpacker_cls=None
+    ):
         self.address = address
         self.recv_buffer = bytearray()
         # self.messages = AsyncMessageInbox(self, on_error=print)
@@ -119,7 +112,6 @@ class AsyncFakeSocket2:
 
 
 class AsyncFakeSocketPair:
-
     def __init__(self, address, packer_cls=None, unpacker_cls=None):
         self.client = AsyncFakeSocket2(
             address, packer_cls=packer_cls, unpacker_cls=unpacker_cls

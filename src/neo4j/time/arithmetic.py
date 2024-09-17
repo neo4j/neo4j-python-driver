@@ -30,12 +30,12 @@ __all__ = [
     "nano_add",
     "nano_div",
     "nano_divmod",
-    "symmetric_divmod",
     "round_half_to_even",
+    "symmetric_divmod",
 ]
 
 deprecation_warn(
     "The module `neo4j.time.arithmetic` was made internal and will "
     "no longer be available for import in future versions.",
-    stack_level=2
+    stack_level=2,
 )

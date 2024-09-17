@@ -29,16 +29,20 @@ if t.TYPE_CHECKING:
 
 def powerset(
     iterable: t.Iterable[_T],
-    limit: t.Optional[int] = None,
-) -> t.Iterable[t.Tuple[_T, ...]]:
+    limit: int | None = None,
+) -> t.Iterable[tuple[_T, ...]]:
     """
     Build the powerset of an iterable.
+
+    ::
 
         >>> tuple(powerset([1, 2, 3]))
         ((), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
         >>> tuple(powerset([1, 2, 3], limit=2))
         ((), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3))
+
+    :return: The powerset of the iterable.
     """
     s = list(iterable)
     if limit is None:

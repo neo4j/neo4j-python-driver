@@ -41,7 +41,6 @@ from neo4j.time import (
 
 
 class HydrationHandlerTestBase:
-
     @pytest.fixture(params=[HydrationHandlerV1, HydrationHandlerV2])
     def hydration_handler(self, request):
         return request.param()
@@ -63,7 +62,15 @@ class HydrationHandlerTestBase:
         hooks = hydration_scope.dehydration_hooks
         assert isinstance(hooks, dict)
         assert set(hooks.keys()) == {
-            date, datetime, time, timedelta,
-            Date, DateTime, Duration, Time,
-            CartesianPoint, Point, WGS84Point
+            date,
+            datetime,
+            time,
+            timedelta,
+            Date,
+            DateTime,
+            Duration,
+            Time,
+            CartesianPoint,
+            Point,
+            WGS84Point,
         }

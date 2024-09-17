@@ -63,11 +63,15 @@ def _with_retry(outer):
         for _ in range(15):  # super simple retry-mechanism
             try:
                 return await outer(*args, **kwargs)
-            except (neo4j_exceptions.DriverError,
-                    neo4j_exceptions.Neo4jError) as e:
+            except (
+                neo4j_exceptions.DriverError,
+                neo4j_exceptions.Neo4jError,
+            ) as e:
                 if not e.is_retryable():
                     raise
                 await asyncio.sleep(1.5)
+        raise RuntimeError("Too many retries")
+
     return inner
 
 
@@ -101,18 +105,25 @@ REPETITIONS = 250
 
 
 @mark_async_test
-@pytest.mark.parametrize(("i", "read_func", "waits", "cancel_count"), (
+@pytest.mark.parametrize(
+    ("i", "read_func", "waits", "cancel_count"),
     (
-        f"{i + 1:0{len(str(REPETITIONS))}}/{REPETITIONS}",
-        random.choice((
-            _do_the_read, _do_the_read_tx_context, _do_the_read_explicit_tx,
-            _do_the_read_tx_func
-        )),
-        random.randint(0, 1000),
-        random.randint(1, 20),
-    )
-    for i in range(REPETITIONS)
-))
+        (
+            f"{i + 1:0{len(str(REPETITIONS))}}/{REPETITIONS}",
+            random.choice(
+                (
+                    _do_the_read,
+                    _do_the_read_tx_context,
+                    _do_the_read_explicit_tx,
+                    _do_the_read_tx_func,
+                )
+            ),
+            random.randint(0, 1000),
+            random.randint(1, 20),
+        )
+        for i in range(REPETITIONS)
+    ),
+)
 async def test_async_cancellation(
     uri, auth, mocker, read_func, waits, cancel_count, i
 ):
@@ -146,9 +157,8 @@ async def test_async_cancellation(
                 session._handle_cancellation.assert_not_called()
             elif cancelled_error is not None:
                 assert not bookmarks
-                if (
-                    read_func is _do_the_read
-                    and not getattr(cancelled_error, "during_sleep", False)
+                if read_func is _do_the_read and not getattr(
+                    cancelled_error, "during_sleep", False
                 ):
                     # manually handling the session can lead to calling
                     # `session.cancel` twice, but that's ok, it's a noop if
@@ -159,11 +169,13 @@ async def test_async_cancellation(
             else:
                 assert bookmarks
                 session._handle_cancellation.assert_not_called()
-            for read_func in (
-                _do_the_read, _do_the_read_tx_context,
-                _do_the_read_explicit_tx, _do_the_read_tx_func
+            for read_func2 in (
+                _do_the_read,
+                _do_the_read_tx_context,
+                _do_the_read_explicit_tx,
+                _do_the_read_tx_func,
             ):
-                await read_func(session, i=2)
+                await read_func2(session, i=2)
 
         # test driver is still working
         async with driver.session() as session:
@@ -180,18 +192,23 @@ READS_PER_SESSION = 15
 @mark_async_test
 async def test_async_cancellation_does_not_leak(uri, auth):
     async with get_async_driver(
-        uri, auth=auth,
+        uri,
+        auth=auth,
         connection_acquisition_timeout=10,
         # driver needs to cope with a single connection in the pool!
         max_connection_pool_size=1,
     ) as driver:
-        for session_number in range(SESSION_REPETITIONS):
+        for _ in range(SESSION_REPETITIONS):
             async with driver.session() as session:
-                for read_number in range(READS_PER_SESSION):
-                    read_func = random.choice((
-                        _do_the_read, _do_the_read_tx_context,
-                        _do_the_read_explicit_tx, _do_the_read_tx_func
-                    ))
+                for _ in range(READS_PER_SESSION):
+                    read_func = random.choice(
+                        (
+                            _do_the_read,
+                            _do_the_read_tx_context,
+                            _do_the_read_explicit_tx,
+                            _do_the_read_tx_func,
+                        )
+                    )
                     waits = random.randint(0, 1000)
                     cancel_count = random.randint(1, 20)
 

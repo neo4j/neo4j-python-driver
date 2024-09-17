@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
+from contextlib import suppress as _suppress
 from logging import (
     CRITICAL,
     DEBUG,
@@ -34,26 +35,25 @@ from sys import stderr
 
 __all__ = [
     "Watcher",
-    "watch"
+    "watch",
 ]
 
 
 class ColourFormatter(Formatter):
-    """ Colour formatter for pretty log output.
-    """
+    """Colour formatter for pretty log output."""
 
     def format(self, record):
         s = super().format(record)
         if record.levelno == CRITICAL:
-            return "\x1b[31;1m%s\x1b[0m" % s  # bright red
+            return f"\x1b[31;1m{s}\x1b[0m"  # bright red
         elif record.levelno == ERROR:
-            return "\x1b[33;1m%s\x1b[0m" % s  # bright yellow
+            return f"\x1b[33;1m{s}\x1b[0m"  # bright yellow
         elif record.levelno == WARNING:
-            return "\x1b[33m%s\x1b[0m" % s    # yellow
+            return f"\x1b[33m{s}\x1b[0m"  # yellow
         elif record.levelno == INFO:
-            return "\x1b[37m%s\x1b[0m" % s    # white
+            return f"\x1b[37m{s}\x1b[0m"  # white
         elif record.levelno == DEBUG:
-            return "\x1b[36m%s\x1b[0m" % s    # cyan
+            return f"\x1b[36m{s}\x1b[0m"  # cyan
         else:
             return s
 
@@ -70,7 +70,8 @@ class TaskIdFilter(Filter):
 
 
 class Watcher:
-    """Log watcher for easier logging setup.
+    """
+    Log watcher for easier logging setup.
 
     Example::
 
@@ -112,19 +113,19 @@ class Watcher:
 
     def __init__(
         self,
-        *logger_names: t.Optional[str],
+        *logger_names: str | None,
         default_level: int = DEBUG,
         default_out: t.TextIO = stderr,
         colour: bool = False,
         thread_info: bool = True,
         task_info: bool = True,
     ) -> None:
-        super(Watcher, self).__init__()
+        super().__init__()
         self.logger_names = logger_names
         self._loggers = [getLogger(name) for name in self.logger_names]
         self.default_level = default_level
         self.default_out = default_out
-        self._handlers: t.Dict[str, StreamHandler] = {}
+        self._handlers: dict[str, StreamHandler] = {}
         self._task_info = task_info
 
         format_ = "%(asctime)s  %(message)s"
@@ -147,9 +148,10 @@ class Watcher:
         self.stop()
 
     def watch(
-        self, level: t.Optional[int] = None, out: t.Optional[t.TextIO] = None
+        self, level: int | None = None, out: t.TextIO | None = None
     ) -> None:
-        """Enable logging for all loggers.
+        """
+        Enable logging for all loggers.
 
         :param level: Minimum log level to show.
             If :data:`None`, the ``default_level`` is used.
@@ -167,7 +169,7 @@ class Watcher:
         handler.setLevel(level)
         if self._task_info:
             handler.addFilter(TaskIdFilter())
-        for logger in self. _loggers:
+        for logger in self._loggers:
             self._handlers[logger.name] = handler
             logger.addHandler(handler)
             if logger.getEffectiveLevel() > level:
@@ -176,21 +178,20 @@ class Watcher:
     def stop(self) -> None:
         """Disable logging for all loggers."""
         for logger in self._loggers:
-            try:
+            with _suppress(KeyError):
                 logger.removeHandler(self._handlers.pop(logger.name))
-            except KeyError:
-                pass
 
 
 def watch(
-    *logger_names: t.Optional[str],
+    *logger_names: str | None,
     level: int = DEBUG,
     out: t.TextIO = stderr,
     colour: bool = False,
     thread_info: bool = True,
     task_info: bool = True,
 ) -> Watcher:
-    """Quick wrapper for using  :class:`.Watcher`.
+    """
+    Quick wrapper for using  :class:`.Watcher`.
 
     Create a Watcher with the given configuration, enable watching and return
     it.
@@ -223,8 +224,13 @@ def watch(
         * Added ``thread_info`` and ``task_info`` parameters.
         * Logging format around thread and task information changed.
     """
-    watcher = Watcher(*logger_names, default_level=level, default_out=out,
-                      colour=colour, thread_info=thread_info,
-                      task_info=task_info)
+    watcher = Watcher(
+        *logger_names,
+        default_level=level,
+        default_out=out,
+        colour=colour,
+        thread_info=thread_info,
+        task_info=task_info,
+    )
     watcher.watch()
     return watcher

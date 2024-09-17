@@ -29,9 +29,9 @@ from .transaction import (
 
 
 __all__ = [
+    "AsyncManagedTransaction",
     "AsyncResult",
     "AsyncSession",
-    "AsyncManagedTransaction",
     "AsyncTransaction",
     "AsyncTransactionBase",
     "AsyncWorkspace",

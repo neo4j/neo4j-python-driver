@@ -41,7 +41,6 @@ if (3, 12) > sys.version_info >= (3, 8):
 
     async def _cancel_and_wait(fut, loop):
         """Cancel the *fut* future or task and wait until it completes."""
-
         waiter = loop.create_future()
         cb = functools.partial(_release_waiter, waiter)
         fut.add_done_callback(cb)
@@ -55,7 +54,8 @@ if (3, 12) > sys.version_info >= (3, 8):
             fut.remove_done_callback(cb)
 
     async def wait_for(fut, timeout):
-        """Wait for the single Future or coroutine to complete, with timeout.
+        """
+        Wait for the single Future or coroutine to complete, with timeout.
 
         Coroutine will be wrapped in Task.
 
@@ -82,7 +82,7 @@ if (3, 12) > sys.version_info >= (3, 8):
             try:
                 return fut.result()
             except asyncio.CancelledError as exc:
-                raise asyncio.TimeoutError() from exc
+                raise asyncio.TimeoutError from exc
 
         waiter = loop.create_future()
         timeout_handle = loop.call_later(timeout, _release_waiter, waiter)
@@ -128,7 +128,7 @@ if (3, 12) > sys.version_info >= (3, 8):
                 try:
                     return fut.result()
                 except asyncio.CancelledError as exc:
-                    raise asyncio.TimeoutError() from exc
+                    raise asyncio.TimeoutError from exc
         finally:
             timeout_handle.cancel()
 else:

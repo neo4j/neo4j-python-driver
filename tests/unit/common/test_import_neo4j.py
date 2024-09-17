@@ -23,7 +23,7 @@ from neo4j import PreviewWarning
 
 
 def test_import_neo4j():
-    import neo4j
+    import neo4j  # noqa: F401 - unused import to test import works
 
 
 NEO4J_ATTRIBUTES = (
@@ -81,6 +81,7 @@ NEO4J_ATTRIBUTES = (
     ("SummaryInputPosition", None),
     ("SummaryNotification", None),
     ("SummaryNotificationPosition", DeprecationWarning),
+    ("SYSTEM_DATABASE", None),
     ("Transaction", None),
     ("TRUST_ALL_CERTIFICATES", None),
     ("TRUST_SYSTEM_CA_SIGNED_CERTIFICATES", None),
@@ -119,7 +120,6 @@ def test_all():
     assert sorted(neo4j.__all__) == sorted([i[0] for i in NEO4J_ATTRIBUTES])
 
 
-
 def test_dir():
     import neo4j
 
@@ -130,28 +130,41 @@ def test_import_star():
     with pytest.warns() as warnings:
         importlib.__import__("neo4j", fromlist=("*",))
     assert len(warnings) == 9
-    assert all(issubclass(w.category, (DeprecationWarning, PreviewWarning))
-               for w in warnings)
+    assert all(
+        issubclass(w.category, (DeprecationWarning, PreviewWarning))
+        for w in warnings
+    )
 
     for name in (
-        "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig",
+        "log",
+        "Config",
+        "PoolConfig",
+        "SessionConfig",
+        "WorkspaceConfig",
         "SummaryNotificationPosition",
     ):
-        assert sum(
-            bool(re.match(rf".*\b{name}\b.*", str(w.message)))
-            for w in warnings
-            if issubclass(w.category, DeprecationWarning)
-        ) == 1
+        assert (
+            sum(
+                bool(re.match(rf".*\b{name}\b.*", str(w.message)))
+                for w in warnings
+                if issubclass(w.category, DeprecationWarning)
+            )
+            == 1
+        )
 
     for name in (
-        "NotificationClassification", "GqlStatusObject",
+        "NotificationClassification",
+        "GqlStatusObject",
         "NotificationDisabledClassification",
     ):
-        assert sum(
-            bool(re.match(rf".*\b{name}\b.*", str(w.message)))
-            for w in warnings
-            if issubclass(w.category, PreviewWarning)
-        ) == 1
+        assert (
+            sum(
+                bool(re.match(rf".*\b{name}\b.*", str(w.message)))
+                for w in warnings
+                if issubclass(w.category, PreviewWarning)
+            )
+            == 1
+        )
 
 
 NEO4J_MODULES = (

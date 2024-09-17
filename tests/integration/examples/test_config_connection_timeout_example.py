@@ -29,13 +29,13 @@ from neo4j import GraphDatabase
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_config_connection_timeout_example.py -s -v
-
 class ConfigConnectionTimeoutExample(DriverSetupExample):
-
     # tag::config-connection-timeout[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, connection_timeout=15)
+        self.driver = GraphDatabase.driver(
+            uri, auth=auth, connection_timeout=15
+        )
+
     # end::config-connection-timeout[]
 
 

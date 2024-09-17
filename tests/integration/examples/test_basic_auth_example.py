@@ -31,11 +31,12 @@ from neo4j import GraphDatabase
 
 # python -m pytest tests/integration/examples/test_basic_auth_example.py -s -v
 
-class BasicAuthExample(DriverSetupExample):
 
+class BasicAuthExample(DriverSetupExample):
     # tag::basic-auth[]
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
+
     # end::basic-auth[]
 
 

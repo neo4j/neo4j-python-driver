@@ -65,7 +65,8 @@ log = getLogger("neo4j.pool")
 
 
 class AsyncSession(AsyncWorkspace):
-    """Context for executing work
+    """
+    Context for executing work.
 
     A :class:`.AsyncSession` is a logical context for transactional units
     of work. Connections are drawn from the :class:`.AsyncDriver` connection
@@ -82,14 +83,13 @@ class AsyncSession(AsyncWorkspace):
         async with driver.session(database="neo4j") as session:
             result = await session.run("MATCH (n:Person) RETURN n.name AS name")
             ...  # do something with the result
-    """
+    """  # noqa: E501 example code isn't too long
 
     # The current connection.
-    _connection: t.Optional[AsyncBolt] = None
+    _connection: AsyncBolt | None = None
 
     # The current transaction instance, if any.
-    _transaction: t.Union[AsyncTransaction, AsyncManagedTransaction, None] = \
-        None
+    _transaction: AsyncTransaction | AsyncManagedTransaction | None = None
 
     # The current auto-commit transaction result, if any.
     _auto_result = None
@@ -98,7 +98,7 @@ class AsyncSession(AsyncWorkspace):
     _state_failed = False
 
     _config: SessionConfig
-    _bookmark_manager: t.Optional[Bookmarks]
+    _bookmark_manager: Bookmarks | None
     _pipelined_begin: ContextBool
 
     def __init__(self, pool, session_config):
@@ -147,12 +147,16 @@ class AsyncSession(AsyncWorkspace):
         connection = self._connection
         self._connection = None
         if connection:
-            log.debug("[#%04X]  _: <SESSION> %s cancellation clean-up",
-                      connection.local_port, message)
+            log.debug(
+                "[#%04X]  _: <SESSION> %s cancellation clean-up",
+                connection.local_port,
+                message,
+            )
             self._pool.kill_and_release(connection)
         else:
-            log.debug("[#0000]  _: <SESSION> %s cancellation clean-up",
-                      message)
+            log.debug(
+                "[#0000]  _: <SESSION> %s cancellation clean-up", message
+            )
 
     async def _result_closed(self):
         if self._auto_result:
@@ -162,7 +166,8 @@ class AsyncSession(AsyncWorkspace):
 
     async def _result_error(self, error):
         if isinstance(error, asyncio.CancelledError):
-            return self._handle_cancellation(message="_result_error")
+            self._handle_cancellation(message="_result_error")
+            return
         if self._auto_result:
             self._auto_result = None
             await self._disconnect()
@@ -181,7 +186,8 @@ class AsyncSession(AsyncWorkspace):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def close(self) -> None:
-        """Close the session.
+        """
+        Close the session.
 
         This will release any borrowed resources, such as connections, and will
         roll back any outstanding transactions.
@@ -189,17 +195,14 @@ class AsyncSession(AsyncWorkspace):
         if self._closed:
             return
         if self._connection:
-            if self._auto_result:
-                if self._state_failed is False:
-                    try:
-                        await self._auto_result.consume()
-                        await self._update_bookmark(
-                            self._auto_result._bookmark
-                        )
-                    except Exception as error:
-                        # TODO: Investigate potential non graceful close states
-                        self._auto_result = None
-                        self._state_failed = True
+            if self._auto_result and self._state_failed is False:
+                try:
+                    await self._auto_result.consume()
+                    await self._update_bookmark(self._auto_result._bookmark)
+                except Exception:
+                    # TODO: Investigate potential non graceful close states
+                    self._auto_result = None
+                    self._state_failed = True
 
             if self._transaction:
                 if self._transaction._closed() is False:
@@ -227,8 +230,10 @@ class AsyncSession(AsyncWorkspace):
         self._closed = True
 
     if AsyncUtil.is_async_code:
+
         def cancel(self) -> None:
-            """Cancel this session.
+            """
+            Cancel this session.
 
             If the session is already closed, this method does nothing.
             Else, it will if present, forcefully close the connection the
@@ -245,18 +250,18 @@ class AsyncSession(AsyncWorkspace):
                 except asyncio.CancelledError:
                     session.cancel()
                     raise
-
             """
             self._handle_cancellation(message="manual cancel")
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def run(
         self,
-        query: t.Union[te.LiteralString, Query],
-        parameters: t.Optional[t.Dict[str, t.Any]] = None,
-        **kwargs: t.Any
+        query: te.LiteralString | Query,
+        parameters: dict[str, t.Any] | None = None,
+        **kwargs: t.Any,
     ) -> AsyncResult:
-        """Run a Cypher query within an auto-commit transaction.
+        """
+        Run a Cypher query within an auto-commit transaction.
 
         The query is sent and the result header received
         immediately but the :class:`neo4j.Result` content is
@@ -274,12 +279,9 @@ class AsyncSession(AsyncWorkspace):
         For more usage details, see :meth:`.AsyncTransaction.run`.
 
         :param query: cypher query
-        :type query: typing.LiteralString | Query
         :param parameters: dictionary of parameters
-        :type parameters: typing.Dict[str, typing.Any] | None
         :param kwargs: additional keyword parameters.
             These take precedence over parameters passed as ``parameters``.
-        :type kwargs: typing.Any
 
         :returns: a new :class:`neo4j.AsyncResult` object
 
@@ -292,7 +294,9 @@ class AsyncSession(AsyncWorkspace):
             raise TypeError("query must be a string or a Query instance")
 
         if self._transaction:
-            raise ClientError("Explicit Transaction must be handled explicitly")
+            raise ClientError(
+                "Explicit Transaction must be handled explicitly"
+            )
 
         if self._auto_result:
             # This will buffer upp all records for the previous auto-commit tx
@@ -305,16 +309,22 @@ class AsyncSession(AsyncWorkspace):
 
         cx.telemetry(TelemetryAPI.AUTO_COMMIT)
         self._auto_result = AsyncResult(
-            cx, self._config.fetch_size,
+            cx,
+            self._config.fetch_size,
             self._config.warn_notification_severity,
-            self._result_closed, self._result_error,
+            self._result_closed,
+            self._result_error,
         )
         bookmarks = await self._get_bookmarks()
         parameters = dict(parameters or {}, **kwargs)
         await self._auto_result._run(
-            query, parameters, self._config.database,
-            self._config.impersonated_user, self._config.default_access_mode,
-            bookmarks, self._config.notifications_min_severity,
+            query,
+            parameters,
+            self._config.database,
+            self._config.impersonated_user,
+            self._config.default_access_mode,
+            bookmarks,
+            self._config.notifications_min_severity,
             self._config.notifications_disabled_classifications,
         )
 
@@ -325,8 +335,9 @@ class AsyncSession(AsyncWorkspace):
         "This method can lead to unexpected behaviour."
     )
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
-    async def last_bookmark(self) -> t.Optional[str]:
-        """Get the bookmark received following the last completed transaction.
+    async def last_bookmark(self) -> str | None:
+        """
+        Get the bookmark received following the last completed transaction.
 
         Note: For auto-commit transactions (:meth:`Session.run`), this will
         trigger :meth:`Result.consume` for the current result.
@@ -356,7 +367,8 @@ class AsyncSession(AsyncWorkspace):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def last_bookmarks(self) -> Bookmarks:
-        """Return most recent bookmarks of the session.
+        """
+        Return most recent bookmarks of the session.
 
         Bookmarks can be used to causally chain sessions. For example,
         if a session (``session1``) wrote something, that another session
@@ -406,48 +418,51 @@ class AsyncSession(AsyncWorkspace):
             await self._disconnect()
 
     def _transaction_cancel_handler(self):
-        return self._handle_cancellation(
-            message="_transaction_cancel_handler"
-        )
+        return self._handle_cancellation(message="_transaction_cancel_handler")
 
     async def _open_transaction(
         self,
         *,
-        tx_cls: t.Callable[
-            ..., t.Union[AsyncTransaction, AsyncManagedTransaction]
-        ],
-        access_mode, api: t.Optional[TelemetryAPI],
+        tx_cls: t.Callable[..., AsyncTransaction | AsyncManagedTransaction],
+        access_mode,
+        api: TelemetryAPI | None,
         metadata=None,
         timeout=None,
-        api_success_cb: t.Optional[t.Callable[[dict], None]] = None,
+        api_success_cb: t.Callable[[dict], None] | None = None,
     ) -> None:
         await self._connect(access_mode=access_mode)
         assert self._connection is not None
         if api is not None:
             self._connection.telemetry(api, on_success=api_success_cb)
         self._transaction = tx_cls(
-            self._connection, self._config.fetch_size,
+            self._connection,
+            self._config.fetch_size,
             self._config.warn_notification_severity,
             self._transaction_closed_handler,
             self._transaction_error_handler,
-            self._transaction_cancel_handler
+            self._transaction_cancel_handler,
         )
         bookmarks = await self._get_bookmarks()
         await self._transaction._begin(
-            self._config.database, self._config.impersonated_user,
-            bookmarks, access_mode, metadata, timeout,
+            self._config.database,
+            self._config.impersonated_user,
+            bookmarks,
+            access_mode,
+            metadata,
+            timeout,
             self._config.notifications_min_severity,
             self._config.notifications_disabled_classifications,
-            pipelined=self._pipelined_begin
+            pipelined=self._pipelined_begin,
         )
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def begin_transaction(
         self,
-        metadata: t.Optional[t.Dict[str, t.Any]] = None,
-        timeout: t.Optional[float] = None
+        metadata: dict[str, t.Any] | None = None,
+        timeout: float | None = None,
     ) -> AsyncTransaction:
-        """Begin a new unmanaged transaction.
+        """
+        Begin a new unmanaged transaction.
 
         Creates a new :class:`.AsyncTransaction` within this session.
         At most one transaction may exist in a session at any point in time.
@@ -501,9 +516,11 @@ class AsyncSession(AsyncWorkspace):
             )
 
         await self._open_transaction(
-            tx_cls=AsyncTransaction, api=TelemetryAPI.TX,
-            access_mode=self._config.default_access_mode, metadata=metadata,
-            timeout=timeout
+            tx_cls=AsyncTransaction,
+            api=TelemetryAPI.TX,
+            access_mode=self._config.default_access_mode,
+            metadata=metadata,
+            timeout=timeout,
         )
 
         return t.cast(AsyncTransaction, self._transaction)
@@ -515,7 +532,8 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        args: _P.args, kwargs: _P.kwargs
+        args: _P.args,
+        kwargs: _P.kwargs,
     ) -> _R:
         self._check_state()
         if not callable(transaction_function):
@@ -527,7 +545,7 @@ class AsyncSession(AsyncWorkspace):
         retry_delay = retry_delay_generator(
             self._config.initial_retry_delay,
             self._config.retry_delay_multiplier,
-            self._config.retry_delay_jitter_factor
+            self._config.retry_delay_jitter_factor,
         )
 
         telemetry_sent = False
@@ -545,8 +563,10 @@ class AsyncSession(AsyncWorkspace):
                 await self._open_transaction(
                     tx_cls=AsyncManagedTransaction,
                     api=None if telemetry_sent else api,
-                    access_mode=access_mode, metadata=metadata,
-                    timeout=timeout, api_success_cb=api_success_cb,
+                    access_mode=access_mode,
+                    metadata=metadata,
+                    timeout=timeout,
+                    api_success_cb=api_success_cb,
                 )
                 assert isinstance(self._transaction, AsyncManagedTransaction)
                 tx = self._transaction
@@ -578,8 +598,11 @@ class AsyncSession(AsyncWorkspace):
             if t1 - t0 > self._config.max_transaction_retry_time:
                 break
             delay = next(retry_delay)
-            log.warning("Transaction failed and will be retried in {}s ({})"
-                        "".format(delay, "; ".join(errors[-1].args)))
+            log.warning(
+                "Transaction failed and will be retried in %ss (%s)",
+                delay,
+                "; ".join(errors[-1].args),
+            )
             try:
                 await async_sleep(delay)
             except asyncio.CancelledError:
@@ -597,9 +620,11 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        *args: _P.args, **kwargs: _P.kwargs
+        *args: _P.args,
+        **kwargs: _P.kwargs,
     ) -> _R:
-        """Execute a unit of work in a managed read transaction.
+        """
+        Execute a unit of work in a managed read transaction.
 
         .. note::
             This does not necessarily imply access control, see the session
@@ -659,10 +684,13 @@ class AsyncSession(AsyncWorkspace):
         :raises SessionError: if the session has been closed.
 
         .. versionadded:: 5.0
-        """
+        """  # noqa: E501 example code isn't too long
         return await self._run_transaction(
-            READ_ACCESS, TelemetryAPI.TX_FUNC,
-            transaction_function, args, kwargs
+            READ_ACCESS,
+            TelemetryAPI.TX_FUNC,
+            transaction_function,
+            args,
+            kwargs,
         )
 
     # TODO: 6.0 - Remove this method
@@ -673,9 +701,11 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        *args: _P.args, **kwargs: _P.kwargs
+        *args: _P.args,
+        **kwargs: _P.kwargs,
     ) -> _R:
-        """Execute a unit of work in a managed read transaction.
+        """
+        Execute a unit of work in a managed read transaction.
 
         .. note::
             This does not necessarily imply access control, see the session
@@ -701,8 +731,11 @@ class AsyncSession(AsyncWorkspace):
             Method was renamed to :meth:`.execute_read`.
         """
         return await self._run_transaction(
-            READ_ACCESS, TelemetryAPI.TX_FUNC,
-            transaction_function, args, kwargs
+            READ_ACCESS,
+            TelemetryAPI.TX_FUNC,
+            transaction_function,
+            args,
+            kwargs,
         )
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
@@ -711,9 +744,11 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        *args: _P.args,  **kwargs: _P.kwargs
+        *args: _P.args,
+        **kwargs: _P.kwargs,
     ) -> _R:
-        """Execute a unit of work in a managed write transaction.
+        """
+        Execute a unit of work in a managed write transaction.
 
         .. note::
             This does not necessarily imply access control, see the session
@@ -755,10 +790,13 @@ class AsyncSession(AsyncWorkspace):
         :raises SessionError: if the session has been closed.
 
         .. versionadded:: 5.0
-        """
+        """  # noqa: E501 example code isn't too long
         return await self._run_transaction(
-            WRITE_ACCESS, TelemetryAPI.TX_FUNC,
-            transaction_function, args, kwargs
+            WRITE_ACCESS,
+            TelemetryAPI.TX_FUNC,
+            transaction_function,
+            args,
+            kwargs,
         )
 
     # TODO: 6.0 - Remove this method
@@ -769,9 +807,11 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        *args: _P.args,  **kwargs: _P.kwargs
+        *args: _P.args,
+        **kwargs: _P.kwargs,
     ) -> _R:
-        """Execute a unit of work in a managed write transaction.
+        """
+        Execute a unit of work in a managed write transaction.
 
         .. note::
             This does not necessarily imply access control, see the session
@@ -797,8 +837,11 @@ class AsyncSession(AsyncWorkspace):
             Method was renamed to :meth:`.execute_write`.
         """
         return await self._run_transaction(
-            WRITE_ACCESS, TelemetryAPI.TX_FUNC,
-            transaction_function, args, kwargs
+            WRITE_ACCESS,
+            TelemetryAPI.TX_FUNC,
+            transaction_function,
+            args,
+            kwargs,
         )
 
 

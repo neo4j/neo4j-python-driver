@@ -15,19 +15,19 @@
 
 
 """
-This module contains the low-level functionality required for speaking
-Bolt. It is not intended to be used directly by driver users. Instead,
-the `session` module provides the main user-facing abstractions.
-"""
+Low-level functionality required for speaking Bolt.
 
+It is not intended to be used directly by driver users. Instead, the `session`
+module provides the main user-facing abstractions.
+"""
 
 __all__ = [
     "AcquireAuth",
     "Bolt",
     "BoltPool",
     "Neo4jPool",
-    "check_supported_server_product",
     "ConnectionErrorHandler",
+    "check_supported_server_product",
 ]
 
 

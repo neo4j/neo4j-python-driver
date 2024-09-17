@@ -26,7 +26,6 @@ from neo4j.exceptions import ClientError
 
 
 class Neo4jErrorExample:
-
     def __init__(self, driver):
         self.driver = driver
 
@@ -41,8 +40,11 @@ class Neo4jErrorExample:
 
     @staticmethod
     def select_employee(tx, name):
-        result = tx.run("SELECT * FROM Employees WHERE name = $name", name=name)
+        result = tx.run(
+            "SELECT * FROM Employees WHERE name = $name", name=name
+        )
         return result.single()["employee_number"]
+
     # end::cypher-error[]
 
 
@@ -50,5 +52,5 @@ def test_example(driver):
     s = StringIO()
     with redirect_stdout(s):
         example = Neo4jErrorExample(driver)
-        example.get_employee_number('Alice')
+        example.get_employee_number("Alice")
         assert s.getvalue().startswith("Invalid input")

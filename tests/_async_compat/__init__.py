@@ -24,7 +24,7 @@ from .mark_decorator import (
 
 __all__ = [
     "AsyncTestDecorators",
+    "TestDecorators",
     "mark_async_test",
     "mark_sync_test",
-    "TestDecorators",
 ]

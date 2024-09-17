@@ -20,15 +20,12 @@ import logging
 import typing as t
 import uuid
 import warnings
+from contextlib import suppress
 from unittest import mock
 
 import pandas as pd
 import pytest
 import pytz
-
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
 
 from neo4j import (
     Address,
@@ -128,10 +125,11 @@ class AsyncConnectionStub:
             return self.message == other
 
         def __repr__(self):
-            return "Message(%s)" % self.message
+            return f"Message({self.message})"
 
-    def __init__(self, records=None, run_meta=None, summary_meta=None,
-                 force_qid=False):
+    def __init__(
+        self, records=None, run_meta=None, summary_meta=None, force_qid=False
+    ):
         self._multi_result = isinstance(records, (list, tuple))
         if self._multi_result:
             self._records = records
@@ -164,8 +162,10 @@ class AsyncConnectionStub:
         if msg == "RUN":
             self.fetch_idx += 1
             self._qid += 1
-            meta = {"fields": self._records[self._qid].fields,
-                    **(self.run_meta or {})}
+            meta = {
+                "fields": self._records[self._qid].fields,
+                **(self.run_meta or {}),
+            }
             if self._use_qid:
                 meta.update(qid=self._qid)
             await msg.on_success(meta)
@@ -187,8 +187,9 @@ class AsyncConnectionStub:
                 n = msg.kwargs.get("n", -1)
                 if n < 0:
                     n = len(self._records[qid])
-                self.to_pull[qid] = \
-                    min(n, len(self._records[qid]) - self.record_idxs[qid])
+                self.to_pull[qid] = min(
+                    n, len(self._records[qid]) - self.record_idxs[qid]
+                )
                 # if to == len(self._records):
                 #     self.fetch_idx += 1
             if self.to_pull[qid] > 0:
@@ -216,12 +217,18 @@ class AsyncConnectionStub:
         self.queued.append(AsyncConnectionStub.Message("RUN", *args, **kwargs))
 
     def discard(self, *args, **kwargs):
-        self.queued.append(AsyncConnectionStub.Message("DISCARD", *args, **kwargs))
+        self.queued.append(
+            AsyncConnectionStub.Message("DISCARD", *args, **kwargs)
+        )
 
     def pull(self, *args, **kwargs):
-        self.queued.append(AsyncConnectionStub.Message("PULL", *args, **kwargs))
+        self.queued.append(
+            AsyncConnectionStub.Message("PULL", *args, **kwargs)
+        )
 
-    server_info = ServerInfo(Address(("bolt://localhost", 7687)), Version(4, 3))
+    server_info = ServerInfo(
+        Address(("bolt://localhost", 7687)), Version(4, 3)
+    )
 
     def defunct(self):
         return False
@@ -289,17 +296,21 @@ async def fetch_and_compare_all_records(
                 await AsyncUtil.next(iter_)
             assert result._exhausted
     else:
-        raise ValueError()
+        raise ValueError
     assert received_records == expected_records
 
 
-@pytest.mark.parametrize("method",
-                         ("for loop", "next", "one iter",  "new iter"))
-@pytest.mark.parametrize("records", (
-    [],
-    [[42]],
-    [[1], [2], [3], [4], [5]],
-))
+@pytest.mark.parametrize(
+    "method", ("for loop", "next", "one iter", "new iter")
+)
+@pytest.mark.parametrize(
+    "records",
+    (
+        [],
+        [[42]],
+        [[1], [2], [3], [4], [5]],
+    ),
+)
 @mark_async_test
 async def test_result_iteration(method, records):
     connection = AsyncConnectionStub(records=Records(["x"], records))
@@ -316,17 +327,27 @@ async def test_result_iteration_mixed_methods():
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     iter1 = AsyncUtil.iter(result)
     iter2 = AsyncUtil.iter(result)
-    assert (await AsyncUtil.next(iter1)).get("x") == records[0][0]
-    assert (await AsyncUtil.next(iter2)).get("x") == records[1][0]
-    assert (await AsyncUtil.next(iter2)).get("x") == records[2][0]
-    assert (await AsyncUtil.next(iter1)).get("x") == records[3][0]
-    assert (await AsyncUtil.next(iter1)).get("x") == records[4][0]
-    assert (await AsyncUtil.next(result)).get("x") == records[5][0]
-    assert (await AsyncUtil.next(iter2)).get("x") == records[6][0]
-    assert (await AsyncUtil.next(iter1)).get("x") == records[7][0]
-    assert ((await AsyncUtil.next(AsyncUtil.iter(result))).get("x")
-            == records[8][0])
+
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[0][0]
+    record = await AsyncUtil.next(iter2)
+    assert record.get("x") == records[1][0]
+    record = await AsyncUtil.next(iter2)
+    assert record.get("x") == records[2][0]
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[3][0]
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[4][0]
+    record = await AsyncUtil.next(result)
+    assert record.get("x") == records[5][0]
+    record = await AsyncUtil.next(iter2)
+    assert record.get("x") == records[6][0]
+    record = await AsyncUtil.next(iter1)
+    assert record.get("x") == records[7][0]
+    record = await AsyncUtil.next(AsyncUtil.iter(result))
+    assert record.get("x") == records[8][0]
     assert [r.get("x") async for r in result] == [records[9][0]]
+
     with pytest.raises(StopAsyncIteration):
         await AsyncUtil.next(iter1)
     with pytest.raises(StopAsyncIteration):
@@ -335,11 +356,13 @@ async def test_result_iteration_mixed_methods():
         await AsyncUtil.next(result)
     with pytest.raises(StopAsyncIteration):
         await AsyncUtil.next(AsyncUtil.iter(result))
+
     assert [r.get("x") async for r in result] == []
 
 
-@pytest.mark.parametrize("method",
-                         ("for loop", "next", "one iter",  "new iter"))
+@pytest.mark.parametrize(
+    "method", ("for loop", "next", "one iter", "new iter")
+)
 @pytest.mark.parametrize("invert_fetch", (True, False))
 @mark_async_test
 async def test_parallel_result_iteration(method, invert_fetch):
@@ -353,23 +376,16 @@ async def test_parallel_result_iteration(method, invert_fetch):
     result2 = AsyncResult(connection, 2, None, noop, noop)
     await result2._run("CYPHER2", {}, None, None, "r", None, None, None)
     if invert_fetch:
-        await fetch_and_compare_all_records(
-            result2, "x", records2, method
-        )
-        await fetch_and_compare_all_records(
-            result1, "x", records1, method
-        )
+        await fetch_and_compare_all_records(result2, "x", records2, method)
+        await fetch_and_compare_all_records(result1, "x", records1, method)
     else:
-        await fetch_and_compare_all_records(
-            result1, "x", records1, method
-        )
-        await fetch_and_compare_all_records(
-            result2, "x", records2, method
-        )
+        await fetch_and_compare_all_records(result1, "x", records1, method)
+        await fetch_and_compare_all_records(result2, "x", records2, method)
 
 
-@pytest.mark.parametrize("method",
-                         ("for loop", "next", "one iter",  "new iter"))
+@pytest.mark.parametrize(
+    "method", ("for loop", "next", "one iter", "new iter")
+)
 @pytest.mark.parametrize("invert_fetch", (True, False))
 @mark_async_test
 async def test_interwoven_result_iteration(method, invert_fetch):
@@ -451,26 +467,23 @@ async def test_result_single_strict(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, fetch_size, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
-    try:
-        record = await result.single(strict=True)
-    except ResultNotSingleError as exc:
-        assert len(records) != 1
+    if len(records) != 1:
+        with pytest.raises(ResultNotSingleError) as exc:
+            await result.single(strict=True)
         if len(records) == 0:
-            assert exc is not None
-            assert "no records" in str(exc).lower()
+            assert "no records" in str(exc.value).lower()
         elif len(records) > 1:
-            assert exc is not None
-            assert "more than one record" in str(exc).lower()
-
+            assert "more than one record" in str(exc.value).lower()
     else:
+        record = await result.single(strict=True)
         assert len(records) == 1
         assert isinstance(record, Record)
         assert record.get("x") == records[0][0]
 
 
-@pytest.mark.parametrize("records", (
-    [[1], [2], [3]], [[1]], [], [[i] for i in range(100)]
-))
+@pytest.mark.parametrize(
+    "records", ([[1], [2], [3]], [[1]], [], [[i] for i in range(100)])
+)
 @pytest.mark.parametrize("fetch_size", (1, 2))
 @pytest.mark.parametrize("strict", (True, False))
 @mark_async_test
@@ -490,9 +503,9 @@ async def test_result_single_exhausts_records(records, fetch_size, strict):
     assert not result.closed()
 
 
-@pytest.mark.parametrize("records", (
-    [[1], [2], [3]], [[1]], [], [[i] for i in range(100)]
-))
+@pytest.mark.parametrize(
+    "records", ([[1], [2], [3]], [[1]], [], [[i] for i in range(100)])
+)
 @pytest.mark.parametrize("fetch_size", (1, 2))
 @pytest.mark.parametrize("strict", (True, False))
 @mark_async_test
@@ -529,10 +542,8 @@ async def test_consume(records, consume_one, summary_meta, consume_times):
     result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
     if consume_one:
-        try:
+        with suppress(StopAsyncIteration):
             await AsyncUtil.next(AsyncUtil.iter(result))
-        except StopAsyncIteration:
-            pass
     for _ in range(consume_times):
         summary = await result.consume()
         assert isinstance(summary, ResultSummary)
@@ -557,8 +568,9 @@ async def test_time_in_summary(t_first, t_last):
     if t_last is not None:
         summary_meta = {"t_last": t_last}
     connection = AsyncConnectionStub(
-        records=Records(["n"], [[i] for i in range(100)]), run_meta=run_meta,
-        summary_meta=summary_meta
+        records=Records(["n"], [[i] for i in range(100)]),
+        run_meta=run_meta,
+        summary_meta=summary_meta,
     )
 
     result = AsyncResult(connection, 1, None, noop, noop)
@@ -605,7 +617,7 @@ async def test_query_type(query_type):
     assert summary.query_type == query_type
 
 
-@pytest.mark.parametrize("num_records", range(0, 5))
+@pytest.mark.parametrize("num_records", range(5))
 @mark_async_test
 async def test_data(num_records):
     connection = AsyncConnectionStub(
@@ -620,27 +632,37 @@ async def test_data(num_records):
     expected_data = []
     for i, record in enumerate(records):
         record.data = mock.Mock()
-        expected_data.append("magic_return_%s" % i)
+        expected_data.append(f"magic_return_{i}")
         record.data.return_value = expected_data[-1]
     assert await result.data("hello", "world") == expected_data
     for record in records:
         record.data.assert_called_once_with("hello", "world")
 
 
-@pytest.mark.parametrize("records", (
-    Records(["n"], []),
-    Records(["n"], [[42], [69], [420], [1337]]),
-    Records(["n1", "r", "n2"], [
-        [
-            # Node
-            Structure(b"N", 0, ["Person", "LabelTest1"], {"name": "Alice"}),
-            # Relationship
-            Structure(b"R", 0, 0, 1, "KNOWS", {"since": 1999}),
-            # Node
-            Structure(b"N", 1, ["Person", "LabelTest2"], {"name": "Bob"}),
-        ]
-    ]),
-))
+@pytest.mark.parametrize(
+    "records",
+    (
+        Records(["n"], []),
+        Records(["n"], [[42], [69], [420], [1337]]),
+        Records(
+            ["n1", "r", "n2"],
+            [
+                [
+                    # Node
+                    Structure(
+                        b"N", 0, ["Person", "LabelTest1"], {"name": "Alice"}
+                    ),
+                    # Relationship
+                    Structure(b"R", 0, 0, 1, "KNOWS", {"since": 1999}),
+                    # Node
+                    Structure(
+                        b"N", 1, ["Person", "LabelTest2"], {"name": "Bob"}
+                    ),
+                ]
+            ],
+        ),
+    ),
+)
 @mark_async_test
 async def test_result_graph(records):
     connection = AsyncConnectionStub(records=records)
@@ -659,11 +681,13 @@ async def test_result_graph(records):
 
         assert set(nodes._entity_dict) == {"0", "1"}
         for key in (
-            "0", 0, 0.0,
+            "0",
+            0,
+            0.0,
             # I pray to god that no-one actually accessed nodes with complex
             # numbers, but theoretically it would have worked with the legacy
             # number IDs
-            0+0j,
+            0 + 0j,
         ):
             if not isinstance(key, str):
                 with pytest.warns(DeprecationWarning, match="element_id"):
@@ -676,7 +700,7 @@ async def test_result_graph(records):
             assert set(alice.keys()) == {"name"}
             assert alice["name"] == "Alice"
 
-        for key in ("1", 1, 1.0, 1+0j):
+        for key in ("1", 1, 1.0, 1 + 0j):
             if not isinstance(key, str):
                 with pytest.warns(DeprecationWarning, match="element_id"):
                     bob = nodes[key]
@@ -693,7 +717,7 @@ async def test_result_graph(records):
 
         assert set(rels._entity_dict) == {"0"}
 
-        for key in ("0", 0, 0.0, 0+0j):
+        for key in ("0", 0, 0.0, 0 + 0j):
             if not isinstance(key, str):
                 with pytest.warns(DeprecationWarning, match="element_id"):
                     rel = rels[key]
@@ -706,21 +730,31 @@ async def test_result_graph(records):
             assert rel["since"] == 1999
 
 
-@pytest.mark.parametrize("records", (
-    Records(["n"], []),
-    Records(["n"], [[42], [69], [420], [1337]]),
-    Records(["n1", "r", "n2"], [
-        [
-            # Node
-            Structure(b"N", 0, ["Person", "LabelTest1"], {"name": "Alice"}),
-            # Relationship
-            Structure(b"R", 0, 0, 1, "KNOWS", {"since": 1999}),
-            # Node
-            Structure(b"N", 1, ["Person", "LabelTest2"], {"name": "Bob"}),
-        ]
-    ]),
-    Records(["secret_sauce"], [[object()], [object()]]),
-))
+@pytest.mark.parametrize(
+    "records",
+    (
+        Records(["n"], []),
+        Records(["n"], [[42], [69], [420], [1337]]),
+        Records(
+            ["n1", "r", "n2"],
+            [
+                [
+                    # Node
+                    Structure(
+                        b"N", 0, ["Person", "LabelTest1"], {"name": "Alice"}
+                    ),
+                    # Relationship
+                    Structure(b"R", 0, 0, 1, "KNOWS", {"since": 1999}),
+                    # Node
+                    Structure(
+                        b"N", 1, ["Person", "LabelTest2"], {"name": "Bob"}
+                    ),
+                ]
+            ],
+        ),
+        Records(["secret_sauce"], [[object()], [object()]]),
+    ),
+)
 @mark_async_test
 async def test_to_eager_result(records):
     summary = {"test_to_eager_result": uuid.uuid4()}
@@ -735,13 +769,17 @@ async def test_to_eager_result(records):
     assert isinstance(eager_result.records, list)
     assert all(isinstance(r, Record) for r in eager_result.records)
     assert len(eager_result.records) == len(records)
-    assert all(list(record) == list(raw)
-               for record, raw in zip(eager_result.records, records))
+    assert all(
+        list(record) == list(raw)
+        for record, raw in zip(eager_result.records, records)
+    )
 
     assert eager_result.summary is eager_result[1]
     assert isinstance(eager_result.summary, ResultSummary)
-    assert (eager_result.summary.metadata.get("test_to_eager_result")
-            == summary["test_to_eager_result"])
+    assert (
+        eager_result.summary.metadata.get("test_to_eager_result")
+        == summary["test_to_eager_result"]
+    )
 
     assert eager_result.keys is eager_result[2]
     assert isinstance(eager_result.keys, list)
@@ -753,33 +791,59 @@ async def test_to_eager_result(records):
     ("keys", "values", "types", "instances"),
     (
         (["i"], list(zip(range(5))), ["int64"], None),
-        (["x"], list(zip((n - .5) / 5 for n in range(5))), ["float64"], None),
+        (["x"], list(zip((n - 0.5) / 5 for n in range(5))), ["float64"], None),
         (["s"], list(zip(("foo", "bar", "baz", "foobar"))), ["object"], None),
         (["l"], list(zip(([1, 2], [3, 4]))), ["object"], None),
         (
             ["n"],
-            list(zip((
-                Structure(b"N", 0, ["LABEL_A"], {"a": 1, "b": 2}),
-                Structure(b"N", 2, ["LABEL_B"], {"a": 1, "c": 1.2}),
-                Structure(b"N", 1, ["LABEL_A", "LABEL_B"], {"a": [1, "a"]}),
-                Structure(b"N", None, ["LABEL_A", "LABEL_B"], {"a": [1, "a"]},
-                          "cool_id"),
-            ))),
+            list(
+                zip(
+                    (
+                        Structure(b"N", 0, ["LABEL_A"], {"a": 1, "b": 2}),
+                        Structure(b"N", 2, ["LABEL_B"], {"a": 1, "c": 1.2}),
+                        Structure(
+                            b"N", 1, ["LABEL_A", "LABEL_B"], {"a": [1, "a"]}
+                        ),
+                        Structure(
+                            b"N",
+                            None,
+                            ["LABEL_A", "LABEL_B"],
+                            {"a": [1, "a"]},
+                            "cool_id",
+                        ),
+                    )
+                )
+            ),
             ["object"],
-            [Node]
+            [Node],
         ),
         (
             ["r"],
-            list(zip((
-                Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "b": 2}),
-                Structure(b"R", 420, 1337, 69, "HYPE", {"all memes": True}),
-                Structure(b"R", None, None, None, "HYPE", {"all memes": True},
-                          "420", "1337", "69"),
-            ))),
+            list(
+                zip(
+                    (
+                        Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "b": 2}),
+                        Structure(
+                            b"R", 420, 1337, 69, "HYPE", {"all memes": True}
+                        ),
+                        Structure(
+                            b"R",
+                            None,
+                            None,
+                            None,
+                            "HYPE",
+                            {"all memes": True},
+                            "420",
+                            "1337",
+                            "69",
+                        ),
+                    )
+                )
+            ),
             ["object"],
-            [Relationship]
+            [Relationship],
         ),
-    )
+    ),
 )
 @pytest.mark.parametrize("test_default_expand", (True, False))
 @mark_async_test
@@ -828,7 +892,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         ),
         (
             ["x"],
-            list(zip((n - .5) / 5 for n in range(5))),
+            list(zip((n - 0.5) / 5 for n in range(5))),
             ["x"],
             [[-0.1], [0.1], [0.3], [0.5], [0.7]],
             ["float64"],
@@ -884,44 +948,97 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             ["x"],
             list(zip(([{"foo": "bar", "baz": [42, 0.1]}, "foobar"],))),
             ["x[].0{}.foo", "x[].0{}.baz[].0", "x[].0{}.baz[].1", "x[].1"],
-            [["bar",  42, 0.1, "foobar"]],
+            [["bar", 42, 0.1, "foobar"]],
             ["object", "int64", "float64", "object"],
         ),
         (
             ["n"],
-            list(zip((
-                Node(None,  # type: ignore[arg-type]
-                     "00", 0, ["LABEL_A"], {"a": 1, "b": 2, "d": 1}),
-                Node(None,  # type: ignore[arg-type]
-                     "02", 2, ["LABEL_B"], {"a": 1, "c": 1.2, "d": 2}),
-                Node(None,  # type: ignore[arg-type]
-                     "01", 1, ["LABEL_A", "LABEL_B"], {"a": [1, "a"], "d": 3}),
-            ))),
+            list(
+                zip(
+                    (
+                        Node(
+                            None,  # type: ignore[arg-type]
+                            "00",
+                            0,
+                            ["LABEL_A"],
+                            {"a": 1, "b": 2, "d": 1},
+                        ),
+                        Node(
+                            None,  # type: ignore[arg-type]
+                            "02",
+                            2,
+                            ["LABEL_B"],
+                            {"a": 1, "c": 1.2, "d": 2},
+                        ),
+                        Node(
+                            None,  # type: ignore[arg-type]
+                            "01",
+                            1,
+                            ["LABEL_A", "LABEL_B"],
+                            {"a": [1, "a"], "d": 3},
+                        ),
+                    )
+                )
+            ),
             [
-                "n().element_id", "n().labels", "n().prop.a", "n().prop.b",
-                "n().prop.c", "n().prop.d"
+                "n().element_id",
+                "n().labels",
+                "n().prop.a",
+                "n().prop.b",
+                "n().prop.c",
+                "n().prop.d",
             ],
             [
                 ["00", frozenset(("LABEL_A",)), 1, 2, None, 1],
                 ["02", frozenset(("LABEL_B",)), 1, None, 1.2, 2],
                 [
-                    "01", frozenset(("LABEL_A", "LABEL_B")),
-                    [1, "a"], None, None, 3
+                    "01",
+                    frozenset(("LABEL_A", "LABEL_B")),
+                    [1, "a"],
+                    None,
+                    None,
+                    3,
                 ],
             ],
             ["object", "object", "object", "float64", "float64", "int64"],
         ),
         (
             ["r"],
-            list(zip((
-                Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "all memes": False},
-                          "r-0", "r-1", "r-2"),
-                Structure(b"R", 420, 1337, 69, "HYPE", {"all memes": True},
-                          "r-420", "r-1337", "r-69"),
-            ))),
+            list(
+                zip(
+                    (
+                        Structure(
+                            b"R",
+                            0,
+                            1,
+                            2,
+                            "TYPE",
+                            {"a": 1, "all memes": False},
+                            "r-0",
+                            "r-1",
+                            "r-2",
+                        ),
+                        Structure(
+                            b"R",
+                            420,
+                            1337,
+                            69,
+                            "HYPE",
+                            {"all memes": True},
+                            "r-420",
+                            "r-1337",
+                            "r-69",
+                        ),
+                    )
+                )
+            ),
             [
-                "r->.element_id", "r->.start.element_id", "r->.end.element_id",
-                "r->.type", "r->.prop.a", "r->.prop.all memes"
+                "r->.element_id",
+                "r->.start.element_id",
+                "r->.end.element_id",
+                "r->.type",
+                "r->.prop.a",
+                "r->.prop.all memes",
             ],
             [
                 ["r-0", "r-1", "r-2", "TYPE", 1, False],
@@ -936,11 +1053,12 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             [[neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)]],
             ["object"],
         ),
-    )
+    ),
 )
 @mark_async_test
-async def test_to_df_expand(keys, values, expected_columns, expected_rows,
-                            expected_types):
+async def test_to_df_expand(
+    keys, values, expected_columns, expected_rows, expected_types
+):
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, None, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
@@ -953,10 +1071,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
     # We don't expect the columns to be in a specific order.
     # Hence, we need to sort them before comparing.
     new_order = [df.keys().get_loc(ex_c) for ex_c in expected_columns]
-    expected_rows = [
-        [row[i] for i in new_order]
-        for row in expected_rows
-    ]
+    expected_rows = [[row[i] for i in new_order] for row in expected_rows]
     expected_types = [expected_types[i] for i in new_order]
     expected_columns = [expected_columns[i] for i in new_order]
 
@@ -979,7 +1094,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
             pd.DataFrame(
                 [[pd.Timestamp("2022-01-02 03:04:05.000000006")]],
                 columns=["dt"],
-            )
+            ),
         ),
         # Date
         (
@@ -990,7 +1105,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
             pd.DataFrame(
                 [[pd.Timestamp("2222-02-22")]],
                 columns=["d"],
-            )
+            ),
         ),
         # DateTime with timezone
         (
@@ -1003,13 +1118,15 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                 ],
             ],
             pd.DataFrame(
-                [[
-                    pytz.timezone("Europe/Stockholm").localize(
-                        pd.Timestamp("1970-01-01")
-                    )
-                ]],
+                [
+                    [
+                        pytz.timezone("Europe/Stockholm").localize(
+                            pd.Timestamp("1970-01-01")
+                        )
+                    ]
+                ],
                 columns=["dt_tz"],
-            )
+            ),
         ),
         # DateTime, Date, DateTime with timezone, and None
         (
@@ -1036,7 +1153,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                     ],
                 ],
                 columns=["mixed"],
-            )
+            ),
         ),
         # DateTime, Date, DateTime with timezone, and None in the middle
         (
@@ -1063,7 +1180,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                     ],
                 ],
                 columns=["mixed"],
-            )
+            ),
         ),
         # DateTime, Date, DateTime with timezone, and None at the end
         (
@@ -1090,7 +1207,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                     [pd.NaT],
                 ],
                 columns=["mixed"],
-            )
+            ),
         ),
         # Column with only None (should not be transfomred to NaT)
         (
@@ -1102,7 +1219,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
             pd.DataFrame(
                 [[None], [None]],
                 columns=["all_none"],
-            )
+            ),
         ),
         # Multiple columns
         (
@@ -1129,11 +1246,11 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                     [
                         None,
                         pd.Timestamp("2022-01-02 03:04:05.000000006"),
-                        1.234
+                        1.234,
                     ],
                 ],
                 columns=["all_none", "mixed", "n"],
-            )
+            ),
         ),
     ),
 )
@@ -1185,23 +1302,28 @@ async def test_broken_hydration(nested):
         ("INFORMATION", "HINT", "INFORMATION", Neo4jWarning),
         ("WARNING", "HINT", "INFORMATION", Neo4jWarning),
         ("WARNING", "DEPRECATION", "WARNING", Neo4jDeprecationWarning),
-    )
+    ),
 )
 @mark_async_test
 async def test_notification_warning(
     raw_notification_factory: TRawNotificationFactory,
     notification_severity: str,
     notification_category: str,
-    warn_notification_severity: t.Optional[str],
-    expected_warning: t.Optional[te.Type[Warning]],
+    warn_notification_severity: str | None,
+    expected_warning: type[Warning] | None,
 ) -> None:
     connection = AsyncConnectionStub(
         records=Records(["foo"], ()),
         summary_meta={
-            "notifications": [raw_notification_factory(data_overwrite={
-                "severity": notification_severity,
-                "category": notification_category,
-            })]}
+            "notifications": [
+                raw_notification_factory(
+                    data_overwrite={
+                        "severity": notification_severity,
+                        "category": notification_category,
+                    }
+                )
+            ]
+        },
     )
     result = AsyncResult(connection, 1, warn_notification_severity, noop, noop)
     if expected_warning is None:
@@ -1218,12 +1340,13 @@ async def test_notification_warning(
 
 
 @pytest.mark.parametrize("notification_severity", ("INFORMATION", "WARNING"))
-@pytest.mark.parametrize("notification_category",
-     (
+@pytest.mark.parametrize(
+    "notification_category",
+    (
         "HINT",
         "DEPRECATION",
         "UNRECOGNIZED",
-    )
+    ),
 )
 @mark_async_test
 async def test_notification_logging(
@@ -1233,23 +1356,26 @@ async def test_notification_logging(
     notification_category: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    notification_data = raw_notification_factory(data_overwrite={
-        "severity": notification_severity,
-        "category": notification_category,
-    })
+    notification_data = raw_notification_factory(
+        data_overwrite={
+            "severity": notification_severity,
+            "category": notification_category,
+        }
+    )
     notification = notification_factory(notification_data)
     connection = AsyncConnectionStub(
         records=Records(["foo"], ()),
-        summary_meta={"notifications": [notification_data]}
+        summary_meta={"notifications": [notification_data]},
     )
     result = AsyncResult(connection, 1, None, noop, noop)
-    with caplog.at_level(logging.INFO, logger="neo4j.notifications") as log:
+    with caplog.at_level(logging.INFO, logger="neo4j.notifications"):
         await result._run("CYPHER", {}, None, None, "r", None, None, None)
         await result.consume()
     assert len(caplog.messages) == 1
     formatted_notification = str(
         NotificationPrinter(notification, "CYPHER", one_line=True)
     )
-    expected_message = \
+    expected_message = (
         f"Received notification from DBMS server: {formatted_notification}"
+    )
     assert caplog.messages[0] == expected_message

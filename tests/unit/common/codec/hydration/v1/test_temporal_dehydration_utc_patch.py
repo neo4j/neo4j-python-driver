@@ -48,9 +48,7 @@ class UTCPatchedTimeDehydrationMeta(type):
                 continue
             attrs[test_func] = getattr(_TestTimeDehydrationV2, test_func)
 
-        return super(UTCPatchedTimeDehydrationMeta, mcs).__new__(
-            mcs, name, bases, attrs
-        )
+        return super().__new__(mcs, name, bases, attrs)
 
 
 class TestUTCPatchedTimeDehydration(

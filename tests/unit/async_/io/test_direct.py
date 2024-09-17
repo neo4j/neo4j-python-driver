@@ -44,7 +44,9 @@ class AsyncFakeBoltPool(AsyncIOPool):
             config, AsyncPoolConfig, WorkspaceConfig
         )
         if config:
-            raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
+            raise ValueError(
+                f"Unexpected config keys: {', '.join(config.keys())}"
+            )
 
         async def opener(addr, auth, timeout):
             if self.buffered_connection_mocks:
@@ -58,8 +60,13 @@ class AsyncFakeBoltPool(AsyncIOPool):
         self.address = address
 
     async def acquire(
-        self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout
+        self,
+        access_mode,
+        timeout,
+        database,
+        bookmarks,
+        auth,
+        liveness_check_timeout,
     ):
         return await self._acquire(
             self.address, auth, timeout, liveness_check_timeout
@@ -85,8 +92,9 @@ async def test_bolt_connection_open(auth_manager):
 async def test_bolt_connection_open_timeout(auth_manager):
     with pytest.raises(ServiceUnavailable):
         await AsyncBolt.open(
-            ("localhost", 9999), auth_manager=auth_manager,
-            deadline=Deadline(1)
+            ("localhost", 9999),
+            auth_manager=auth_manager,
+            deadline=Deadline(1),
         )
 
 
@@ -116,12 +124,13 @@ def assert_pool_size(address, expected_active, expected_inactive, pool):
     try:
         connections = pool.connections[address]
     except KeyError:
-        assert 0 == expected_active
-        assert 0 == expected_inactive
+        assert expected_active == 0
+        assert expected_inactive == 0
     else:
         assert expected_active == len([cx for cx in connections if cx.in_use])
-        assert (expected_inactive
-                == len([cx for cx in connections if not cx.in_use]))
+        assert expected_inactive == len(
+            [cx for cx in connections if not cx.in_use]
+        )
 
 
 @mark_async_test
@@ -226,7 +235,8 @@ async def test_liveness_check(
     if acquire_timeout is not None:
         effective_timeout = acquire_timeout
     async with AsyncFakeBoltPool(
-        async_fake_connection_generator, ("127.0.0.1", 7687),
+        async_fake_connection_generator,
+        ("127.0.0.1", 7687),
         liveness_check_timeout=config_timeout,
     ) as pool:
         address = neo4j.Address(("127.0.0.1", 7687))

@@ -27,23 +27,26 @@ from neo4j._codec.packstream.v1 import PackableBuffer
 from ...._async_compat import mark_async_test
 
 
-@pytest.mark.parametrize(("chunk_size", "data", "result"), (
+@pytest.mark.parametrize(
+    ("chunk_size", "data", "result"),
     (
-        2,
-        bytes(range(10, 15)),
-        bytes((0, 2, 10, 11, 0, 2, 12, 13, 0, 1, 14))
+        (
+            2,
+            bytes(range(10, 15)),
+            bytes((0, 2, 10, 11, 0, 2, 12, 13, 0, 1, 14)),
+        ),
+        (
+            2,
+            bytes(range(10, 14)),
+            bytes((0, 2, 10, 11, 0, 2, 12, 13)),
+        ),
+        (
+            2,
+            bytes((5,)),
+            bytes((0, 1, 5)),
+        ),
     ),
-    (
-        2,
-        bytes(range(10, 14)),
-        bytes((0, 2, 10, 11, 0, 2, 12, 13))
-    ),
-    (
-        2,
-        bytes((5,)),
-        bytes((0, 1, 5))
-    ),
-))
+)
 @mark_async_test
 async def test_async_outbox_chunking(chunk_size, data, result, mocker):
     buffer = PackableBuffer()
@@ -51,8 +54,9 @@ async def test_async_outbox_chunking(chunk_size, data, result, mocker):
     packer_mock = mocker.Mock()
     packer_mock.return_value = packer_mock
     packer_mock.new_packable_buffer.return_value = buffer
-    packer_mock.pack_struct.side_effect = \
-        lambda *args, **kwargs: buffer.write(data)
+    packer_mock.pack_struct.side_effect = lambda *args, **kwargs: buffer.write(
+        data
+    )
     outbox = AsyncOutbox(socket_mock, pytest.fail, packer_mock, chunk_size)
     outbox.append_message(None, None, None)
     socket_mock.sendall.assert_not_called()
@@ -66,11 +70,7 @@ async def test_async_outbox_chunking(chunk_size, data, result, mocker):
 def get_handler_arg(response):
     if response == "RECORD":
         return []
-    elif response == "IGNORED":
-        return {}
-    elif response == "FAILURE":
-        return {}
-    elif response == "SUCCESS":
+    elif response in {"IGNORED", "FAILURE", "SUCCESS"}:
         return {}
     else:
         raise ValueError(f"Unexpected response: {response}")
@@ -99,7 +99,7 @@ def call_handler(handler, response, arg=None):
         ("IGNORED", True),
         ("FAILURE", True),
         ("SUCCESS", False),
-    )
+    ),
 )
 @mark_async_test
 async def test_reset_response_closes_connection_on_unexpected_responses(
@@ -123,7 +123,7 @@ async def test_reset_response_closes_connection_on_unexpected_responses(
         ("IGNORED", True),
         ("FAILURE", True),
         ("SUCCESS", False),
-    )
+    ),
 )
 @mark_async_test
 async def test_reset_response_logs_warning_on_unexpected_responses(
@@ -134,24 +134,32 @@ async def test_reset_response_logs_warning_on_unexpected_responses(
     with caplog.at_level(logging.WARNING):
         await call_handler(handler, response)
 
-    log_message_found = any("RESET" in msg and "unexpected response" in msg
-                            for msg in caplog.messages)
+    log_message_found = any(
+        "RESET" in msg and "unexpected response" in msg
+        for msg in caplog.messages
+    )
     if unexpected:
         assert log_message_found
     else:
         assert not log_message_found
 
 
-@pytest.mark.parametrize("response",
-                         ("RECORD", "IGNORED", "FAILURE", "SUCCESS"))
+@pytest.mark.parametrize(
+    "response", ("RECORD", "IGNORED", "FAILURE", "SUCCESS")
+)
 @mark_async_test
 async def test_reset_response_never_calls_handlers(
     response, async_fake_connection, mocker
 ):
     handlers = {
         key: mocker.AsyncMock(name=key)
-        for key in
-        ("on_records", "on_ignored", "on_failure", "on_success", "on_summary")
+        for key in (
+            "on_records",
+            "on_ignored",
+            "on_failure",
+            "on_success",
+            "on_summary",
+        )
     }
 
     handler = ResetResponse(async_fake_connection, "reset", {}, **handlers)

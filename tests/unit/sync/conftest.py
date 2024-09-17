@@ -14,4 +14,20 @@
 # limitations under the License.
 
 
-from .fixtures import *  # necessary for pytest to discover the fixtures
+# necessary for pytest to discover the fixtures
+from .fixtures import (
+    fake_connection,
+    fake_connection_generator,
+    fake_pool,
+    scripted_connection,
+    scripted_connection_generator,
+)
+
+
+__all__ = [
+    "fake_connection",
+    "fake_connection_generator",
+    "fake_pool",
+    "scripted_connection",
+    "scripted_connection_generator",
+]

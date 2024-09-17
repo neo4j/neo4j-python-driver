@@ -40,25 +40,19 @@ def make_reduce_points():
 
 
 class TestPoint:
-
-    @pytest.mark.parametrize("argument", (
-        ("a", "b"), {"x": 1.0, "y": 2.0}
-    ))
+    @pytest.mark.parametrize("argument", (("a", "b"), {"x": 1.0, "y": 2.0}))
     def test_wrong_type_arguments(self, argument) -> None:
         with pytest.raises(ValueError):
             Point(argument)
 
-    @pytest.mark.parametrize("argument", (
-        (1, 2), (1.2, 2.1)
-    ))
+    @pytest.mark.parametrize("argument", ((1, 2), (1.2, 2.1)))
     def test_number_arguments(self, argument: t.Iterable[float]) -> None:
-        print(argument)
         p = Point(argument)
         assert tuple(p) == argument
 
     def test_immutable_coordinates(self) -> None:
-        MyPoint = point_type("MyPoint", ("x", "y", "z"), {2: 1234, 3: 5678})
-        coordinates = (.1, 0)
+        MyPoint = point_type("MyPoint", ("x", "y", "z"), {2: 1234, 3: 5678})  # noqa: N806
+        coordinates = (0.1, 0)
         p = MyPoint(coordinates)
         with pytest.raises(AttributeError):
             p.x = 2.0  # type: ignore[misc]

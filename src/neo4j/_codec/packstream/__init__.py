@@ -21,6 +21,6 @@ from ._common import (
 
 
 __all__ = [
-    "Structure",
     "RUST_AVAILABLE",
+    "Structure",
 ]

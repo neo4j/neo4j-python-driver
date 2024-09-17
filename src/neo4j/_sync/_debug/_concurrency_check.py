@@ -32,8 +32,9 @@ from ..._meta import copy_signature
 
 
 _TWrapped = t.TypeVar("_TWrapped", bound=t.Callable[..., t.Union[t.Any]])
-_TWrappedIter = t.TypeVar("_TWrappedIter",
-                          bound=t.Callable[..., t.Iterator])
+_TWrappedIter = t.TypeVar(
+    "_TWrappedIter", bound=t.Callable[..., t.Iterator]
+)
 
 
 class NonConcurrentMethodError(RuntimeError):
@@ -49,11 +50,15 @@ class NonConcurrentMethodChecker:
             self.__tracebacks = []
 
         def __make_error(self, tbs):
-            msg = (f"Methods of {self.__class__} are not concurrency "
-                   "safe, but were invoked concurrently.")
+            msg = (
+                f"Methods of {self.__class__} are not concurrency "
+                "safe, but were invoked concurrently."
+            )
             if tbs:
-                msg += ("\n\nOther invocation site:\n\n"
-                        f"{''.join(traceback.format_list(tbs[0]))}")
+                msg += (
+                    "\n\nOther invocation site:\n\n"
+                    f"{''.join(traceback.format_list(tbs[0]))}"
+                )
             return NonConcurrentMethodError(msg)
 
         @classmethod
@@ -64,12 +69,11 @@ class NonConcurrentMethodChecker:
                         "cannot decorate non-coroutine function with "
                         "NonConcurrentMethodChecked.non_concurrent_method"
                     )
-            else:
-                if not callable(f):
-                    raise TypeError(
-                        "cannot decorate non-callable object with "
-                        "NonConcurrentMethodChecked.non_concurrent_method"
-                    )
+            elif not callable(f):
+                raise TypeError(
+                    "cannot decorate non-callable object with "
+                    "NonConcurrentMethodChecked.non_concurrent_method"
+                )
 
             @copy_signature(f)
             @wraps(f)
@@ -103,12 +107,11 @@ class NonConcurrentMethodChecker:
                         "cannot decorate non-async-generator function with "
                         "NonConcurrentMethodChecked.non_concurrent_iter"
                     )
-            else:
-                if not inspect.isgeneratorfunction(f):
-                    raise TypeError(
-                        "cannot decorate non-generator function with "
-                        "NonConcurrentMethodChecked.non_concurrent_iter"
-                    )
+            elif not inspect.isgeneratorfunction(f):
+                raise TypeError(
+                    "cannot decorate non-generator function with "
+                    "NonConcurrentMethodChecked.non_concurrent_iter"
+                )
 
             @copy_signature(f)
             @wraps(f)

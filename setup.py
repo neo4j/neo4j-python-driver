@@ -18,7 +18,6 @@
 # TODO: 6.0 - the whole deprecation and double naming shebang can be removed
 
 
-import os
 import pathlib
 import sys
 import warnings
@@ -28,9 +27,11 @@ import tomlkit
 from setuptools import setup
 
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent / "src"))
+THIS_DIR = pathlib.Path(__file__).parent
 
-from neo4j._meta import (
+sys.path.insert(0, str(THIS_DIR / "src"))
+
+from neo4j._meta import (  # noqa: E402 import has to happen after sys path manipulation
     deprecated_package as deprecated,
     package,
 )
@@ -39,27 +40,32 @@ from neo4j._meta import (
 if deprecated:
     warnings.warn(
         f"`{package}` is deprecated, please install `neo4j` instead.",
-        DeprecationWarning
+        DeprecationWarning,
+        stacklevel=0,
     )
 
-readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                           "README.rst"))
-with open(readme_path, mode="r", encoding="utf-8") as fr:
-    readme = fr.read()
+readme_path = THIS_DIR / "README.rst"
+readme = readme_path.read_text(encoding="utf-8")
 
 if deprecated:
-    readme = """\
+    readme = (
+        """\
 .. warning::
 
     This package is deprecated and will stop receiving updates starting with
     version 6.0.0. Please install ``neo4j`` instead (which is an alias, i.e.,
     a drop-in replacement). See https://pypi.org/project/neo4j/ .
 
-""" + readme
+"""
+        + readme
+    )
+
+
+pyproject_path = THIS_DIR / "pyproject.toml"
 
 
 def change_project_name(new_name):
-    with open("pyproject.toml", "a+") as fd:
+    with pyproject_path.open("a+", encoding="utf-8") as fd:
         fd.seek(0)
         pyproject = tomlkit.parse(fd.read())
         old_name = pyproject["project"]["name"]

@@ -34,18 +34,23 @@ from neo4j import (
 
 # python -m pytest tests/integration/examples/test_custom_auth_example.py -s -v
 
-class CustomAuthExample(DriverSetupExample):
 
+class CustomAuthExample(DriverSetupExample):
     # tag::custom-auth[]
-    def __init__(self, uri, principal, credentials, realm, scheme, **parameters):
+    def __init__(
+        self, uri, principal, credentials, realm, scheme, **parameters
+    ):
         auth = custom_auth(principal, credentials, realm, scheme, **parameters)
         self.driver = GraphDatabase.driver(uri, auth=auth)
+
     # end::custom-auth[]
 
 
 def test_example(uri, auth):
     try:
-        CustomAuthExample.test(uri, auth[0], auth[1], None, "basic", key="value")
+        CustomAuthExample.test(
+            uri, auth[0], auth[1], None, "basic", key="value"
+        )
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

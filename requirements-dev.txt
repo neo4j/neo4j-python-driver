@@ -12,6 +12,7 @@ isort>=5.10.0
 mypy>=0.971
 typing-extensions>=4.3.0
 types-pytz>=2022.1.2
+ruff>=0.6.4
 
 # needed for running tests
 coverage[toml]>=5.5

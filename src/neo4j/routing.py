@@ -31,5 +31,5 @@ __all__ = [
 _deprecation_warn(
     "The module `neo4j.routing` was made internal and will "
     "no longer be available for import in future versions.",
-    stack_level=2
+    stack_level=2,
 )

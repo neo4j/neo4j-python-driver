@@ -36,7 +36,7 @@ async def test_address_resolve() -> None:
     assert isinstance(resolved, Address) is False
     assert isinstance(resolved, list) is True
     assert len(resolved) == 1
-    assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
+    assert resolved[0] == IPv4Address(("127.0.0.1", 7687))
 
 
 @mark_async_test
@@ -47,16 +47,15 @@ async def test_address_resolve_with_custom_resolver_none() -> None:
     assert isinstance(resolved, Address) is False
     assert isinstance(resolved, list) is True
     assert len(resolved) == 1
-    assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
+    assert resolved[0] == IPv4Address(("127.0.0.1", 7687))
 
 
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         (Address(("127.0.0.1", "abcd")), ValueError),
         (Address((None, None)), ValueError),
-    ]
-
+    ],
 )
 @mark_async_test
 async def test_address_resolve_with_unresolvable_address(
@@ -90,8 +89,8 @@ async def test_address_resolve_with_custom_resolver(resolver_type) -> None:
     assert isinstance(resolved, Address) is False
     assert isinstance(resolved, list) is True
     assert len(resolved) == 2  # IPv4 only
-    assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
-    assert resolved[1] == IPv4Address(('127.0.0.1', 1234))
+    assert resolved[0] == IPv4Address(("127.0.0.1", 7687))
+    assert resolved[1] == IPv4Address(("127.0.0.1", 1234))
 
 
 @mark_async_test
@@ -112,5 +111,6 @@ async def test_address_unresolve() -> None:
     custom_resolved_addresses = sorted(Address(a) for a in custom_resolved)
     unresolved_list = sorted(a._unresolved for a in resolved_list)
     assert custom_resolved_addresses == unresolved_list
-    assert (list(map(lambda a: a.__class__, custom_resolved_addresses))
-            == list(map(lambda a: a.__class__, unresolved_list)))
+    resolved_classes = [a.__class__ for a in custom_resolved_addresses]
+    unresolved_classes = [a.__class__ for a in unresolved_list]
+    assert resolved_classes == unresolved_classes

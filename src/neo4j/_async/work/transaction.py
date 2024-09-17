@@ -40,8 +40,13 @@ __all__ = (
 
 class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
     def __init__(
-        self, connection, fetch_size, warn_notification_severity,
-        on_closed, on_error, on_cancel
+        self,
+        connection,
+        fetch_size,
+        warn_notification_severity,
+        on_closed,
+        on_error,
+        on_cancel,
     ):
         self._connection = connection
         self._error_handling_connection = ConnectionErrorHandler(
@@ -76,16 +81,27 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _begin(
-        self, database, imp_user, bookmarks, access_mode, metadata, timeout,
-        notifications_min_severity, notifications_disabled_classifications,
+        self,
+        database,
+        imp_user,
+        bookmarks,
+        access_mode,
+        metadata,
+        timeout,
+        notifications_min_severity,
+        notifications_disabled_classifications,
         pipelined=False,
     ):
         self._database = database
         self._connection.begin(
-            bookmarks=bookmarks, metadata=metadata, timeout=timeout,
-            mode=access_mode, db=database, imp_user=imp_user,
+            bookmarks=bookmarks,
+            metadata=metadata,
+            timeout=timeout,
+            mode=access_mode,
+            db=database,
+            imp_user=imp_user,
             notifications_min_severity=notifications_min_severity,
-            notifications_disabled_classifications=notifications_disabled_classifications
+            notifications_disabled_classifications=notifications_disabled_classifications,
         )
         if not pipelined:
             await self._error_handling_connection.send_all()
@@ -112,10 +128,11 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
     async def run(
         self,
         query: te.LiteralString,
-        parameters: t.Optional[t.Dict[str, t.Any]] = None,
-        **kwparameters: t.Any
+        parameters: dict[str, t.Any] | None = None,
+        **kwparameters: t.Any,
     ) -> AsyncResult:
-        """Run a Cypher query within the context of this transaction.
+        """
+        Run a Cypher query within the context of this transaction.
 
         Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
@@ -146,25 +163,31 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         :returns: a new :class:`neo4j.AsyncResult` object
         """
         if isinstance(query, Query):
-            raise ValueError("Query object is only supported for session.run")
+            # TODO: 6.0 - make this a TypeError and remove lint exception
+            raise ValueError("Query object is only supported for session.run")  # noqa: TRY004
 
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
         if self._last_error:
-            raise TransactionError(self,
-                                   "Transaction failed") from self._last_error
+            raise TransactionError(
+                self, "Transaction failed"
+            ) from self._last_error
 
-        if (self._results
-                and self._connection.supports_multiple_results is False):
+        if (
+            self._results
+            and self._connection.supports_multiple_results is False
+        ):
             # Bolt 3 Support
             # Buffer up all records for the previous Result because it does not
             # have any qid to fetch in batches.
             await self._results[-1]._buffer_all()
 
         result = AsyncResult(
-            self._connection, self._fetch_size,
+            self._connection,
+            self._fetch_size,
             self._warn_notification_severity,
-            self._result_on_closed_handler, self._error_handler
+            self._result_on_closed_handler,
+            self._error_handler,
         )
         self._results.append(result)
 
@@ -178,8 +201,9 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
         if self._last_error:
-            raise TransactionError(self,
-                                   "Transaction failed") from self._last_error
+            raise TransactionError(
+                self, "Transaction failed"
+            ) from self._last_error
 
         metadata = {}
         try:
@@ -206,9 +230,11 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
         metadata = {}
         try:
-            if not (self._connection.defunct()
-                    or self._connection.closed()
-                    or self._connection.is_reset):
+            if not (
+                self._connection.defunct()
+                or self._connection.closed()
+                or self._connection.is_reset
+            ):
                 # DISCARD pending records then do a rollback.
                 await self._consume_results()
                 self._connection.rollback(on_success=metadata.update)
@@ -228,6 +254,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         await self._rollback()
 
     if AsyncUtil.is_async_code:
+
         def _cancel(self) -> None:
             if self._closed_flag:
                 return
@@ -241,7 +268,8 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
 
 class AsyncTransaction(AsyncTransactionBase):
-    """Fully user-managed transaction.
+    """
+    Fully user-managed transaction.
 
     Container for multiple Cypher queries to be executed within a single
     context. :class:`AsyncTransaction` objects can be used as a context
@@ -250,7 +278,6 @@ class AsyncTransaction(AsyncTransactionBase):
 
         async with await session.begin_transaction() as tx:
             ...
-
     """
 
     async def __aenter__(self) -> AsyncTransaction:
@@ -262,7 +289,8 @@ class AsyncTransaction(AsyncTransactionBase):
         await self._exit(exception_type, exception_value, traceback)
 
     async def commit(self) -> None:
-        """Commit the transaction and close it.
+        """
+        Commit the transaction and close it.
 
         Marks this transaction as successful and closes in order to trigger a
         COMMIT.
@@ -272,7 +300,8 @@ class AsyncTransaction(AsyncTransactionBase):
         return await self._commit()
 
     async def rollback(self) -> None:
-        """Rollback the transaction and close it.
+        """
+        Rollback the transaction and close it.
 
         Marks the transaction as unsuccessful and closes in order to trigger
         a ROLLBACK.
@@ -286,7 +315,8 @@ class AsyncTransaction(AsyncTransactionBase):
         return await self._close()
 
     def closed(self) -> bool:
-        """Indicate whether the transaction has been closed or cancelled.
+        """
+        Indicate whether the transaction has been closed or cancelled.
 
         :returns:
             :data:`True` if closed or cancelled, :data:`False` otherwise.
@@ -295,8 +325,10 @@ class AsyncTransaction(AsyncTransactionBase):
         return self._closed()
 
     if AsyncUtil.is_async_code:
+
         def cancel(self) -> None:
-            """Cancel this transaction.
+            """
+            Cancel this transaction.
 
             If the transaction is already closed, this method does nothing.
             Else, it will close the connection without ROLLBACK or COMMIT in
@@ -313,13 +345,13 @@ class AsyncTransaction(AsyncTransactionBase):
                 except asyncio.CancelledError:
                     tx.cancel()
                     raise
-
             """
             return self._cancel()
 
 
 class AsyncManagedTransaction(AsyncTransactionBase):
-    """Transaction object provided to transaction functions.
+    """
+    Transaction object provided to transaction functions.
 
     Inside a transaction function, the driver is responsible for managing
     (committing / rolling back) the transaction. Therefore,
@@ -341,4 +373,3 @@ class AsyncManagedTransaction(AsyncTransactionBase):
         but would cause hard to interpret errors when managed explicitly
         (committed or rolled back by user code).
     """
-    pass

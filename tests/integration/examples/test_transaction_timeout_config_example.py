@@ -17,24 +17,25 @@
 from neo4j import unit_of_work
 
 
-# python -m pytest tests/integration/examples/execute_test_timeout_config_example.py -s -v
-
 # tag::transaction-timeout-config[]
 @unit_of_work(timeout=5)
 def create_person(tx, name):
-    return tx.run(
-        "CREATE (a:Person {name: $name}) RETURN id(a)", name=name
-    ).single().value()
+    return (
+        tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name)
+        .single()
+        .value()
+    )
 
 
 def add_person(driver, name):
     with driver.session() as session:
         return session.execute_write(create_person, name)
+
+
 # end::transaction-timeout-config[]
 
 
 class TransactionTimeoutConfigExample:
-
     def __init__(self, driver):
         self.driver = driver
 

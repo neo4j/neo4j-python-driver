@@ -18,8 +18,8 @@ import re
 from pathlib import Path
 
 
-# python -m pytest tests/integration/test_readme.py -s -v
-
+# fmt: off
+# ruff: noqa: E303 (too many blank lines, test must match README)
 
 def test_should_run_readme(uri, auth):
     names = set()
@@ -29,8 +29,8 @@ def test_should_run_readme(uri, auth):
     from neo4j import GraphDatabase, RoutingControl  # isort:skip
 
 
-    URI = "neo4j://localhost:7687"
-    AUTH = ("neo4j", "password")
+    URI = "neo4j://localhost:7687"  # noqa: N806
+    AUTH = ("neo4j", "password")  # noqa: N806
 
 
     def add_friend(driver, name, friend_name):
@@ -67,6 +67,8 @@ def test_should_run_readme(uri, auth):
 
     assert names == {"Guinevere", "Lancelot", "Merlin"}
 
+# fmt: on
+
 
 def test_readme_contains_example():
     test_path = Path(__file__)
@@ -89,6 +91,9 @@ def test_readme_contains_example():
             continue
         if adding:
             line = re.sub(r"\s+# isort:skip\s+$", "\n", line)
+            line = re.sub(
+                r"\s+# noqa(:\s*\w+\s*(,\s*\w+\s*)*)?\s*$", "\n", line
+            )
             stripped_test_content += line
 
     assert stripped_test_content in readme_content

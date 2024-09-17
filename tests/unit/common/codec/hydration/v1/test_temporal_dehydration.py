@@ -45,10 +45,12 @@ class TestTimeDehydration(HydrationHandlerTestBase):
     @pytest.fixture
     def transformer(self, hydration_scope):
         def transformer(value):
-            transformer_ = \
-                hydration_scope.dehydration_hooks.get_transformer(value)
+            transformer_ = hydration_scope.dehydration_hooks.get_transformer(
+                value
+            )
             assert callable(transformer_)
             return transformer_(value)
+
         return transformer
 
     @pytest.fixture
@@ -56,6 +58,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         def assert_(value, expected):
             struct = transformer(value)
             assert struct == expected
+
         return assert_
 
     def test_date(self, assert_transforms):
@@ -98,13 +101,15 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         dt = np.datetime64("NaT")
         assert_transforms(dt, None)
 
-    @pytest.mark.parametrize(("value", "error"), (
-        (np.datetime64(10000 - 1970, "Y"), ValueError),
-        (np.datetime64("+10000-01-01"), ValueError),
-        (np.datetime64(-1970, "Y"), ValueError),
-        (np.datetime64("0000-12-31"), ValueError),
-
-    ))
+    @pytest.mark.parametrize(
+        ("value", "error"),
+        (
+            (np.datetime64(10000 - 1970, "Y"), ValueError),
+            (np.datetime64("+10000-01-01"), ValueError),
+            (np.datetime64(-1970, "Y"), ValueError),
+            (np.datetime64("0000-12-31"), ValueError),
+        ),
+    )
     def test_numpy_invalid_local_date_time(self, value, error, transformer):
         with pytest.raises(error):
             transformer(value)
@@ -118,25 +123,25 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         assert_transforms(dt, None)
 
     def test_date_time_fixed_offset(self, assert_transforms):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      pytz.FixedOffset(60))
+        dt = DateTime(
+            2018, 10, 12, 11, 37, 41, 474716862, pytz.FixedOffset(60)
+        )
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, 3600))
 
     def test_native_date_time_fixed_offset(self, assert_transforms):
-        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
-                               pytz.FixedOffset(60))
+        dt = datetime.datetime(
+            2018, 10, 12, 11, 37, 41, 474716, pytz.FixedOffset(60)
+        )
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, 3600))
 
     def test_date_time_fixed_native_offset(self, assert_transforms):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      datetime.timezone(datetime.timedelta(minutes=60)))
+        tz = datetime.timezone(datetime.timedelta(minutes=60))
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, 3600))
 
     def test_native_date_time_fixed_native_offset(self, assert_transforms):
-        dt = datetime.datetime(
-            2018, 10, 12, 11, 37, 41, 474716,
-            datetime.timezone(datetime.timedelta(minutes=60))
-        )
+        tz = datetime.timezone(datetime.timedelta(minutes=60))
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, 3600))
 
     def test_pandas_date_time_fixed_offset(self, assert_transforms):
@@ -144,26 +149,25 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, 3600))
 
     def test_date_time_fixed_negative_offset(self, assert_transforms):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      pytz.FixedOffset(-60))
+        tz = pytz.FixedOffset(-60)
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, -3600))
 
     def test_native_date_time_fixed_negative_offset(self, assert_transforms):
-        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
-                               pytz.FixedOffset(-60))
+        tz = pytz.FixedOffset(-60)
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, -3600))
 
     def test_date_time_fixed_negative_native_offset(self, assert_transforms):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      datetime.timezone(datetime.timedelta(minutes=-60)))
+        tz = datetime.timezone(datetime.timedelta(minutes=-60))
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, -3600))
 
-    def test_native_date_time_fixed_negative_native_offset(self,
-                                                           assert_transforms):
-        dt = datetime.datetime(
-            2018, 10, 12, 11, 37, 41, 474716,
-            datetime.timezone(datetime.timedelta(minutes=-60))
-        )
+    def test_native_date_time_fixed_negative_native_offset(
+        self, assert_transforms
+    ):
+        tz = datetime.timezone(datetime.timedelta(minutes=-60))
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, -3600))
 
     def test_pandas_date_time_fixed_negative_offset(self, assert_transforms):
@@ -171,27 +175,26 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, -3600))
 
     def test_date_time_zone_id(self, assert_transforms):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      pytz.timezone("Europe/Stockholm"))
+        tz = pytz.timezone("Europe/Stockholm")
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
         assert_transforms(
-            dt,
-            Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
+            dt, Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
         )
 
     def test_native_date_time_zone_id(self, assert_transforms):
-        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
-                               pytz.timezone("Europe/Stockholm"))
+        dt = datetime.datetime(
+            2018, 10, 12, 11, 37, 41, 474716, pytz.timezone("Europe/Stockholm")
+        )
         assert_transforms(
-            dt,
-            Structure(b"f", 1539344261, 474716000, "Europe/Stockholm")
+            dt, Structure(b"f", 1539344261, 474716000, "Europe/Stockholm")
         )
 
     def test_pandas_date_time_zone_id(self, assert_transforms):
-        dt = pd.Timestamp("2018-10-12T11:37:41.474716862+0200",
-                          tz="Europe/Stockholm")
+        dt = pd.Timestamp(
+            "2018-10-12T11:37:41.474716862+0200", tz="Europe/Stockholm"
+        )
         assert_transforms(
-            dt,
-            Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
+            dt, Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
         )
 
     def test_duration(self, assert_transforms):
@@ -250,7 +253,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             (np.timedelta64(-1, "fs"), (0, 0, 0, -1)),
             (np.timedelta64(-1000000000, "as"), (0, 0, 0, -1)),
             (np.timedelta64(-1, "as"), (0, 0, 0, -1)),
-        )
+        ),
     )
     def test_numpy_duration(self, value, expected_fields, assert_transforms):
         assert_transforms(value, Structure(b"E", *expected_fields))
@@ -259,11 +262,13 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         duration = np.timedelta64("NaT")
         assert_transforms(duration, None)
 
-    @pytest.mark.parametrize(("value", "error"), (
-        (np.timedelta64((MAX_INT64 // 60) + 1, "m"), ValueError),
-        (np.timedelta64((MIN_INT64 // 60), "m"), ValueError),
-
-    ))
+    @pytest.mark.parametrize(
+        ("value", "error"),
+        (
+            (np.timedelta64((MAX_INT64 // 60) + 1, "m"), ValueError),
+            (np.timedelta64((MIN_INT64 // 60), "m"), ValueError),
+        ),
+    )
     def test_numpy_invalid_durations(self, value, error, transformer):
         with pytest.raises(error):
             transformer(value)
@@ -273,14 +278,15 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         (
             (
                 pd.Timedelta(days=1, seconds=2, microseconds=3, nanoseconds=4),
-                (0, 0, AVERAGE_SECONDS_IN_DAY + 2, 3004)
+                (0, 0, AVERAGE_SECONDS_IN_DAY + 2, 3004),
             ),
             (
-                pd.Timedelta(days=-1, seconds=2, microseconds=3,
-                             nanoseconds=4),
-                (0, 0, -AVERAGE_SECONDS_IN_DAY + 2 + 1, -NANO_SECONDS + 3004)
-            )
-        )
+                pd.Timedelta(
+                    days=-1, seconds=2, microseconds=3, nanoseconds=4
+                ),
+                (0, 0, -AVERAGE_SECONDS_IN_DAY + 2 + 1, -NANO_SECONDS + 3004),
+            ),
+        ),
     )
     def test_pandas_duration(self, value, expected_fields, assert_transforms):
         assert_transforms(value, Structure(b"E", *expected_fields))

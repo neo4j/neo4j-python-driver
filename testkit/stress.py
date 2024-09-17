@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import os
+import subprocess
 import sys
 
 
@@ -21,13 +23,15 @@ if __name__ == "__main__":
     # Until below works
     sys.exit(0)
     cmd = ["python", "-m", "tox", "-c", "tox-performance.ini"]
-    uri = "%s://%s:%s" % (
-            os.environ["TEST_NEO4J_SCHEME"],
-            os.environ["TEST_NEO4J_HOST"],
-            os.environ["TEST_NEO4J_PORT"])
+    scheme = os.environ["TEST_NEO4J_SCHEME"]
+    host = os.environ["TEST_NEO4J_HOST"]
+    port = os.environ["TEST_NEO4J_PORT"]
+    uri = f"{scheme}://{host}:{port}"
     env = {
-            "NEO4J_USER": os.environ["TEST_NEO4J_USER"],
-            "NEO4J_PASSWORD": os.environ["TEST_NEO4J_PASS"],
-            "NEO4J_URI": uri}
-    subprocess.check_call(cmd, universal_newlines=True,
-                          stderr=subprocess.STDOUT, env=env)
+        "NEO4J_USER": os.environ["TEST_NEO4J_USER"],
+        "NEO4J_PASSWORD": os.environ["TEST_NEO4J_PASS"],
+        "NEO4J_URI": uri,
+    }
+    subprocess.check_call(
+        cmd, universal_newlines=True, stderr=subprocess.STDOUT, env=env
+    )

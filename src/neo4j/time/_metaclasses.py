@@ -15,14 +15,13 @@
 
 
 __all__ = [
+    "DateTimeType",
     "DateType",
     "TimeType",
-    "DateTimeType",
 ]
 
 
 class DateType(type):
-
     def __getattr__(cls, name):
         try:
             return {
@@ -32,11 +31,12 @@ class DateType(type):
                 "utcfromtimestamp": cls.utc_from_timestamp,
             }[name]
         except KeyError:
-            raise AttributeError("%s has no attribute %r" % (cls.__name__, name))
+            raise AttributeError(
+                f"{cls.__name__} has no attribute {name!r}"
+            ) from None
 
 
 class TimeType(type):
-
     def __getattr__(cls, name):
         try:
             return {
@@ -44,11 +44,12 @@ class TimeType(type):
                 "utcnow": cls.utc_now,
             }[name]
         except KeyError:
-            raise AttributeError("%s has no attribute %r" % (cls.__name__, name))
+            raise AttributeError(
+                f"{cls.__name__} has no attribute {name!r}"
+            ) from None
 
 
 class DateTimeType(type):
-
     def __getattr__(cls, name):
         try:
             return {
@@ -61,4 +62,6 @@ class DateTimeType(type):
                 "utcnow": cls.utc_now,
             }[name]
         except KeyError:
-            raise AttributeError("%s has no attribute %r" % (cls.__name__, name))
+            raise AttributeError(
+                f"{cls.__name__} has no attribute {name!r}"
+            ) from None

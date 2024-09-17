@@ -19,6 +19,7 @@
 
 # python -m pytest tests/integration/examples/test_session_example.py -s -v
 
+
 def session_example(driver):
     with driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")
@@ -27,13 +28,16 @@ def session_example(driver):
     def add_person(name):
         with driver.session() as session:
             session.run("CREATE (a:Person {name: $name})", name=name)
+
     # end::session[]
 
     add_person("Alice")
     add_person("Bob")
 
     with driver.session() as session:
-        persons = session.run("MATCH (a:Person) RETURN count(a)").single().value()
+        persons = (
+            session.run("MATCH (a:Person) RETURN count(a)").single().value()
+        )
 
     with driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")

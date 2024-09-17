@@ -122,13 +122,24 @@ def np_float_overflow_as_error(request):
     np.seterr(**old_err)
 
 
-@pytest.fixture(params=(
-    int,
-    np.int8, np.int16, np.int32, np.int64, np.longlong,
-    np.uint8, np.uint16, np.uint32, np.uint64, np.ulonglong
-))
+@pytest.fixture(
+    params=(
+        int,
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+        np.longlong,
+        np.uint8,
+        np.uint16,
+        np.uint32,
+        np.uint64,
+        np.ulonglong,
+    )
+)
 def int_type(request):
     if issubclass(request.param, np.number):
+
         def _int_type(value):
             # this avoids deprecation warning from NEP50 and forces
             # c-style wrapping of the value
@@ -139,8 +150,9 @@ def int_type(request):
         return request.param
 
 
-@pytest.fixture(params=(float,
-                        np.float16, np.float32, np.float64, np.longdouble))
+@pytest.fixture(
+    params=(float, np.float16, np.float32, np.float64, np.longdouble)
+)
 def float_type(request, np_float_overflow_as_error):
     return request.param
 
@@ -160,10 +172,12 @@ def str_type(request):
     return request.param
 
 
-@pytest.fixture(params=(list, tuple, np.array,
-                        pd.Series, pd.array, pd.arrays.SparseArray))
+@pytest.fixture(
+    params=(list, tuple, np.array, pd.Series, pd.array, pd.arrays.SparseArray)
+)
 def sequence_type(request):
     if request.param is pd.Series:
+
         def constructor(value):
             if not value:
                 return pd.Series(dtype=object)
@@ -176,17 +190,17 @@ def sequence_type(request):
 class TestPackStream:
     @pytest.mark.parametrize("value", (None, pd.NA))
     def test_none(self, value, assert_packable):
-        assert_packable(value, b"\xC0", None)
+        assert_packable(value, b"\xc0", None)
 
     def test_boolean(self, bool_type, assert_packable):
-        assert_packable(bool_type(True), b"\xC3")
-        assert_packable(bool_type(False), b"\xC2")
+        assert_packable(bool_type(True), b"\xc3")
+        assert_packable(bool_type(False), b"\xc2")
 
     @pytest.mark.parametrize("dtype", (bool, pd.BooleanDtype()))
     def test_boolean_pandas_series(self, dtype, assert_packable):
         value = [True, False]
         value_series = pd.Series(value, dtype=dtype)
-        assert_packable(value_series, b"\x92\xC3\xC2", value)
+        assert_packable(value_series, b"\x92\xc3\xc2", value)
 
     def test_negative_tiny_int(self, int_type, assert_packable):
         for z in range(-16, 0):
@@ -195,17 +209,28 @@ class TestPackStream:
                 continue  # not representable
             assert_packable(z_typed, bytes(bytearray([z + 0x100])))
 
-    @pytest.mark.parametrize("dtype", (
-        int, pd.Int8Dtype(), pd.Int16Dtype(), pd.Int32Dtype(), pd.Int64Dtype(),
-        np.int8, np.int16, np.int32, np.int64, np.longlong,
-    ))
+    @pytest.mark.parametrize(
+        "dtype",
+        (
+            int,
+            pd.Int8Dtype(),
+            pd.Int16Dtype(),
+            pd.Int32Dtype(),
+            pd.Int64Dtype(),
+            np.int8,
+            np.int16,
+            np.int32,
+            np.int64,
+            np.longlong,
+        ),
+    )
     def test_negative_tiny_int_pandas_series(self, dtype, assert_packable):
         for z in range(-16, 0):
             z_typed = pd.Series(z, dtype=dtype)
             assert_packable(z_typed, bytes(bytearray([0x91, z + 0x100])), [z])
 
     def test_positive_tiny_int(self, int_type, assert_packable):
-        for z in range(0, 128):
+        for z in range(128):
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
@@ -223,7 +248,7 @@ class TestPackStream:
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
-            expected = b"\xC9" + struct.pack(">h", z)
+            expected = b"\xc9" + struct.pack(">h", z)
             assert_packable(z_typed, expected)
 
     def test_negative_int16(self, int_type, assert_packable):
@@ -231,69 +256,83 @@ class TestPackStream:
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
-            expected = b"\xC9" + struct.pack(">h", z)
+            expected = b"\xc9" + struct.pack(">h", z)
             assert_packable(z_typed, expected)
 
     def test_positive_int32(self, int_type, assert_packable):
         for e in range(15, 31):
-            z = 2 ** e
+            z = 2**e
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
-            expected = b"\xCA" + struct.pack(">i", z)
+            expected = b"\xca" + struct.pack(">i", z)
             assert_packable(z_typed, expected)
 
     def test_negative_int32(self, int_type, assert_packable):
         for e in range(15, 31):
-            z = -(2 ** e + 1)
+            z = -(2**e + 1)
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
-            expected = b"\xCA" + struct.pack(">i", z)
+            expected = b"\xca" + struct.pack(">i", z)
             assert_packable(z_typed, expected)
 
     def test_positive_int64(self, int_type, assert_packable):
         for e in range(31, 63):
-            z = 2 ** e
+            z = 2**e
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
-            expected = b"\xCB" + struct.pack(">q", z)
+            expected = b"\xcb" + struct.pack(">q", z)
             assert_packable(z_typed, expected)
 
-    @pytest.mark.parametrize("dtype", (
-        int, pd.Int64Dtype(), pd.UInt64Dtype(),
-        np.int64, np.longlong, np.uint64, np.ulonglong,
-    ))
+    @pytest.mark.parametrize(
+        "dtype",
+        (
+            int,
+            pd.Int64Dtype(),
+            pd.UInt64Dtype(),
+            np.int64,
+            np.longlong,
+            np.uint64,
+            np.ulonglong,
+        ),
+    )
     def test_positive_int64_pandas_series(self, dtype, assert_packable):
         for e in range(31, 63):
-            z = 2 ** e
+            z = 2**e
             z_typed = pd.Series(z, dtype=dtype)
-            expected = b"\x91\xCB" + struct.pack(">q", z)
+            expected = b"\x91\xcb" + struct.pack(">q", z)
             assert_packable(z_typed, expected, [z])
 
     def test_negative_int64(self, int_type, assert_packable):
         for e in range(31, 63):
-            z = -(2 ** e + 1)
+            z = -(2**e + 1)
             z_typed = int_type(z)
             if z != int(z_typed):
                 continue  # not representable
-            expected = b"\xCB" + struct.pack(">q", z)
+            expected = b"\xcb" + struct.pack(">q", z)
             assert_packable(z_typed, expected)
 
-    @pytest.mark.parametrize("dtype", (
-        int, pd.Int64Dtype(), np.int64, np.longlong,
-    ))
+    @pytest.mark.parametrize(
+        "dtype",
+        (
+            int,
+            pd.Int64Dtype(),
+            np.int64,
+            np.longlong,
+        ),
+    )
     def test_negative_int64_pandas_series(self, dtype, assert_packable):
         for e in range(31, 63):
-            z = -(2 ** e + 1)
+            z = -(2**e + 1)
             z_typed = pd.Series(z, dtype=dtype)
-            expected = b"\x91\xCB" + struct.pack(">q", z)
+            expected = b"\x91\xcb" + struct.pack(">q", z)
             assert_packable(z_typed, expected, [z])
 
     def test_integer_positive_overflow(self, int_type, pack, assert_packable):
         with pytest.raises(OverflowError):
-            z = 2 ** 63 + 1
+            z = 2**63 + 1
             z_typed = int_type(z)
             if z != int(z_typed):
                 pytest.skip("not representable")
@@ -301,7 +340,7 @@ class TestPackStream:
 
     def test_integer_negative_overflow(self, int_type, pack, assert_packable):
         with pytest.raises(OverflowError):
-            z = -(2 ** 63) - 1
+            z = -(2**63) - 1
             z_typed = int_type(z)
             if z != int(z_typed):
                 pytest.skip("not representable")
@@ -309,65 +348,87 @@ class TestPackStream:
 
     def test_float(self, float_type, assert_packable):
         for z in (
-            0.0, -0.0, pi, 2 * pi, float("inf"), float("-inf"), float("nan"),
-            *(float(2 ** e) + 0.5 for e in range(100)),
-            *(-float(2 ** e) + 0.5 for e in range(100)),
+            0.0,
+            -0.0,
+            pi,
+            2 * pi,
+            float("inf"),
+            float("-inf"),
+            float("nan"),
+            *(float(2**e) + 0.5 for e in range(100)),
+            *(-float(2**e) + 0.5 for e in range(100)),
         ):
             try:
                 z_typed = float_type(z)
             except FloatingPointError:
                 continue  # not representable
-            expected = b"\xC1" + struct.pack(">d", float(z_typed))
+            expected = b"\xc1" + struct.pack(">d", float(z_typed))
             assert_packable(z_typed, expected)
 
-    @pytest.mark.parametrize("dtype", (
-        float, pd.Float32Dtype(),  pd.Float64Dtype(),
-        np.float16, np.float32, np.float64, np.longdouble,
-    ))
-    def test_float_pandas_series(self, dtype, np_float_overflow_as_error,
-                                 assert_packable):
+    @pytest.mark.parametrize(
+        "dtype",
+        (
+            float,
+            pd.Float32Dtype(),
+            pd.Float64Dtype(),
+            np.float16,
+            np.float32,
+            np.float64,
+            np.longdouble,
+        ),
+    )
+    def test_float_pandas_series(
+        self, dtype, np_float_overflow_as_error, assert_packable
+    ):
         for z in (
-            0.0, -0.0, pi, 2 * pi, float("inf"), float("-inf"), float("nan"),
-            *(float(2 ** e) + 0.5 for e in range(100)),
-            *(-float(2 ** e) + 0.5 for e in range(100)),
+            0.0,
+            -0.0,
+            pi,
+            2 * pi,
+            float("inf"),
+            float("-inf"),
+            float("nan"),
+            *(float(2**e) + 0.5 for e in range(100)),
+            *(-float(2**e) + 0.5 for e in range(100)),
         ):
             try:
                 z_typed = pd.Series(z, dtype=dtype)
             except FloatingPointError:
                 continue  # not representable
             if z_typed[0] is pd.NA:
-                expected_bytes = b"\x91\xC0"  # encoded as NULL
+                expected_bytes = b"\x91\xc0"  # encoded as NULL
                 expected_value = [None]
             else:
-                expected_bytes = (b"\x91\xC1"
-                                  + struct.pack(">d", float(z_typed[0])))
+                expected_bytes = b"\x91\xc1" + struct.pack(
+                    ">d", float(z_typed[0])
+                )
                 expected_value = [float(z_typed[0])]
             assert_packable(z_typed, expected_bytes, expected_value)
 
     def test_empty_bytes(self, bytes_type, assert_packable):
         b = bytes_type(b"")
-        assert_packable(b, b"\xCC\x00")
+        assert_packable(b, b"\xcc\x00")
 
     def test_bytes_8(self, bytes_type, assert_packable):
         b = bytes_type(b"hello")
-        assert_packable(b, b"\xCC\x05hello")
+        assert_packable(b, b"\xcc\x05hello")
 
     def test_bytes_16(self, bytes_type, assert_packable):
         b = bytearray(40000)
         b_typed = bytes_type(b)
-        assert_packable(b_typed, b"\xCD\x9C\x40" + b)
+        assert_packable(b_typed, b"\xcd\x9c\x40" + b)
 
     def test_bytes_32(self, bytes_type, assert_packable):
         b = bytearray(80000)
         b_typed = bytes_type(b)
-        assert_packable(b_typed, b"\xCE\x00\x01\x38\x80" + b)
+        assert_packable(b_typed, b"\xce\x00\x01\x38\x80" + b)
 
     def test_bytes_pandas_series(self, assert_packable):
         for b, header in (
-            (b"", b"\xCC\x00"),
-            (b"hello", b"\xCC\x05"),
-            (bytearray(40000), b"\xCD\x9C\x40"),
-            (bytearray(80000), b"\xCE\x00\x01\x38\x80"),
+            (b"", b"\xcc\x00"),
+            (b"hello", b"\xcc\x05"),
+            (bytearray(40000), b"\xcd\x9c\x40"),
+            (bytearray(80000), b"\xce\x00\x01\x38\x80"),
         ):
             b_typed = pd.Series([b])
             assert_packable(b_typed, b"\x91" + header + b, [b])
@@ -376,7 +437,7 @@ class TestPackStream:
         stream_out = BytesIO()
         packer = Packer(stream_out)
         with pytest.raises(OverflowError):
-            packer._pack_bytes_header(2 ** 32)
+            packer._pack_bytes_header(2**32)
 
     def test_empty_string(self, str_type, assert_packable):
         assert_packable(str_type(""), b"\x80")
@@ -390,19 +451,19 @@ class TestPackStream:
         t = "A" * 40
         b = t.encode("utf-8")
         t_typed = str_type(t)
-        assert_packable(t_typed, b"\xD0\x28" + b)
+        assert_packable(t_typed, b"\xd0\x28" + b)
 
     def test_string_16(self, str_type, assert_packable):
         t = "A" * 40000
         b = t.encode("utf-8")
         t_typed = str_type(t)
-        assert_packable(t_typed, b"\xD1\x9C\x40" + b)
+        assert_packable(t_typed, b"\xd1\x9c\x40" + b)
 
     def test_string_32(self, str_type, assert_packable):
         t = "A" * 80000
         b = t.encode("utf-8")
         t_typed = str_type(t)
-        assert_packable(t_typed, b"\xD2\x00\x01\x38\x80" + b)
+        assert_packable(t_typed, b"\xd2\x00\x01\x38\x80" + b)
 
     def test_unicode_string(self, str_type, assert_packable):
         t = "héllö"
@@ -410,24 +471,29 @@ class TestPackStream:
         t_typed = str_type(t)
         assert_packable(t_typed, bytes(bytearray([0x80 + len(b)])) + b)
 
-    @pytest.mark.parametrize("dtype", (
-        str, np.str_, pd.StringDtype("python"), pd.StringDtype("pyarrow"),
-    ))
+    @pytest.mark.parametrize(
+        "dtype",
+        (
+            str,
+            np.str_,
+            pd.StringDtype("python"),
+            pd.StringDtype("pyarrow"),
+        ),
+    )
     def test_string_pandas_series(self, dtype, assert_packable):
         values = (
             ("", b"\x80"),
-            ("A" * 40, b"\xD0\x28"),
-            ("A" * 40000, b"\xD1\x9C\x40"),
-            ("A" * 80000, b"\xD2\x00\x01\x38\x80"),
+            ("A" * 40, b"\xd0\x28"),
+            ("A" * 40000, b"\xd1\x9c\x40"),
+            ("A" * 80000, b"\xd2\x00\x01\x38\x80"),
         )
         for t, header in values:
             t_typed = pd.Series([t], dtype=dtype)
             assert_packable(t_typed, b"\x91" + header + t.encode("utf-8"), [t])
 
         t_typed = pd.Series([t for t, _ in values], dtype=dtype)
-        expected = (
-            bytes([0x90 + len(values)])
-            + b"".join(header + t.encode("utf-8") for t, header in values)
+        expected = bytes([0x90 + len(values)]) + b"".join(
+            header + t.encode("utf-8") for t, header in values
         )
         assert_packable(t_typed, expected, [t for t, _ in values])
 
@@ -435,64 +501,63 @@ class TestPackStream:
         stream_out = BytesIO()
         packer = Packer(stream_out)
         with pytest.raises(OverflowError):
-            packer._pack_string_header(2 ** 32)
+            packer._pack_string_header(2**32)
 
     def test_empty_list(self, sequence_type, assert_packable):
-        l = []
-        l_typed = sequence_type(l)
-        assert_packable(l_typed, b"\x90", l)
+        list_ = []
+        list_typed = sequence_type(list_)
+        assert_packable(list_typed, b"\x90", list_)
 
     def test_tiny_lists(self, sequence_type, assert_packable):
         for size in range(0x10):
-            l = [1] * size
-            l_typed = sequence_type(l)
+            nums = [1] * size
+            nums_typed = sequence_type(nums)
             data_out = bytearray([0x90 + size]) + bytearray([1] * size)
-            assert_packable(l_typed, bytes(data_out), l)
+            assert_packable(nums_typed, bytes(data_out), nums)
 
     def test_list_8(self, sequence_type, assert_packable):
-        l = [1] * 40
-        l_typed = sequence_type(l)
-        assert_packable(l_typed, b"\xD4\x28" + (b"\x01" * 40), l)
+        nums = [1] * 40
+        nums_typed = sequence_type(nums)
+        assert_packable(nums_typed, b"\xd4\x28" + (b"\x01" * 40), nums)
 
     def test_list_16(self, sequence_type, assert_packable):
-        l = [1] * 40000
-        l_typed = sequence_type(l)
-        assert_packable(l_typed, b"\xD5\x9C\x40" + (b"\x01" * 40000), l)
+        nums = [1] * 40000
+        nums_typed = sequence_type(nums)
+        assert_packable(nums_typed, b"\xd5\x9c\x40" + (b"\x01" * 40000), nums)
 
     def test_list_32(self, sequence_type, assert_packable):
-        l = [1] * 80000
-        l_typed = sequence_type(l)
-        assert_packable(l_typed, b"\xD6\x00\x01\x38\x80" + (b"\x01" * 80000), l)
+        nums = [1] * 80000
+        nums_typed = sequence_type(nums)
+        assert_packable(
+            nums_typed, b"\xd6\x00\x01\x38\x80" + (b"\x01" * 80000), nums
+        )
 
     def test_nested_lists(self, sequence_type, assert_packable):
-        l = [[[]]]
+        list_ = [[[]]]
         l_typed = sequence_type([sequence_type([sequence_type([])])])
-        assert_packable(l_typed, b"\x91\x91\x90", l)
+        assert_packable(l_typed, b"\x91\x91\x90", list_)
 
     @pytest.mark.parametrize("as_series", (True, False))
     def test_list_pandas_categorical(self, as_series, pack, assert_packable):
-        l = ["cat", "dog", "cat", "cat", "dog", "horse"]
-        l_typed = pd.Categorical(l)
+        animals = ["cat", "dog", "cat", "cat", "dog", "horse"]
+        animals_typed = pd.Categorical(animals)
         if as_series:
-            l_typed = pd.Series(l_typed)
-        b = b"".join([
-            b"\x96",
-            *(pack(e) for e in l)
-        ])
-        assert_packable(l_typed, b, l)
+            animals_typed = pd.Series(animals_typed)
+        b = b"".join([b"\x96", *(pack(e) for e in animals)])
+        assert_packable(animals_typed, b, animals)
 
     def test_list_size_overflow(self):
         stream_out = BytesIO()
         packer = Packer(stream_out)
         with pytest.raises(OverflowError):
-            packer._pack_list_header(2 ** 32)
+            packer._pack_list_header(2**32)
 
     def test_empty_map(self, assert_packable):
-        assert_packable({}, b"\xA0")
+        assert_packable({}, b"\xa0")
 
     @pytest.mark.parametrize("size", range(0x10))
     def test_tiny_maps(self, assert_packable, size):
-        data_in = dict()
+        data_in = {}
         data_out = bytearray([0xA0 + size])
         for el in range(1, size + 1):
             data_in[chr(64 + el)] = el
@@ -500,27 +565,27 @@ class TestPackStream:
         assert_packable(data_in, bytes(data_out))
 
     def test_map_8(self, pack, assert_packable):
-        d = dict([(u"A%s" % i, 1) for i in range(40)])
-        b = b"".join(pack(u"A%s" % i, 1) for i in range(40))
-        assert_packable(d, b"\xD8\x28" + b)
+        d = {f"A{i}": 1 for i in range(40)}
+        b = b"".join(pack(f"A{i}", 1) for i in range(40))
+        assert_packable(d, b"\xd8\x28" + b)
 
     def test_map_16(self, pack, assert_packable):
-        d = dict([(u"A%s" % i, 1) for i in range(40000)])
-        b = b"".join(pack(u"A%s" % i, 1) for i in range(40000))
-        assert_packable(d, b"\xD9\x9C\x40" + b)
+        d = {f"A{i}": 1 for i in range(40000)}
+        b = b"".join(pack(f"A{i}", 1) for i in range(40000))
+        assert_packable(d, b"\xd9\x9c\x40" + b)
 
     def test_map_32(self, pack, assert_packable):
-        d = dict([(u"A%s" % i, 1) for i in range(80000)])
-        b = b"".join(pack(u"A%s" % i, 1) for i in range(80000))
-        assert_packable(d, b"\xDA\x00\x01\x38\x80" + b)
+        d = {f"A{i}": 1 for i in range(80000)}
+        b = b"".join(pack(f"A{i}", 1) for i in range(80000))
+        assert_packable(d, b"\xda\x00\x01\x38\x80" + b)
 
     def test_empty_dataframe_maps(self, assert_packable):
         df = pd.DataFrame()
-        assert_packable(df, b"\xA0", {})
+        assert_packable(df, b"\xa0", {})
 
     @pytest.mark.parametrize("size", range(0x10))
     def test_tiny_dataframes_maps(self, assert_packable, size):
-        data_in = dict()
+        data_in = {}
         data_out = bytearray([0xA0 + size])
         for el in range(1, size + 1):
             data_in[chr(64 + el)] = [el]
@@ -532,33 +597,36 @@ class TestPackStream:
         stream_out = BytesIO()
         packer = Packer(stream_out)
         with pytest.raises(OverflowError):
-            packer._pack_map_header(2 ** 32)
+            packer._pack_map_header(2**32)
 
-    @pytest.mark.parametrize(("map_", "exc_type"), (
-        ({1: "1"}, TypeError),
-        (pd.DataFrame({1: ["1"]}), TypeError),
-        (pd.DataFrame({(1, 2): ["1"]}), TypeError),
-        ({"x": {1: 'eins', 2: 'zwei', 3: 'drei'}}, TypeError),
-        ({"x": {(1, 2): '1+2i', (2, 0): '2'}}, TypeError),
-    ))
+    @pytest.mark.parametrize(
+        ("map_", "exc_type"),
+        (
+            ({1: "1"}, TypeError),
+            (pd.DataFrame({1: ["1"]}), TypeError),
+            (pd.DataFrame({(1, 2): ["1"]}), TypeError),
+            ({"x": {1: "eins", 2: "zwei", 3: "drei"}}, TypeError),
+            ({"x": {(1, 2): "1+2i", (2, 0): "2"}}, TypeError),
+        ),
+    )
     def test_map_key_type(self, packer_with_buffer, map_, exc_type):
         # maps must have string keys
-        packer, packable_buffer = packer_with_buffer
+        packer, _packable_buffer = packer_with_buffer
         with pytest.raises(exc_type, match="strings"):
             packer._pack(map_)
 
     def test_illegal_signature(self, assert_packable):
         with pytest.raises(ValueError):
-            assert_packable(Structure(b"XXX"), b"\xB0XXX")
+            assert_packable(Structure(b"XXX"), b"\xb0XXX")
 
     def test_empty_struct(self, assert_packable):
-        assert_packable(Structure(b"X"), b"\xB0X")
+        assert_packable(Structure(b"X"), b"\xb0X")
 
     def test_tiny_structs(self, assert_packable):
         for size in range(0x10):
             fields = [1] * size
             data_in = Structure(b"A", *fields)
-            data_out = bytearray([0xB0 + size, 0x41] + fields)
+            data_out = bytearray((0xB0 + size, 0x41, *fields))
             assert_packable(data_in, bytes(data_out))
 
     def test_struct_size_overflow(self, pack):
@@ -568,4 +636,4 @@ class TestPackStream:
 
     def test_illegal_uuid(self, assert_packable):
         with pytest.raises(ValueError):
-            assert_packable(uuid4(), b"\xB0XXX")
+            assert_packable(uuid4(), b"\xb0XXX")

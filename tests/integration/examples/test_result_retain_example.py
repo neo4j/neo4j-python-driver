@@ -18,22 +18,26 @@
 # end::result-retain-import[]
 
 
-# python -m pytest tests/integration/examples/test_result_retain_example.py -s -v
-
 def result_retain_example(driver):
     with driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _").consume()
 
     with driver.session() as session:
-        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Alice").single().value()
-        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Bob").single().value()
+        for name in ("Alice", "Bob"):
+            res = session.run(
+                "CREATE (a:Person {name: $name}) RETURN a", name=name
+            )
+            res.consume()
 
     # tag::result-retain[]
     def add_employee_to_company(tx, person, company_name):
-        tx.run("MATCH (emp:Person {name: $person_name}) "
-               "MERGE (com:Company {name: $company_name}) "
-               "MERGE (emp)-[:WORKS_FOR]->(com)",
-               person_name=person["name"], company_name=company_name)
+        tx.run(
+            "MATCH (emp:Person {name: $person_name}) "
+            "MERGE (com:Company {name: $company_name}) "
+            "MERGE (emp)-[:WORKS_FOR]->(com)",
+            person_name=person["name"],
+            company_name=company_name,
+        )
         return 1
 
     def match_person_nodes(tx):
@@ -45,22 +49,28 @@ def result_retain_example(driver):
             persons = session.execute_read(match_person_nodes)
 
             for person in persons:
-                employees += session.execute_write(add_employee_to_company, person, company_name)
+                employees += session.execute_write(
+                    add_employee_to_company, person, company_name
+                )
 
         return employees
+
     # end::result-retain[]
 
     employees = add_employees(company_name="Neo4j")
 
     def count_employees(company_name):
         with driver.session() as session:
-            head_count = session.run(
-                "MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
-                "WHERE com.name = $company_name "
-                "RETURN count(emp)",
-                company_name=company_name).single().value()
-
-        return head_count
+            return (
+                session.run(
+                    "MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
+                    "WHERE com.name = $company_name "
+                    "RETURN count(emp)",
+                    company_name=company_name,
+                )
+                .single()
+                .value()
+            )
 
     head_count = count_employees(company_name="Neo4j")
 

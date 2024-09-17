@@ -52,20 +52,19 @@ class AsyncUtil:
 
     @staticmethod
     @t.overload
-    async def callback(cb: None, *args: object, **kwargs: object) -> None:
-        ...
+    async def callback(cb: None, *args: object, **kwargs: object) -> None: ...
 
     @staticmethod
     @t.overload
     async def callback(
-        cb: t.Union[
-            t.Callable[_P, t.Union[_T, t.Awaitable[_T]]],
-            t.Callable[_P, t.Awaitable[_T]],
-            t.Callable[_P, _T],
-        ],
-        *args: _P.args, **kwargs: _P.kwargs
-    ) -> _T:
-        ...
+        cb: (
+            t.Callable[_P, _T | t.Awaitable[_T]]
+            | t.Callable[_P, t.Awaitable[_T]]
+            | t.Callable[_P, _T]
+        ),
+        *args: _P.args,
+        **kwargs: _P.kwargs,
+    ) -> _T: ...
 
     @staticmethod
     async def callback(cb, *args, **kwargs):
@@ -74,6 +73,7 @@ class AsyncUtil:
             if inspect.isawaitable(res):
                 return await res
             return res
+        return None
 
     @staticmethod
     def shielded(coro_function):
@@ -103,19 +103,19 @@ class Util:
 
     @staticmethod
     @t.overload
-    def callback(cb: None, *args: object, **kwargs: object) -> None:
-        ...
+    def callback(cb: None, *args: object, **kwargs: object) -> None: ...
 
     @staticmethod
     @t.overload
-    def callback(cb: t.Callable[_P, _T],
-                 *args: _P.args, **kwargs: _P.kwargs) -> _T:
-        ...
+    def callback(
+        cb: t.Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs
+    ) -> _T: ...
 
     @staticmethod
     def callback(cb, *args, **kwargs):
         if callable(cb):
             return cb(*args, **kwargs)
+        return None
 
     @staticmethod
     def shielded(coro_function):

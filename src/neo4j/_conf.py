@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import typing as t
 from abc import ABCMeta
 from collections.abc import Mapping
 
@@ -34,14 +33,15 @@ from .exceptions import ConfigurationError
 
 
 def iter_items(iterable):
-    """ Iterate through all items (key-value pairs) within an iterable
-    dictionary-like object. If the object has a `keys` method, this is
-    used along with `__getitem__` to yield each pair in turn. If no
-    `keys` method exists, each iterable element is assumed to be a
-    2-tuple of key and value.
+    """
+    Iterate through key-value pairs of a dict-like object.
+
+    If the object has a `keys` method, this is used along with `__getitem__`
+    to yield each pair in turn. If no `keys` method exists, each iterable
+    element is assumed to be a 2-tuple of key and value.
     """
     if hasattr(iterable, "keys"):
-        for key in iterable.keys():
+        for key in iterable:
             yield key, iterable[key]
     else:
         for key, value in iterable:
@@ -54,7 +54,8 @@ class TrustStore:
 
 
 class TrustSystemCAs(TrustStore):
-    """Used to configure the driver to trust system CAs (default).
+    """
+    Used to configure the driver to trust system CAs (default).
 
     Trust server certificates that can be verified against the system
     certificate authority. This option is primarily intended for use with
@@ -68,11 +69,11 @@ class TrustSystemCAs(TrustStore):
             url, auth=auth, trusted_certificates=neo4j.TrustSystemCAs()
         )
     """
-    pass
 
 
 class TrustAll(TrustStore):
-    """Used to configure the driver to trust all certificates.
+    """
+    Used to configure the driver to trust all certificates.
 
     Trust any server certificate. This ensures that communication
     is encrypted but does not verify the server certificate against a
@@ -92,11 +93,11 @@ class TrustAll(TrustStore):
             url, auth=auth, trusted_certificates=neo4j.TrustAll()
         )
     """
-    pass
 
 
 class TrustCustomCAs(TrustStore):
-    """Used to configure the driver to trust custom CAs.
+    """
+    Used to configure the driver to trust custom CAs.
 
     Trust server certificates that can be verified against the certificate
     authority at the specified paths. This option is primarily intended for
@@ -118,6 +119,7 @@ class TrustCustomCAs(TrustStore):
             )
         )
     """
+
     def __init__(self, *certificates: str):
         self.certs = certificates
 
@@ -152,7 +154,6 @@ class ExperimentalOption:
 
 
 class ConfigType(ABCMeta):
-
     def __new__(mcs, name, bases, attributes):
         fields = []
         deprecated_aliases = {}
@@ -195,8 +196,9 @@ class ConfigType(ABCMeta):
             return set(fields)
 
         def _deprecated_keys(_):
-            return (set(deprecated_aliases.keys())
-                    | set(deprecated_alternatives.keys()))
+            aliases = set(deprecated_aliases.keys())
+            alternatives = set(deprecated_alternatives.keys())
+            return aliases | alternatives
 
         def _get_new(_, key):
             return deprecated_aliases.get(
@@ -215,44 +217,48 @@ class ConfigType(ABCMeta):
         def _experimental_options(_):
             return experimental_options
 
-        attributes.setdefault("keys", classmethod(keys))
-        attributes.setdefault("_get_new",
-                              classmethod(_get_new))
-        attributes.setdefault("_deprecated_keys",
-                              classmethod(_deprecated_keys))
-        attributes.setdefault("_deprecated_aliases",
-                              classmethod(_deprecated_aliases))
-        attributes.setdefault("_deprecated_alternatives",
-                              classmethod(_deprecated_alternatives))
-        attributes.setdefault("_deprecated_options",
-                              classmethod(_deprecated_options))
-        attributes.setdefault("_experimental_options",
-                              classmethod(_experimental_options))
+        for func in (
+            keys,
+            _get_new,
+            _deprecated_keys,
+            _deprecated_aliases,
+            _deprecated_alternatives,
+            _deprecated_options,
+            _experimental_options,
+        ):
+            attributes.setdefault(func.__name__, classmethod(func))
 
-        return super(ConfigType, mcs).__new__(
-            mcs, name, bases, {k: v for k, v in attributes.items()
-                               if k not in _deprecated_keys(None)}
+        return super().__new__(
+            mcs,
+            name,
+            bases,
+            {
+                k: v
+                for k, v in attributes.items()
+                if k not in _deprecated_keys(None)
+            },
         )
 
 
 class Config(Mapping, metaclass=ConfigType):
-    """ Base class for all configuration containers.
-    """
+    """Base class for all configuration containers."""
 
     @staticmethod
     def consume_chain(data, *config_classes):
         values = []
         for config_class in config_classes:
             if not issubclass(config_class, Config):
-                raise TypeError("%r is not a Config subclass" % config_class)
+                raise TypeError(f"{config_class!r} is not a Config subclass")
             values.append(config_class._consume(data))
         if data:
-            raise ConfigurationError("Unexpected config keys: %s" % ", ".join(data.keys()))
+            raise ConfigurationError(
+                f"Unexpected config keys: {', '.join(data.keys())}"
+            )
         return values
 
     @classmethod
     def consume(cls, data):
-        config, = cls.consume_chain(data, cls)
+        (config,) = cls.consume_chain(data, cls)
         return config
 
     @classmethod
@@ -274,26 +280,24 @@ class Config(Mapping, metaclass=ConfigType):
         def set_attr(k, v):
             if k in self.keys():
                 if warn and k in self._deprecated_options():
-                    deprecation_warn("The '{}' config key is "
-                                     "deprecated.".format(k))
+                    deprecation_warn(f"The '{k}' config key is deprecated.")
                 if warn and k in self._experimental_options():
                     experimental_warn(
-                        "The '{}' config key is experimental. "
+                        f"The '{k}' config key is experimental. "
                         "It might be changed or removed any time even without "
-                        "prior notice.".format(k)
+                        "prior notice."
                     )
                 setattr(self, k, v)
             elif k in self._deprecated_keys():
                 k0 = self._get_new(k)
                 if k0 in data_dict:
                     raise ConfigurationError(
-                        "Cannot specify both '{}' and '{}' in config"
-                        .format(k0, k)
+                        f"Cannot specify both '{k0}' and '{k}' in config"
                     )
                 if warn:
                     deprecation_warn(
-                        "The '{}' config key is deprecated, please use '{}' "
-                        "instead".format(k, k0)
+                        f"The '{k}' config key is deprecated, please use "
+                        f"'{k0}' instead"
                     )
                 if k in self._deprecated_aliases():
                     set_attr(k0, v)
@@ -314,8 +318,9 @@ class Config(Mapping, metaclass=ConfigType):
                     rejected_keys.append(key)
 
         if rejected_keys:
-            raise ConfigurationError("Unexpected config keys: "
-                                     + ", ".join(rejected_keys))
+            raise ConfigurationError(
+                "Unexpected config keys: " + ", ".join(rejected_keys)
+            )
 
     def __init__(self, *args, **kwargs):
         for arg in args:
@@ -326,10 +331,8 @@ class Config(Mapping, metaclass=ConfigType):
         self.__update(kwargs)
 
     def __repr__(self):
-        attrs = []
-        for key in self:
-            attrs.append(" %s=%r" % (key, getattr(self, key)))
-        return "<%s%s>" % (self.__class__.__name__, "".join(attrs))
+        attrs = [f" {key}={getattr(self, key)!r}" for key in self]
+        return f"<{self.__class__.__name__}{''.join(attrs)}>"
 
     def __len__(self):
         return len(self.keys())
@@ -349,18 +352,20 @@ def _trust_to_trusted_certificates(pool_config, trust):
 
 
 class WorkspaceConfig(Config):
-    """ WorkSpace configuration.
-    """
+    """WorkSpace configuration."""
 
     #: Connection Acquisition Timeout
     connection_acquisition_timeout = 60.0  # seconds
-    # The maximum amount of time a session will wait when requesting a connection from the connection pool.
-    # Since the process of acquiring a connection may involve creating a new connection, ensure that the value
+    # The maximum amount of time a session will wait when requesting a
+    # connection from the connection pool.
+    # Since the process of acquiring a connection may involve creating a new
+    # connection, ensure that the value
     # of this configuration is higher than the configured Connection Timeout.
 
     #: Max Transaction Retry Time
     max_transaction_retry_time = 30.0  # seconds
-    # The maximum amount of time that a managed transaction will retry before failing.
+    # The maximum amount of time that a managed transaction will retry before
+    # failing.
 
     #: Initial Retry Delay
     initial_retry_delay = 1.0  # seconds
@@ -392,8 +397,7 @@ class WorkspaceConfig(Config):
 
 
 class SessionConfig(WorkspaceConfig):
-    """ Session configuration.
-    """
+    """Session configuration."""
 
     #: Bookmarks
     bookmarks = None
@@ -412,7 +416,8 @@ class SessionConfig(WorkspaceConfig):
 
 
 class TransactionConfig(Config):
-    """ Transaction configuration. This is internal for now.
+    """
+    Transaction configuration. This is internal for now.
 
     neo4j.session.begin_transaction
     neo4j.Query
@@ -420,6 +425,7 @@ class TransactionConfig(Config):
 
     are both using the same settings.
     """
+
     #: Metadata
     metadata = None  # dictionary
 
@@ -428,12 +434,12 @@ class TransactionConfig(Config):
 
 
 class RoutingConfig(Config):
-    """ Neo4jDriver routing settings. This is internal for now.
-    """
+    """Neo4jDriver routing settings. This is internal for now."""
 
     #: Routing Table Purge_Delay
     routing_table_purge_delay = 30.0  # seconds
-    # The TTL + routing_table_purge_delay should be used to check if the database routing table should be removed.
+    # The TTL + routing_table_purge_delay should be used to check if the
+    #: database routing table should be removed.
 
     #: Max Routing Failures
     # max_routing_failures = 1

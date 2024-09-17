@@ -33,10 +33,7 @@ from neo4j import (
 # isort: on
 
 
-# python -m pytest tests/integration/examples/test_database_selection_example.py -s -v
-
 class DatabaseSelectionExample:
-
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         with self.driver.session(database="system") as session:
@@ -49,14 +46,22 @@ class DatabaseSelectionExample:
         self.driver.close()
 
     def run_example_code(self):
-
         driver = self.driver
         # tag::database-selection[]
         with driver.session(database="example") as session:
-            session.run("CREATE (a:Greeting {message: 'Hello, Example-Database'}) RETURN a").consume()
+            session.run(
+                "CREATE (a:Greeting {message: 'Hello, Example-Database'}) "
+                "RETURN a"
+            ).consume()
 
-        with driver.session(database="example", default_access_mode=READ_ACCESS) as session:
-            message = session.run("MATCH (a:Greeting) RETURN a.message as msg").single().get("msg")
+        with driver.session(
+            database="example", default_access_mode=READ_ACCESS
+        ) as session:
+            message = (
+                session.run("MATCH (a:Greeting) RETURN a.message as msg")
+                .single()
+                .get("msg")
+            )
             print(message)
         # end::database-selection[]
 

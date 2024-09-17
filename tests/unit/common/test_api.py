@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import itertools
-import typing as t
 
 import pytest
 
@@ -44,14 +43,39 @@ def test_bookmark_initialization_with_no_values() -> None:
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_values, expected_bool, expected_repr",
+    ("test_input", "expected_values", "expected_bool", "expected_repr"),
     [
-        ((None,), frozenset(), False, "<Bookmark values={}>"),
-        ((None, None), frozenset(), False, "<Bookmark values={}>"),
-        (("bookmark1", None), frozenset({"bookmark1"}), True, "<Bookmark values={'bookmark1'}>"),
-        (("bookmark1", None, "bookmark2", None), frozenset({"bookmark1", "bookmark2"}), True, "<Bookmark values={'bookmark1', 'bookmark2'}>"),
-        ((None, "bookmark1", None, "bookmark2", None, None, "bookmark3"), frozenset({"bookmark1", "bookmark2", "bookmark3"}), True, "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>"),
-    ]
+        (
+            (None,),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
+        (
+            (None, None),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
+        (
+            ("bookmark1", None),
+            frozenset({"bookmark1"}),
+            True,
+            "<Bookmark values={'bookmark1'}>",
+        ),
+        (
+            ("bookmark1", None, "bookmark2", None),
+            frozenset({"bookmark1", "bookmark2"}),
+            True,
+            "<Bookmark values={'bookmark1', 'bookmark2'}>",
+        ),
+        (
+            (None, "bookmark1", None, "bookmark2", None, None, "bookmark3"),
+            frozenset({"bookmark1", "bookmark2", "bookmark3"}),
+            True,
+            "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>",
+        ),
+    ],
 )
 def test_bookmark_initialization_with_values_none(
     test_input, expected_values, expected_bool, expected_repr
@@ -64,14 +88,39 @@ def test_bookmark_initialization_with_values_none(
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_values, expected_bool, expected_repr",
+    ("test_input", "expected_values", "expected_bool", "expected_repr"),
     [
-        (("",), frozenset(), False, "<Bookmark values={}>"),
-        (("", ""), frozenset(), False, "<Bookmark values={}>"),
-        (("bookmark1", ""), frozenset({"bookmark1"}), True, "<Bookmark values={'bookmark1'}>"),
-        (("bookmark1", "", "bookmark2", ""), frozenset({"bookmark1", "bookmark2"}), True, "<Bookmark values={'bookmark1', 'bookmark2'}>"),
-        (("", "bookmark1", "", "bookmark2", "", "", "bookmark3"), frozenset({"bookmark1", "bookmark2", "bookmark3"}), True, "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>"),
-    ]
+        (
+            ("",),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
+        (
+            ("", ""),
+            frozenset(),
+            False,
+            "<Bookmark values={}>",
+        ),
+        (
+            ("bookmark1", ""),
+            frozenset({"bookmark1"}),
+            True,
+            "<Bookmark values={'bookmark1'}>",
+        ),
+        (
+            ("bookmark1", "", "bookmark2", ""),
+            frozenset({"bookmark1", "bookmark2"}),
+            True,
+            "<Bookmark values={'bookmark1', 'bookmark2'}>",
+        ),
+        (
+            ("", "bookmark1", "", "bookmark2", "", "", "bookmark3"),
+            frozenset({"bookmark1", "bookmark2", "bookmark3"}),
+            True,
+            "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>",
+        ),
+    ],
 )
 def test_bookmark_initialization_with_values_empty_string(
     test_input, expected_values, expected_bool, expected_repr
@@ -84,12 +133,29 @@ def test_bookmark_initialization_with_values_empty_string(
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_values, expected_bool, expected_repr",
+    ("test_input", "expected_values", "expected_bool", "expected_repr"),
     [
-        (("bookmark1",), frozenset({"bookmark1"}), True, "<Bookmark values={'bookmark1'}>"),
-        (("bookmark1", "bookmark2", "bookmark3"), frozenset({"bookmark1", "bookmark2", "bookmark3"}), True, "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>"),
-        (standard_ascii, frozenset(standard_ascii), True, "<Bookmark values={{'{values}'}}>".format(values="', '".join(standard_ascii)))
-    ]
+        (
+            ("bookmark1",),
+            frozenset({"bookmark1"}),
+            True,
+            "<Bookmark values={'bookmark1'}>",
+        ),
+        (
+            ("bookmark1", "bookmark2", "bookmark3"),
+            frozenset({"bookmark1", "bookmark2", "bookmark3"}),
+            True,
+            "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>",
+        ),
+        (
+            standard_ascii,
+            frozenset(standard_ascii),
+            True,
+            "<Bookmark values={{'{values}'}}>".format(
+                values="', '".join(standard_ascii)
+            ),
+        ),
+    ],
 )
 def test_bookmark_initialization_with_valid_strings(
     test_input, expected_values, expected_bool, expected_repr
@@ -105,40 +171,42 @@ _bm_input_mark = pytest.mark.parametrize(
     ("test_input", "expected"),
     [
         ((not_ascii,), ValueError),
-        (("", not_ascii,), ValueError),
-        (("bookmark1", chr(129),), ValueError),
-    ]
+        (("", not_ascii), ValueError),
+        (("bookmark1", chr(129)), ValueError),
+    ],
 )
 
 
 @_bm_input_mark
 def test_bookmark_initialization_with_invalid_strings(
-    test_input: t.Tuple[str], expected
+    test_input: tuple[str], expected
 ) -> None:
-    with pytest.raises(expected):
-        with pytest.warns(DeprecationWarning):
-            neo4j.Bookmark(*test_input)
+    with pytest.raises(expected), pytest.warns(DeprecationWarning):
+        neo4j.Bookmark(*test_input)
 
 
 @_bm_input_mark
 def test_bookmarks_initialization_with_invalid_strings(
-    test_input: t.Tuple[str], expected
+    test_input: tuple[str], expected
 ) -> None:
     with pytest.raises(expected):
         neo4j.Bookmarks.from_raw_values(test_input)
 
 
 @pytest.mark.parametrize("test_as_generator", [True, False])
-@pytest.mark.parametrize("values", (
-    ("bookmark1", "bookmark2", "bookmark3"),
-    {"bookmark1", "bookmark2", "bookmark3"},
-    frozenset(("bookmark1", "bookmark2", "bookmark3")),
-    ["bookmark1", "bookmark2", "bookmark3"],
-    ("bookmark1", "bookmark2", "bookmark1"),
-    ("bookmark1", ""),
-    ("bookmark1",),
-    (),
-))
+@pytest.mark.parametrize(
+    "values",
+    (
+        ("bookmark1", "bookmark2", "bookmark3"),
+        {"bookmark1", "bookmark2", "bookmark3"},
+        frozenset(("bookmark1", "bookmark2", "bookmark3")),
+        ["bookmark1", "bookmark2", "bookmark3"],
+        ("bookmark1", "bookmark2", "bookmark1"),
+        ("bookmark1", ""),
+        ("bookmark1",),
+        (),
+    ),
+)
 def test_bookmarks_raw_values(test_as_generator, values) -> None:
     expected = frozenset(values)
     if test_as_generator:
@@ -148,49 +216,58 @@ def test_bookmarks_raw_values(test_as_generator, values) -> None:
     assert received == expected
 
 
-@pytest.mark.parametrize(("values", "exc_type"), (
-    (("bookmark1", None), TypeError),
-    ((neo4j.Bookmarks(),), TypeError),
-    (neo4j.Bookmarks(), TypeError),
-    ((None,), TypeError),
-    (None, TypeError),
-    ((False,), TypeError),
-    (((),), TypeError),
-    (([],), TypeError),
-    ((dict(),), TypeError),
-    ((set(),), TypeError),
-    ((frozenset(),), TypeError),
-    ((["bookmark1", "bookmark2"],), TypeError),
-    ((not_ascii,), ValueError),
-))
+@pytest.mark.parametrize(
+    ("values", "exc_type"),
+    (
+        (("bookmark1", None), TypeError),
+        ((neo4j.Bookmarks(),), TypeError),
+        (neo4j.Bookmarks(), TypeError),
+        ((None,), TypeError),
+        (None, TypeError),
+        ((False,), TypeError),
+        (((),), TypeError),
+        (([],), TypeError),
+        (({},), TypeError),
+        ((set(),), TypeError),
+        ((frozenset(),), TypeError),
+        ((["bookmark1", "bookmark2"],), TypeError),
+        ((not_ascii,), ValueError),
+    ),
+)
 def test_bookmarks_invalid_raw_values(values, exc_type) -> None:
     with pytest.raises(exc_type):
         neo4j.Bookmarks().from_raw_values(values)
 
 
-@pytest.mark.parametrize(("values", "expected_repr"), (
-    (("bm1", "bm2"), "<Bookmarks values={'bm1', 'bm2'}>"),
-    (("bm2", "bm1"), "<Bookmarks values={'bm1', 'bm2'}>"),
-    (("bm42",), "<Bookmarks values={'bm42'}>"),
-    ((), "<Bookmarks values={}>"),
-))
+@pytest.mark.parametrize(
+    ("values", "expected_repr"),
+    (
+        (("bm1", "bm2"), "<Bookmarks values={'bm1', 'bm2'}>"),
+        (("bm2", "bm1"), "<Bookmarks values={'bm1', 'bm2'}>"),
+        (("bm42",), "<Bookmarks values={'bm42'}>"),
+        ((), "<Bookmarks values={}>"),
+    ),
+)
 def test_bookmarks_repr(values, expected_repr) -> None:
     bookmarks = neo4j.Bookmarks().from_raw_values(values)
     assert repr(bookmarks) == expected_repr
 
 
-@pytest.mark.parametrize(("values1", "values2"), (
-    (values
-     for values in itertools.combinations_with_replacement(
-         (
-             ("bookmark1",),
-             ("bookmark1", "bookmark2"),
-             ("bookmark3",),
-             (),
-         ),
-         2
-     ))
-))
+@pytest.mark.parametrize(
+    ("values1", "values2"),
+    (
+        values
+        for values in itertools.combinations_with_replacement(
+            (
+                ("bookmark1",),
+                ("bookmark1", "bookmark2"),
+                ("bookmark3",),
+                (),
+            ),
+            2,
+        )
+    ),
+)
 def test_bookmarks_combination(values1, values2) -> None:
     bookmarks1 = neo4j.Bookmarks().from_raw_values(values1)
     bookmarks2 = neo4j.Bookmarks().from_raw_values(values2)
@@ -200,7 +277,7 @@ def test_bookmarks_combination(values1, values2) -> None:
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_str, expected_repr",
+    ("test_input", "expected_str", "expected_repr"),
     [
         ((), "", "Version()"),
         ((None,), "None", "Version(None,)"),
@@ -210,7 +287,7 @@ def test_bookmarks_combination(values1, values2) -> None:
         ((3, 0), "3.0", "Version(3, 0)"),
         ((3, 0, 0), "3.0.0", "Version(3, 0, 0)"),
         ((3, 0, 0, 0), "3.0.0.0", "Version(3, 0, 0, 0)"),
-    ]
+    ],
 )
 def test_version_initialization(
     test_input, expected_str, expected_repr
@@ -221,14 +298,14 @@ def test_version_initialization(
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_str, expected_repr",
+    ("test_input", "expected_str", "expected_repr"),
     [
         (bytearray([0, 0, 0, 0]), "0.0", "Version(0, 0)"),
         (bytearray([0, 0, 0, 1]), "1.0", "Version(1, 0)"),
         (bytearray([0, 0, 1, 0]), "0.1", "Version(0, 1)"),
         (bytearray([0, 0, 1, 1]), "1.1", "Version(1, 1)"),
         (bytearray([0, 0, 254, 254]), "254.254", "Version(254, 254)"),
-    ]
+    ],
 )
 def test_version_from_bytes_with_valid_bolt_version_handshake(
     test_input, expected_str, expected_repr
@@ -239,14 +316,14 @@ def test_version_from_bytes_with_valid_bolt_version_handshake(
 
 
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         (bytearray([0, 0, 0]), ValueError),
         (bytearray([0, 0, 0, 0, 0]), ValueError),
         (bytearray([1, 0, 0, 0]), ValueError),
         (bytearray([0, 1, 0, 0]), ValueError),
         (bytearray([1, 1, 0, 0]), ValueError),
-    ]
+    ],
 )
 def test_version_from_bytes_with_not_valid_bolt_version_handshake(
     test_input, expected
@@ -256,7 +333,7 @@ def test_version_from_bytes_with_not_valid_bolt_version_handshake(
 
 
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         ((), bytearray([0, 0, 0, 0])),
         ((0,), bytearray([0, 0, 0, 0])),
@@ -265,7 +342,7 @@ def test_version_from_bytes_with_not_valid_bolt_version_handshake(
         ((1, 0), bytearray([0, 0, 0, 1])),
         ((1, 2), bytearray([0, 0, 2, 1])),
         ((255, 255), bytearray([0, 0, 255, 255])),
-    ]
+    ],
 )
 def test_version_to_bytes_with_valid_bolt_version(
     test_input, expected
@@ -286,12 +363,12 @@ def test_serverinfo_initialization() -> None:
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_agent",
+    ("test_input", "expected_agent"),
     [
         ({"server": "Neo4j/3.0.0"}, "Neo4j/3.0.0"),
         ({"server": "Neo4j/3.X.Y"}, "Neo4j/3.X.Y"),
         ({"server": "Neo4j/4.3.1"}, "Neo4j/4.3.1"),
-    ]
+    ],
 )
 @pytest.mark.parametrize("protocol_version", ((3, 0), (4, 3), (42, 1337)))
 def test_serverinfo_with_metadata(
@@ -309,21 +386,66 @@ def test_serverinfo_with_metadata(
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_driver_type, expected_security_type, expected_error",
+    (
+        "test_input",
+        "expected_driver_type",
+        "expected_security_type",
+        "expected_error",
+    ),
     [
-        ("bolt://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
-        ("bolt+ssc://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
-        ("bolt+s://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_SECURE, None),
-        ("neo4j://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
-        ("neo4j+ssc://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
-        ("neo4j+s://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_SECURE, None),
+        (
+            "bolt://localhost:7676",
+            neo4j.api.DRIVER_BOLT,
+            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            None,
+        ),
+        (
+            "bolt+ssc://localhost:7676",
+            neo4j.api.DRIVER_BOLT,
+            neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            None,
+        ),
+        (
+            "bolt+s://localhost:7676",
+            neo4j.api.DRIVER_BOLT,
+            neo4j.api.SECURITY_TYPE_SECURE,
+            None,
+        ),
+        (
+            "neo4j://localhost:7676",
+            neo4j.api.DRIVER_NEO4J,
+            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            None,
+        ),
+        (
+            "neo4j+ssc://localhost:7676",
+            neo4j.api.DRIVER_NEO4J,
+            neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            None,
+        ),
+        (
+            "neo4j+s://localhost:7676",
+            neo4j.api.DRIVER_NEO4J,
+            neo4j.api.SECURITY_TYPE_SECURE,
+            None,
+        ),
         ("undefined://localhost:7676", None, None, ConfigurationError),
         ("localhost:7676", None, None, ConfigurationError),
         ("://localhost:7676", None, None, ConfigurationError),
-        ("bolt+routing://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_NOT_SECURE, ConfigurationError),
+        (
+            "bolt+routing://localhost:7676",
+            neo4j.api.DRIVER_NEO4J,
+            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            ConfigurationError,
+        ),
         ("bolt://username@localhost:7676", None, None, ConfigurationError),
-        ("bolt://username:password@localhost:7676", None, None, ConfigurationError),
-    ]
+        (
+            "bolt://username:password@localhost:7676",
+            None,
+            None,
+            ConfigurationError,
+        ),
+    ],
 )
 def test_uri_scheme(
     test_input, expected_driver_type, expected_security_type, expected_error
@@ -332,7 +454,9 @@ def test_uri_scheme(
         with pytest.raises(expected_error):
             neo4j.api.parse_neo4j_uri(test_input)
     else:
-        driver_type, security_type, parsed = neo4j.api.parse_neo4j_uri(test_input)
+        driver_type, security_type, _parsed = neo4j.api.parse_neo4j_uri(
+            test_input
+        )
         assert driver_type == expected_driver_type
         assert security_type == expected_security_type
 

@@ -62,7 +62,7 @@ def _makedirs_existok(dir):
 
 
 def _get_tokens(f):
-    if sys.version_info[0] == 2:
+    if sys.version_info[0] == 2:  # noqa: UP036 as copied
         for tok in std_tokenize.generate_tokens(f.readline):
             type_, string, start, end, line = tok
             yield Token(type_, string, start, end, line)
@@ -87,17 +87,15 @@ def _tokenize(f):
         yield space, tok.type, tok.string
 
         last_end = tok.end
-        if tok.type in [std_tokenize.NEWLINE, std_tokenize.NL]:
+        if tok.type in {std_tokenize.NEWLINE, std_tokenize.NL}:
             last_end = (tok.end[0] + 1, 0)
         elif (
-                sys.version_info >= (3, 12)
-                and tok.type == std_tokenize.FSTRING_MIDDLE
+            sys.version_info >= (3, 12)
+            and tok.type == std_tokenize.FSTRING_MIDDLE
         ):
             last_end = (
                 last_end[0],
-                last_end[1]
-                + tok.string.count("{")
-                + tok.string.count("}")
+                last_end[1] + tok.string.count("{") + tok.string.count("}"),
             )
 
 
@@ -110,7 +108,7 @@ def _untokenize(tokens):
 
 class CustomRule(unasync.Rule):
     def __init__(self, *args, **kwargs):
-        super(CustomRule, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.out_files = []
         # it's not pretty, but it works
         # typing.Awaitable[...] -> typing.Union[...]
@@ -124,7 +122,7 @@ class CustomRule(unasync.Rule):
         # TODO __await__, ...?
         used_space = None
         for space, toknum, tokval in tokens:
-            if tokval in ["async", "await"]:
+            if tokval in {"async", "await"}:
                 # When removing async or await, we want to use the whitespace
                 # that was before async/await before the next token so that
                 # `print(await stuff)` becomes `print(stuff)` and not
@@ -136,17 +134,24 @@ class CustomRule(unasync.Rule):
                 elif toknum == std_tokenize.STRING:
                     if tokval[0] == tokval[1] and len(tokval) > 2:
                         # multiline string (`"""..."""` or `'''...'''`)
-                        left_quote, name, right_quote = \
-                            tokval[:3], tokval[3:-3], tokval[-3:]
+                        left_quote, name, right_quote = (
+                            tokval[:3],
+                            tokval[3:-3],
+                            tokval[-3:],
+                        )
                     else:
                         # simple string (`"..."` or `'...'`)
-                        left_quote, name, right_quote = \
-                            tokval[:1], tokval[1:-1], tokval[-1:]
-                    tokval = \
+                        left_quote, name, right_quote = (
+                            tokval[:1],
+                            tokval[1:-1],
+                            tokval[-1:],
+                        )
+                    tokval = (
                         left_quote + self._unasync_string(name) + right_quote
+                    )
                 elif (
-                        sys.version_info >= (3, 12)
-                        and toknum == std_tokenize.FSTRING_MIDDLE
+                    sys.version_info >= (3, 12)
+                    and toknum == std_tokenize.FSTRING_MIDDLE
                 ):
                     tokval = tokval.replace("{", "{{").replace("}", "}}")
                     tokval = self._unasync_string(tokval)
@@ -163,14 +168,13 @@ class CustomRule(unasync.Rule):
             sub_name = name[start:end]
             if sub_name.isidentifier():
                 end += 1
+            elif end == start + 1:
+                out += sub_name
+                start += 1
+                end += 1
             else:
-                if end == start + 1:
-                    out += sub_name
-                    start += 1
-                    end += 1
-                else:
-                    out += self._unasync_name(name[start:(end - 1)])
-                    start = end - 1
+                out += self._unasync_name(name[start : (end - 1)])
+                start = end - 1
 
         sub_name = name[start:]
         if sub_name.isidentifier():
@@ -180,11 +184,14 @@ class CustomRule(unasync.Rule):
 
         # very boiled down unasync version that removes "async" and "await"
         # substrings.
-        out = re.subn(r"(^|\s+|(?<=\W))(?:async|await)\s+", r"\1", out,
-                      flags=re.MULTILINE)[0]
+        out = re.subn(
+            r"(^|\s+|(?<=\W))(?:async|await)\s+",
+            r"\1",
+            out,
+            flags=re.MULTILINE,
+        )[0]
         # Convert doc-reference names from 'async-xyz' to 'xyz'
-        out = re.subn(r":ref:`async-", ":ref:`", out)[0]
-        return out
+        return re.subn(r":ref:`async-", ":ref:`", out)[0]
 
     def _unasync_prefix(self, name):
         # Convert class names from 'AsyncXyz' to 'Xyz'
@@ -212,7 +219,7 @@ class CustomRule(unasync.Rule):
         # License: MIT or Apache2
         with open(filepath, "rb") as f:
             write_kwargs = {}
-            if sys.version_info[0] >= 3:
+            if sys.version_info[0] >= 3:  # noqa: UP036 as copied
                 encoding, _ = std_tokenize.detect_encoding(f.readline)
                 write_kwargs["encoding"] = encoding
                 f.seek(0)
@@ -229,7 +236,6 @@ class CustomRule(unasync.Rule):
 
 def apply_unasync(files):
     """Generate sync code from async code."""
-
     additional_main_replacements = {}
     additional_test_replacements = {
         "_async": "_sync",
@@ -270,18 +276,16 @@ def apply_unasync(files):
         paths += list(ASYNC_TESTKIT_BACKEND_DIR.rglob("*"))
     else:
         paths = [ROOT_DIR / Path(f) for f in files]
-    filtered_paths = []
-    for path in paths:
-        if path.suffix in PY_FILE_EXTENSIONS:
-            filtered_paths.append(path)
 
+    filtered_paths = filter(lambda p: p.suffix in PY_FILE_EXTENSIONS, paths)
     unasync.unasync_files(map(str, filtered_paths), rules)
 
     return [Path(path) for rule in rules for path in rule.out_files]
 
 
 def apply_isort(paths):
-    """Sort imports in generated sync code.
+    """
+    Sort imports in generated sync code.
 
     Since classes in imports are renamed from AsyncXyz to Xyz, the alphabetical
     order of the import can change.
@@ -311,7 +315,7 @@ def apply_changes(paths):
     changed_paths = {}
 
     for in_path in paths:
-        out_path = Path(str(in_path)[:-len(UNASYNC_SUFFIX)])
+        out_path = Path(str(in_path)[: -len(UNASYNC_SUFFIX)])
         if not out_path.is_file():
             changed_paths[in_path] = out_path
             continue
@@ -337,7 +341,7 @@ def main():
     if changed_paths:
         for path in changed_paths:
             print("Updated " + str(path))
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -36,11 +36,11 @@ if t.TYPE_CHECKING:
         # no query
         (None, None, "{notification}"),
         (None, {"offset": 0, "line": 1, "column": 1}, "{notification}"),
-
+        # ---------------------------------------------------------------------
         # no position
         ("MATCH (n) RETURN n", None, "{notification} for query:\n{query}"),
         ("MATCH (n)\nRETURN n", None, "{notification} for query:\n{query}"),
-
+        # ---------------------------------------------------------------------
         # normal position
         (
             "MATCH (n) RETURN n",
@@ -49,7 +49,7 @@ if t.TYPE_CHECKING:
                 "{notification} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "^"
-             ),
+            ),
         ),
         (
             "MATCH (n) RETURN n",
@@ -58,7 +58,7 @@ if t.TYPE_CHECKING:
                 "{notification} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "  ^"
-             ),
+            ),
         ),
         (
             (
@@ -71,7 +71,7 @@ if t.TYPE_CHECKING:
                 "MATCH (n)\n"
                 "  ^\n"
                 "RETURN n"
-             ),
+            ),
         ),
         (
             (
@@ -84,9 +84,9 @@ if t.TYPE_CHECKING:
                 "MATCH (n)\n"
                 "RETURN n\n"
                 "       ^"
-             ),
+            ),
         ),
-
+        # ---------------------------------------------------------------------
         # position out of bounds
         *(
             (
@@ -95,7 +95,7 @@ if t.TYPE_CHECKING:
                 (
                     "{notification} for query:\n"
                     "MATCH (n) RETURN n"
-                 ),
+                ),
             )
             for (line, column) in (
                 (0, 1),
@@ -113,7 +113,7 @@ if t.TYPE_CHECKING:
                 "{notification} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "                   ^"
-             ),
+            ),
         ),
         (
             (
@@ -126,14 +126,14 @@ if t.TYPE_CHECKING:
                 "MATCH (n)\n"
                 "                   ^\n"
                 "RETURN n"
-             ),
+            ),
         ),
-    )
-)
+    ),
+)  # fmt: skip # noqa: RUF028 - https://github.com/astral-sh/ruff/issues/11689
 def test_position(
     notification_factory: TNotificationFactory,
-    query: t.Optional[str],
-    position: t.Optional[Position],
+    query: str | None,
+    position: Position | None,
     expected_output_template: str,
 ) -> None:
     notification = notification_factory(data_overwrite={"position": position})

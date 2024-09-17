@@ -32,11 +32,18 @@ from neo4j.exceptions import (
 from ...._async_compat import mark_sync_test
 
 
-@pytest.mark.parametrize(("explicit_commit", "close"), (
-    (False, False),
-    (True, False),
-    (True, True),
-))
+def noop(*args, **kwargs):
+    pass
+
+
+@pytest.mark.parametrize(
+    ("explicit_commit", "close"),
+    (
+        (False, False),
+        (True, False),
+        (True, True),
+    ),
+)
 @mark_sync_test
 def test_transaction_context_when_committing(
     mocker, fake_connection, explicit_commit, close
@@ -44,8 +51,9 @@ def test_transaction_context_when_committing(
     on_closed = mocker.MagicMock()
     on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
-    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
-                          on_cancel)
+    tx = Transaction(
+        fake_connection, 2, None, on_closed, on_error, on_cancel
+    )
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with tx as tx_:
@@ -64,11 +72,14 @@ def test_transaction_context_when_committing(
     assert tx_.closed()
 
 
-@pytest.mark.parametrize(("rollback", "close"), (
-    (True, False),
-    (False, True),
-    (True, True),
-))
+@pytest.mark.parametrize(
+    ("rollback", "close"),
+    (
+        (True, False),
+        (False, True),
+        (True, True),
+    ),
+)
 @mark_sync_test
 def test_transaction_context_with_explicit_rollback(
     mocker, fake_connection, rollback, close
@@ -76,8 +87,9 @@ def test_transaction_context_with_explicit_rollback(
     on_closed = mocker.MagicMock()
     on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
-    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
-                          on_cancel)
+    tx = Transaction(
+        fake_connection, 2, None, on_closed, on_error, on_cancel
+    )
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with tx as tx_:
@@ -107,8 +119,9 @@ def test_transaction_context_calls_rollback_on_error(
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
-                          on_cancel)
+    tx = Transaction(
+        fake_connection, 2, None, on_closed, on_error, on_cancel
+    )
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with pytest.raises(OopsError):
@@ -127,19 +140,23 @@ def test_transaction_run_takes_no_query_object(fake_connection):
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
-                          on_cancel)
+    tx = Transaction(
+        fake_connection, 2, None, on_closed, on_error, on_cancel
+    )
     with pytest.raises(ValueError):
         tx.run(Query("RETURN 1"))
 
 
 @mark_sync_test
-@pytest.mark.parametrize("params", (
-    {"x": 1},
-    {"x": "1"},
-    {"x": "1", "y": 2},
-    {"parameters": {"nested": "parameters"}},
-))
+@pytest.mark.parametrize(
+    "params",
+    (
+        {"x": 1},
+        {"x": "1"},
+        {"x": "1", "y": 2},
+        {"parameters": {"nested": "parameters"}},
+    ),
+)
 @pytest.mark.parametrize("as_kwargs", (True, False))
 def test_transaction_run_parameters(
     fake_connection, params, as_kwargs
@@ -147,13 +164,17 @@ def test_transaction_run_parameters(
     on_closed = MagicMock()
     on_error = MagicMock()
     on_cancel = MagicMock()
-    tx = Transaction(fake_connection, 2, None, on_closed, on_error,
-                          on_cancel)
+    tx = Transaction(
+        fake_connection, 2, None, on_closed, on_error, on_cancel
+    )
     if not as_kwargs:
         params = {"parameters": params}
     tx.run("RETURN $x", **params)
-    calls = [call for call in fake_connection.method_calls
-             if call[0] in ("run", "send_all", "fetch_message")]
+    calls = [
+        call
+        for call in fake_connection.method_calls
+        if call[0] in {"run", "send_all", "fetch_message"}
+    ]
     assert [call[0] for call in calls] == ["run", "send_all", "fetch_message"]
     run = calls[0]
     assert run[1][0] == "RETURN $x"
@@ -164,9 +185,8 @@ def test_transaction_run_parameters(
 
 @mark_sync_test
 def test_transaction_rollbacks_on_open_connections(
-    fake_connection
+    fake_connection,
 ):
-    noop = lambda *args, **kwargs: None
     tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = False
@@ -179,9 +199,8 @@ def test_transaction_rollbacks_on_open_connections(
 
 @mark_sync_test
 def test_transaction_no_rollback_on_reset_connections(
-    fake_connection
+    fake_connection,
 ):
-    noop = lambda *args, **kwargs: None
     tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = True
@@ -194,9 +213,8 @@ def test_transaction_no_rollback_on_reset_connections(
 
 @mark_sync_test
 def test_transaction_no_rollback_on_closed_connections(
-    fake_connection
+    fake_connection,
 ):
-    noop = lambda *args, **kwargs: None
     tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.closed.return_value = True
@@ -211,9 +229,8 @@ def test_transaction_no_rollback_on_closed_connections(
 
 @mark_sync_test
 def test_transaction_no_rollback_on_defunct_connections(
-    fake_connection
+    fake_connection,
 ):
-    noop = lambda *args, **kwargs: None
     tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     with tx as tx_:
         fake_connection.defunct.return_value = True
@@ -231,10 +248,7 @@ def test_transaction_no_rollback_on_defunct_connections(
 def test_transaction_begin_pipelining(
     fake_connection, pipeline
 ) -> None:
-    noop_cb = lambda *args, **kwargs: None
-    tx = Transaction(
-        fake_connection, 2, None, noop_cb, noop_cb, noop_cb
-    )
+    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
     database = "db"
     imp_user = None
     bookmarks = ["bookmark1", "bookmark2"]
@@ -245,9 +259,15 @@ def test_transaction_begin_pipelining(
     notifications_disabled_classifications = ["cls1", "cls2"]
 
     tx._begin(
-        database, imp_user, bookmarks, access_mode, metadata, timeout,
-        notifications_min_severity, notifications_disabled_classifications,
-        pipelined=pipeline
+        database,
+        imp_user,
+        bookmarks,
+        access_mode,
+        metadata,
+        timeout,
+        notifications_min_severity,
+        notifications_disabled_classifications,
+        pipelined=pipeline,
     )
     expected_calls: list = [
         (
@@ -260,9 +280,10 @@ def test_transaction_begin_pipelining(
                 "metadata": metadata,
                 "timeout": timeout,
                 "notifications_min_severity": notifications_min_severity,
-                "notifications_disabled_classifications":
-                    notifications_disabled_classifications,
-            }
+                "notifications_disabled_classifications": (
+                    notifications_disabled_classifications
+                ),
+            },
         ),
     ]
     if not pipeline:
@@ -278,17 +299,26 @@ def test_server_error_propagates(scripted_connection, error):
     script = [
         # res 1
         ("run", {"on_success": ({"fields": ["n"]},), "on_summary": None}),
-        ("pull", {"on_records": ([[1], [2]],),
-                  "on_success": ({"has_more": True},)}),
+        (
+            "pull",
+            {"on_records": ([[1], [2]],), "on_success": ({"has_more": True},)},
+        ),
         # res 2
         ("run", {"on_success": ({"fields": ["n"]},), "on_summary": None}),
-        ("pull", {"on_records": ([[1], [2]],),
-                  "on_success": ({"has_more": True},)}),
+        (
+            "pull",
+            {"on_records": ([[1], [2]],), "on_success": ({"has_more": True},)},
+        ),
     ]
     if error == "server":
         script.append(
-            ("pull", {"on_failure": ({"code": "Neo.ClientError.Made.Up"},),
-                      "on_summary": None})
+            (
+                "pull",
+                {
+                    "on_failure": ({"code": "Neo.ClientError.Made.Up"},),
+                    "on_summary": None,
+                },
+            )
         )
         expected_error = ClientError
     elif error == "connection":
@@ -298,7 +328,6 @@ def test_server_error_propagates(scripted_connection, error):
         raise ValueError(f"Unknown error type {error}")
     connection.set_script(script)
 
-    noop = lambda *args, **kwargs: None
     tx = Transaction(connection, 2, None, noop, noop, noop)
     res1 = tx.run("UNWIND range(1, 1000) AS n RETURN n")
     assert res1.__next__() == {"n": 1}

@@ -14,4 +14,13 @@
 # limitations under the License.
 
 
-from .notifications import *
+from .notifications import (
+    notification_factory,
+    raw_notification_factory,
+)
+
+
+__all__ = [
+    "notification_factory",
+    "raw_notification_factory",
+]

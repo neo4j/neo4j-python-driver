@@ -68,7 +68,6 @@ test_pool_config = {
 
 
 def test_pool_config_consume():
-
     test_config = dict(test_pool_config)
 
     consumed_pool_config = AsyncPoolConfig.consume(test_config)
@@ -77,17 +76,16 @@ def test_pool_config_consume():
 
     assert len(test_config) == 0
 
-    for key in test_pool_config.keys():
-        assert consumed_pool_config[key] == test_pool_config[key]
+    for key, value in test_pool_config.items():
+        assert consumed_pool_config[key] == value
 
-    for key in consumed_pool_config.keys():
-        assert test_pool_config[key] == consumed_pool_config[key]
+    for key, value in consumed_pool_config.items():
+        assert test_pool_config[key] == value
 
     assert len(consumed_pool_config) == len(test_pool_config)
 
 
 def test_pool_config_consume_default_values():
-
     test_config = {}
 
     consumed_pool_config = AsyncPoolConfig.consume(test_config)
@@ -102,7 +100,6 @@ def test_pool_config_consume_default_values():
 
 
 def test_pool_config_consume_key_not_valid():
-
     test_config = dict(test_pool_config)
 
     test_config["not_valid_key"] = "test"
@@ -114,7 +111,6 @@ def test_pool_config_consume_key_not_valid():
 
 
 def test_pool_config_set_value():
-
     test_config = dict(test_pool_config)
 
     consumed_pool_config = AsyncPoolConfig.consume(test_config)
@@ -141,8 +137,12 @@ def test_pool_config_consume_and_then_consume_again():
     with pytest.raises(AttributeError):
         consumed_pool_config = AsyncPoolConfig.consume(consumed_pool_config)
 
-    consumed_pool_config = AsyncPoolConfig.consume(dict(consumed_pool_config.items()))
-    consumed_pool_config = AsyncPoolConfig.consume(dict(consumed_pool_config.items()))
+    consumed_pool_config = AsyncPoolConfig.consume(
+        dict(consumed_pool_config.items())
+    )
+    consumed_pool_config = AsyncPoolConfig.consume(
+        dict(consumed_pool_config.items())
+    )
 
     assert consumed_pool_config.encrypted == "test"
 
@@ -152,32 +152,44 @@ def test_pool_config_consume_and_then_consume_again():
     (
         (TRUST_ALL_CERTIFICATES, TrustAll),
         (TRUST_SYSTEM_CA_SIGNED_CERTIFICATES, TrustSystemCAs),
-    )
+    ),
 )
 def test_pool_config_deprecated_trust_config(
     value_trust, expected_trusted_certificates_cls
 ):
     with pytest.warns(DeprecationWarning, match="trust.*trusted_certificates"):
         consumed_pool_config = AsyncPoolConfig.consume({"trust": value_trust})
-    assert isinstance(consumed_pool_config.trusted_certificates,
-                      expected_trusted_certificates_cls)
+    assert isinstance(
+        consumed_pool_config.trusted_certificates,
+        expected_trusted_certificates_cls,
+    )
     assert not hasattr(consumed_pool_config, "trust")
 
 
-@pytest.mark.parametrize("value_trust", (
-    TRUST_ALL_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-))
-@pytest.mark.parametrize("trusted_certificates", (
-    TrustSystemCAs(), TrustAll(), TrustCustomCAs("foo"),
-    TrustCustomCAs("foo", "bar")
-))
-def test_pool_config_deprecated_and_new_trust_config(value_trust,
-                                                     trusted_certificates):
-    with pytest.raises(ConfigurationError,
-                       match="trusted_certificates.*trust"):
-        AsyncPoolConfig.consume({
-            "trust": value_trust,
-            "trusted_certificates": trusted_certificates}
+@pytest.mark.parametrize(
+    "value_trust",
+    (TRUST_ALL_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES),
+)
+@pytest.mark.parametrize(
+    "trusted_certificates",
+    (
+        TrustSystemCAs(),
+        TrustAll(),
+        TrustCustomCAs("foo"),
+        TrustCustomCAs("foo", "bar"),
+    ),
+)
+def test_pool_config_deprecated_and_new_trust_config(
+    value_trust, trusted_certificates
+):
+    with pytest.raises(
+        ConfigurationError, match="trusted_certificates.*trust"
+    ):
+        AsyncPoolConfig.consume(
+            {
+                "trust": value_trust,
+                "trusted_certificates": trusted_certificates,
+            }
         )
 
 
@@ -208,13 +220,16 @@ def test_config_consume_chain():
     assert len(consumed_session_config) == len(test_session_config)
 
 
-@pytest.mark.parametrize("config", (
-    {},
-    {"encrypted": False},
-    {"trusted_certificates": TrustSystemCAs()},
-    {"trusted_certificates": TrustAll()},
-    {"trusted_certificates": TrustCustomCAs("foo", "bar")},
-))
+@pytest.mark.parametrize(
+    "config",
+    (
+        {},
+        {"encrypted": False},
+        {"trusted_certificates": TrustSystemCAs()},
+        {"trusted_certificates": TrustAll()},
+        {"trusted_certificates": TrustCustomCAs("foo", "bar")},
+    ),
+)
 @mark_async_test
 async def test_no_ssl_mock(config, mocker):
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
@@ -227,10 +242,13 @@ async def test_no_ssl_mock(config, mocker):
     ssl_context_mock.assert_not_called()
 
 
-@pytest.mark.parametrize("config", (
-    {"encrypted": True},
-    {"encrypted": True, "trusted_certificates": TrustSystemCAs()},
-))
+@pytest.mark.parametrize(
+    "config",
+    (
+        {"encrypted": True},
+        {"encrypted": True, "trusted_certificates": TrustSystemCAs()},
+    ),
+)
 @mark_async_test
 async def test_trust_system_cas_mock(config, mocker):
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
@@ -249,10 +267,16 @@ async def test_trust_system_cas_mock(config, mocker):
     ssl_context_mock.assert_not_called()
 
 
-@pytest.mark.parametrize("config", (
-    {"encrypted": True, "trusted_certificates": TrustCustomCAs("foo", "bar")},
-    {"encrypted": True, "trusted_certificates": TrustCustomCAs()},
-))
+@pytest.mark.parametrize(
+    "config",
+    (
+        {
+            "encrypted": True,
+            "trusted_certificates": TrustCustomCAs("foo", "bar"),
+        },
+        {"encrypted": True, "trusted_certificates": TrustCustomCAs()},
+    ),
+)
 @mark_async_test
 async def test_trust_custom_cas_mock(config, mocker):
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
@@ -273,9 +297,9 @@ async def test_trust_custom_cas_mock(config, mocker):
     assert await pool_config.get_ssl_context() is ssl_context
 
 
-@pytest.mark.parametrize("config", (
-    {"encrypted": True, "trusted_certificates": TrustAll()},
-))
+@pytest.mark.parametrize(
+    "config", ({"encrypted": True, "trusted_certificates": TrustAll()},)
+)
 @mark_async_test
 async def test_trust_all_mock(config, mocker):
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
@@ -299,13 +323,16 @@ def _assert_mock_tls_1_2(mock):
     assert mock.return_value.minimum_version == ssl.TLSVersion.TLSv1_2
 
 
-@pytest.mark.parametrize("config", (
-    {},
-    {"encrypted": False},
-    {"trusted_certificates": TrustSystemCAs()},
-    {"trusted_certificates": TrustAll()},
-    {"trusted_certificates": TrustCustomCAs("foo", "bar")},
-))
+@pytest.mark.parametrize(
+    "config",
+    (
+        {},
+        {"encrypted": False},
+        {"trusted_certificates": TrustSystemCAs()},
+        {"trusted_certificates": TrustAll()},
+        {"trusted_certificates": TrustCustomCAs("foo", "bar")},
+    ),
+)
 @mark_async_test
 async def test_no_ssl(config):
     pool_config = AsyncPoolConfig.consume(config)
@@ -315,10 +342,13 @@ async def test_no_ssl(config):
     assert await pool_config.get_ssl_context() is None
 
 
-@pytest.mark.parametrize("config", (
-    {"encrypted": True},
-    {"encrypted": True, "trusted_certificates": TrustSystemCAs()},
-))
+@pytest.mark.parametrize(
+    "config",
+    (
+        {"encrypted": True},
+        {"encrypted": True, "trusted_certificates": TrustSystemCAs()},
+    ),
+)
 @mark_async_test
 async def test_trust_system_cas(config):
     pool_config = AsyncPoolConfig.consume(config)
@@ -332,9 +362,9 @@ async def test_trust_system_cas(config):
     assert await pool_config.get_ssl_context() is ssl_context
 
 
-@pytest.mark.parametrize("config", (
-    {"encrypted": True, "trusted_certificates": TrustCustomCAs()},
-))
+@pytest.mark.parametrize(
+    "config", ({"encrypted": True, "trusted_certificates": TrustCustomCAs()},)
+)
 @mark_async_test
 async def test_trust_custom_cas(config):
     pool_config = AsyncPoolConfig.consume(config)
@@ -348,9 +378,9 @@ async def test_trust_custom_cas(config):
     assert await pool_config.get_ssl_context() is ssl_context
 
 
-@pytest.mark.parametrize("config", (
-    {"encrypted": True, "trusted_certificates": TrustAll()},
-))
+@pytest.mark.parametrize(
+    "config", ({"encrypted": True, "trusted_certificates": TrustAll()},)
+)
 @mark_async_test
 async def test_trust_all(config):
     pool_config = AsyncPoolConfig.consume(config)
@@ -370,26 +400,28 @@ def _assert_context_tls_1_2(ctx):
 
 
 @pytest.mark.parametrize("encrypted", (True, False))
-@pytest.mark.parametrize("trusted_certificates", (
-    TrustSystemCAs(), TrustAll(), TrustCustomCAs()
-))
+@pytest.mark.parametrize(
+    "trusted_certificates", (TrustSystemCAs(), TrustAll(), TrustCustomCAs())
+)
 @mark_async_test
 async def test_custom_ssl_context(encrypted, trusted_certificates):
     custom_ssl_context = object()
-    pool_config = AsyncPoolConfig.consume({
-        "encrypted": encrypted,
-        "trusted_certificates": trusted_certificates,
-        "ssl_context": custom_ssl_context,
-    })
+    pool_config = AsyncPoolConfig.consume(
+        {
+            "encrypted": encrypted,
+            "trusted_certificates": trusted_certificates,
+            "ssl_context": custom_ssl_context,
+        }
+    )
     assert pool_config.encrypted is encrypted
     assert await pool_config.get_ssl_context() is custom_ssl_context
     # test caching
     assert await pool_config.get_ssl_context() is custom_ssl_context
 
 
-@pytest.mark.parametrize("trusted_certificates", (
-    TrustSystemCAs(), TrustAll(), TrustCustomCAs()
-))
+@pytest.mark.parametrize(
+    "trusted_certificates", (TrustSystemCAs(), TrustAll(), TrustCustomCAs())
+)
 @mark_async_test
 async def test_client_certificate(trusted_certificates, mocker) -> None:
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
@@ -398,10 +430,12 @@ async def test_client_certificate(trusted_certificates, mocker) -> None:
         cert = ClientCertificate("certfile", "keyfile", "password")
     with pytest.warns(PreviewWarning, match="Mutual TLS"):
         provider = AsyncClientCertificateProviders.rotating(cert)
-    pool_config = AsyncPoolConfig.consume({
-        "client_certificate": provider,
-        "encrypted": True,
-    })
+    pool_config = AsyncPoolConfig.consume(
+        {
+            "client_certificate": provider,
+            "encrypted": True,
+        }
+    )
     assert pool_config.client_certificate is provider
 
     ssl_context = await pool_config.get_ssl_context()

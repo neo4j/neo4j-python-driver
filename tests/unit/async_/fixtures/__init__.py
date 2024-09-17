@@ -14,5 +14,19 @@
 # limitations under the License.
 
 
-from .fake_connection import *
-from .fake_pool import *
+from .fake_connection import (
+    async_fake_connection,
+    async_fake_connection_generator,
+    async_scripted_connection,
+    async_scripted_connection_generator,
+)
+from .fake_pool import async_fake_pool
+
+
+__all__ = [
+    "async_fake_connection",
+    "async_fake_connection_generator",
+    "async_fake_pool",
+    "async_scripted_connection",
+    "async_scripted_connection_generator",
+]

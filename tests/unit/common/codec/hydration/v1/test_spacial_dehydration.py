@@ -35,10 +35,12 @@ class TestSpatialDehydration(HydrationHandlerTestBase):
     @pytest.fixture
     def transformer(self, hydration_scope):
         def transformer(value):
-            transformer_ = \
-                hydration_scope.dehydration_hooks.get_transformer(value)
+            transformer_ = hydration_scope.dehydration_hooks.get_transformer(
+                value
+            )
             assert callable(transformer_)
             return transformer_(value)
+
         return transformer
 
     def test_cartesian_2d(self, transformer):
