@@ -23,7 +23,7 @@ from neo4j import PreviewWarning
 
 
 def test_import_neo4j():
-    pass
+    import neo4j  # noqa: F401 - unused import to test import works
 
 
 NEO4J_ATTRIBUTES = (
