@@ -149,12 +149,22 @@ def to_param(m):
         if timezone_id is not None:
             utc_offset = timedelta(seconds=utc_offset_s)
             tz = pytz.timezone(timezone_id)
-            localized_datetime = tz.localize(datetime, is_dst=False)
-            if localized_datetime.utcoffset() == utc_offset:
-                return localized_datetime
-            localized_datetime = tz.localize(datetime, is_dst=True)
-            if localized_datetime.utcoffset() == utc_offset:
-                return localized_datetime
+            try:
+                localized_datetime = tz.localize(datetime, is_dst=None)
+                if localized_datetime.utcoffset() == utc_offset:
+                    return localized_datetime
+            except pytz.AmbiguousTimeError:
+                localized_datetime = tz.localize(datetime, is_dst=False)
+                if localized_datetime.utcoffset() == utc_offset:
+                    return localized_datetime
+                localized_datetime = tz.localize(datetime, is_dst=True)
+                if localized_datetime.utcoffset() == utc_offset:
+                    return localized_datetime
+            except pytz.NonExistentTimeError as e:
+                raise ValueError(
+                    f"local datetime {datetime} does not exist in timezone "
+                    f"{timezone_id}"
+                ) from e
             raise ValueError(
                 f"cannot localize datetime {datetime} to timezone "
                 f"{timezone_id} with UTC offset {utc_offset}"
