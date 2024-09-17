@@ -47,17 +47,6 @@ TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
 DRIVER_PATH = Path(neo4j.__path__[0]).absolute().resolve()
 
 
-def snake_case_to_pascal_case(name: str) -> str:
-    return "".join(word.capitalize() for word in name.split("_"))
-
-
-def get_handler_name(handler):
-    name = getattr(handler, "__handler_name__", None)
-    if name is not None:
-        return name
-    return snake_case_to_pascal_case(handler.__name__)
-
-
 class AsyncBackend:
     def __init__(self, rd, wr):
         self._rd = rd
@@ -85,8 +74,11 @@ class AsyncBackend:
         self.fake_time_ticker = None
         # Collect all request handlers
         self._requestHandlers = {
-            get_handler_name(func): func
-            for _, func in getmembers(requests, isfunction)
+            func.__handler_name__: func
+            for _, func in getmembers(
+                requests,
+                lambda x: isfunction(x) and hasattr(x, "__handler_name__"),
+            )
         }
 
     async def close(self):

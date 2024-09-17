@@ -14,13 +14,14 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import datetime
 import json
 import re
 import ssl
 import typing as t
 import warnings
-from functools import wraps
 from os import path
 
 from freezegun import freeze_time
@@ -29,7 +30,6 @@ import neo4j
 import neo4j.api
 import neo4j.auth_management
 from neo4j._async_compat.util import AsyncUtil
-from neo4j._auth_management import ClientCertificate
 from neo4j.auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
@@ -46,16 +46,52 @@ from .._warning_check import warnings_check
 from ..exceptions import MarkdAsDriverError
 
 
-def handler_name(name: str):
-    def decorator(func):
-        @wraps(func)
-        def inner(self, data):
-            return func(self, data)
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
-        func.__handler_name__ = name
-        return func
+    from neo4j._auth_management import ClientCertificate
 
-    return decorator
+    T = t.TypeVar("T")
+    P = te.ParamSpec("P")
+
+
+def snake_case_to_pascal_case(name: str) -> str:
+    return "".join(word.capitalize() for word in name.split("_"))
+
+
+def get_handler_name(handler):
+    name = getattr(handler, "__handler_name__", None)
+    if name is not None:
+        return name
+    return snake_case_to_pascal_case(handler.__name__)
+
+
+@t.overload
+def request_handler(
+    x: str | None = None,
+) -> t.Callable[[t.Callable[P, T]], t.Callable[P, T]]: ...
+
+
+@t.overload
+def request_handler(x: t.Callable[P, T]) -> t.Callable[P, T]: ...
+
+
+def request_handler(x: str | None | t.Callable = None):
+    def make_decorator(
+        name: str | None = None,
+    ) -> t.Callable[[t.Callable[P, T]], t.Callable[P, T]]:
+        def decorator(func: t.Callable[P, T]) -> t.Callable[P, T]:
+            nonlocal name
+            if name is None:
+                name = snake_case_to_pascal_case(func.__name__)
+            func.__handler_name__ = name  # type: ignore[attr-defined]
+            return func
+
+        return decorator
+
+    if callable(x):
+        return make_decorator()(x)
+    return make_decorator(x)
 
 
 class FrontendError(Exception):
@@ -87,6 +123,7 @@ def _get_skip_reason(test_name):
     return None
 
 
+@request_handler
 async def start_test(backend, data):
     test_name = data["testName"]
     reason = _get_skip_reason(test_name)
@@ -99,6 +136,7 @@ async def start_test(backend, data):
         await backend.send_response("RunTest", {})
 
 
+@request_handler
 async def start_sub_test(backend, data):
     test_name = data["testName"]
     subtest_args = data["subtestArguments"]
@@ -115,10 +153,12 @@ async def start_sub_test(backend, data):
         await backend.send_response("RunTest", {})
 
 
+@request_handler
 async def get_features(backend, data):
     await backend.send_response("FeatureList", {"features": FEATURES})
 
 
+@request_handler
 async def new_driver(backend, data):
     expected_warnings = []
 
@@ -203,6 +243,7 @@ async def new_driver(backend, data):
     await backend.send_response("Driver", {"id": key})
 
 
+@request_handler
 async def new_auth_token_manager(backend, data):
     auth_token_manager_id = backend.next_key()
 
@@ -255,12 +296,14 @@ async def new_auth_token_manager(backend, data):
     )
 
 
+@request_handler
 async def auth_token_manager_get_auth_completed(backend, data):
     auth_token = fromtestkit.to_auth_token(data, "auth")
 
     backend.auth_token_supplies[data["requestId"]] = auth_token
 
 
+@request_handler
 async def auth_token_manager_handle_security_exception_completed(
     backend, data
 ):
@@ -268,6 +311,7 @@ async def auth_token_manager_handle_security_exception_completed(
     backend.auth_token_on_expiration_supplies[data["requestId"]] = handled
 
 
+@request_handler
 async def auth_token_manager_close(backend, data):
     auth_token_manager_id = data["id"]
     del backend.auth_token_managers[auth_token_manager_id]
@@ -276,6 +320,7 @@ async def auth_token_manager_close(backend, data):
     )
 
 
+@request_handler
 async def new_basic_auth_token_manager(backend, data):
     auth_token_manager_id = backend.next_key()
 
@@ -306,11 +351,13 @@ async def new_basic_auth_token_manager(backend, data):
     )
 
 
+@request_handler
 async def basic_auth_token_provider_completed(backend, data):
     auth = fromtestkit.to_auth_token(data, "auth")
     backend.basic_auth_token_supplies[data["requestId"]] = auth
 
 
+@request_handler
 async def new_bearer_auth_token_manager(backend, data):
     auth_token_manager_id = backend.next_key()
 
@@ -341,6 +388,7 @@ async def new_bearer_auth_token_manager(backend, data):
     )
 
 
+@request_handler
 async def bearer_auth_token_provider_completed(backend, data):
     temp_auth_data = data["auth"]
     temp_auth_data.mark_item_as_read_if_equals(
@@ -361,7 +409,7 @@ class TestKitClientCertificateProvider(AsyncClientCertificateProvider):
         self.id = backend.next_key()
         self._backend = backend
 
-    async def get_certificate(self) -> t.Optional[ClientCertificate]:
+    async def get_certificate(self) -> ClientCertificate | None:
         request_id = self._backend.next_key()
         await self._backend.send_response(
             "ClientCertificateProviderRequest",
@@ -382,6 +430,7 @@ class TestKitClientCertificateProvider(AsyncClientCertificateProvider):
         return self._backend.client_cert_supplies.pop(request_id)
 
 
+@request_handler
 async def new_client_certificate_provider(backend, data):
     provider = TestKitClientCertificateProvider(backend)
     backend.client_cert_providers[provider.id] = provider
@@ -390,6 +439,7 @@ async def new_client_certificate_provider(backend, data):
     )
 
 
+@request_handler
 async def client_certificate_provider_close(backend, data):
     client_cert_provider_id = data["id"]
     del backend.client_cert_providers[client_cert_provider_id]
@@ -398,6 +448,7 @@ async def client_certificate_provider_close(backend, data):
     )
 
 
+@request_handler
 async def client_certificate_provider_completed(backend, data):
     has_update = data["hasUpdate"]
     request_id = data["requestId"]
@@ -409,6 +460,7 @@ async def client_certificate_provider_completed(backend, data):
     backend.client_cert_supplies[request_id] = client_cert
 
 
+@request_handler
 async def verify_connectivity(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
@@ -416,6 +468,7 @@ async def verify_connectivity(backend, data):
     await backend.send_response("Driver", {"id": driver_id})
 
 
+@request_handler
 async def get_server_info(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
@@ -432,7 +485,7 @@ async def get_server_info(backend, data):
     )
 
 
-@handler_name("CheckMultiDBSupport")
+@request_handler("CheckMultiDBSupport")
 async def check_multi_db_support(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
@@ -442,6 +495,7 @@ async def check_multi_db_support(backend, data):
     )
 
 
+@request_handler
 async def verify_authentication(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
@@ -453,6 +507,7 @@ async def verify_authentication(backend, data):
     )
 
 
+@request_handler
 async def check_session_auth_support(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
@@ -463,6 +518,7 @@ async def check_session_auth_support(backend, data):
     )
 
 
+@request_handler
 async def execute_query(backend, data):
     driver = backend.drivers[data["driverId"]]
     cypher, params = fromtestkit.to_cypher_and_params(data)
@@ -555,14 +611,17 @@ def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
     return resolve
 
 
+@request_handler
 async def resolver_resolution_completed(backend, data):
     backend.custom_resolutions[data["requestId"]] = data["addresses"]
 
 
+@request_handler
 async def domain_name_resolution_completed(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
+@request_handler
 async def new_bookmark_manager(backend, data):
     bookmark_manager_id = backend.next_key()
 
@@ -583,6 +642,7 @@ async def new_bookmark_manager(backend, data):
     await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
 
+@request_handler
 async def bookmark_manager_close(backend, data):
     bookmark_manager_id = data["id"]
     del backend.bookmark_managers[bookmark_manager_id]
@@ -612,6 +672,7 @@ def bookmarks_supplier(backend, bookmark_manager_id):
     return supplier
 
 
+@request_handler
 async def bookmarks_supplier_completed(backend, data):
     backend.bookmarks_supplies[data["requestId"]] = (
         neo4j.Bookmarks.from_raw_values(data["bookmarks"])
@@ -642,10 +703,12 @@ def bookmarks_consumer(backend, bookmark_manager_id):
     return consumer
 
 
+@request_handler
 async def bookmarks_consumer_completed(backend, data):
     backend.bookmarks_consumptions[data["requestId"]] = True
 
 
+@request_handler
 async def driver_close(backend, data):
     key = data["driverId"]
     driver = backend.drivers[key]
@@ -653,6 +716,7 @@ async def driver_close(backend, data):
     await backend.send_response("Driver", {"id": key})
 
 
+@request_handler
 async def check_driver_is_encrypted(backend, data):
     key = data["driverId"]
     driver = backend.drivers[key]
@@ -670,6 +734,7 @@ class SessionTracker:
         self.error_id = ""
 
 
+@request_handler
 async def new_session(backend, data):
     driver = backend.drivers[data["driverId"]]
     config = {
@@ -706,6 +771,7 @@ async def new_session(backend, data):
     await backend.send_response("Session", {"id": key})
 
 
+@request_handler
 async def session_run(backend, data):
     session = backend.sessions[data["sessionId"]].session
     query, params = fromtestkit.to_query_and_params(data)
@@ -715,6 +781,7 @@ async def session_run(backend, data):
     await backend.send_response("Result", {"id": key, "keys": result.keys()})
 
 
+@request_handler
 async def session_close(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
@@ -723,6 +790,7 @@ async def session_close(backend, data):
     await backend.send_response("Session", {"id": key})
 
 
+@request_handler
 async def session_begin_transaction(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
@@ -733,14 +801,17 @@ async def session_begin_transaction(backend, data):
     await backend.send_response("Transaction", {"id": key})
 
 
+@request_handler
 async def session_read_transaction(backend, data):
     await transaction_func(backend, data, True)
 
 
+@request_handler
 async def session_write_transaction(backend, data):
     await transaction_func(backend, data, False)
 
 
+@request_handler
 async def transaction_func(backend, data, is_read):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
@@ -772,12 +843,14 @@ async def transaction_func(backend, data, is_read):
     await backend.send_response("RetryableDone", {})
 
 
+@request_handler
 async def retryable_positive(backend, data):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
     session_tracker.state = "+"
 
 
+@request_handler
 async def retryable_negative(backend, data):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
@@ -785,6 +858,7 @@ async def retryable_negative(backend, data):
     session_tracker.error_id = data.get("errorId", "")
 
 
+@request_handler
 async def session_last_bookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
@@ -794,6 +868,7 @@ async def session_last_bookmarks(backend, data):
     )
 
 
+@request_handler
 async def transaction_run(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
@@ -804,6 +879,7 @@ async def transaction_run(backend, data):
     await backend.send_response("Result", {"id": key, "keys": result.keys()})
 
 
+@request_handler
 async def transaction_commit(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
@@ -816,6 +892,7 @@ async def transaction_commit(backend, data):
     await backend.send_response("Transaction", {"id": key})
 
 
+@request_handler
 async def transaction_rollback(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
@@ -828,6 +905,7 @@ async def transaction_rollback(backend, data):
     await backend.send_response("Transaction", {"id": key})
 
 
+@request_handler
 async def transaction_close(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
@@ -840,6 +918,7 @@ async def transaction_close(backend, data):
     await backend.send_response("Transaction", {"id": key})
 
 
+@request_handler
 async def result_next(backend, data):
     result = backend.results[data["resultId"]]
 
@@ -851,6 +930,7 @@ async def result_next(backend, data):
     await backend.send_response("Record", totestkit.record(record))
 
 
+@request_handler
 async def result_single(backend, data):
     result = backend.results[data["resultId"]]
     await backend.send_response(
@@ -858,6 +938,7 @@ async def result_single(backend, data):
     )
 
 
+@request_handler
 async def result_single_optional(backend, data):
     result = backend.results[data["resultId"]]
     with warnings.catch_warnings(record=True) as warning_list:
@@ -871,6 +952,7 @@ async def result_single_optional(backend, data):
     )
 
 
+@request_handler
 async def result_peek(backend, data):
     result = backend.results[data["resultId"]]
     record = await result.peek()
@@ -880,6 +962,7 @@ async def result_peek(backend, data):
         await backend.send_response("NullRecord", {})
 
 
+@request_handler
 async def result_list(backend, data):
     result = backend.results[data["resultId"]]
     records = await AsyncUtil.list(result)
@@ -888,6 +971,7 @@ async def result_list(backend, data):
     )
 
 
+@request_handler
 async def result_consume(backend, data):
     result = backend.results[data["resultId"]]
     summary = await result.consume()
@@ -895,6 +979,7 @@ async def result_consume(backend, data):
     await backend.send_response("Summary", totestkit.summary(summary))
 
 
+@request_handler
 async def forced_routing_table_update(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
@@ -907,6 +992,7 @@ async def forced_routing_table_update(backend, data):
     await backend.send_response("Driver", {"id": driver_id})
 
 
+@request_handler
 async def get_routing_table(backend, data):
     driver_id = data["driverId"]
     database = data["database"]
@@ -922,6 +1008,7 @@ async def get_routing_table(backend, data):
     await backend.send_response("RoutingTable", response_data)
 
 
+@request_handler
 async def get_connection_pool_metrics(backend, data):
     driver_id = data["driverId"]
     address = neo4j.Address.parse(data["address"])
@@ -941,6 +1028,7 @@ async def get_connection_pool_metrics(backend, data):
     )
 
 
+@request_handler
 async def fake_time_install(backend, _data):
     assert backend.fake_time is None
     assert backend.fake_time_ticker is None
@@ -950,6 +1038,7 @@ async def fake_time_install(backend, _data):
     await backend.send_response("FakeTimeAck", {})
 
 
+@request_handler
 async def fake_time_tick(backend, data):
     assert backend.fake_time is not None
     assert backend.fake_time_ticker is not None
@@ -960,6 +1049,7 @@ async def fake_time_tick(backend, data):
     await backend.send_response("FakeTimeAck", {})
 
 
+@request_handler
 async def fake_time_uninstall(backend, _data):
     assert backend.fake_time is not None
     assert backend.fake_time_ticker is not None
