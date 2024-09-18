@@ -175,7 +175,7 @@ class ResultSummary:
 
         return notification
 
-    def _set_notifications(self):
+    def _set_notifications(self) -> None:
         if "notifications" in self.metadata:
             notifications = self.metadata["notifications"]
             if not isinstance(notifications, list):
@@ -197,7 +197,7 @@ class ResultSummary:
                     continue
                 notification = self._notification_from_status(status)
                 notifications.append(notification)
-            self.notifications = notifications
+            self.notifications = notifications or None
             return
 
         self.notifications = None
