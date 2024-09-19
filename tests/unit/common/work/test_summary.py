@@ -1465,7 +1465,7 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
         summary.summary_notifications
     )
 
-    assert notifications == []
+    assert notifications is None
     assert summary_notifications == []
 
 
@@ -1736,7 +1736,7 @@ def test_no_notification_from_wrong_type_status(
     notifications = summary.notifications
     summary_notifications = summary.summary_notifications
 
-    assert notifications == []
+    assert notifications is None
     assert summary_notifications == []
 
 
@@ -1930,7 +1930,7 @@ def test_no_notification_from_status_without_neo4j_code(
     notifications = summary.notifications
     summary_notifications = summary.summary_notifications
 
-    assert notifications == []
+    assert notifications is None
     assert summary_notifications == []
 
 
@@ -2081,7 +2081,7 @@ def test_notification_from_broken_status(
     summary = ResultSummary(*args, **kwargs)
 
     notifications = summary.notifications
-    assert notifications == []
+    assert notifications is None
 
 
 def test_notifications_from_statuses_keep_order(

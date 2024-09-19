@@ -64,7 +64,8 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
 
     def serialize_notifications() -> list[dict] | None:
         if summary_.notifications is None:
-            return None
+            gql_aware_protocol = summary_.server.protocol_version >= (5, 5)
+            return [] if gql_aware_protocol else None
         return [
             serialize_notification(n) for n in summary_.summary_notifications
         ]
