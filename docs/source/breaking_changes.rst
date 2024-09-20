@@ -44,7 +44,11 @@ The driver configuration argument :code:`encrypted` is by default set to :code:`
 
     from neo4j import GraphDatabase
 
-    driver = GraphDatabase("bolt://localhost:7687", auth=("neo4j", "password"), encrypted=True)
+    driver = GraphDatabase.driver(
+        "bolt://localhost:7687",
+        auth=("neo4j", "password"),
+        encrypted=True,
+    )
     driver.close()
 
 

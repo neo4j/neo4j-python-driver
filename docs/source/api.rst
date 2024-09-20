@@ -895,7 +895,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
     from neo4j import GraphDatabase
 
 
-    with GraphDatabase(uri, auth=(user, password)) as driver:
+    with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         session = driver.session()
         try:
             result = session.run("MATCH (a:Person) RETURN a.name AS name")

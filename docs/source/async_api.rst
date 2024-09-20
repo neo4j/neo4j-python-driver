@@ -556,7 +556,7 @@ To construct a :class:`neo4j.AsyncSession` use the :meth:`neo4j.AsyncDriver.sess
 
 
     async def main():
-        async with AsyncGraphDatabase(uri, auth=(user, password)) as driver:
+        async with AsyncGraphDatabase.driver(uri, auth=(user, password)) as driver:
             session = driver.session()
             try:
                 result = await session.run("MATCH (a:Person) RETURN a.name AS name")
