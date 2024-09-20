@@ -18,4 +18,4 @@ from _common import run_python
 
 
 if __name__ == "__main__":
-    run_python(["-m", "tox", "-f", "unit"])
+    run_python(["-m", "tox", "-vv", "-f", "unit"])

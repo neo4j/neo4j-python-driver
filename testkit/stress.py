@@ -22,7 +22,7 @@ import sys
 if __name__ == "__main__":
     # Until below works
     sys.exit(0)
-    cmd = ["python", "-m", "tox", "-c", "tox-performance.ini"]
+    cmd = ["python", "-m", "tox", "-vv", "-c", "tox-performance.ini"]
     scheme = os.environ["TEST_NEO4J_SCHEME"]
     host = os.environ["TEST_NEO4J_HOST"]
     port = os.environ["TEST_NEO4J_PORT"]
