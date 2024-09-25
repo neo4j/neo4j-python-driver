@@ -1094,9 +1094,9 @@ class AsyncBolt5x7(AsyncBolt5x6):
                 self.local_port,
                 diag_record,
             )
-            return
-        for key, value in self.DEFAULT_ERROR_DIAGNOSTIC_RECORD:
-            diag_record.setdefault(key, value)
+        else:
+            for key, value in self.DEFAULT_ERROR_DIAGNOSTIC_RECORD:
+                diag_record.setdefault(key, value)
         self._enrich_error_diagnostic_record(metadata.get("cause"))
 
     async def _process_message(self, tag, fields):

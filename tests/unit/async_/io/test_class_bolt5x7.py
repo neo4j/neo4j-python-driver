@@ -841,11 +841,10 @@ def _build_error_hierarchy_metadata(diag_records_metadata):
     current_root = metadata
     for i, r in enumerate(diag_records_metadata[1:]):
         current_root["cause"] = {
-            "gql_status": f"BAR{i + 1:02}",
             "description": f"error cause nr. {i + 1}",
             "message": f"cause message {i + 1}",
         }
-        if r is not ...:
-            metadata["diagnostic_record"] = r
         current_root = current_root["cause"]
+        if r is not ...:
+            current_root["diagnostic_record"] = r
     return metadata
