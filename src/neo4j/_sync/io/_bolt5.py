@@ -1009,7 +1009,7 @@ class Bolt5x5(Bolt5x4):
                             diag_record,
                         )
                         continue
-                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
+                    for key, value in self.DEFAULT_STATUS_DIAGNOSTIC_RECORD:
                         diag_record.setdefault(key, value)
 
             enrich(metadata)
@@ -1097,6 +1097,7 @@ class Bolt5x7(Bolt5x6):
             return
         for key, value in self.DEFAULT_ERROR_DIAGNOSTIC_RECORD:
             diag_record.setdefault(key, value)
+        self._enrich_error_diagnostic_record(metadata.get("cause"))
 
     def _process_message(self, tag, fields):
         """Process at most one message from the server, if available.

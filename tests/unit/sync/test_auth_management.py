@@ -59,7 +59,7 @@ CODES_HANDLED_BY_BEARER_MANAGER = {
     "Neo.ClientError.Security.Unauthorized",
 }
 SAMPLE_ERRORS = [
-    Neo4jError.hydrate(code=code)
+    Neo4jError._hydrate_neo4j(code=code)
     for code in {
         "Neo.ClientError.Security.AuthenticationRateLimit",
         "Neo.ClientError.Security.AuthorizationExpired",

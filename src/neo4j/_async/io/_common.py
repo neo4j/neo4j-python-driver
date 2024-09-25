@@ -264,7 +264,7 @@ class Response:
         if self.connection.PROTOCOL_VERSION >= GQL_ERROR_AWARE_PROTOCOL:
             return Neo4jError._hydrate_gql(**metadata)
         else:
-            return Neo4jError.hydrate(**metadata)
+            return Neo4jError._hydrate_neo4j(**metadata)
 
 
 class InitResponse(Response):

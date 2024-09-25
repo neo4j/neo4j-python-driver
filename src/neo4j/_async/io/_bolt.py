@@ -217,6 +217,7 @@ class AsyncBolt:
             try:
                 return vars(auth)
             except (KeyError, TypeError) as e:
+                # TODO: 6.0 - change this to be a DriverError (or subclass)
                 raise AuthError(
                     f"Cannot determine auth details from {auth!r}"
                 ) from e
@@ -306,6 +307,7 @@ class AsyncBolt:
             AsyncBolt5x4,
             AsyncBolt5x5,
             AsyncBolt5x6,
+            AsyncBolt5x7,
         )
 
         handlers = {
@@ -322,6 +324,7 @@ class AsyncBolt:
             AsyncBolt5x4.PROTOCOL_VERSION: AsyncBolt5x4,
             AsyncBolt5x5.PROTOCOL_VERSION: AsyncBolt5x5,
             AsyncBolt5x6.PROTOCOL_VERSION: AsyncBolt5x6,
+            AsyncBolt5x7.PROTOCOL_VERSION: AsyncBolt5x7,
         }
 
         if protocol_version is None:
@@ -509,6 +512,7 @@ class AsyncBolt:
             await AsyncBoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
+            # TODO: 6.0 - raise public DriverError subclass instead
             raise BoltHandshakeError(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "

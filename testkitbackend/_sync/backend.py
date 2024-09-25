@@ -125,6 +125,17 @@ class Backend:
 
     @staticmethod
     def _exc_stems_from_driver(exc):
+        if isinstance(
+            exc,
+            (
+                Neo4jError,
+                DriverError,
+                UnsupportedServerProduct,
+                BoltError,
+                MarkdAsDriverError,
+            ),
+        ):
+            return True
         stack = traceback.extract_tb(exc.__traceback__)
         for frame in stack[-1:1:-1]:
             p = Path(frame.filename)
@@ -134,16 +145,30 @@ class Backend:
                 return True
         return None
 
-    def write_driver_exc(self, exc):
+    def _serialize_driver_exc(self, exc):
         log.debug(exc.args)
         log.debug("".join(traceback.format_exception(exc)))
 
         key = self.next_key()
         self.errors[key] = exc
 
-        data = totestkit.driver_exc(exc, id_=key)
+        return totestkit.driver_exc(exc, id_=key)
 
-        self.send_response(data["name"], data["data"])
+    @staticmethod
+    def _serialize_backend_error(exc):
+        tb = "".join(traceback.format_exception(exc))
+        log.error(tb)
+        return {"name": "BackendError", "data": {"msg": tb}}
+
+    def _serialize_exc(self, exc):
+        try:
+            if isinstance(exc, requests.FrontendError):
+                return {"name": "FrontendError", "data": {"msg": str(exc)}}
+            if self._exc_stems_from_driver(exc):
+                return self._serialize_driver_exc(exc)
+        except Exception as e:
+            return self._serialize_backend_error(e)
+        return self._serialize_backend_error(exc)
 
     def _process(self, request):
         # Process a received request.
@@ -164,23 +189,9 @@ class Backend:
                     f"Backend does not support some properties of the {name} "
                     f"request: {', '.join(unused_keys)}"
                 )
-        except (
-            Neo4jError,
-            DriverError,
-            UnsupportedServerProduct,
-            BoltError,
-            MarkdAsDriverError,
-        ) as e:
-            self.write_driver_exc(e)
-        except requests.FrontendError as e:
-            self.send_response("FrontendError", {"msg": str(e)})
         except Exception as e:
-            if self._exc_stems_from_driver(e):
-                self.write_driver_exc(e)
-            else:
-                tb = traceback.format_exc()
-                log.error(tb)
-                self.send_response("BackendError", {"msg": tb})
+            data = self._serialize_exc(e)
+            self.send_response(data["name"], data["data"])
 
     def send_response(self, name, data):
         """Send a response to backend."""

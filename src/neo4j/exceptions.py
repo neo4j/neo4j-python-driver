@@ -59,13 +59,13 @@ Driver API Errors
 
 from __future__ import annotations
 
-import sys
 import typing as t
-from copy import deepcopy
+from copy import deepcopy as _deepcopy
+from enum import Enum as _Enum
 
 from ._meta import (
     deprecated,
-    preview,
+    preview as _preview,
 )
 
 
@@ -84,6 +84,8 @@ __all__ = [
     "DriverError",
     "Forbidden",
     "ForbiddenOnReadOnlyDatabase",
+    "GQLError",
+    "GQLErrorClassification",
     "IncompleteCommit",
     "Neo4jError",
     "NotALeader",
@@ -106,6 +108,8 @@ __all__ = [
 
 
 if t.TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import typing_extensions as te
 
     from ._async.work import (
@@ -129,6 +133,7 @@ if t.TYPE_CHECKING:
     ]
     _TResult = t.Union[AsyncResult, Result]
     _TSession = t.Union[AsyncSession, Session]
+    _T = t.TypeVar("_T")
 else:
     _TTransaction = t.Union[
         "AsyncManagedTransaction",
@@ -209,65 +214,424 @@ ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
 }
 
 
-_UNKNOWN_GQL_STATUS = "50N42"
-_UNKNOWN_GQL_EXPLANATION = "general processing exception - unknown error"
-_UNKNOWN_GQL_CLASSIFICATION = "UNKNOWN"  # TODO: define final value
-_UNKNOWN_GQL_DIAGNOSTIC_RECORD = (
-    (
-        "OPERATION",
-        "",
-    ),
-    (
-        "OPERATION_CODE",
-        "0",
-    ),
+_UNKNOWN_NEO4J_CODE: te.Final[str] = "Neo.DatabaseError.General.UnknownError"
+# TODO: 6.0 - Make _UNKNOWN_GQL_MESSAGE the default message
+_UNKNOWN_MESSAGE: te.Final[str] = "An unknown error occurred"
+_UNKNOWN_GQL_STATUS: te.Final[str] = "50N42"
+_UNKNOWN_GQL_DESCRIPTION: te.Final[str] = (
+    "general processing exception - unknown error"
+)
+# FIXME: _UNKNOWN_GQL_MESSAGE needs final format
+_UNKNOWN_GQL_MESSAGE: te.Final[str] = (
+    f"{_UNKNOWN_GQL_STATUS}: {_UNKNOWN_GQL_DESCRIPTION}. {_UNKNOWN_MESSAGE}"
+)
+_UNKNOWN_GQL_DIAGNOSTIC_RECORD: te.Final[tuple[tuple[str, t.Any], ...]] = (
+    ("OPERATION", ""),
+    ("OPERATION_CODE", "0"),
     ("CURRENT_SCHEMA", "/"),
 )
 
 
-def _make_gql_description(explanation: str, message: str | None = None) -> str:
-    if message is None:
-        return f"error: {explanation}"
+class GQLErrorClassification(str, _Enum):
+    """
+    Server-side notification category.
 
-    return f"error: {explanation}. {message}"
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Hence, can also be compared to its string value::
+
+        >>> GQLErrorClassification.CLIENT_ERROR == "CLIENT_ERROR"
+        True
+        >>> GQLErrorClassification.DATABASE_ERROR == "DATABASE_ERROR"
+        True
+        >>> GQLErrorClassification.TRANSIENT_ERROR == "TRANSIENT_ERROR"
+        True
+
+    .. seealso:: :attr:`.GQLError.classification`
+
+    .. versionadded:: 5.xx
+    """
+
+    CLIENT_ERROR = "CLIENT_ERROR"
+    DATABASE_ERROR = "DATABASE_ERROR"
+    TRANSIENT_ERROR = "TRANSIENT_ERROR"
+    #: Used when the server provides a Classification which the driver is
+    #: unaware of.
+    #: This can happen when connecting to a server newer than the driver or
+    #: before GQL errors were introduced.
+    UNKNOWN = "UNKNOWN"
+
+
+class GQLError(Exception):
+    """
+    The GQL compliant data of an error.
+
+    This error isn't raised by the driver as it.
+    Instead, only subclasses are raised.
+
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. versionadded: 5.xx
+    """
+
+    _gql_status: str
+    # TODO: 6.0 - make message always str
+    _message: str | None
+    _gql_status_description: str
+    _gql_raw_classification: str | None
+    _gql_classification: GQLErrorClassification
+    _status_diagnostic_record: dict[str, t.Any]  # original, internal only
+    _diagnostic_record: dict[str, t.Any]  # copy to be used externally
+    __cause__: GQLError | None
+
+    @staticmethod
+    def _hydrate_cause(**metadata: t.Any) -> GQLError:
+        meta_extractor = _MetaExtractor(metadata)
+        gql_status = meta_extractor.str_value("gql_status")
+        description = meta_extractor.str_value("description")
+        message = meta_extractor.str_value("message")
+        diagnostic_record = meta_extractor.map_value("diagnostic_record")
+        cause_map = meta_extractor.map_value("cause")
+        if cause_map is not None:
+            cause = GQLError._hydrate_cause(**cause_map)
+        else:
+            cause = None
+        inst = GQLError()
+        inst._init_gql(
+            gql_status=gql_status,
+            message=message,
+            description=description,
+            diagnostic_record=diagnostic_record,
+            cause=cause,
+        )
+        return inst
+
+    def _init_gql(
+        self,
+        *,
+        gql_status: str | None = None,
+        message: str | None = None,
+        description: str | None = None,
+        diagnostic_record: dict[str, t.Any] | None = None,
+        cause: GQLError | None = None,
+    ) -> None:
+        if gql_status is None or message is None or description is None:
+            self._gql_status = _UNKNOWN_GQL_STATUS
+            self._message = _UNKNOWN_GQL_MESSAGE
+            self._gql_status_description = f"error: {_UNKNOWN_GQL_DESCRIPTION}"
+        else:
+            self._gql_status = gql_status
+            self._message = message
+            self._gql_status_description = description
+        if diagnostic_record is not None:
+            self._status_diagnostic_record = diagnostic_record
+        super().__setattr__("__cause__", cause)
+
+    def _set_unknown_gql(self):
+        self._gql_status = _UNKNOWN_GQL_STATUS
+        self._message = _UNKNOWN_GQL_MESSAGE
+        self._gql_status_description = f"error: {_UNKNOWN_GQL_DESCRIPTION}"
+
+    @staticmethod
+    def _format_message_details(
+        gql_status: str | None,
+        description: str | None,
+        details: str | None,
+    ):
+        if gql_status is None:
+            gql_status = _UNKNOWN_GQL_STATUS
+        if description is None:
+            description = _UNKNOWN_GQL_DESCRIPTION
+        if details is None:
+            return f"{gql_status}: {description}"
+        return f"{gql_status}: {description}. {details}"
+
+    def __setattr__(self, key, value):
+        if key == "__cause__":
+            raise AttributeError(
+                "Cannot set __cause__ on GQLError or `raise ... from ...`."
+            )
+        super().__setattr__(key, value)
+
+    @property
+    def _gql_status_no_preview(self) -> str:
+        if hasattr(self, "_gql_status"):
+            return self._gql_status
+
+        self._set_unknown_gql()
+        return self._gql_status
+
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def gql_status(self) -> str:
+        """
+        The GQLSTATUS returned from the server.
+
+        The status code ``50N42`` (unknown error) is a special code that the
+        driver will use for polyfilling (when connected to an old,
+        non-GQL-aware server).
+        Further, it may be used by servers during the transition-phase to
+        GQLSTATUS-awareness.
+
+        This means this code is not guaranteed to be stable and may change in
+        future versions.
+
+        **This is a preview**.
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        """
+        return self._gql_status_no_preview
+
+    @property
+    def _message_no_preview(self) -> str | None:
+        if hasattr(self, "_message"):
+            return self._message
+
+        self._set_unknown_gql()
+        return self._message
+
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def message(self) -> str | None:
+        """
+        TODO.
+
+        **This is a preview**.
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        """
+        return self._message_no_preview
+
+    @property
+    def _gql_status_description_no_preview(self) -> str:
+        if hasattr(self, "_gql_status_description"):
+            return self._gql_status_description
+
+        self._set_unknown_gql()
+        return self._gql_status_description
+
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def gql_status_description(self) -> str:
+        """
+        A description of the GQLSTATUS returned from the server.
+
+        This description is meant for human consumption and debugging purposes.
+        Don't rely on it in a programmatic way.
+
+        **This is a preview**.
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        """
+        return self._gql_status_description_no_preview
+
+    @property
+    def _gql_raw_classification_no_preview(self) -> str | None:
+        if hasattr(self, "_gql_raw_classification"):
+            return self._gql_raw_classification
+
+        diag_record = self._get_status_diagnostic_record()
+        classification = diag_record.get("_classification")
+        if not isinstance(classification, str):
+            self._gql_raw_classification = None
+        else:
+            self._gql_raw_classification = classification
+        return self._gql_raw_classification
+
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def gql_raw_classification(self) -> str | None:
+        """
+        TODO.
+
+        **This is a preview**.
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        """
+        return self._gql_raw_classification_no_preview
+
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def gql_classification(self) -> GQLErrorClassification:
+        """
+        TODO.
+
+        **This is a preview**.
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        """
+        if hasattr(self, "_gql_classification"):
+            return self._gql_classification
+
+        classification = self._gql_raw_classification_no_preview
+        if not (
+            isinstance(classification, str)
+            and classification
+            in t.cast(t.Iterable[str], iter(GQLErrorClassification))
+        ):
+            self._gql_classification = GQLErrorClassification.UNKNOWN
+        else:
+            self._gql_classification = GQLErrorClassification(classification)
+        return self._gql_classification
+
+    def _get_status_diagnostic_record(self) -> dict[str, t.Any]:
+        if hasattr(self, "_status_diagnostic_record"):
+            return self._status_diagnostic_record
+
+        self._status_diagnostic_record = dict(_UNKNOWN_GQL_DIAGNOSTIC_RECORD)
+        return self._status_diagnostic_record
+
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def diagnostic_record(self) -> Mapping[str, t.Any]:
+        """
+        Further information about the GQLSTATUS for diagnostic purposes.
+
+        **This is a preview**.
+        It might be changed without following the deprecation policy.
+        See also
+        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        """
+        if hasattr(self, "_diagnostic_record"):
+            return self._diagnostic_record
+
+        self._diagnostic_record = _deepcopy(
+            self._get_status_diagnostic_record()
+        )
+        return self._diagnostic_record
+
+    @_preview("GQLSTATUS support is a preview feature.")
+    def __str__(self):
+        return (
+            f"{{gql_status: {self._gql_status_no_preview}}} "
+            f"{{gql_status_description: "
+            f"{self._gql_status_description_no_preview}}} "
+            f"{{message: {self._message_no_preview}}} "
+            f"{{diagnostic_record: {self.diagnostic_record}}} "
+            f"{{raw_classification: "
+            f"{self._gql_raw_classification_no_preview}}}"
+        )
 
 
 # Neo4jError
-class Neo4jError(Exception):
+class Neo4jError(GQLError):
     """Raised when the Cypher engine returns an error to the client."""
 
-    _neo4j_code: str
-    _message: str
-    _classification: str
-    _category: str
-    _title: str
+    _neo4j_code: str | None
+    _classification: str | None
+    _category: str | None
+    _title: str | None
     #: (dict) Any additional information returned by the server.
-    _metadata: dict[str, t.Any]
-
-    _gql_status: str
-    _gql_explanation: str  # internal use only
-    _gql_description: str
-    _gql_status_description: str
-    _gql_classification: str
-    _status_diagnostic_record: dict[str, t.Any]  # original, internal only
-    _diagnostic_record: dict[str, t.Any]  # copy to be used externally
+    _metadata: dict[str, t.Any] | None
 
     _retryable = False
 
+    def __init__(self, *args) -> None:
+        Exception.__init__(self, *args)
+        self._neo4j_code = None
+        self._classification = None
+        self._category = None
+        self._title = None
+        self._metadata = None
+        self._message = None
+
+        # TODO: 6.0 - do this instead to get rid of all optional attributes
+        # self._neo4j_code = _UNKNOWN_NEO4J_CODE
+        # _, self._classification, self._category, self._title = (
+        #     self._neo4j_code.split(".")
+        # )
+        # self._metadata = {}
+        # self._init_gql(message=_UNKNOWN_MESSAGE)
+
+    # TODO: 6.0 - Remove this alias
     @classmethod
-    def _hydrate(
+    @deprecated(
+        "Neo4jError.hydrate is deprecated and will be "
+        "removed in a future version. It is an internal method and not meant "
+        "for external use."
+    )
+    def hydrate(
+        cls,
+        code: str | None = None,
+        message: str | None = None,
+        **metadata: t.Any,
+    ) -> Neo4jError:
+        # backward compatibility: make falsy values None
+        code = code or None
+        message = message or None
+        return cls._hydrate_neo4j(code=code, message=message, **metadata)
+
+    @classmethod
+    def _hydrate_neo4j(cls, **metadata: t.Any) -> Neo4jError:
+        meta_extractor = _MetaExtractor(metadata)
+        code = meta_extractor.str_value("code")
+        if not code:
+            code = _UNKNOWN_NEO4J_CODE
+        message = meta_extractor.str_value("message")
+        if not message:
+            message = _UNKNOWN_MESSAGE
+        inst = cls._basic_hydrate(
+            neo4j_code=code,
+            message=message,
+        )
+        inst._init_gql(
+            gql_status=_UNKNOWN_GQL_STATUS,
+            message=message,
+            description=(f"error: {_UNKNOWN_GQL_DESCRIPTION}. {message}"),
+        )
+        inst._metadata = meta_extractor.rest()
+        return inst
+
+    @classmethod
+    def _hydrate_gql(cls, **metadata: t.Any) -> Neo4jError:
+        meta_extractor = _MetaExtractor(metadata)
+        gql_status = meta_extractor.str_value("gql_status")
+        status_description = meta_extractor.str_value("description")
+        message = meta_extractor.str_value("message", _UNKNOWN_GQL_MESSAGE)
+        neo4j_code = meta_extractor.str_value(
+            "neo4j_code",
+            _UNKNOWN_NEO4J_CODE,
+        )
+        diagnostic_record = meta_extractor.map_value("diagnostic_record")
+        cause_map = meta_extractor.map_value("cause")
+        if cause_map is not None:
+            cause = cls._hydrate_cause(**cause_map)
+        else:
+            cause = None
+
+        inst = cls._basic_hydrate(
+            neo4j_code=neo4j_code,
+            message=message,
+        )
+        inst._init_gql(
+            gql_status=gql_status,
+            message=message,
+            description=status_description,
+            diagnostic_record=diagnostic_record,
+            cause=cause,
+        )
+        inst._metadata = meta_extractor.rest()
+
+        return inst
+
+    @classmethod
+    def _basic_hydrate(
         cls,
         *,
-        neo4j_code: str | None = None,
-        message: str | None = None,
-        gql_status: str | None = None,
-        explanation: str | None = None,
-        diagnostic_record: dict[str, t.Any] | None = None,
-        cause: Neo4jError | None = None,
-    ) -> te.Self:
-        neo4j_code = neo4j_code or "Neo.DatabaseError.General.UnknownError"
-        message = message or "An unknown error occurred"
-
+        neo4j_code: str,
+        message: str,
+        # gql_status: str | None = None,
+        # status_description: str | None = None,
+        # diagnostic_record: dict[str, t.Any] | None = None,
+        # cause: GQLError | None = None,
+    ) -> Neo4jError:
         try:
             _, classification, category, title = neo4j_code.split(".")
         except ValueError:
@@ -283,37 +647,21 @@ class Neo4jError(Exception):
             if code_override is not None:
                 neo4j_code = code_override
 
-        error_class = cls._extract_error_class(classification, neo4j_code)
+        error_class: type[Neo4jError] = cls._extract_error_class(
+            classification, neo4j_code
+        )
 
-        if explanation is not None:
-            gql_description = _make_gql_description(explanation, message)
-            inst = error_class(gql_description)
-            inst._gql_description = gql_description
-        else:
-            inst = error_class(message)
-
+        inst = error_class(message)
         inst._neo4j_code = neo4j_code
-        inst._message = message
         inst._classification = classification
         inst._category = category
         inst._title = title
-        if gql_status:
-            inst._gql_status = gql_status
-        if explanation:
-            inst._gql_explanation = explanation
-        if diagnostic_record is not None:
-            inst._status_diagnostic_record = diagnostic_record
-        if cause:
-            inst.__cause__ = cause
-        else:
-            current_exc = sys.exc_info()[1]
-            if current_exc is not None:
-                inst.__context__ = current_exc
+        inst._message = message
 
         return inst
 
     @classmethod
-    def _extract_error_class(cls, classification, code):
+    def _extract_error_class(cls, classification, code) -> type[Neo4jError]:
         if classification == CLASSIFICATION_CLIENT:
             try:
                 return client_errors[code]
@@ -332,54 +680,8 @@ class Neo4jError(Exception):
         else:
             return cls
 
-    @classmethod
-    def hydrate(
-        cls,
-        code: str | None = None,
-        message: str | None = None,
-        **metadata: t.Any,
-    ) -> te.Self:
-        inst = cls._hydrate(neo4j_code=code, message=message)
-        inst._metadata = metadata
-        return inst
-
-    @classmethod
-    def _hydrate_gql(cls, **metadata: t.Any) -> te.Self:
-        gql_status = metadata.pop("gql_status", None)
-        if not isinstance(gql_status, str):
-            gql_status = None
-        status_explanation = metadata.pop("status_explanation", None)
-        if not isinstance(status_explanation, str):
-            status_explanation = None
-        message = metadata.pop("status_message", None)
-        if not isinstance(message, str):
-            message = None
-        neo4j_code = metadata.pop("neo4j_code", None)
-        if not isinstance(neo4j_code, str):
-            neo4j_code = None
-        diagnostic_record = metadata.pop("diagnostic_record", None)
-        if not isinstance(diagnostic_record, dict):
-            diagnostic_record = None
-        cause = metadata.pop("cause", None)
-        if not isinstance(cause, dict):
-            cause = None
-        else:
-            cause = cls._hydrate_gql(**cause)
-
-        inst = cls._hydrate(
-            neo4j_code=neo4j_code,
-            message=message,
-            gql_status=gql_status,
-            explanation=status_explanation,
-            diagnostic_record=diagnostic_record,
-            cause=cause,
-        )
-        inst._metadata = metadata
-
-        return inst
-
     @property
-    def message(self) -> str:
+    def message(self) -> str | None:
         """
         TODO.
 
@@ -392,12 +694,8 @@ class Neo4jError(Exception):
     def message(self, value: str) -> None:
         self._message = value
 
-    # TODO: 6.0 - Remove this alias
     @property
-    @deprecated(
-        "The code of a Neo4jError is deprecated. Use neo4j_code instead."
-    )
-    def code(self) -> str:
+    def code(self) -> str | None:
         """
         The neo4j error code returned by the server.
 
@@ -413,20 +711,7 @@ class Neo4jError(Exception):
         self._neo4j_code = value
 
     @property
-    def neo4j_code(self) -> str:
-        """
-        The error code returned by the server.
-
-        There are many Neo4j status codes, see
-        `status codes <https://neo4j.com/docs/status-codes/current/>`_.
-
-        .. versionadded: 5.xx
-        """
-        return self._neo4j_code
-
-    @property
-    @deprecated("classification of Neo4jError is deprecated.")
-    def classification(self) -> str:
+    def classification(self) -> str | None:
         # Undocumented, has been there before
         # TODO 6.0: Remove this property
         return self._classification
@@ -437,31 +722,30 @@ class Neo4jError(Exception):
         self._classification = value
 
     @property
-    @deprecated("category of Neo4jError is deprecated.")
-    def category(self) -> str:
+    def category(self) -> str | None:
         # Undocumented, has been there before
         # TODO 6.0: Remove this property
         return self._category
 
     @category.setter
-    @deprecated("category of Neo4jError is deprecated.")
+    @deprecated("Altering the category of Neo4jError is deprecated.")
     def category(self, value: str) -> None:
         self._category = value
 
     @property
-    @deprecated("title of Neo4jError is deprecated.")
-    def title(self) -> str:
+    # @deprecated("title of Neo4jError is deprecated.")
+    def title(self) -> str | None:
         # Undocumented, has been there before
         # TODO 6.0: Remove this property
         return self._title
 
     @title.setter
-    @deprecated("title of Neo4jError is deprecated.")
+    @deprecated("Altering the title of Neo4jError is deprecated.")
     def title(self, value: str) -> None:
         self._title = value
 
     @property
-    def metadata(self) -> dict[str, t.Any]:
+    def metadata(self) -> dict[str, t.Any] | None:
         # Undocumented, might be useful for debugging
         return self._metadata
 
@@ -470,118 +754,6 @@ class Neo4jError(Exception):
     def metadata(self, value: dict[str, t.Any]) -> None:
         # TODO 6.0: Remove this property
         self._metadata = value
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def gql_status(self) -> str:
-        """
-        The GQLSTATUS returned from the server.
-
-        The status code ``50N42`` (unknown error) is a special code that the
-        driver will use for polyfilling (when connected to an old,
-        non-GQL-aware server).
-        Further, it may be used by servers during the transition-phase to
-        GQLSTATUS-awareness.
-
-        This means this code is not guaranteed to be stable and may change in
-        future versions.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        if hasattr(self, "_gql_status"):
-            return self._gql_status
-
-        self._gql_status = _UNKNOWN_GQL_STATUS
-        return self._gql_status
-
-    def _get_explanation(self) -> str:
-        if hasattr(self, "_gql_explanation"):
-            return self._gql_explanation
-
-        self._gql_explanation = _UNKNOWN_GQL_EXPLANATION
-        return self._gql_explanation
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def gql_status_description(self) -> str:
-        """
-        A description of the GQLSTATUS returned from the server.
-
-        This description is meant for human consumption and debugging purposes.
-        Don't rely on it in a programmatic way.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        if hasattr(self, "_gql_status_description"):
-            return self._gql_status_description
-
-        self._gql_status_description = _make_gql_description(
-            self._get_explanation(), self._message
-        )
-        return self._gql_status_description
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def gql_classification(self) -> str:
-        """
-        TODO.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        # TODO
-        if hasattr(self, "_gql_classification"):
-            return self._gql_classification
-
-        diag_record = self._get_status_diagnostic_record()
-        classification = diag_record.get("_classification")
-        if not isinstance(classification, str):
-            self._classification = _UNKNOWN_GQL_CLASSIFICATION
-        else:
-            self._classification = classification
-        return self._classification
-
-    def _get_status_diagnostic_record(self) -> dict[str, t.Any]:
-        if hasattr(self, "_status_diagnostic_record"):
-            return self._status_diagnostic_record
-
-        self._status_diagnostic_record = dict(_UNKNOWN_GQL_DIAGNOSTIC_RECORD)
-        return self._status_diagnostic_record
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def diagnostic_record(self) -> dict[str, t.Any]:
-        """
-        Further information about the GQLSTATUS for diagnostic purposes.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        if hasattr(self, "_diagnostic_record"):
-            return self._diagnostic_record
-
-        self._diagnostic_record = deepcopy(
-            self._get_status_diagnostic_record()
-        )
-        return self._diagnostic_record
 
     # TODO: 6.0 - Remove this alias
     @deprecated(
@@ -666,7 +838,7 @@ class Neo4jError(Exception):
         code = self._neo4j_code
         message = self._message
         if code or message:
-            return f"{{neo4j_code: {code}}} {{message: {message}}}"
+            return f"{{code: {code}}} {{message: {message}}}"
             # TODO: 6.0 - User gql status and status_description instead
             # something like:
             # return (
@@ -675,7 +847,45 @@ class Neo4jError(Exception):
             #     f"{{gql_status_description: {self.gql_status_description}}} "
             #     f"{{diagnostic_record: {self.diagnostic_record}}}"
             # )
-        return super().__str__()
+        return Exception.__str__(self)
+
+
+class _MetaExtractor:
+    def __init__(self, metadata: dict[str, t.Any]):
+        self._metadata = metadata
+
+    def rest(self) -> dict[str, t.Any]:
+        return self._metadata
+
+    @t.overload
+    def str_value(self, key: str) -> str | None: ...
+
+    @t.overload
+    def str_value(self, key: str, default: _T) -> str | _T: ...
+
+    def str_value(
+        self, key: str, default: _T | None = None
+    ) -> str | _T | None:
+        res = self._metadata.pop(key, default)
+        if not isinstance(res, str):
+            res = default
+        return res
+
+    @t.overload
+    def map_value(self, key: str) -> dict[str, t.Any] | None: ...
+
+    @t.overload
+    def map_value(self, key: str, default: _T) -> dict[str, t.Any] | _T: ...
+
+    def map_value(
+        self, key: str, default: _T | None = None
+    ) -> dict[str, t.Any] | _T | None:
+        res = self._metadata.pop(key, default)
+        if not (
+            isinstance(res, dict) and all(isinstance(k, str) for k in res)
+        ):
+            res = default
+        return res
 
 
 # Neo4jError > ClientError
@@ -788,11 +998,8 @@ transient_errors: dict[str, type[Neo4jError]] = {
 
 
 # DriverError
-class DriverError(Exception):
+class DriverError(GQLError):
     """Raised when the Driver raises an error."""
-
-    _diagnostic_record: dict[str, t.Any]
-    _gql_description: str
 
     def is_retryable(self) -> bool:
         """
@@ -809,78 +1016,8 @@ class DriverError(Exception):
         """
         return False
 
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def gql_status(self) -> str:
-        """
-        The GQLSTATUS of this error.
-
-        .. seealso:: :attr:`.Neo4jError.gql_status`
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        return _UNKNOWN_GQL_STATUS
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def gql_status_description(self) -> str:
-        """
-        A description of the GQLSTATUS.
-
-        This description is meant for human consumption and debugging purposes.
-        Don't rely on it in a programmatic way.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        if hasattr(self, "_gql_description"):
-            return self._gql_description
-
-        self._gql_description = _make_gql_description(_UNKNOWN_GQL_EXPLANATION)
-        return self._gql_description
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def gql_classification(self) -> str:
-        """
-        TODO.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        return _UNKNOWN_GQL_CLASSIFICATION
-
-    @property
-    @preview("GQLSTATUS support is a preview feature.")
-    def diagnostic_record(self) -> dict[str, t.Any]:
-        """
-        Further information about the GQLSTATUS for diagnostic purposes.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. versionadded: 5.xx
-        """
-        if hasattr(self, "_diagnostic_record"):
-            return self._diagnostic_record
-
-        self._diagnostic_record = dict(_UNKNOWN_GQL_DIAGNOSTIC_RECORD)
-        return self._diagnostic_record
+    def __str__(self):
+        return Exception.__str__(self)
 
 
 # DriverError > SessionError
@@ -962,6 +1099,13 @@ class SessionExpired(DriverError):
     its original parameters.
     """
 
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._init_gql(
+            gql_status="08000",
+            description="error: connection exception",
+        )
+
     def is_retryable(self) -> bool:
         return True
 
@@ -974,6 +1118,13 @@ class ServiceUnavailable(DriverError):
     This may be due to incorrect configuration or could indicate a runtime
     failure of a database service that the driver is unable to route around.
     """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._init_gql(
+            gql_status="08000",
+            description="error: connection exception",
+        )
 
     def is_retryable(self) -> bool:
         return True
@@ -1004,6 +1155,16 @@ class IncompleteCommit(ServiceUnavailable):
     in an unknown state with regard to whether the transaction completed
     successfully or not.
     """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._init_gql(
+            gql_status="08007",
+            description=(
+                "error: connection exception - "
+                "transaction resolution unknown"
+            ),
+        )
 
     def is_retryable(self) -> bool:
         return False

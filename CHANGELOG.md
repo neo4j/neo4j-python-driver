@@ -3,7 +3,7 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- TODO: list the deprecations (making error properties read-only)
 
 
 ## Version 5.24

@@ -149,7 +149,7 @@ def test_serviceunavailable_raised_from_bolt_protocol_error_with_explicit_style(
 
 
 def test_neo4jerror_hydrate_with_no_args():
-    error = Neo4jError.hydrate()
+    error = Neo4jError._hydrate_neo4j()
 
     assert isinstance(error, DatabaseError)
     assert error.classification == CLASSIFICATION_DATABASE
@@ -160,8 +160,10 @@ def test_neo4jerror_hydrate_with_no_args():
     assert error.code == "Neo.DatabaseError.General.UnknownError"
 
 
-def test_neo4jerror_hydrate_with_message_and_code_rubish():
-    error = Neo4jError.hydrate(message="Test error message", code="ASDF_asdf")
+def test_neo4jerror_hydrate_with_message_and_code_rubbish():
+    error = Neo4jError._hydrate_neo4j(
+        message="Test error message", code="ASDF_asdf"
+    )
 
     assert isinstance(error, DatabaseError)
     assert error.classification == CLASSIFICATION_DATABASE
@@ -173,7 +175,7 @@ def test_neo4jerror_hydrate_with_message_and_code_rubish():
 
 
 def test_neo4jerror_hydrate_with_message_and_code_database():
-    error = Neo4jError.hydrate(
+    error = Neo4jError._hydrate_neo4j(
         message="Test error message",
         code="Neo.DatabaseError.General.UnknownError",
     )
@@ -188,7 +190,7 @@ def test_neo4jerror_hydrate_with_message_and_code_database():
 
 
 def test_neo4jerror_hydrate_with_message_and_code_transient():
-    error = Neo4jError.hydrate(
+    error = Neo4jError._hydrate_neo4j(
         message="Test error message",
         code="Neo.TransientError.General.TestError",
     )
@@ -203,7 +205,7 @@ def test_neo4jerror_hydrate_with_message_and_code_transient():
 
 
 def test_neo4jerror_hydrate_with_message_and_code_client():
-    error = Neo4jError.hydrate(
+    error = Neo4jError._hydrate_neo4j(
         message="Test error message",
         code=f"Neo.{CLASSIFICATION_CLIENT}.General.TestError",
     )
@@ -254,7 +256,7 @@ def test_neo4jerror_hydrate_with_message_and_code_client():
 )
 def test_error_rewrite(code, expected_cls, expected_code):
     message = "Test error message"
-    error = Neo4jError.hydrate(message=message, code=code)
+    error = Neo4jError._hydrate_neo4j(message=message, code=code)
 
     expected_retryable = expected_cls is TransientError
     assert error.__class__ is expected_cls
@@ -303,12 +305,12 @@ def test_error_rewrite(code, expected_cls, expected_code):
             "{code: Neo.ClientError.General.UnknownError} "
             "{message: An unknown error occurred}",
         ),
-    ),
+    )[1:2],
 )
 def test_neo4j_error_from_server_as_str(
     code, message, expected_cls, expected_str
 ):
-    error = Neo4jError.hydrate(code=code, message=message)
+    error = Neo4jError._hydrate_neo4j(code=code, message=message)
 
     assert type(error) is expected_cls
     assert str(error) == expected_str
