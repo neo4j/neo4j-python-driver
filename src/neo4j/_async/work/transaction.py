@@ -67,7 +67,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
     async def _enter(self) -> te.Self:
         return self
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def _exit(self, exception_type, exception_value, traceback):
         if self._closed_flag:
             return
@@ -79,7 +79,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             return
         await self._close()
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def _begin(
         self,
         database,
@@ -124,7 +124,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             await result._tx_end()
         self._results = []
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def run(
         self,
         query: te.LiteralString,
@@ -196,7 +196,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
         return result
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def _commit(self):
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
@@ -223,7 +223,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
         return self._bookmark
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def _rollback(self):
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
@@ -247,7 +247,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             self._closed_flag = True
             await AsyncUtil.callback(self._on_closed)
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def _close(self):
         if self._closed_flag:
             return

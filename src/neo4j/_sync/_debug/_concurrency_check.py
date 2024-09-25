@@ -62,17 +62,17 @@ class NonConcurrentMethodChecker:
             return NonConcurrentMethodError(msg)
 
         @classmethod
-        def non_concurrent_method(cls, f: _TWrapped) -> _TWrapped:
+        def _non_concurrent_method(cls, f: _TWrapped) -> _TWrapped:
             if Util.is_async_code:
                 if not inspect.iscoroutinefunction(f):
                     raise TypeError(
                         "cannot decorate non-coroutine function with "
-                        "NonConcurrentMethodChecked.non_concurrent_method"
+                        "NonConcurrentMethodChecked._non_concurrent_method"
                     )
             elif not callable(f):
                 raise TypeError(
                     "cannot decorate non-callable object with "
-                    "NonConcurrentMethodChecked.non_concurrent_method"
+                    "NonConcurrentMethodChecked._non_concurrent_method"
                 )
 
             @copy_signature(f)
@@ -100,17 +100,17 @@ class NonConcurrentMethodChecker:
             return inner
 
         @classmethod
-        def non_concurrent_iter(cls, f: _TWrappedIter) -> _TWrappedIter:
+        def _non_concurrent_iter(cls, f: _TWrappedIter) -> _TWrappedIter:
             if Util.is_async_code:
                 if not inspect.isasyncgenfunction(f):
                     raise TypeError(
                         "cannot decorate non-async-generator function with "
-                        "NonConcurrentMethodChecked.non_concurrent_iter"
+                        "NonConcurrentMethodChecked._non_concurrent_iter"
                     )
             elif not inspect.isgeneratorfunction(f):
                 raise TypeError(
                     "cannot decorate non-generator function with "
-                    "NonConcurrentMethodChecked.non_concurrent_iter"
+                    "NonConcurrentMethodChecked._non_concurrent_iter"
                 )
 
             @copy_signature(f)
@@ -145,9 +145,9 @@ class NonConcurrentMethodChecker:
     else:
 
         @classmethod
-        def non_concurrent_method(cls, f: _TWrapped) -> _TWrapped:
+        def _non_concurrent_method(cls, f: _TWrapped) -> _TWrapped:
             return f
 
         @classmethod
-        def non_concurrent_iter(cls, f: _TWrappedIter) -> _TWrappedIter:
+        def _non_concurrent_iter(cls, f: _TWrappedIter) -> _TWrappedIter:
             return f

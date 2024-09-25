@@ -375,7 +375,7 @@ class Result(NonConcurrentMethodChecker):
         assert self._creation_frame_cache is not None  # help mypy a little
         return self._creation_frame_cache
 
-    @NonConcurrentMethodChecker.non_concurrent_iter
+    @NonConcurrentMethodChecker._non_concurrent_iter
     def __iter__(self) -> t.Iterator[Record]:
         """
         Create an iterator returning records.
@@ -408,7 +408,7 @@ class Result(NonConcurrentMethodChecker):
         if self._consumed:
             raise ResultConsumedError(self, _RESULT_CONSUMED_ERROR)
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def __next__(self) -> Record:
         """
         Advance the result stream and return the record.
@@ -498,7 +498,7 @@ class Result(NonConcurrentMethodChecker):
         self._attached = False
         self._exception = exc
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def consume(self) -> ResultSummary:
         """
         Consume the remainder of this result and return the summary.
@@ -565,7 +565,7 @@ class Result(NonConcurrentMethodChecker):
     @t.overload
     def single(self, strict: te.Literal[True]) -> Record: ...
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def single(self, strict: bool = False) -> Record | None:
         """
         Obtain the next and only remaining record or None.
@@ -631,7 +631,7 @@ class Result(NonConcurrentMethodChecker):
                 )
         return buffer.popleft()
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def fetch(self, n: int) -> list[Record]:
         """
         Obtain up to n records from this result.
@@ -655,7 +655,7 @@ class Result(NonConcurrentMethodChecker):
             for _ in range(min(n, len(self._record_buffer)))
         ]
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def peek(self) -> Record | None:
         """
         Obtain the next record from this result without consuming it.
@@ -677,7 +677,7 @@ class Result(NonConcurrentMethodChecker):
             return self._record_buffer[0]
         return None
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def graph(self) -> Graph:
         """
         Turn the result into a :class:`.Graph`.
@@ -701,7 +701,7 @@ class Result(NonConcurrentMethodChecker):
         self._buffer_all()
         return self._hydration_scope.get_graph()
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def value(
         self, key: _TResultKey = 0, default: object = None
     ) -> list[t.Any]:
@@ -725,7 +725,7 @@ class Result(NonConcurrentMethodChecker):
         """
         return [record.value(key, default) for record in self]
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def values(self, *keys: _TResultKey) -> list[list[t.Any]]:
         """
         Return the remainder of the result as a list of values lists.
@@ -746,7 +746,7 @@ class Result(NonConcurrentMethodChecker):
         """
         return [record.values(*keys) for record in self]
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def data(self, *keys: _TResultKey) -> list[dict[str, t.Any]]:
         """
         Return the remainder of the result as a list of dictionaries.
@@ -776,7 +776,7 @@ class Result(NonConcurrentMethodChecker):
         """
         return [record.data(*keys) for record in self]
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def to_eager_result(self) -> EagerResult:
         """
         Convert this result to an :class:`.EagerResult`.
@@ -801,7 +801,7 @@ class Result(NonConcurrentMethodChecker):
             summary=self.consume(),
         )
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def to_df(
         self, expand: bool = False, parse_dates: bool = False
     ) -> pandas.DataFrame:

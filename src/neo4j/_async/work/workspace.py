@@ -197,7 +197,7 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
                 self._connection = None
             self._connection_access_mode = None
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def close(self) -> None:
         if self._closed:
             return

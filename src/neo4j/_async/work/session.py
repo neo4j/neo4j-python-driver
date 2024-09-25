@@ -184,7 +184,7 @@ class AsyncSession(AsyncWorkspace):
         await self._connect(READ_ACCESS, force_auth=True)
         await self._disconnect()
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def close(self) -> None:
         """
         Close the session.
@@ -253,7 +253,7 @@ class AsyncSession(AsyncWorkspace):
             """
             self._handle_cancellation(message="manual cancel")
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def run(
         self,
         query: te.LiteralString | Query,
@@ -334,7 +334,7 @@ class AsyncSession(AsyncWorkspace):
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
         "This method can lead to unexpected behaviour."
     )
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def last_bookmark(self) -> str | None:
         """
         Get the bookmark received following the last completed transaction.
@@ -365,7 +365,7 @@ class AsyncSession(AsyncWorkspace):
             return self._bookmarks[-1]
         return None
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def last_bookmarks(self) -> Bookmarks:
         """
         Return most recent bookmarks of the session.
@@ -455,7 +455,7 @@ class AsyncSession(AsyncWorkspace):
             pipelined=self._pipelined_begin,
         )
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def begin_transaction(
         self,
         metadata: dict[str, t.Any] | None = None,
@@ -614,7 +614,7 @@ class AsyncSession(AsyncWorkspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def execute_read(
         self,
         transaction_function: t.Callable[
@@ -695,7 +695,7 @@ class AsyncSession(AsyncWorkspace):
 
     # TODO: 6.0 - Remove this method
     @deprecated("read_transaction has been renamed to execute_read")
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def read_transaction(
         self,
         transaction_function: t.Callable[
@@ -738,7 +738,7 @@ class AsyncSession(AsyncWorkspace):
             kwargs,
         )
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def execute_write(
         self,
         transaction_function: t.Callable[
@@ -801,7 +801,7 @@ class AsyncSession(AsyncWorkspace):
 
     # TODO: 6.0 - Remove this method
     @deprecated("write_transaction has been renamed to execute_write")
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def write_transaction(
         self,
         transaction_function: t.Callable[
