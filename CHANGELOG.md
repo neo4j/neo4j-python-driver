@@ -6,6 +6,10 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - No breaking or major changes.
 
 
+## Version 5.25
+- No breaking or major changes.
+
+
 ## Version 5.24
 - Made `neo4j.auth_management.RotatingClientCertificateProvider` and
   `...AsyncRotatingClientCertificateProvider` (in preview)
