@@ -20,7 +20,7 @@ import math
 
 import neo4j
 from neo4j.exceptions import (
-    GQLError,
+    GqlError,
     Neo4jError,
 )
 from neo4j.graph import (
@@ -315,7 +315,7 @@ def driver_exc(exc, id_=None):
         payload["msg"] = _exc_msg(exc)
         if isinstance(exc, Neo4jError):
             payload["code"] = exc.code
-        if isinstance(exc, GQLError):
+        if isinstance(exc, GqlError):
             with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["gqlStatus"] = exc.gql_status
             with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
@@ -334,21 +334,6 @@ def driver_exc(exc, id_=None):
     return {"name": "DriverError", "data": payload}
 
 
-# def _exc_msg(exc, max_depth=10):
-#     if isinstance(exc, Neo4jError) and exc.message is not None:
-#         return str(exc.message)
-#
-#     depth = 0
-#     res = str(exc)
-#     while getattr(exc, "__cause__", None) is not None:
-#         depth += 1
-#         if depth >= max_depth:
-#             break
-#         res += f"\n  Caused by: {exc.__cause__!r}"
-#         exc = exc.__cause__
-#     return res
-
-
 def _exc_msg(exc):
     if isinstance(exc, Neo4jError) and exc.message is not None:
         return str(exc.message)
@@ -356,8 +341,8 @@ def _exc_msg(exc):
 
 
 def driver_exc_cause(exc):
-    if not isinstance(exc, GQLError):
-        raise TypeError("Expected GQLError as cause")
+    if not isinstance(exc, GqlError):
+        raise TypeError("Expected GqlError as cause")
     payload = {}
     with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["msg"] = exc.message

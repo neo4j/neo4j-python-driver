@@ -84,8 +84,8 @@ __all__ = [
     "DriverError",
     "Forbidden",
     "ForbiddenOnReadOnlyDatabase",
-    "GQLError",
-    "GQLErrorClassification",
+    "GqlError",
+    "GqlErrorClassification",
     "IncompleteCommit",
     "Neo4jError",
     "NotALeader",
@@ -232,21 +232,26 @@ _UNKNOWN_GQL_DIAGNOSTIC_RECORD: te.Final[tuple[tuple[str, t.Any], ...]] = (
 )
 
 
-class GQLErrorClassification(str, _Enum):
+class GqlErrorClassification(str, _Enum):
     """
-    Server-side notification category.
+    Server-side GQL error category.
 
     Inherits from :class:`str` and :class:`enum.Enum`.
     Hence, can also be compared to its string value::
 
-        >>> GQLErrorClassification.CLIENT_ERROR == "CLIENT_ERROR"
+        >>> GqlErrorClassification.CLIENT_ERROR == "CLIENT_ERROR"
         True
-        >>> GQLErrorClassification.DATABASE_ERROR == "DATABASE_ERROR"
+        >>> GqlErrorClassification.DATABASE_ERROR == "DATABASE_ERROR"
         True
-        >>> GQLErrorClassification.TRANSIENT_ERROR == "TRANSIENT_ERROR"
+        >>> GqlErrorClassification.TRANSIENT_ERROR == "TRANSIENT_ERROR"
         True
 
-    .. seealso:: :attr:`.GQLError.classification`
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. seealso:: :attr:`.GqlError.gql_classification`
 
     .. versionadded:: 5.xx
     """
@@ -261,12 +266,13 @@ class GQLErrorClassification(str, _Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class GQLError(Exception):
+class GqlError(Exception):
     """
     The GQL compliant data of an error.
 
-    This error isn't raised by the driver as it.
+    This error isn't raised by the driver as is.
     Instead, only subclasses are raised.
+    Further, it is used as the :attr:`__cause__` of GqlError subclasses.
 
     **This is a preview**.
     It might be changed without following the deprecation policy.
@@ -281,13 +287,13 @@ class GQLError(Exception):
     _message: str | None
     _gql_status_description: str
     _gql_raw_classification: str | None
-    _gql_classification: GQLErrorClassification
+    _gql_classification: GqlErrorClassification
     _status_diagnostic_record: dict[str, t.Any]  # original, internal only
     _diagnostic_record: dict[str, t.Any]  # copy to be used externally
-    __cause__: GQLError | None
+    __cause__: GqlError | None
 
     @staticmethod
-    def _hydrate_cause(**metadata: t.Any) -> GQLError:
+    def _hydrate_cause(**metadata: t.Any) -> GqlError:
         meta_extractor = _MetaExtractor(metadata)
         gql_status = meta_extractor.str_value("gql_status")
         description = meta_extractor.str_value("description")
@@ -295,10 +301,10 @@ class GQLError(Exception):
         diagnostic_record = meta_extractor.map_value("diagnostic_record")
         cause_map = meta_extractor.map_value("cause")
         if cause_map is not None:
-            cause = GQLError._hydrate_cause(**cause_map)
+            cause = GqlError._hydrate_cause(**cause_map)
         else:
             cause = None
-        inst = GQLError()
+        inst = GqlError()
         inst._init_gql(
             gql_status=gql_status,
             message=message,
@@ -315,7 +321,7 @@ class GQLError(Exception):
         message: str | None = None,
         description: str | None = None,
         diagnostic_record: dict[str, t.Any] | None = None,
-        cause: GQLError | None = None,
+        cause: GqlError | None = None,
     ) -> None:
         if gql_status is None or message is None or description is None:
             self._gql_status = _UNKNOWN_GQL_STATUS
@@ -351,7 +357,7 @@ class GQLError(Exception):
     def __setattr__(self, key, value):
         if key == "__cause__":
             raise AttributeError(
-                "Cannot set __cause__ on GQLError or `raise ... from ...`."
+                "Cannot set __cause__ on GqlError or `raise ... from ...`."
             )
         super().__setattr__(key, value)
 
@@ -375,13 +381,9 @@ class GQLError(Exception):
         Further, it may be used by servers during the transition-phase to
         GQLSTATUS-awareness.
 
-        This means this code is not guaranteed to be stable and may change in
-        future versions.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        .. note::
+            This means that the code ``50N42`` is not guaranteed to be stable
+            and may change in future versions of the driver or the server.
         """
         return self._gql_status_no_preview
 
@@ -397,12 +399,15 @@ class GQLError(Exception):
     @_preview("GQLSTATUS support is a preview feature.")
     def message(self) -> str | None:
         """
-        TODO.
+        The error message returned by the server.
 
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        It is a string representation of the error that occurred.
+
+        This message is meant for human consumption and debugging purposes.
+        Don't rely on it in a programmatic way.
+
+        This value is never :data:`None` unless the subclass in question
+        states otherwise.
         """
         return self._message_no_preview
 
@@ -420,13 +425,10 @@ class GQLError(Exception):
         """
         A description of the GQLSTATUS returned from the server.
 
+        It describes the error that occurred in detail.
+
         This description is meant for human consumption and debugging purposes.
         Don't rely on it in a programmatic way.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
         """
         return self._gql_status_description_no_preview
 
@@ -447,25 +449,32 @@ class GQLError(Exception):
     @_preview("GQLSTATUS support is a preview feature.")
     def gql_raw_classification(self) -> str | None:
         """
-        TODO.
+        Vendor specific classification of the error.
 
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+        This is a convenience accessor for ``_classification`` in the
+        diagnostic record.
+        :data:`None` is returned if the classification is not available
+        or not a string.
         """
         return self._gql_raw_classification_no_preview
 
     @property
     @_preview("GQLSTATUS support is a preview feature.")
-    def gql_classification(self) -> GQLErrorClassification:
+    def gql_classification(self) -> GqlErrorClassification:
         """
-        TODO.
+        Vendor specific classification of the error.
+
+        This is the parsed version of :attr:`.gql_raw_classification`.
+        :attr:`GqlErrorClassification.UNKNOWN` is returned if the
+        classification is missing, invalid, or has an unknown value
+        (e.g., a newer version of the server introduced a new value).
 
         **This is a preview**.
         It might be changed without following the deprecation policy.
         See also
         https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+        .. seealso:: :attr:`.gql_raw_classification`
         """
         if hasattr(self, "_gql_classification"):
             return self._gql_classification
@@ -474,11 +483,11 @@ class GQLError(Exception):
         if not (
             isinstance(classification, str)
             and classification
-            in t.cast(t.Iterable[str], iter(GQLErrorClassification))
+            in t.cast(t.Iterable[str], iter(GqlErrorClassification))
         ):
-            self._gql_classification = GQLErrorClassification.UNKNOWN
+            self._gql_classification = GqlErrorClassification.UNKNOWN
         else:
-            self._gql_classification = GQLErrorClassification(classification)
+            self._gql_classification = GqlErrorClassification(classification)
         return self._gql_classification
 
     def _get_status_diagnostic_record(self) -> dict[str, t.Any]:
@@ -491,14 +500,7 @@ class GQLError(Exception):
     @property
     @_preview("GQLSTATUS support is a preview feature.")
     def diagnostic_record(self) -> Mapping[str, t.Any]:
-        """
-        Further information about the GQLSTATUS for diagnostic purposes.
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-        """
+        """Further information about the GQLSTATUS for diagnostic purposes."""
         if hasattr(self, "_diagnostic_record"):
             return self._diagnostic_record
 
@@ -521,7 +523,7 @@ class GQLError(Exception):
 
 
 # Neo4jError
-class Neo4jError(GQLError):
+class Neo4jError(GqlError):
     """Raised when the Cypher engine returns an error to the client."""
 
     _neo4j_code: str | None
@@ -548,7 +550,7 @@ class Neo4jError(GQLError):
         #     self._neo4j_code.split(".")
         # )
         # self._metadata = {}
-        # self._init_gql(message=_UNKNOWN_MESSAGE)
+        # self._init_gql()
 
     # TODO: 6.0 - Remove this alias
     @classmethod
@@ -584,7 +586,7 @@ class Neo4jError(GQLError):
         inst._init_gql(
             gql_status=_UNKNOWN_GQL_STATUS,
             message=message,
-            description=(f"error: {_UNKNOWN_GQL_DESCRIPTION}. {message}"),
+            description=f"error: {_UNKNOWN_GQL_DESCRIPTION}. {message}",
         )
         inst._metadata = meta_extractor.rest()
         return inst
@@ -622,16 +624,7 @@ class Neo4jError(GQLError):
         return inst
 
     @classmethod
-    def _basic_hydrate(
-        cls,
-        *,
-        neo4j_code: str,
-        message: str,
-        # gql_status: str | None = None,
-        # status_description: str | None = None,
-        # diagnostic_record: dict[str, t.Any] | None = None,
-        # cause: GQLError | None = None,
-    ) -> Neo4jError:
+    def _basic_hydrate(cls, *, neo4j_code: str, message: str) -> Neo4jError:
         try:
             _, classification, category, title = neo4j_code.split(".")
         except ValueError:
@@ -683,9 +676,9 @@ class Neo4jError(GQLError):
     @property
     def message(self) -> str | None:
         """
-        TODO.
+        The error message returned by the server.
 
-        #: (str or None) The error message returned by the server.
+        This value is only :data:`None` for locally created errors.
         """
         return self._message
 
@@ -699,8 +692,8 @@ class Neo4jError(GQLError):
         """
         The neo4j error code returned by the server.
 
-        .. deprecated:: 5.xx
-            Use :attr:`.neo4j_code` instead.
+        For example, "Neo.ClientError.Security.AuthorizationExpired".
+        This value is only :data:`None` for locally created errors.
         """
         return self._neo4j_code
 
@@ -712,19 +705,17 @@ class Neo4jError(GQLError):
 
     @property
     def classification(self) -> str | None:
-        # Undocumented, has been there before
-        # TODO 6.0: Remove this property
+        # Undocumented, will likely be removed with support for neo4j codes
         return self._classification
 
     @classification.setter
-    @deprecated("classification of Neo4jError is deprecated.")
+    @deprecated("Altering the classification of Neo4jError is deprecated.")
     def classification(self, value: str) -> None:
         self._classification = value
 
     @property
     def category(self) -> str | None:
-        # Undocumented, has been there before
-        # TODO 6.0: Remove this property
+        # Undocumented, will likely be removed with support for neo4j codes
         return self._category
 
     @category.setter
@@ -733,10 +724,8 @@ class Neo4jError(GQLError):
         self._category = value
 
     @property
-    # @deprecated("title of Neo4jError is deprecated.")
     def title(self) -> str | None:
-        # Undocumented, has been there before
-        # TODO 6.0: Remove this property
+        # Undocumented, will likely be removed with support for neo4j codes
         return self._title
 
     @title.setter
@@ -998,7 +987,7 @@ transient_errors: dict[str, type[Neo4jError]] = {
 
 
 # DriverError
-class DriverError(GQLError):
+class DriverError(GqlError):
     """Raised when the Driver raises an error."""
 
     def is_retryable(self) -> bool:
