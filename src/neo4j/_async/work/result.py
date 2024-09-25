@@ -885,6 +885,8 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             If :data:`True`, columns that exclusively contain
             :class:`time.DateTime` objects, :class:`time.Date` objects, or
             :data:`None`, will be converted to :class:`pandas.Timestamp`.
+            If :data:`False`, columns of the above types will be left as is
+            (dtype ``object``).
 
         :raises ImportError: if `pandas` library is not available.
         :raises ResultConsumedError: if the transaction from which this result
