@@ -219,11 +219,11 @@ _UNKNOWN_NEO4J_CODE: te.Final[str] = "Neo.DatabaseError.General.UnknownError"
 _UNKNOWN_MESSAGE: te.Final[str] = "An unknown error occurred"
 _UNKNOWN_GQL_STATUS: te.Final[str] = "50N42"
 _UNKNOWN_GQL_DESCRIPTION: te.Final[str] = (
-    "general processing exception - unknown error"
+    "error: general processing exception - unexpected error"
 )
-# FIXME: _UNKNOWN_GQL_MESSAGE needs final format
 _UNKNOWN_GQL_MESSAGE: te.Final[str] = (
-    f"{_UNKNOWN_GQL_STATUS}: {_UNKNOWN_GQL_DESCRIPTION}. {_UNKNOWN_MESSAGE}"
+    f"{_UNKNOWN_GQL_STATUS}: "
+    "Unexpected error has occurred. See debug log for details."
 )
 _UNKNOWN_GQL_DIAGNOSTIC_RECORD: te.Final[tuple[tuple[str, t.Any], ...]] = (
     ("OPERATION", ""),
@@ -326,7 +326,7 @@ class GqlError(Exception):
         if gql_status is None or message is None or description is None:
             self._gql_status = _UNKNOWN_GQL_STATUS
             self._message = _UNKNOWN_GQL_MESSAGE
-            self._gql_status_description = f"error: {_UNKNOWN_GQL_DESCRIPTION}"
+            self._gql_status_description = _UNKNOWN_GQL_DESCRIPTION
         else:
             self._gql_status = gql_status
             self._message = message
@@ -338,21 +338,7 @@ class GqlError(Exception):
     def _set_unknown_gql(self):
         self._gql_status = _UNKNOWN_GQL_STATUS
         self._message = _UNKNOWN_GQL_MESSAGE
-        self._gql_status_description = f"error: {_UNKNOWN_GQL_DESCRIPTION}"
-
-    @staticmethod
-    def _format_message_details(
-        gql_status: str | None,
-        description: str | None,
-        details: str | None,
-    ):
-        if gql_status is None:
-            gql_status = _UNKNOWN_GQL_STATUS
-        if description is None:
-            description = _UNKNOWN_GQL_DESCRIPTION
-        if details is None:
-            return f"{gql_status}: {description}"
-        return f"{gql_status}: {description}. {details}"
+        self._gql_status_description = _UNKNOWN_GQL_DESCRIPTION
 
     def __setattr__(self, key, value):
         if key == "__cause__":
@@ -573,12 +559,8 @@ class Neo4jError(GqlError):
     @classmethod
     def _hydrate_neo4j(cls, **metadata: t.Any) -> Neo4jError:
         meta_extractor = _MetaExtractor(metadata)
-        code = meta_extractor.str_value("code")
-        if not code:
-            code = _UNKNOWN_NEO4J_CODE
-        message = meta_extractor.str_value("message")
-        if not message:
-            message = _UNKNOWN_MESSAGE
+        code = meta_extractor.str_value("code") or _UNKNOWN_NEO4J_CODE
+        message = meta_extractor.str_value("message") or _UNKNOWN_MESSAGE
         inst = cls._basic_hydrate(
             neo4j_code=code,
             message=message,
@@ -586,7 +568,7 @@ class Neo4jError(GqlError):
         inst._init_gql(
             gql_status=_UNKNOWN_GQL_STATUS,
             message=message,
-            description=f"error: {_UNKNOWN_GQL_DESCRIPTION}. {message}",
+            description=f"{_UNKNOWN_GQL_DESCRIPTION}. {message}",
         )
         inst._metadata = meta_extractor.rest()
         return inst
@@ -596,7 +578,12 @@ class Neo4jError(GqlError):
         meta_extractor = _MetaExtractor(metadata)
         gql_status = meta_extractor.str_value("gql_status")
         status_description = meta_extractor.str_value("description")
-        message = meta_extractor.str_value("message", _UNKNOWN_GQL_MESSAGE)
+        message = meta_extractor.str_value("message")
+        if gql_status is None or status_description is None or message is None:
+            gql_status = _UNKNOWN_GQL_STATUS
+            # TODO: 6.0 - Make this fall back to _UNKNOWN_GQL_MESSAGE
+            message = _UNKNOWN_MESSAGE
+            status_description = _UNKNOWN_GQL_DESCRIPTION
         neo4j_code = meta_extractor.str_value(
             "neo4j_code",
             _UNKNOWN_NEO4J_CODE,
