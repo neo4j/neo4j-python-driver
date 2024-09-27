@@ -136,6 +136,9 @@ class Bolt5x0(Bolt):
             or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
@@ -200,6 +203,9 @@ class Bolt5x0(Bolt):
         dehydration_hooks=None,
         hydration_hooks=None,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         routing_context = self.routing_context or {}
         db_context = {}
         if database is not None:
@@ -248,6 +254,9 @@ class Bolt5x0(Bolt):
             or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         if not parameters:
             parameters = {}
         extra = {}
@@ -298,6 +307,9 @@ class Bolt5x0(Bolt):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
@@ -317,6 +329,9 @@ class Bolt5x0(Bolt):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
@@ -347,6 +362,9 @@ class Bolt5x0(Bolt):
             or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -381,6 +399,9 @@ class Bolt5x0(Bolt):
         )
 
     def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: COMMIT", self.local_port)
         self._append(
             b"\x12",
@@ -392,6 +413,9 @@ class Bolt5x0(Bolt):
     def rollback(
         self, dehydration_hooks=None, hydration_hooks=None, **handlers
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
         self._append(
             b"\x13",
@@ -407,6 +431,9 @@ class Bolt5x0(Bolt):
         Add a RESET message to the outgoing queue, send it and consume all
         remaining messages.
         """
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: RESET", self.local_port)
         response = ResetResponse(self, "reset", hydration_hooks)
         self._append(
@@ -416,6 +443,9 @@ class Bolt5x0(Bolt):
         self.fetch_all()
 
     def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: GOODBYE", self.local_port)
         self._append(b"\x02", (), dehydration_hooks=dehydration_hooks)
 
@@ -580,6 +610,9 @@ class Bolt5x1(Bolt5x0):
             or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
@@ -620,6 +653,9 @@ class Bolt5x1(Bolt5x0):
         check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         logged_auth_dict = dict(self.auth_dict)
         if "credentials" in logged_auth_dict:
             logged_auth_dict["credentials"] = "*******"
@@ -632,6 +668,9 @@ class Bolt5x1(Bolt5x0):
         )
 
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: LOGOFF", self.local_port)
         self._append(
             b"\x6b",
@@ -658,6 +697,10 @@ class Bolt5x2(Bolt5x1):
         return headers
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
+
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
@@ -709,6 +752,9 @@ class Bolt5x2(Bolt5x1):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         if not parameters:
             parameters = {}
         extra = {}
@@ -773,6 +819,9 @@ class Bolt5x2(Bolt5x1):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -838,6 +887,9 @@ class Bolt5x4(Bolt5x3):
             "telemetry.enabled", False
         ):
             return
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         api_raw = int(api)
         log.debug(
             "[#%04X]  C: TELEMETRY %i  # (%r)", self.local_port, api_raw, api
@@ -877,6 +929,9 @@ class Bolt5x5(Bolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         if not parameters:
             parameters = {}
         extra = {}
@@ -941,6 +996,9 @@ class Bolt5x5(Bolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified

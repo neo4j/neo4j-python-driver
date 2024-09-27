@@ -916,6 +916,16 @@ class Bolt:
     def new_hydration_scope(self):
         return self.hydration_handler.new_hydration_scope()
 
+    def _default_hydration_hooks(self, dehydration_hooks, hydration_hooks):
+        if dehydration_hooks is not None and hydration_hooks is not None:
+            return dehydration_hooks, hydration_hooks
+        hydration_scope = self.new_hydration_scope()
+        if dehydration_hooks is None:
+            dehydration_hooks = hydration_scope.dehydration_hooks
+        if hydration_hooks is None:
+            hydration_hooks = hydration_scope.hydration_hooks
+        return dehydration_hooks, hydration_hooks
+
     def _append(
         self, signature, fields=(), response=None, dehydration_hooks=None
     ):
