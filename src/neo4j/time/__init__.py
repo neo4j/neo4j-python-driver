@@ -2560,7 +2560,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         Accepts :class:`.DateTime` and :class:`datetime.datetime`.
         """
-        if not isinstance(other, (Date, date)):
+        if not isinstance(other, (DateTime, datetime)):
             return NotImplemented
         return not self.__eq__(other)
 
@@ -2641,7 +2641,9 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     def __add__(self, other: timedelta | Duration) -> DateTime:
         """Add a :class:`datetime.timedelta`."""
         if isinstance(other, Duration):
-            t = self.to_clock_time() + ClockTime(
+            if other == (0, 0, 0, 0):
+                return self
+            t = self.time().to_clock_time() + ClockTime(
                 other.seconds, other.nanoseconds
             )
             days, seconds = symmetric_divmod(t.seconds, 86400)
@@ -2651,8 +2653,11 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             time_ = Time.from_ticks(seconds * NANO_SECONDS + t.nanoseconds)
             return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         if isinstance(other, timedelta):
+            if other.total_seconds() == 0:
+                return self
             t = self.to_clock_time() + ClockTime(
-                86400 * other.days + other.seconds, other.microseconds * 1000
+                86400 * other.days + other.seconds,
+                other.microseconds * 1000,
             )
             days, seconds = symmetric_divmod(t.seconds, 86400)
             date_ = Date.from_ordinal(days + 1)

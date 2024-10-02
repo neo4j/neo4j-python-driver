@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import typing as t
 import uuid
@@ -1082,6 +1083,18 @@ def test_to_df_expand(
     assert df.equals(expected_df)
 
 
+DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
+    datetime.datetime(2024, 3, 31, 0, 30, 0),
+    datetime.datetime(2024, 3, 31, 1, 30, 0),
+    datetime.datetime(2024, 3, 31, 2, 30, 0),
+    datetime.datetime(2024, 3, 31, 3, 30, 0),
+    datetime.datetime(2024, 10, 27, 0, 30, 0),
+    datetime.datetime(2024, 10, 27, 1, 30, 0),
+    datetime.datetime(2024, 10, 27, 2, 30, 0),
+    datetime.datetime(2024, 10, 27, 3, 30, 0),
+)
+
+
 @pytest.mark.parametrize(
     ("keys", "values", "expected_df"),
     (
@@ -1209,7 +1222,7 @@ def test_to_df_expand(
                 columns=["mixed"],
             ),
         ),
-        # Column with only None (should not be transfomred to NaT)
+        # Column with only None (should not be transformed to NaT)
         (
             ["all_none"],
             [
@@ -1251,6 +1264,34 @@ def test_to_df_expand(
                 ],
                 columns=["all_none", "mixed", "n"],
             ),
+        ),
+        # Difficult timezones
+        *(
+            (
+                ["dt_tz"],
+                [
+                    [
+                        pytz.UTC.localize(
+                            neo4j_time.DateTime.from_native(dt)
+                        ).astimezone(pytz.timezone("Europe/Stockholm"))
+                        + neo4j_time.Duration(nanoseconds=add_ns)
+                    ]
+                    for dt in DTS_AROUND_SWEDISH_DST_CHANGE
+                ],
+                pd.DataFrame(
+                    [
+                        [
+                            pytz.UTC.localize(pd.Timestamp(dt)).astimezone(
+                                pytz.timezone("Europe/Stockholm")
+                            )
+                            + pd.Timedelta(add_ns, unit="ns")
+                        ]
+                        for dt in DTS_AROUND_SWEDISH_DST_CHANGE
+                    ],
+                    columns=["dt_tz"],
+                ),
+            )
+            for add_ns in (0, 1)
         ),
     ),
 )

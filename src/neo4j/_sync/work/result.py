@@ -892,6 +892,7 @@ class Result(NonConcurrentMethodChecker):
             consumed.
         """
         import pandas as pd  # type: ignore[import]
+        import pytz
 
         if not expand:
             df = pd.DataFrame(self.values(), columns=self._keys)
@@ -931,14 +932,19 @@ class Result(NonConcurrentMethodChecker):
                 ).all()
             )
         ]
+
+        def datetime_to_timestamp(x):
+            if not x:
+                return pd.NaT
+            tzinfo = getattr(x, "tzinfo", None)
+            if tzinfo is None:
+                return pd.Timestamp(x.iso_format())
+            return pd.Timestamp(
+                x.astimezone(pytz.UTC).iso_format()
+            ).astimezone(tzinfo)
+
         df[dt_columns] = df[dt_columns].apply(
-            lambda col: col.map(
-                lambda x: pd.Timestamp(x.iso_format()).replace(
-                    tzinfo=getattr(x, "tzinfo", None)
-                )
-                if x
-                else pd.NaT
-            )
+            lambda col: col.map(datetime_to_timestamp)
         )
         return df
 
