@@ -341,11 +341,25 @@ class GqlError(Exception):
         self._gql_status_description = _UNKNOWN_GQL_DESCRIPTION
 
     def __setattr__(self, key, value):
-        if key == "__cause__":
-            raise AttributeError(
-                "Cannot set __cause__ on GqlError or `raise ... from ...`."
-            )
-        super().__setattr__(key, value)
+        if key != "__cause__" or getattr(self, "__cause__", None) is None:
+            super().__setattr__(key, value)
+        # If the GqlError already has a cause, which might have been set by the
+        # server, we don't want to overwrite it with for instance
+        # `raise some_gql_error from some_local_error`. Therefore, we traverse
+        # the cause chain and append the local cause.
+        root = self.__cause__
+        seen_errors = {id(self), id(root)}
+        while True:
+            cause = getattr(root, "__cause__", None)
+            if cause is None:
+                root.__cause__ = value
+                return
+            root = cause
+            if id(root) in seen_errors:
+                # Circular cause chain -> we have no choice but to either
+                # overwrite the cause or ignore the new one.
+                return
+            seen_errors.add(id(root))
 
     @property
     def _gql_status_no_preview(self) -> str:
@@ -541,9 +555,8 @@ class Neo4jError(GqlError):
     # TODO: 6.0 - Remove this alias
     @classmethod
     @deprecated(
-        "Neo4jError.hydrate is deprecated and will be "
-        "removed in a future version. It is an internal method and not meant "
-        "for external use."
+        "Neo4jError.hydrate is deprecated and will be removed in a future "
+        "version. It is an internal method and not meant for external use."
     )
     def hydrate(
         cls,
@@ -728,7 +741,6 @@ class Neo4jError(GqlError):
     @metadata.setter
     @deprecated("Altering the metadata of Neo4jError is deprecated.")
     def metadata(self, value: dict[str, t.Any]) -> None:
-        # TODO 6.0: Remove this property
         self._metadata = value
 
     # TODO: 6.0 - Remove this alias
@@ -815,7 +827,7 @@ class Neo4jError(GqlError):
         message = self._message
         if code or message:
             return f"{{code: {code}}} {{message: {message}}}"
-            # TODO: 6.0 - User gql status and status_description instead
+            # TODO: 6.0 - Use gql status and status_description instead
             # something like:
             # return (
             #     f"{{gql_status: {self.gql_status}}} "
