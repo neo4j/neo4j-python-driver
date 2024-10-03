@@ -292,9 +292,6 @@ class GqlError(Exception):
     _diagnostic_record: dict[str, t.Any]  # copy to be used externally
     _gql_cause: GqlError | None
 
-    def __init__(self, *args):
-        super().__init__(*args)
-
     @staticmethod
     def _hydrate_cause(**metadata: t.Any) -> GqlError:
         meta_extractor = _MetaExtractor(metadata)

@@ -17,10 +17,13 @@
 from __future__ import annotations
 
 import contextlib
+import re
 import traceback
 
 import pytest
 
+import neo4j.exceptions
+from neo4j import PreviewWarning
 from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
@@ -154,6 +157,36 @@ def test_serviceunavailable_raised_from_bolt_protocol_error_with_explicit_style(
     assert e.value.__cause__ is error
 
 
+def _assert_default_gql_error_attrs_from_neo4j_error(error: GqlError) -> None:
+    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+        assert error.gql_status == "50N42"
+    if error.message:
+        with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+            assert error.gql_status_description == (
+                "error: general processing exception - unexpected error. "
+                f"{error.message}"
+            )
+    else:
+        with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+            assert error.gql_status_description == (
+                "error: general processing exception - unexpected error"
+            )
+    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+        assert (
+            error.gql_classification
+            == neo4j.exceptions.GqlErrorClassification.UNKNOWN
+        )
+    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+        assert error.gql_raw_classification is None
+    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+        assert error.diagnostic_record == {
+            "CURRENT_SCHEMA": "/",
+            "OPERATION": "",
+            "OPERATION_CODE": "0",
+        }
+    assert error.__cause__ is None
+
+
 def test_neo4jerror_hydrate_with_no_args():
     error = Neo4jError._hydrate_neo4j()
 
@@ -164,6 +197,7 @@ def test_neo4jerror_hydrate_with_no_args():
     assert error.metadata == {}
     assert error.message == "An unknown error occurred"
     assert error.code == "Neo.DatabaseError.General.UnknownError"
+    _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 
 def test_neo4jerror_hydrate_with_message_and_code_rubbish():
@@ -178,6 +212,7 @@ def test_neo4jerror_hydrate_with_message_and_code_rubbish():
     assert error.metadata == {}
     assert error.message == "Test error message"
     assert error.code == "ASDF_asdf"
+    _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 
 def test_neo4jerror_hydrate_with_message_and_code_database():
@@ -193,6 +228,7 @@ def test_neo4jerror_hydrate_with_message_and_code_database():
     assert error.metadata == {}
     assert error.message == "Test error message"
     assert error.code == "Neo.DatabaseError.General.UnknownError"
+    _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 
 def test_neo4jerror_hydrate_with_message_and_code_transient():
@@ -208,6 +244,7 @@ def test_neo4jerror_hydrate_with_message_and_code_transient():
     assert error.metadata == {}
     assert error.message == "Test error message"
     assert error.code == f"Neo.{CLASSIFICATION_TRANSIENT}.General.TestError"
+    _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 
 def test_neo4jerror_hydrate_with_message_and_code_client():
@@ -223,6 +260,7 @@ def test_neo4jerror_hydrate_with_message_and_code_client():
     assert error.metadata == {}
     assert error.message == "Test error message"
     assert error.code == f"Neo.{CLASSIFICATION_CLIENT}.General.TestError"
+    _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 
 @pytest.mark.parametrize(
@@ -260,9 +298,20 @@ def test_neo4jerror_hydrate_with_message_and_code_client():
         ),
     ),
 )
-def test_error_rewrite(code, expected_cls, expected_code):
+@pytest.mark.parametrize("mode", ("neo4j", "gql"))
+def test_error_rewrite(code, expected_cls, expected_code, mode):
     message = "Test error message"
-    error = Neo4jError._hydrate_neo4j(message=message, code=code)
+    if mode == "neo4j":
+        error = Neo4jError._hydrate_neo4j(message=message, code=code)
+    elif mode == "gql":
+        error = Neo4jError._hydrate_gql(
+            gql_status="12345",
+            description="error: things - they hit the fan",
+            message=message,
+            neo4j_code=code,
+        )
+    else:
+        raise ValueError(f"Invalid mode {mode!r}")
 
     expected_retryable = expected_cls is TransientError
     assert error.__class__ is expected_cls
@@ -274,35 +323,55 @@ def test_error_rewrite(code, expected_cls, expected_code):
 
 
 @pytest.mark.parametrize(
-    ("code", "message", "expected_cls", "expected_str"),
+    ("code", "message", "expected_cls", "expected_str", "mode"),
     (
-        (
-            "Neo.ClientError.General.UnknownError",
-            "Test error message",
-            ClientError,
-            "{code: Neo.ClientError.General.UnknownError} "
-            "{message: Test error message}",
+        # values that behave the same in both modes
+        *(
+            (
+                *x,
+                mode,
+            )
+            for mode in ("neo4j", "gql")
+            for x in (
+                (
+                    "Neo.ClientError.General.UnknownError",
+                    "Test error message",
+                    ClientError,
+                    (
+                        "{code: Neo.ClientError.General.UnknownError} "
+                        "{message: Test error message}"
+                    ),
+                ),
+                (
+                    None,
+                    "Test error message",
+                    DatabaseError,
+                    (
+                        "{code: Neo.DatabaseError.General.UnknownError} "
+                        "{message: Test error message}"
+                    ),
+                ),
+                (
+                    "Neo.ClientError.General.UnknownError",
+                    None,
+                    ClientError,
+                    (
+                        "{code: Neo.ClientError.General.UnknownError} "
+                        "{message: An unknown error occurred}"
+                    ),
+                ),
+            )
         ),
-        (
-            None,
-            "Test error message",
-            DatabaseError,
-            "{code: Neo.DatabaseError.General.UnknownError} "
-            "{message: Test error message}",
-        ),
+        # neo4j error specific behavior
         (
             "",
             "Test error message",
             DatabaseError,
-            "{code: Neo.DatabaseError.General.UnknownError} "
-            "{message: Test error message}",
-        ),
-        (
-            "Neo.ClientError.General.UnknownError",
-            None,
-            ClientError,
-            "{code: Neo.ClientError.General.UnknownError} "
-            "{message: An unknown error occurred}",
+            (
+                "{code: Neo.DatabaseError.General.UnknownError} "
+                "{message: Test error message}"
+            ),
+            "neo4j",
         ),
         (
             "Neo.ClientError.General.UnknownError",
@@ -310,13 +379,39 @@ def test_error_rewrite(code, expected_cls, expected_code):
             ClientError,
             "{code: Neo.ClientError.General.UnknownError} "
             "{message: An unknown error occurred}",
+            "neo4j",
         ),
-    )[1:2],
+        # gql error specific behavior
+        (
+            "",
+            "Test error message",
+            DatabaseError,
+            "{code: } {message: Test error message}",
+            "gql",
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "",
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} {message: }",
+            "gql",
+        ),
+    ),
 )
 def test_neo4j_error_from_server_as_str(
-    code, message, expected_cls, expected_str
+    code, message, expected_cls, expected_str, mode
 ):
-    error = Neo4jError._hydrate_neo4j(code=code, message=message)
+    if mode == "neo4j":
+        error = Neo4jError._hydrate_neo4j(code=code, message=message)
+    elif mode == "gql":
+        error = Neo4jError._hydrate_gql(
+            gql_status="12345",
+            description="error: things - they hit the fan",
+            neo4j_code=code,
+            message=message,
+        )
+    else:
+        raise ValueError(f"Invalid mode {mode!r}")
 
     assert type(error) is expected_cls
     assert str(error) == expected_str
@@ -479,3 +574,177 @@ def test_cause_chain_extension_circular_local_causes(
             _CYCLIC_CAUSE_MARKER,
         ],
     )
+
+
+_DEFAULT_GQL_ERROR_ATTRIBUTES = {
+    "code": "Neo.DatabaseError.General.UnknownError",
+    "classification": "DatabaseError",
+    "category": "General",
+    "title": "UnknownError",
+    "message": "An unknown error occurred",
+    "gql_status": "50N42",
+    "gql_status_description": (
+        "error: general processing exception - unexpected error"
+    ),
+    "gql_classification": neo4j.exceptions.GqlErrorClassification.UNKNOWN,
+    "gql_raw_classification": None,
+    "diagnostic_record": {
+        "CURRENT_SCHEMA": "/",
+        "OPERATION": "",
+        "OPERATION_CODE": "0",
+    },
+    "__cause__": None,
+}
+
+
+@pytest.mark.parametrize(
+    ("metadata", "attributes"),
+    (
+        # all default values
+        (
+            {},
+            _DEFAULT_GQL_ERROR_ATTRIBUTES,
+        ),
+        # example from ADR
+        (
+            {
+                "gql_status": "01N00",
+                "message": "01EXAMPLE you have failed something",
+                "description": "client error - example error. Message",
+                "neo4j_code": "Neo.Example.Failure.Code",
+                "diagnostic_record": {
+                    "CURRENT_SCHEMA": "",
+                    "OPERATION": "",
+                    "OPERATION_CODE": "",
+                    "_classification": "CLIENT_ERROR",
+                    "_status_parameters": {},
+                },
+            },
+            {
+                "code": "Neo.Example.Failure.Code",
+                "classification": "Example",
+                "category": "Failure",
+                "title": "Code",
+                "message": "01EXAMPLE you have failed something",
+                "gql_status": "01N00",
+                "gql_status_description": (
+                    "client error - example error. Message"
+                ),
+                "gql_classification": (
+                    neo4j.exceptions.GqlErrorClassification.CLIENT_ERROR
+                ),
+                "gql_raw_classification": "CLIENT_ERROR",
+                "diagnostic_record": {
+                    "CURRENT_SCHEMA": "",
+                    "OPERATION": "",
+                    "OPERATION_CODE": "",
+                    "_classification": "CLIENT_ERROR",
+                    "_status_parameters": {},
+                },
+                "__cause__": None,
+            },
+        ),
+        # garbage diagnostic record
+        (
+            {
+                "diagnostic_record": {
+                    "CURRENT_SCHEMA": 1.5,
+                    "OPERATION": False,
+                    "_classification": ["whelp", None],
+                    "_🤡": "🎈",
+                    "foo": {"bar": "baz"},
+                },
+            },
+            {
+                **_DEFAULT_GQL_ERROR_ATTRIBUTES,
+                "gql_classification": (
+                    neo4j.exceptions.GqlErrorClassification.UNKNOWN
+                ),
+                "gql_raw_classification": None,
+                "diagnostic_record": {
+                    "CURRENT_SCHEMA": 1.5,
+                    "OPERATION": False,
+                    "_classification": ["whelp", None],
+                    "_🤡": "🎈",
+                    "foo": {"bar": "baz"},
+                },
+            },
+        ),
+        (
+            {
+                "diagnostic_record": {
+                    "_classification": "SOME_FUTURE_CLASSIFICATION",
+                },
+            },
+            {
+                **_DEFAULT_GQL_ERROR_ATTRIBUTES,
+                "gql_classification": (
+                    neo4j.exceptions.GqlErrorClassification.UNKNOWN
+                ),
+                "gql_raw_classification": "SOME_FUTURE_CLASSIFICATION",
+                "diagnostic_record": {
+                    "_classification": "SOME_FUTURE_CLASSIFICATION",
+                },
+            },
+        ),
+    ),
+)
+def test_gql_hydration(metadata, attributes):
+    # TODO: test causes
+    error = Neo4jError._hydrate_gql(**metadata)
+
+    preview_attrs = {
+        "gql_status",
+        "gql_status_description",
+        "gql_classification",
+        "gql_raw_classification",
+        "diagnostic_record",
+    }
+
+    for attr in (
+        "code",
+        "classification",
+        "category",
+        "title",
+        "message",
+        "gql_status",
+        "gql_status_description",
+        "gql_classification",
+        "gql_raw_classification",
+        "diagnostic_record",
+        "__cause__",
+    ):
+        expected_value = attributes[attr]
+        if attr in preview_attrs:
+            with pytest.warns(PreviewWarning, match="GQLSTATUS"):
+                actual_value = getattr(error, attr)
+        else:
+            actual_value = getattr(error, attr)
+        assert actual_value == expected_value
+
+
+@pytest.mark.parametrize(
+    "attr",
+    (
+        "code",
+        "classification",
+        "category",
+        "title",
+        "message",
+        "metadata",
+    ),
+)
+def test_deprecated_setter(attr):
+    obj = object()
+    error = Neo4jError()
+
+    with pytest.warns(
+        DeprecationWarning,
+        match=re.compile(
+            rf".*\baltering\b.*\b{attr}\b.*",
+            flags=re.IGNORECASE,
+        ),
+    ):
+        setattr(error, attr, obj)
+
+    assert getattr(error, attr) is obj
