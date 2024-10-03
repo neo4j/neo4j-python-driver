@@ -253,7 +253,7 @@ class GqlErrorClassification(str, _Enum):
 
     .. seealso:: :attr:`.GqlError.gql_classification`
 
-    .. versionadded:: 5.xx
+    .. versionadded:: 5.26
     """
 
     CLIENT_ERROR = "CLIENT_ERROR"
@@ -279,7 +279,7 @@ class GqlError(Exception):
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
-    .. versionadded: 5.xx
+    .. versionadded: 5.26
     """
 
     _gql_status: str
