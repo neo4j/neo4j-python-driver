@@ -14,6 +14,11 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import contextlib
+import traceback
+
 import pytest
 
 from neo4j._exceptions import (
@@ -28,6 +33,7 @@ from neo4j.exceptions import (
     CLASSIFICATION_TRANSIENT,
     ClientError,
     DatabaseError,
+    GqlError,
     Neo4jError,
     ServiceUnavailable,
     TransientError,
@@ -322,3 +328,154 @@ def test_neo4j_error_from_code_as_str(cls):
 
     assert type(error) is cls
     assert str(error) == "Generated somewhere in the driver"
+
+
+def _make_test_gql_error(
+    identifier: str,
+    cause: GqlError | None = None,
+) -> GqlError:
+    error = GqlError(identifier)
+    error._init_gql(
+        gql_status=f"{identifier[:5].upper():<05}",
+        description=f"error: $h!t went down - {identifier}",
+        message=identifier,
+        cause=cause,
+    )
+    return error
+
+
+def _set_error_cause(exc, cause, method="set") -> None:
+    if method == "set":
+        exc.__cause__ = cause
+    elif method == "raise":
+        with contextlib.suppress(exc.__class__):
+            raise exc from cause
+    else:
+        raise ValueError(f"Invalid cause set method {method!r}")
+
+
+_CYCLIC_CAUSE_MARKER = object()
+
+
+def _assert_error_chain(
+    exc: BaseException,
+    expected: list[object],
+) -> None:
+    assert isinstance(exc, BaseException)
+
+    collection_root: BaseException | None = exc
+    actual_chain: list[object] = [exc]
+    actual_chain_ids = [id(exc)]
+    while collection_root is not None:
+        cause = getattr(collection_root, "__cause__", None)
+        if id(cause) in actual_chain_ids:
+            actual_chain.append(_CYCLIC_CAUSE_MARKER)
+            actual_chain_ids.append(id(_CYCLIC_CAUSE_MARKER))
+            break
+        actual_chain.append(cause)
+        actual_chain_ids.append(id(cause))
+        collection_root = cause
+
+    assert actual_chain_ids == list(map(id, expected))
+
+    expected_lines = [
+        str(exc)
+        for exc in expected
+        if exc is not None and exc is not _CYCLIC_CAUSE_MARKER
+    ]
+    expected_lines.reverse()
+    exc_fmt = traceback.format_exception(type(exc), exc, exc.__traceback__)
+    for line in exc_fmt:
+        if not expected_lines:
+            break
+        if expected_lines[0] in line:
+            expected_lines.pop(0)
+    if expected_lines:
+        traceback_fmt = "".join(exc_fmt)
+        pytest.fail(
+            f"Expected lines not found: {expected_lines} in traceback:\n"
+            f"{traceback_fmt}"
+        )
+
+
+def test_cause_chain_extension_no_cause() -> None:
+    root = _make_test_gql_error("root")
+
+    _assert_error_chain(root, [root, None])
+
+
+def test_cause_chain_extension_only_gql_cause() -> None:
+    root_cause = _make_test_gql_error("rootCause")
+    root = _make_test_gql_error("root", cause=root_cause)
+
+    _assert_error_chain(root, [root, root_cause, None])
+
+
+@pytest.mark.parametrize("local_cause_method", ("raise", "set"))
+def test_cause_chain_extension_only_local_cause(local_cause_method) -> None:
+    root_cause = ClientError("rootCause")
+    root = _make_test_gql_error("root")
+    _set_error_cause(root, root_cause, local_cause_method)
+
+    _assert_error_chain(root, [root, root_cause, None])
+
+
+@pytest.mark.parametrize("local_cause_method", ("raise", "set"))
+def test_cause_chain_extension_multiple_causes(local_cause_method) -> None:
+    root4_cause2 = _make_test_gql_error("r4c2")
+    root4_cause1 = _make_test_gql_error("r4c1", cause=root4_cause2)
+    root4 = _make_test_gql_error("root4", cause=root4_cause1)
+    root3 = ClientError("root3")
+    _set_error_cause(root3, root4, local_cause_method)
+    root2_cause3 = _make_test_gql_error("r2c3")
+    root2_cause2 = _make_test_gql_error("r2c2", cause=root2_cause3)
+    root2_cause1 = _make_test_gql_error("r2c1", cause=root2_cause2)
+    root2 = _make_test_gql_error("root2", cause=root2_cause1)
+    _set_error_cause(root2, root3, local_cause_method)
+    root1_cause2 = _make_test_gql_error("r1c2")
+    root1_cause1 = _make_test_gql_error("r1c1", cause=root1_cause2)
+    root1 = _make_test_gql_error("root1", cause=root1_cause1)
+    _set_error_cause(root1, root2, local_cause_method)
+
+    _assert_error_chain(
+        root1, [
+            root1, root1_cause1, root1_cause2,
+            root2, root2_cause1, root2_cause2, root2_cause3,
+            root3,
+            root4, root4_cause1, root4_cause2,
+            None,
+        ],
+    )  # fmt: skip
+
+
+@pytest.mark.parametrize("local_cause_method", ("raise", "set"))
+def test_cause_chain_extension_circular_local_causes(
+    local_cause_method,
+) -> None:
+    root6 = ClientError("root6")
+    root5 = _make_test_gql_error("root5")
+    _set_error_cause(root5, root6, local_cause_method)
+    root4_cause = _make_test_gql_error("r4c")
+    root4 = _make_test_gql_error("root4", cause=root4_cause)
+    _set_error_cause(root4, root5, local_cause_method)
+    root3 = ClientError("root3")
+    _set_error_cause(root3, root4, local_cause_method)
+    root2 = _make_test_gql_error("root2")
+    _set_error_cause(root2, root3, local_cause_method)
+    root1 = ClientError("root1")
+    _set_error_cause(root1, root2, local_cause_method)
+    _set_error_cause(root6, root1, local_cause_method)
+
+    _assert_error_chain(
+        root1,
+        [
+            root1,
+            root2,
+            root3,
+            root4,
+            root4_cause,
+            root5,
+            root6,
+            _CYCLIC_CAUSE_MARKER,
+        ],
+    )

@@ -290,7 +290,10 @@ class GqlError(Exception):
     _gql_classification: GqlErrorClassification
     _status_diagnostic_record: dict[str, t.Any]  # original, internal only
     _diagnostic_record: dict[str, t.Any]  # copy to be used externally
-    __cause__: GqlError | None
+    _gql_cause: GqlError | None
+
+    def __init__(self, *args):
+        super().__init__(*args)
 
     @staticmethod
     def _hydrate_cause(**metadata: t.Any) -> GqlError:
@@ -333,33 +336,53 @@ class GqlError(Exception):
             self._gql_status_description = description
         if diagnostic_record is not None:
             self._status_diagnostic_record = diagnostic_record
-        super().__setattr__("__cause__", cause)
+        self._gql_cause = cause
 
     def _set_unknown_gql(self):
         self._gql_status = _UNKNOWN_GQL_STATUS
         self._message = _UNKNOWN_GQL_MESSAGE
         self._gql_status_description = _UNKNOWN_GQL_DESCRIPTION
 
-    def __setattr__(self, key, value):
-        if key != "__cause__" or getattr(self, "__cause__", None) is None:
-            super().__setattr__(key, value)
-        # If the GqlError already has a cause, which might have been set by the
-        # server, we don't want to overwrite it with for instance
-        # `raise some_gql_error from some_local_error`. Therefore, we traverse
-        # the cause chain and append the local cause.
-        root = self.__cause__
+    def __getattribute__(self, item):
+        if item != "__cause__":
+            return super().__getattribute__(item)
+        gql_cause = self._get_attr_or_none("_gql_cause")
+        if gql_cause is None:
+            # No GQL cause, no magic needed
+            return super().__getattribute__(item)
+        local_cause = self._get_attr_or_none("__cause__")
+        if local_cause is None:
+            # We have a GQL cause but no local cause
+            # => set the GQL cause as the local cause
+            self.__cause__ = gql_cause
+            self.__suppress_context__ = True
+            self._gql_cause = None
+            return super().__getattribute__(item)
+        # We have both a GQL cause and a local cause
+        # => traverse the cause chain and append the local cause.
+        root = gql_cause
         seen_errors = {id(self), id(root)}
         while True:
             cause = getattr(root, "__cause__", None)
             if cause is None:
-                root.__cause__ = value
-                return
+                root.__cause__ = local_cause
+                root.__suppress_context__ = True
+                self.__cause__ = gql_cause
+                self.__suppress_context__ = True
+                self._gql_cause = None
+                return gql_cause
             root = cause
             if id(root) in seen_errors:
                 # Circular cause chain -> we have no choice but to either
                 # overwrite the cause or ignore the new one.
-                return
+                return local_cause
             seen_errors.add(id(root))
+
+    def _get_attr_or_none(self, item):
+        try:
+            return super().__getattribute__(item)
+        except AttributeError:
+            return None
 
     @property
     def _gql_status_no_preview(self) -> str:
@@ -459,23 +482,7 @@ class GqlError(Exception):
         return self._gql_raw_classification_no_preview
 
     @property
-    @_preview("GQLSTATUS support is a preview feature.")
-    def gql_classification(self) -> GqlErrorClassification:
-        """
-        Vendor specific classification of the error.
-
-        This is the parsed version of :attr:`.gql_raw_classification`.
-        :attr:`GqlErrorClassification.UNKNOWN` is returned if the
-        classification is missing, invalid, or has an unknown value
-        (e.g., a newer version of the server introduced a new value).
-
-        **This is a preview**.
-        It might be changed without following the deprecation policy.
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
-        .. seealso:: :attr:`.gql_raw_classification`
-        """
+    def _gql_classification_no_preview(self) -> GqlErrorClassification:
         if hasattr(self, "_gql_classification"):
             return self._gql_classification
 
@@ -490,6 +497,11 @@ class GqlError(Exception):
             self._gql_classification = GqlErrorClassification(classification)
         return self._gql_classification
 
+    @property
+    @_preview("GQLSTATUS support is a preview feature.")
+    def gql_classification(self) -> GqlErrorClassification:
+        return self._gql_classification_no_preview
+
     def _get_status_diagnostic_record(self) -> dict[str, t.Any]:
         if hasattr(self, "_status_diagnostic_record"):
             return self._status_diagnostic_record
@@ -498,9 +510,7 @@ class GqlError(Exception):
         return self._status_diagnostic_record
 
     @property
-    @_preview("GQLSTATUS support is a preview feature.")
-    def diagnostic_record(self) -> Mapping[str, t.Any]:
-        """Further information about the GQLSTATUS for diagnostic purposes."""
+    def _diagnostic_record_no_preview(self) -> Mapping[str, t.Any]:
         if hasattr(self, "_diagnostic_record"):
             return self._diagnostic_record
 
@@ -509,14 +519,18 @@ class GqlError(Exception):
         )
         return self._diagnostic_record
 
+    @property
     @_preview("GQLSTATUS support is a preview feature.")
+    def diagnostic_record(self) -> Mapping[str, t.Any]:
+        return self._diagnostic_record_no_preview
+
     def __str__(self):
         return (
             f"{{gql_status: {self._gql_status_no_preview}}} "
             f"{{gql_status_description: "
             f"{self._gql_status_description_no_preview}}} "
             f"{{message: {self._message_no_preview}}} "
-            f"{{diagnostic_record: {self.diagnostic_record}}} "
+            f"{{diagnostic_record: {self._diagnostic_record_no_preview}}} "
             f"{{raw_classification: "
             f"{self._gql_raw_classification_no_preview}}}"
         )
