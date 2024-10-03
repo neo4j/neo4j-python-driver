@@ -67,7 +67,7 @@ class TransactionBase(NonConcurrentMethodChecker):
     def _enter(self) -> te.Self:
         return self
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def _exit(self, exception_type, exception_value, traceback):
         if self._closed_flag:
             return
@@ -79,7 +79,7 @@ class TransactionBase(NonConcurrentMethodChecker):
             return
         self._close()
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def _begin(
         self,
         database,
@@ -124,7 +124,7 @@ class TransactionBase(NonConcurrentMethodChecker):
             result._tx_end()
         self._results = []
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def run(
         self,
         query: te.LiteralString,
@@ -196,7 +196,7 @@ class TransactionBase(NonConcurrentMethodChecker):
 
         return result
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def _commit(self):
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
@@ -223,7 +223,7 @@ class TransactionBase(NonConcurrentMethodChecker):
 
         return self._bookmark
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def _rollback(self):
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
@@ -247,7 +247,7 @@ class TransactionBase(NonConcurrentMethodChecker):
             self._closed_flag = True
             Util.callback(self._on_closed)
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def _close(self):
         if self._closed_flag:
             return

@@ -197,7 +197,7 @@ class Workspace(NonConcurrentMethodChecker):
                 self._connection = None
             self._connection_access_mode = None
 
-    @NonConcurrentMethodChecker.non_concurrent_method
+    @NonConcurrentMethodChecker._non_concurrent_method
     def close(self) -> None:
         if self._closed:
             return
