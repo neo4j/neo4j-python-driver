@@ -375,7 +375,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         assert self._creation_frame_cache is not None  # help mypy a little
         return self._creation_frame_cache
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_iter
+    @AsyncNonConcurrentMethodChecker._non_concurrent_iter
     async def __aiter__(self) -> t.AsyncIterator[Record]:
         """
         Create an iterator returning records.
@@ -408,7 +408,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         if self._consumed:
             raise ResultConsumedError(self, _RESULT_CONSUMED_ERROR)
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def __anext__(self) -> Record:
         """
         Advance the result stream and return the record.
@@ -498,7 +498,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         self._attached = False
         self._exception = exc
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def consume(self) -> ResultSummary:
         """
         Consume the remainder of this result and return the summary.
@@ -565,7 +565,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
     @t.overload
     async def single(self, strict: te.Literal[True]) -> Record: ...
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def single(self, strict: bool = False) -> Record | None:
         """
         Obtain the next and only remaining record or None.
@@ -631,7 +631,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
                 )
         return buffer.popleft()
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def fetch(self, n: int) -> list[Record]:
         """
         Obtain up to n records from this result.
@@ -655,7 +655,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             for _ in range(min(n, len(self._record_buffer)))
         ]
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def peek(self) -> Record | None:
         """
         Obtain the next record from this result without consuming it.
@@ -677,7 +677,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             return self._record_buffer[0]
         return None
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def graph(self) -> Graph:
         """
         Turn the result into a :class:`.Graph`.
@@ -701,7 +701,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         await self._buffer_all()
         return self._hydration_scope.get_graph()
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def value(
         self, key: _TResultKey = 0, default: object = None
     ) -> list[t.Any]:
@@ -725,7 +725,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         """
         return [record.value(key, default) async for record in self]
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def values(self, *keys: _TResultKey) -> list[list[t.Any]]:
         """
         Return the remainder of the result as a list of values lists.
@@ -746,7 +746,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         """
         return [record.values(*keys) async for record in self]
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def data(self, *keys: _TResultKey) -> list[dict[str, t.Any]]:
         """
         Return the remainder of the result as a list of dictionaries.
@@ -776,7 +776,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         """
         return [record.data(*keys) async for record in self]
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def to_eager_result(self) -> EagerResult:
         """
         Convert this result to an :class:`.EagerResult`.
@@ -801,7 +801,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             summary=await self.consume(),
         )
 
-    @AsyncNonConcurrentMethodChecker.non_concurrent_method
+    @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def to_df(
         self, expand: bool = False, parse_dates: bool = False
     ) -> pandas.DataFrame:
@@ -885,6 +885,8 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             If :data:`True`, columns that exclusively contain
             :class:`time.DateTime` objects, :class:`time.Date` objects, or
             :data:`None`, will be converted to :class:`pandas.Timestamp`.
+            If :data:`False`, columns of the above types will be left as driver
+            types (dtype ``object``).
 
         :raises ImportError: if `pandas` library is not available.
         :raises ResultConsumedError: if the transaction from which this result
