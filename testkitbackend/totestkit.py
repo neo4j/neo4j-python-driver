@@ -328,7 +328,7 @@ def driver_exc(exc, id_=None):
                 payload["diagnosticRecord"] = {
                     k: field(v) for k, v in exc.diagnostic_record.items()
                 }
-            cause = exc, "__cause__", None
+            cause = getattr(exc, "__cause__", None)
             if isinstance(cause, GqlError):
                 payload["cause"] = driver_exc_cause(cause)
 
