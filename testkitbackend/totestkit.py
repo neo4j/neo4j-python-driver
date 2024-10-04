@@ -328,9 +328,9 @@ def driver_exc(exc, id_=None):
                 payload["diagnosticRecord"] = {
                     k: field(v) for k, v in exc.diagnostic_record.items()
                 }
-            cause = getattr(exc, "__cause__", None)
-            if isinstance(cause, GqlError):
-                payload["cause"] = driver_exc_cause(cause)
+            cause = driver_exc_cause(getattr(exc, "__cause__", None))
+            if cause is not None:
+                payload["cause"] = cause
 
     return {"name": "DriverError", "data": payload}
 
@@ -342,8 +342,10 @@ def _exc_msg(exc):
 
 
 def driver_exc_cause(exc):
+    if exc is None:
+        return None
     if not isinstance(exc, GqlError):
-        raise TypeError("Expected GqlError as cause")
+        return driver_exc_cause(getattr(exc, "__cause__", None))
     payload = {}
     with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["msg"] = exc.message
@@ -359,7 +361,8 @@ def driver_exc_cause(exc):
         payload["classification"] = exc.gql_classification
     with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["rawClassification"] = exc.gql_raw_classification
-    if exc.__cause__ is not None:
-        payload["cause"] = driver_exc_cause(exc.__cause__)
+    cause = getattr(exc, "__cause__", None)
+    if cause is not None:
+        payload["cause"] = driver_exc_cause(cause)
 
     return {"name": "GqlError", "data": payload}
