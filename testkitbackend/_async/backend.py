@@ -145,9 +145,17 @@ class AsyncBackend:
                 return True
         return None
 
+    @staticmethod
+    def _get_tb(exc):
+        return "".join(
+            traceback.format_exception(
+                type(exc), exc, getattr(exc, "__traceback__", None)
+            )
+        )
+
     def _serialize_driver_exc(self, exc):
         log.debug(exc.args)
-        log.debug("".join(traceback.format_exception(exc)))
+        log.debug(self._get_tb(exc))
 
         key = self.next_key()
         self.errors[key] = exc
@@ -156,7 +164,7 @@ class AsyncBackend:
 
     @staticmethod
     def _serialize_backend_error(exc):
-        tb = "".join(traceback.format_exception(exc))
+        tb = AsyncBackend._get_tb(exc)
         log.error(tb)
         return {"name": "BackendError", "data": {"msg": tb}}
 
