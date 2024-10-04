@@ -2399,6 +2399,8 @@ class DateTime(metaclass=DateTimeType):
         """
         `!=` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
+        if not isinstance(other, (datetime, DateTime)):
+            return NotImplemented
         return not self.__eq__(other)
 
     def __lt__(self, other):
@@ -2461,6 +2463,8 @@ class DateTime(metaclass=DateTimeType):
         :rtype: DateTime
         """
         if isinstance(other, timedelta):
+            if other.total_seconds() == 0:
+                return self
             t = (self.to_clock_time()
                  + ClockTime(86400 * other.days + other.seconds,
                              other.microseconds * 1000))
@@ -2471,12 +2475,14 @@ class DateTime(metaclass=DateTimeType):
             ))
             return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         if isinstance(other, Duration):
-            t = (self.to_clock_time()
+            if other == (0, 0, 0, 0):
+                return self
+            t = (self.time().to_clock_time()
                  + ClockTime(other.seconds, other.nanoseconds))
             days, seconds = symmetric_divmod(t.seconds, 86400)
             date_ = self.date() + Duration(months=other.months,
                                            days=days + other.days)
-            time_ = Time.from_ticks(seconds * NANO_SECONDS + t.nanoseconds)
+            time_ = Time.from_ticks_ns(seconds * NANO_SECONDS + t.nanoseconds)
             return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         return NotImplemented
 
