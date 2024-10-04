@@ -227,7 +227,7 @@ class AsyncBolt5x0(AsyncBolt):
             response=Response(
                 self, "route", hydration_hooks, on_success=metadata.update
             ),
-            dehydration_hooks=hydration_hooks,
+            dehydration_hooks=dehydration_hooks,
         )
         await self.send_all()
         await self.fetch_all()

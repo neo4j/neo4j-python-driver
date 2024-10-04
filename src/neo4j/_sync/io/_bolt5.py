@@ -227,7 +227,7 @@ class Bolt5x0(Bolt):
             response=Response(
                 self, "route", hydration_hooks, on_success=metadata.update
             ),
-            dehydration_hooks=hydration_hooks,
+            dehydration_hooks=dehydration_hooks,
         )
         self.send_all()
         self.fetch_all()
