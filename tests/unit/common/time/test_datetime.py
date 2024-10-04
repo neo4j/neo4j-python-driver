@@ -20,6 +20,7 @@ import copy
 import itertools
 import operator
 import pickle
+import typing as t
 from datetime import (
     datetime,
     timedelta,
@@ -46,10 +47,15 @@ from neo4j.time._arithmetic import (
 from neo4j.time._clock_implementations import ClockTime
 
 
+if t.TYPE_CHECKING:
+    from pytz import BaseTzInfo
+
+
 timezone_us_eastern = timezone("US/Eastern")
 timezone_london = timezone("Europe/London")
 timezone_berlin = timezone("Europe/Berlin")
 timezone_utc = timezone("UTC")
+timezone_utc_p2 = FixedOffset(120)
 
 
 def make_reduce_datetimes():
@@ -262,6 +268,235 @@ class TestDateTime:
         dt2 = datetime(2018, 1, 26, 0, 0, 0)
         t = dt1 - dt2
         assert t == timedelta(days=65, hours=23, seconds=17.914390409)
+
+    @pytest.mark.parametrize(
+        ("dt_early", "delta", "dt_late"),
+        (
+            (
+                DateTime(2024, 3, 31, 0, 30, 0),
+                Duration(nanoseconds=1),
+                DateTime(2024, 3, 31, 0, 30, 0, 1),
+            ),
+            (
+                DateTime(2024, 3, 31, 0, 30, 0),
+                Duration(hours=24),
+                DateTime(2024, 4, 1, 0, 30, 0),
+            ),
+            (
+                DateTime(2024, 3, 31, 0, 30, 0),
+                timedelta(microseconds=1),
+                DateTime(2024, 3, 31, 0, 30, 0, 1000),
+            ),
+            (
+                DateTime(2024, 3, 31, 0, 30, 0),
+                timedelta(hours=24),
+                DateTime(2024, 4, 1, 0, 30, 0),
+            ),
+        ),
+    )
+    @pytest.mark.parametrize(
+        "tz",
+        (None, timezone_utc, timezone_utc_p2, timezone_berlin),
+    )
+    def test_add_duration(
+        self,
+        dt_early: DateTime | datetime,
+        delta: Duration | timedelta,
+        dt_late: DateTime | datetime,
+        tz: BaseTzInfo | None,
+    ) -> None:
+        if tz is not None:
+            dt_early = timezone_utc.localize(dt_early).astimezone(tz)
+            dt_late = timezone_utc.localize(dt_late).astimezone(tz)
+        assert dt_early + delta == dt_late
+
+    @pytest.mark.parametrize(
+        ("datetime_cls", "delta_cls"),
+        (
+            (datetime, timedelta),  # baseline (what Python's datetime does)
+            (DateTime, Duration),
+            (DateTime, timedelta),
+        ),
+    )
+    def test_transition_to_summertime(
+        self,
+        datetime_cls: type[DateTime] | type[datetime],
+        delta_cls: type[Duration] | type[timedelta],
+    ) -> None:
+        dt = datetime_cls(2022, 3, 27, 1, 30)
+        dt = timezone_berlin.localize(dt)
+        assert dt.utcoffset() == timedelta(hours=1)
+        assert isinstance(dt, datetime_cls)
+        time = dt.time()
+        assert (time.hour, time.minute) == (1, 30)
+
+        dt += delta_cls(hours=1)
+
+        # The native datetime object treats timedelta addition as wall time
+        # addition. This is imo silly, but what Python decided to do. So want
+        # our implementation to match that. See also:
+        # https://stackoverflow.com/questions/76583100/is-pytz-deprecated-now-or-in-the-future-in-python
+        assert dt.utcoffset() == timedelta(hours=1)
+        assert isinstance(dt, datetime_cls)
+        time = dt.time()
+        assert (time.hour, time.minute) == (2, 30)
+
+    @pytest.mark.parametrize(
+        ("datetime_cls", "delta_cls"),
+        (
+            (datetime, timedelta),  # baseline (what Python's datetime does)
+            (DateTime, Duration),
+            (DateTime, timedelta),
+        ),
+    )
+    def test_transition_from_summertime(
+        self,
+        datetime_cls: type[DateTime] | type[datetime],
+        delta_cls: type[Duration] | type[timedelta],
+    ) -> None:
+        dt = datetime_cls(2022, 10, 30, 2, 30)
+        dt = timezone_berlin.localize(dt, is_dst=True)
+        assert dt.utcoffset() == timedelta(hours=2)
+        assert isinstance(dt, datetime_cls)
+        time = dt.time()
+        assert (time.hour, time.minute) == (2, 30)
+
+        dt += delta_cls(hours=1)
+
+        # The native datetime object treats timedelta addition as wall time
+        # addition. This is imo silly, but what Python decided to do. So want
+        # our implementation to match that. See also:
+        # https://stackoverflow.com/questions/76583100/is-pytz-deprecated-now-or-in-the-future-in-python
+        assert dt.utcoffset() == timedelta(hours=2)
+        assert isinstance(dt, datetime_cls)
+        time = dt.time()
+        assert (time.hour, time.minute) == (3, 30)
+
+    @pytest.mark.parametrize(
+        ("dt1", "dt2"),
+        (
+            (
+                DateTime(2018, 4, 27, 23, 0, 17, 914390409),
+                DateTime(2018, 4, 27, 23, 0, 17, 914390409),
+            ),
+            (
+                utc.localize(DateTime(2018, 4, 27, 23, 0, 17, 914390409)),
+                utc.localize(DateTime(2018, 4, 27, 23, 0, 17, 914390409)),
+            ),
+            (
+                utc.localize(DateTime(2018, 4, 27, 23, 0, 17, 914390409)),
+                utc.localize(
+                    DateTime(2018, 4, 27, 23, 0, 17, 914390409)
+                ).astimezone(timezone_berlin),
+            ),
+        ),
+    )
+    @pytest.mark.parametrize("native", (True, False))
+    def test_eq(
+        self,
+        dt1: DateTime | datetime,
+        dt2: DateTime | datetime,
+        native: bool,
+    ) -> None:
+        assert isinstance(dt1, DateTime)
+        assert isinstance(dt2, DateTime)
+        if native:
+            dt1 = dt1.replace(nanosecond=dt1.nanosecond // 1000 * 1000)
+            dt2 = dt2.to_native()
+        assert dt1 == dt2
+        assert dt2 == dt1
+        # explicitly test that `not !=` is `==` (different code paths)
+        assert not dt1 != dt2  # noqa
+        assert not dt2 != dt1  # noqa
+
+    @pytest.mark.parametrize(
+        ("dt1", "dt2", "native"),
+        (
+            # nanosecond difference
+            (
+                DateTime(2018, 4, 27, 23, 0, 17, 914390408),
+                DateTime(2018, 4, 27, 23, 0, 17, 914390409),
+                False,
+            ),
+            *(
+                (
+                    dt1,
+                    DateTime(2018, 4, 27, 23, 0, 17, 914390409),
+                    native,
+                )
+                for dt1 in (
+                    DateTime(2018, 4, 27, 23, 0, 17, 914391409),
+                    DateTime(2018, 4, 27, 23, 0, 18, 914390409),
+                    DateTime(2018, 4, 27, 23, 1, 17, 914390409),
+                    DateTime(2018, 4, 27, 22, 0, 17, 914390409),
+                    DateTime(2018, 4, 26, 23, 0, 17, 914390409),
+                    DateTime(2018, 5, 27, 23, 0, 17, 914390409),
+                    DateTime(2019, 4, 27, 23, 0, 17, 914390409),
+                )
+                for native in (True, False)
+            ),
+            *(
+                (
+                    # type ignore:
+                    # https://github.com/python/typeshed/issues/12715
+                    tz1.localize(dt1, is_dst=None),  # type: ignore[arg-type]
+                    tz2.localize(
+                        DateTime(2018, 4, 27, 23, 0, 17, 914390409),
+                        is_dst=None,  # type: ignore[arg-type]
+                    ),
+                    native,
+                )
+                for dt1 in (
+                    DateTime(2018, 4, 27, 23, 0, 17, 914391409),
+                    DateTime(2018, 4, 27, 23, 0, 18, 914390409),
+                    DateTime(2018, 4, 27, 23, 1, 17, 914390409),
+                    DateTime(2018, 4, 27, 22, 0, 17, 914390409),
+                    DateTime(2018, 4, 26, 23, 0, 17, 914390409),
+                    DateTime(2018, 5, 27, 23, 0, 17, 914390409),
+                    DateTime(2019, 4, 27, 23, 0, 17, 914390409),
+                )
+                for native in (True, False)
+                for tz1, tz2 in itertools.combinations_with_replacement(
+                    (timezone_utc, timezone_utc_p2, timezone_berlin), 2
+                )
+            ),
+        ),
+    )
+    def test_ne(
+        self,
+        dt1: DateTime | datetime,
+        dt2: DateTime | datetime,
+        native: bool,
+    ) -> None:
+        assert isinstance(dt1, DateTime)
+        assert isinstance(dt2, DateTime)
+        if native:
+            dt2 = dt2.to_native()
+        assert dt1 != dt2
+        assert dt2 != dt1
+        # explicitly test that `not ==` is `!=` (different code paths)
+        assert not dt1 == dt2  # noqa
+        assert not dt2 == dt1  # noqa
+
+    @pytest.mark.parametrize(
+        "other",
+        (
+            object(),
+            1,
+            DateTime(2018, 4, 27, 23, 0, 17, 914391409).to_clock_time(),
+            (
+                DateTime(2018, 4, 27, 23, 0, 17, 914391409)
+                - DateTime(1970, 1, 1)
+            ),
+        ),
+    )
+    def test_ne_object(self, other: object) -> None:
+        dt = DateTime(2018, 4, 27, 23, 0, 17, 914391409)
+        assert dt != other
+        assert other != dt
+        # explicitly test that `not ==` is `!=` (different code paths)
+        assert not dt == other  # noqa
+        assert not other == dt  # noqa
 
     def test_normalization(self) -> None:
         ndt1 = timezone_us_eastern.normalize(
@@ -524,26 +759,6 @@ def test_from_native_case_2() -> None:
 
 
 @pytest.mark.parametrize("datetime_cls", (DateTime, datetime))
-def test_transition_to_summertime(datetime_cls) -> None:
-    dt = datetime_cls(2022, 3, 27, 1, 30)
-    dt = timezone_berlin.localize(dt)
-    assert dt.utcoffset() == timedelta(hours=1)
-    assert isinstance(dt, datetime_cls)
-    time = dt.time()
-    assert (time.hour, time.minute) == (1, 30)
-
-    dt += timedelta(hours=1)
-
-    # The native datetime object just bluntly carries over the timezone. You'd
-    # have to manually convert to UTC, do the calculation, and then convert
-    # back. Not pretty, but we should make sure our implementation does
-    assert dt.utcoffset() == timedelta(hours=1)
-    assert isinstance(dt, datetime_cls)
-    time = dt.time()
-    assert (time.hour, time.minute) == (2, 30)
-
-
-@pytest.mark.parametrize("datetime_cls", (DateTime, datetime))
 @pytest.mark.parametrize(
     "utc_impl",
     (utc, datetime_timezone(timedelta(0))),
@@ -745,6 +960,8 @@ def test_equality(dt1, dt2) -> None:
     ),
 )
 def test_inequality(dt1, dt2) -> None:
+    assert dt1 != dt2
+    assert dt2 != dt1
     assert dt1 != dt2
     assert dt2 != dt1
 
