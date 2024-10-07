@@ -345,7 +345,9 @@ def _exc_msg(exc, max_depth=10):
             res = str(exc.message) if exc.message is not None else str(exc)
         else:
             with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                res = exc.message
+                msg = exc.message
+            if exc.args:
+                res = f"{msg} - {exc!s}"
     else:
         res = str(exc)
     while getattr(exc, "__cause__", None) is not None:
