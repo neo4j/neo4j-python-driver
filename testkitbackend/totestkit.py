@@ -20,7 +20,6 @@ import math
 
 import neo4j
 from neo4j.exceptions import (
-    DriverError,
     GqlError,
     Neo4jError,
 )
@@ -342,10 +341,8 @@ def _exc_msg(exc, max_depth=10):
 
     depth = 0
     if isinstance(exc, GqlError):
-        if isinstance(exc, Neo4jError) and exc.message is not None:
-            res = str(exc.message)
-        elif isinstance(exc, DriverError):
-            res = str(exc)
+        if isinstance(exc, Neo4jError):
+            res = str(exc.message) if exc.message is not None else str(exc)
         else:
             with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 res = exc.message
