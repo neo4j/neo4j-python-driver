@@ -20,6 +20,7 @@ import math
 
 import neo4j
 from neo4j.exceptions import (
+    DriverError,
     GqlError,
     Neo4jError,
 )
@@ -341,8 +342,13 @@ def _exc_msg(exc, max_depth=10):
 
     depth = 0
     if isinstance(exc, GqlError):
-        with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
-            res = exc.message
+        if isinstance(exc, Neo4jError) and exc.message is not None:
+            res = str(exc.message)
+        elif isinstance(exc, DriverError):
+            res = str(exc)
+        else:
+            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+                res = exc.message
     else:
         res = str(exc)
     while getattr(exc, "__cause__", None) is not None:
