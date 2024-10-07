@@ -347,7 +347,10 @@ def driver_exc_cause(exc):
     if not isinstance(exc, GqlError):
         return driver_exc_cause(getattr(exc, "__cause__", None))
     payload = {}
-    with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    if not isinstance(exc, Neo4jError):
+        with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            payload["msg"] = exc.message
+    else:
         payload["msg"] = exc.message
     with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["gqlStatus"] = exc.gql_status
