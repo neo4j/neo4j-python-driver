@@ -335,23 +335,39 @@ def driver_exc(exc, id_=None):
     return {"name": "DriverError", "data": payload}
 
 
-def _exc_msg(exc):
+def _exc_msg(exc, max_depth=10):
     if isinstance(exc, Neo4jError) and exc.message is not None:
         return str(exc.message)
-    return str(exc)
+
+    depth = 0
+    if isinstance(exc, GqlError):
+        with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            res = exc.message
+    else:
+        res = str(exc)
+    while getattr(exc, "__cause__", None) is not None:
+        if isinstance(exc.__cause__, GqlError):
+            # Not including GqlError in the chain as they will be serialized
+            # separately in the `cause` field.
+            break
+        depth += 1
+        if depth >= max_depth:
+            break
+        res += f"\nCaused by: {exc.__cause__!r}"
+        exc = exc.__cause__
+    return res
 
 
-def driver_exc_cause(exc):
+def driver_exc_cause(exc, max_depth=10):
     if exc is None:
         return None
+    if max_depth <= 0:
+        return None
     if not isinstance(exc, GqlError):
-        return driver_exc_cause(getattr(exc, "__cause__", None))
-    payload = {}
-    if not isinstance(exc, Neo4jError):
-        with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
-            payload["msg"] = exc.message
-    else:
-        payload["msg"] = exc.message
+        return driver_exc_cause(
+            getattr(exc, "__cause__", None), max_depth=max_depth - 1
+        )
+    payload = {"msg": _exc_msg(exc)}
     with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["gqlStatus"] = exc.gql_status
     with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
@@ -366,6 +382,6 @@ def driver_exc_cause(exc):
         payload["rawClassification"] = exc.gql_raw_classification
     cause = getattr(exc, "__cause__", None)
     if cause is not None:
-        payload["cause"] = driver_exc_cause(cause)
+        payload["cause"] = driver_exc_cause(cause, max_depth=max_depth - 1)
 
     return {"name": "GqlError", "data": payload}
