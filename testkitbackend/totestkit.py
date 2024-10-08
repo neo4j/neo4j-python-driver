@@ -22,6 +22,7 @@ import neo4j
 from neo4j.exceptions import (
     GqlError,
     Neo4jError,
+    ResultFailedError,
 )
 from neo4j.graph import (
     Node,
@@ -350,9 +351,16 @@ def _exc_msg(exc, max_depth=10):
     else:
         res = str(exc)
     while getattr(exc, "__cause__", None) is not None:
-        if isinstance(exc.__cause__, GqlError):
+        if (
             # Not including GqlError in the chain as they will be serialized
             # separately in the `cause` field.
+            isinstance(exc.__cause__, GqlError)
+            # Special case for ResultFailedError:
+            # Always serialize the cause in the message to please TestKit.
+            # Else, the cause's class name will get lost (can't be serialized
+            # as a field in of an error cause).
+            and not isinstance(exc, ResultFailedError)
+        ):
             break
         depth += 1
         if depth >= max_depth:
