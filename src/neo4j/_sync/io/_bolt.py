@@ -274,7 +274,7 @@ class Bolt:
 
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
-    def protocol_handlers(cls, protocol_version=None):
+    def protocol_handlers(cls):
         """
         Return a dictionary of available Bolt protocol handlers.
 
@@ -293,7 +293,6 @@ class Bolt:
         # issues.
         from ._bolt3 import Bolt3
         from ._bolt4 import (
-            Bolt4x1,
             Bolt4x2,
             Bolt4x3,
             Bolt4x4,
@@ -308,10 +307,9 @@ class Bolt:
             Bolt5x6,
         )
 
-        handlers = {
+        return {
             Bolt3.PROTOCOL_VERSION: Bolt3,
-            # 4.0 unsupported because no space left in the handshake
-            Bolt4x1.PROTOCOL_VERSION: Bolt4x1,
+            # 4.0-4.1 unsupported because no space left in the handshake
             Bolt4x2.PROTOCOL_VERSION: Bolt4x2,
             Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
             Bolt4x4.PROTOCOL_VERSION: Bolt4x4,
@@ -324,19 +322,8 @@ class Bolt:
             Bolt5x6.PROTOCOL_VERSION: Bolt5x6,
         }
 
-        if protocol_version is None:
-            return handlers
-
-        if not isinstance(protocol_version, tuple):
-            raise TypeError("Protocol version must be specified as a tuple")
-
-        if protocol_version in handlers:
-            return {protocol_version: handlers[protocol_version]}
-
-        return {}
-
     @classmethod
-    def version_list(cls, versions):
+    def version_list(cls, versions, limit=4):
         """
         Return a list of supported protocol versions in order of preference.
 
@@ -359,7 +346,7 @@ class Bolt:
                 result[-1][1][1] = version[1]
                 continue
             result.append(Version(version[0], [version[1], version[1]]))
-            if len(result) == 4:
+            if len(result) >= limit:
                 break
         return result
 
@@ -374,8 +361,11 @@ class Bolt:
         supported_versions = sorted(
             cls.protocol_handlers().keys(), reverse=True
         )
-        offered_versions = cls.version_list(supported_versions)
-        versions_bytes = (v.to_bytes() for v in offered_versions)
+        offered_versions = cls.version_list(supported_versions, limit=3)
+        versions_bytes = (
+            Version(0xFF, 1).to_bytes(),  # handshake v2
+            *(v.to_bytes() for v in offered_versions),
+        )
         return b"".join(versions_bytes).ljust(16, b"\x00")
 
     @classmethod

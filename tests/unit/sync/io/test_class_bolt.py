@@ -52,38 +52,31 @@ def test_class_method_protocol_handlers():
 @pytest.mark.parametrize(
     ("test_input", "expected"),
     [
-        ((0, 0), 0),
-        ((1, 0), 0),
-        ((2, 0), 0),
-        ((3, 0), 1),
-        ((4, 0), 0),
-        ((4, 1), 1),
-        ((4, 2), 1),
-        ((4, 3), 1),
-        ((4, 4), 1),
-        ((5, 0), 1),
-        ((5, 1), 1),
-        ((5, 2), 1),
-        ((5, 3), 1),
-        ((5, 4), 1),
-        ((5, 5), 1),
-        ((5, 6), 1),
-        ((5, 7), 0),
-        ((6, 0), 0),
+        ((0, 0), False),
+        ((1, 0), False),
+        ((2, 0), False),
+        ((3, 0), True),
+        ((4, 0), False),
+        ((4, 1), True),
+        ((4, 2), True),
+        ((4, 3), True),
+        ((4, 4), True),
+        ((5, 0), True),
+        ((5, 1), True),
+        ((5, 2), True),
+        ((5, 3), True),
+        ((5, 4), True),
+        ((5, 5), True),
+        ((5, 6), True),
+        ((5, 7), False),
+        ((6, 0), False),
     ],
 )
 def test_class_method_protocol_handlers_with_protocol_version(
     test_input, expected
 ):
-    protocol_handlers = Bolt.protocol_handlers(
-        protocol_version=test_input
-    )
-    assert len(protocol_handlers) == expected
-
-
-def test_class_method_protocol_handlers_with_invalid_protocol_version():
-    with pytest.raises(TypeError):
-        Bolt.protocol_handlers(protocol_version=2)
+    protocol_handlers = Bolt.protocol_handlers()
+    assert (test_input in protocol_handlers) == expected
 
 
 # [bolt-version-bump] search tag when changing bolt version support
@@ -91,7 +84,7 @@ def test_class_method_get_handshake():
     handshake = Bolt.get_handshake()
     assert (
         handshake
-        == b"\x00\x06\x06\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
+        == b"\x00\x00\x01\xff\x00\x06\x06\x05\x00\x02\x04\x04\x00\x00\x00\x03"
     )
 
 

@@ -14,9 +14,13 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
+import dataclasses
 import logging
 import struct
+import typing as t
 from contextlib import suppress
 
 from ... import addressing
@@ -34,10 +38,159 @@ from ...exceptions import (
 )
 
 
+if t.TYPE_CHECKING:
+    from ..._deadline import Deadline
+
+
 log = logging.getLogger("neo4j.io")
 
 
+@dataclasses.dataclass
+class HandshakeCtx:
+    ctx: str
+    deadline: Deadline
+    local_port: int
+    resolved_address: addressing.ResolvedAddress
+    full_response: bytearray = dataclasses.field(default_factory=bytearray)
+
+
+@dataclasses.dataclass
+class BytesPrinter:
+    bytes: bytes | bytearray
+
+    def __str__(self):
+        return f"0x{self.bytes.hex().upper()}"
+
+
 class BoltSocket(BoltSocketBase):
+    def _parse_handshake_response_v1(self, ctx, response):
+        agreed_version = response[-1], response[-2]
+        log.debug(
+            "[#%04X]  S: <HANDSHAKE v1> 0x%06X%02X",
+            ctx.local_port,
+            agreed_version[1],
+            agreed_version[0],
+        )
+        return agreed_version
+
+    def _parse_handshake_response_v2(self, ctx, response):
+        ctx.ctx = "handshake v2 offerings count"
+        num_offerings = self._read_varint(ctx)
+        offerings = []
+        for i in range(num_offerings):
+            ctx.ctx = f"handshake v2 offering {i}"
+            offering_response = self._handshake_read(ctx, 4)
+            offering = offering_response[-1:-4:-1]
+            offerings.append(offering)
+        ctx.ctx = "handshake v2 capabilities"
+        _capabilities_offer = self._read_varint(ctx)
+
+        if log.getEffectiveLevel() >= logging.DEBUG:
+            log.debug(
+                "[#%04X]  S: <HANDSHAKE v2> %s [%i] %s %s",
+                ctx.local_port,
+                BytesPrinter(response),
+                num_offerings,
+                " ".join(f"0x{vx[1]:06X}{vx[0]:02X}" for vx in offerings),
+                BytesPrinter(self._encode_varint(_capabilities_offer)),
+            )
+
+        supported_versions = sorted(self.Bolt.protocol_handlers().keys())
+        chosen_version = 0, 0
+        for v in supported_versions:
+            for offer_major, offer_minor, offer_range in offerings:
+                offer_max = (offer_major, offer_minor)
+                offer_min = (offer_major, offer_minor - offer_range)
+                if offer_min <= v <= offer_max:
+                    chosen_version = v
+                    break
+
+        ctx.ctx = "handshake v2 chosen version"
+        self._handshake_send(
+            ctx, bytes((0, 0, chosen_version[1], chosen_version[0]))
+        )
+        chosen_capabilities = 0
+        capabilities = self._encode_varint(chosen_capabilities)
+        ctx.ctx = "handshake v2 chosen capabilities"
+        log.debug(
+            "[#%04X]  C: <HANDSHAKE v2> 0x%06X%02X %s",
+            ctx.local_port,
+            chosen_version[1],
+            chosen_version[0],
+            BytesPrinter(capabilities),
+        )
+        self._handshake_send(ctx, b"\x00")
+
+        return chosen_version
+
+    def _read_varint(self, ctx):
+        next_byte = (self._handshake_read(ctx, 1))[0]
+        res = next_byte & 0x7F
+        i = 0
+        while next_byte & 0x80:
+            i += 1
+            next_byte = (self._handshake_read(ctx, 1))[0]
+            res += (next_byte & 0x7F) << (7 * i)
+        return res
+
+    @staticmethod
+    def _encode_varint(n):
+        res = bytearray()
+        while n >= 0x80:
+            res.append(n & 0x7F | 0x80)
+            n >>= 7
+        res.append(n)
+        return res
+
+    def _handshake_read(self, ctx, n):
+        original_timeout = self.gettimeout()
+        self.settimeout(ctx.deadline.to_timeout())
+        try:
+            response = self.recv(n)
+            ctx.full_response.extend(response)
+        except OSError as exc:
+            raise ServiceUnavailable(
+                f"Failed to read {ctx.ctx} from server "
+                f"{ctx.resolved_address!r} (deadline {ctx.deadline})"
+            ) from exc
+        finally:
+            self.settimeout(original_timeout)
+        data_size = len(response)
+        if data_size == 0:
+            # If no data is returned after a successful select
+            # response, the server has closed the connection
+            log.debug("[#%04X]  S: <CLOSE>", ctx.local_port)
+            self.close()
+            raise ServiceUnavailable(
+                f"Connection to {ctx.resolved_address} closed with incomplete "
+                f"handshake response"
+            )
+        if data_size != n:
+            # Some garbled data has been received
+            log.debug("[#%04X]  S: @*#!", ctx.local_port)
+            self.close()
+            raise BoltProtocolError(
+                f"Expected {ctx.ctx} from {ctx.resolved_address!r}, received "
+                f"{response!r} instead (so far {ctx.full_response!r}); "
+                "check for incorrect port number",
+                address=ctx.resolved_address,
+            )
+
+        return response
+
+    def _handshake_send(self, ctx, data):
+        original_timeout = self.gettimeout()
+        self.settimeout(ctx.deadline.to_timeout())
+        try:
+            self.sendall(data)
+        except OSError as exc:
+            raise ServiceUnavailable(
+                f"Failed to write {ctx.ctx} to server "
+                f"{ctx.resolved_address!r} (deadline {ctx.deadline})"
+            ) from exc
+        finally:
+            self.settimeout(original_timeout)
+
     def _handshake(self, resolved_address, deadline):
         """
         Perform BOLT handshake.
@@ -49,76 +202,70 @@ class BoltSocket(BoltSocketBase):
         """
         local_port = self.getsockname()[1]
 
-        # TODO: Optimize logging code
-        handshake = self.Bolt.get_handshake()
-        handshake = struct.unpack(">16B", handshake)
-        handshake = [handshake[i : i + 4] for i in range(0, len(handshake), 4)]
+        if log.getEffectiveLevel() >= logging.DEBUG:
+            handshake = self.Bolt.get_handshake()
+            handshake = struct.unpack(">16B", handshake)
+            handshake = [
+                handshake[i : i + 4] for i in range(0, len(handshake), 4)
+            ]
 
-        supported_versions = [
-            f"0x{vx[0]:02X}{vx[1]:02X}{vx[2]:02X}{vx[3]:02X}"
-            for vx in handshake
-        ]
+            supported_versions = [
+                f"0x{vx[0]:02X}{vx[1]:02X}{vx[2]:02X}{vx[3]:02X}"
+                for vx in handshake
+            ]
 
-        log.debug(
-            "[#%04X]  C: <MAGIC> 0x%08X",
-            local_port,
-            int.from_bytes(self.Bolt.MAGIC_PREAMBLE, byteorder="big"),
-        )
-        log.debug(
-            "[#%04X]  C: <HANDSHAKE> %s %s %s %s",
-            local_port,
-            *supported_versions,
-        )
+            log.debug(
+                "[#%04X]  C: <MAGIC> 0x%08X",
+                local_port,
+                int.from_bytes(self.Bolt.MAGIC_PREAMBLE, byteorder="big"),
+            )
+            log.debug(
+                "[#%04X]  C: <HANDSHAKE> %s %s %s %s",
+                local_port,
+                *supported_versions,
+            )
 
         request = self.Bolt.MAGIC_PREAMBLE + self.Bolt.get_handshake()
 
-        # Handle the handshake response
-        original_timeout = self.gettimeout()
-        self.settimeout(deadline.to_timeout())
-        try:
-            self.sendall(request)
-            response = self.recv(4)
-        except OSError as exc:
-            raise ServiceUnavailable(
-                f"Failed to read any data from server {resolved_address!r} "
-                f"after connected (deadline {deadline})"
-            ) from exc
-        finally:
-            self.settimeout(original_timeout)
-        data_size = len(response)
-        if data_size == 0:
-            # If no data is returned after a successful select
-            # response, the server has closed the connection
-            log.debug("[#%04X]  S: <CLOSE>", local_port)
-            self.close()
-            raise ServiceUnavailable(
-                f"Connection to {resolved_address} closed without handshake "
-                "response"
-            )
-        if data_size != 4:
-            # Some garbled data has been received
-            log.debug("[#%04X]  S: @*#!", local_port)
-            self.close()
-            raise BoltProtocolError(
-                "Expected four byte Bolt handshake response from "
-                f"{resolved_address!r}, received {response!r} instead; "
-                "check for incorrect port number",
-                address=resolved_address,
-            )
-        elif response == b"HTTP":
+        ctx = HandshakeCtx(
+            ctx="handshake opening",
+            deadline=deadline,
+            local_port=local_port,
+            resolved_address=resolved_address,
+        )
+
+        self._handshake_send(ctx, request)
+
+        ctx.ctx = "four byte Bolt handshake response"
+        response = self._handshake_read(ctx, 4)
+
+        if response == b"HTTP":
             log.debug("[#%04X]  S: <CLOSE>", local_port)
             self.close()
             raise ServiceUnavailable(
                 f"Cannot to connect to Bolt service on {resolved_address!r} "
                 "(looks like HTTP)"
             )
-        agreed_version = response[-1], response[-2]
-        log.debug(
-            "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
-            local_port,
-            agreed_version[1],
-            agreed_version[0],
-        )
+        elif response[-1] == 0xFF:
+            # manifest style handshake
+            manifest_version = response[-2]
+            if manifest_version == 0x01:
+                agreed_version = self._parse_handshake_response_v2(
+                    ctx,
+                    response,
+                )
+            else:
+                raise BoltProtocolError(
+                    "Unsupported Bolt handshake manifest version "
+                    f"{manifest_version} received from {resolved_address!r}.",
+                    address=resolved_address,
+                )
+        else:
+            agreed_version = self._parse_handshake_response_v1(
+                ctx,
+                response,
+            )
+
         return agreed_version, handshake, response
 
     @classmethod
