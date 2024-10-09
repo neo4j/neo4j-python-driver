@@ -23,7 +23,6 @@ from collections import deque
 from logging import getLogger
 from time import monotonic
 
-from ..._async_compat.network import AsyncBoltSocket
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import (
     HydrationHandlerABC,
@@ -52,6 +51,7 @@ from ...exceptions import (
     SessionExpired,
 )
 from ..config import AsyncPoolConfig
+from ._bolt_socket import AsyncBoltSocket
 from ._common import (
     AsyncInbox,
     AsyncOutbox,

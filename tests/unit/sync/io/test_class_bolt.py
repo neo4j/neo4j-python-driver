@@ -19,9 +19,9 @@ import asyncio
 import pytest
 
 import neo4j.auth_management
-from neo4j._async_compat.network import BoltSocket
 from neo4j._exceptions import BoltHandshakeError
 from neo4j._sync.io import Bolt
+from neo4j._sync.io._bolt_socket import BoltSocket
 
 from ...._async_compat import (
     mark_sync_test,
