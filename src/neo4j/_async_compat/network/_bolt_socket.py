@@ -386,65 +386,70 @@ class BoltSocketBase:
         s = None  # The socket
 
         try:
-            if len(resolved_address) == 2:
-                s = socket(AF_INET)
-            elif len(resolved_address) == 4:
-                s = socket(AF_INET6)
-            else:
-                raise ValueError(f"Unsupported address {resolved_address!r}")
-            t = s.gettimeout()
-            if timeout:
-                s.settimeout(timeout)
-            log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-            s.connect(resolved_address)
-            s.settimeout(t)
-            keep_alive = 1 if keep_alive else 0
-            s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
-        except SocketTimeout:
-            log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
-            log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-            cls._kill_raw_socket(s)
-            raise ServiceUnavailable(
-                "Timed out trying to establish connection to "
-                f"{resolved_address!r}"
-            ) from None
-        except Exception as error:
-            log.debug(
-                "[#0000]  S: <ERROR> %s %s",
-                type(error).__name__,
-                " ".join(map(repr, error.args)),
-            )
-            log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-            cls._kill_raw_socket(s)
-            if isinstance(error, OSError):
-                raise ServiceUnavailable(
-                    f"Failed to establish connection to {resolved_address!r} "
-                    f"(reason {error})"
-                ) from error
-            raise
-
-        local_port = s.getsockname()[1]
-        # Secure the connection if an SSL context has been provided
-        if ssl_context:
-            hostname = resolved_address._host_name or None
-            sni_host = hostname if HAS_SNI and hostname else None
-            log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
             try:
-                s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-            except (OSError, SSLError, CertificateError) as cause:
-                cls._kill_raw_socket(s)
-                raise BoltSecurityError(
-                    message="Failed to establish encrypted connection.",
-                    address=(hostname, local_port),
-                ) from cause
-            # Check that the server provides a certificate
-            der_encoded_server_certificate = s.getpeercert(binary_form=True)
-            if der_encoded_server_certificate is None:
-                raise BoltProtocolError(
-                    "When using an encrypted socket, the server should always "
-                    "provide a certificate",
-                    address=(hostname, local_port),
+                if len(resolved_address) == 2:
+                    s = socket(AF_INET)
+                elif len(resolved_address) == 4:
+                    s = socket(AF_INET6)
+                else:
+                    raise ValueError(
+                        f"Unsupported address {resolved_address!r}"
+                    )
+                t = s.gettimeout()
+                if timeout:
+                    s.settimeout(timeout)
+                log.debug("[#0000]  C: <OPEN> %s", resolved_address)
+                s.connect(resolved_address)
+                s.settimeout(t)
+                keep_alive = 1 if keep_alive else 0
+                s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
+            except SocketTimeout:
+                log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
+                raise ServiceUnavailable(
+                    "Timed out trying to establish connection to "
+                    f"{resolved_address!r}"
+                ) from None
+            except Exception as error:
+                log.debug(
+                    "[#0000]  S: <ERROR> %s %s",
+                    type(error).__name__,
+                    " ".join(map(repr, error.args)),
                 )
+                if isinstance(error, OSError):
+                    raise ServiceUnavailable(
+                        "Failed to establish connection to "
+                        f"{resolved_address!r} (reason {error})"
+                    ) from error
+                raise
+
+            local_port = s.getsockname()[1]
+            # Secure the connection if an SSL context has been provided
+            if ssl_context:
+                hostname = resolved_address._host_name or None
+                sni_host = hostname if HAS_SNI and hostname else None
+                log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
+                try:
+                    s = ssl_context.wrap_socket(s, server_hostname=sni_host)
+                except (OSError, SSLError, CertificateError) as cause:
+                    raise BoltSecurityError(
+                        message="Failed to establish encrypted connection.",
+                        address=(hostname, local_port),
+                    ) from cause
+                # Check that the server provides a certificate
+                der_encoded_server_certificate = s.getpeercert(
+                    binary_form=True
+                )
+                if der_encoded_server_certificate is None:
+                    raise BoltProtocolError(
+                        "When using an encrypted socket, the server should"
+                        "always provide a certificate",
+                        address=(hostname, local_port),
+                    )
+        except Exception:
+            if s is not None:
+                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                cls._kill_raw_socket(s)
+            raise
 
         return cls(s)
 
