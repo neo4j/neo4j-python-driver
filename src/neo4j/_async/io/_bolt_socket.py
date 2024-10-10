@@ -91,7 +91,9 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 ctx.local_port,
                 BytesPrinter(response),
                 num_offerings,
-                " ".join(f"0x{vx[1]:06X}{vx[0]:02X}" for vx in offerings),
+                " ".join(
+                    f"0x{vx[2]:04X}{vx[1]:02X}{vx[0]:02X}" for vx in offerings
+                ),
                 BytesPrinter(self._encode_varint(_capabilities_offer)),
             )
 
