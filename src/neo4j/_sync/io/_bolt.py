@@ -478,12 +478,12 @@ class Bolt:
         elif protocol_version == (4, 2):
             from ._bolt4 import Bolt4x2
             bolt_cls = Bolt4x2
-        elif protocol_version == (4, 1):
-            from ._bolt4 import Bolt4x1
-            bolt_cls = Bolt4x1
-        # Implementation for 4.0 exists, but there was no space left in the
+        # Implementations for exist, but there was no space left in the
         # handshake to offer this version to the server. Hence, the server
-        # should never request us to speak bolt 4.0.
+        # should never request us to speak these bolt versions.
+        # elif protocol_version == (4, 1):
+        #     from ._bolt4 import AsyncBolt4x1
+        #     bolt_cls = AsyncBolt4x1
         # elif protocol_version == (4, 0):
         #     from ._bolt4 import AsyncBolt4x0
         #     bolt_cls = AsyncBolt4x0

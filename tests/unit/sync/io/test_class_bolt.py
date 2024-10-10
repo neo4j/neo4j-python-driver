@@ -37,7 +37,7 @@ def test_class_method_protocol_handlers():
     # fmt: off
     expected_handlers = {
         (3, 0),
-        (4, 1), (4, 2), (4, 3), (4, 4),
+        (4, 2), (4, 3), (4, 4),
         (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6),
     }
     # fmt: on
@@ -57,7 +57,7 @@ def test_class_method_protocol_handlers():
         ((2, 0), False),
         ((3, 0), True),
         ((4, 0), False),
-        ((4, 1), True),
+        ((4, 1), False),
         ((4, 2), True),
         ((4, 3), True),
         ((4, 4), True),
@@ -171,6 +171,7 @@ def test_version_negotiation(
         (0, 0),
         (2, 0),
         (4, 0),
+        (4, 1),
         (3, 1),
         (5, 7),
         (6, 0),
@@ -179,7 +180,7 @@ def test_version_negotiation(
 @mark_sync_test
 def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     supported_protocols = (
-        "('3.0', '4.1', '4.2', '4.3', '4.4', "
+        "('3.0', '4.2', '4.3', '4.4', "
         "'5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6')"
     )
 
