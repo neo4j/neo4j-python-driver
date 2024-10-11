@@ -47,6 +47,6 @@ def get_python_version():
 def run_python(args, env=None, warning_as_error=True):
     cmd = [TEST_BACKEND_VERSION, "-u"]
     if warning_as_error:
-        cmd += ["-W", "error"]
+        cmd += ["-W", "error", "-X", "tracemalloc=10"]
     cmd += list(args)
     run(cmd, env=env)

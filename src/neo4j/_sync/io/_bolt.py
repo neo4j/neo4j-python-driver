@@ -60,6 +60,8 @@ from ._common import (
 
 
 if t.TYPE_CHECKING:
+    import typing_extensions as te
+
     from ..._api import TelemetryAPI
 
 
@@ -272,83 +274,31 @@ class Bolt:
                 f"{self.server_info.agent!r}"
             )
 
-    # [bolt-version-bump] search tag when changing bolt version support
-    @classmethod
-    def protocol_handlers(cls):
-        """
-        Return a dictionary of available Bolt protocol handlers.
+    protocol_handlers: t.ClassVar[dict[Version, type[Bolt]]] = {}
 
-        The handlers are keyed by version tuple. If an explicit protocol
-        version is provided, the dictionary will contain either zero or one
-        items, depending on whether that version is supported. If no protocol
-        version is provided, all available versions will be returned.
-
-        :param protocol_version: tuple identifying a specific protocol
-            version (e.g. (3, 5)) or None
-        :returns: dictionary of version tuple to handler class for all
-            relevant and supported protocol versions
-        :raise TypeError: if protocol version is not passed in a tuple
-        """
-        # Carry out Bolt subclass imports locally to avoid circular dependency
-        # issues.
-        from ._bolt3 import Bolt3
-        from ._bolt4 import (
-            Bolt4x2,
-            Bolt4x3,
-            Bolt4x4,
-        )
-        from ._bolt5 import (
-            Bolt5x0,
-            Bolt5x1,
-            Bolt5x2,
-            Bolt5x3,
-            Bolt5x4,
-            Bolt5x5,
-            Bolt5x6,
-        )
-
-        return {
-            Bolt3.PROTOCOL_VERSION: Bolt3,
-            # 4.0-4.1 unsupported because no space left in the handshake
-            Bolt4x2.PROTOCOL_VERSION: Bolt4x2,
-            Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
-            Bolt4x4.PROTOCOL_VERSION: Bolt4x4,
-            Bolt5x0.PROTOCOL_VERSION: Bolt5x0,
-            Bolt5x1.PROTOCOL_VERSION: Bolt5x1,
-            Bolt5x2.PROTOCOL_VERSION: Bolt5x2,
-            Bolt5x3.PROTOCOL_VERSION: Bolt5x3,
-            Bolt5x4.PROTOCOL_VERSION: Bolt5x4,
-            Bolt5x5.PROTOCOL_VERSION: Bolt5x5,
-            Bolt5x6.PROTOCOL_VERSION: Bolt5x6,
-        }
-
-    @classmethod
-    def version_list(cls, versions, limit=4):
-        """
-        Return a list of supported protocol versions in order of preference.
-
-        The number of protocol versions (or ranges) returned is limited to 4.
-        """
-        # In fact, 4.3 is the fist version to support ranges. However, the
-        # range support got backported to 4.2. But even if the server is too
-        # old to have the backport, negotiating BOLT 4.1 is no problem as it's
-        # equivalent to 4.2
-        first_with_range_support = Version(4, 2)
-        result = []
-        for version in versions:
-            if (
-                result
-                and version >= first_with_range_support
-                and result[-1][0] == version[0]
-                and result[-1][1][1] == version[1] + 1
-            ):
-                # can use range to encompass this version
-                result[-1][1][1] = version[1]
-                continue
-            result.append(Version(version[0], [version[1], version[1]]))
-            if len(result) >= limit:
-                break
-        return result
+    def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
+        protocol_version = cls.PROTOCOL_VERSION
+        if protocol_version is None:
+            raise ValueError(
+                "Bolt subclasses must define PROTOCOL_VERSION"
+            )
+        if not (
+            isinstance(protocol_version, Version)
+            and len(protocol_version) == 2
+            and all(isinstance(i, int) for i in protocol_version)
+        ):
+            raise TypeError(
+                "PROTOCOL_VERSION must be a 2-tuple of integers, not "
+                f"{protocol_version!r}"
+            )
+        if protocol_version in Bolt.protocol_handlers:
+            cls_conflict = Bolt.protocol_handlers[protocol_version]
+            raise TypeError(
+                f"Multiple classes for the same protocol version "
+                f"{protocol_version}: {cls}, {cls_conflict}"
+            )
+        cls.protocol_handlers[protocol_version] = cls
+        super().__init_subclass__(**kwargs)
 
     @classmethod
     def get_handshake(cls):
@@ -358,15 +308,9 @@ class Bolt:
         The length is 16 bytes as specified in the Bolt version negotiation.
         :returns: bytes
         """
-        supported_versions = sorted(
-            cls.protocol_handlers().keys(), reverse=True
+        return (
+            b"\x00\x00\x01\xff\x00\x06\x06\x05\x00\x04\x04\x04\x00\x00\x00\x03"
         )
-        offered_versions = cls.version_list(supported_versions, limit=3)
-        versions_bytes = (
-            Version(0xFF, 1).to_bytes(),  # handshake v2
-            *(v.to_bytes() for v in offered_versions),
-        )
-        return b"".join(versions_bytes).ljust(16, b"\x00")
 
     @classmethod
     def ping(cls, address, *, deadline=None, pool_config=None):
@@ -442,64 +386,16 @@ class Bolt:
         )
 
         pool_config.protocol_version = protocol_version
-
-        # Carry out Bolt subclass imports locally to avoid circular dependency
-        # issues.
-
-        # avoid new lines after imports for better readability and conciseness
-        # fmt: off
-        if protocol_version == (5, 6):
-            from ._bolt5 import Bolt5x6
-            bolt_cls = Bolt5x6
-        elif protocol_version == (5, 5):
-            from ._bolt5 import Bolt5x5
-            bolt_cls = Bolt5x5
-        elif protocol_version == (5, 4):
-            from ._bolt5 import Bolt5x4
-            bolt_cls = Bolt5x4
-        elif protocol_version == (5, 3):
-            from ._bolt5 import Bolt5x3
-            bolt_cls = Bolt5x3
-        elif protocol_version == (5, 2):
-            from ._bolt5 import Bolt5x2
-            bolt_cls = Bolt5x2
-        elif protocol_version == (5, 1):
-            from ._bolt5 import Bolt5x1
-            bolt_cls = Bolt5x1
-        elif protocol_version == (5, 0):
-            from ._bolt5 import Bolt5x0
-            bolt_cls = Bolt5x0
-        elif protocol_version == (4, 4):
-            from ._bolt4 import Bolt4x4
-            bolt_cls = Bolt4x4
-        elif protocol_version == (4, 3):
-            from ._bolt4 import Bolt4x3
-            bolt_cls = Bolt4x3
-        elif protocol_version == (4, 2):
-            from ._bolt4 import Bolt4x2
-            bolt_cls = Bolt4x2
-        # Implementations for exist, but there was no space left in the
-        # handshake to offer this version to the server. Hence, the server
-        # should never request us to speak these bolt versions.
-        # elif protocol_version == (4, 1):
-        #     from ._bolt4 import AsyncBolt4x1
-        #     bolt_cls = AsyncBolt4x1
-        # elif protocol_version == (4, 0):
-        #     from ._bolt4 import AsyncBolt4x0
-        #     bolt_cls = AsyncBolt4x0
-        elif protocol_version == (3, 0):
-            from ._bolt3 import Bolt3
-            bolt_cls = Bolt3
-        # fmt: on
-        else:
+        protocol_handlers = Bolt.protocol_handlers
+        bolt_cls = protocol_handlers.get(protocol_version)
+        if bolt_cls is None:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             BoltSocket.close_socket(s)
 
-            supported_versions = cls.protocol_handlers().keys()
             raise BoltHandshakeError(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
-                f"{tuple(map(str, supported_versions))}.",
+                f"{tuple(map(str, Bolt.protocol_handlers.keys()))}.",
                 address=address,
                 request_data=handshake,
                 response_data=data,

@@ -73,7 +73,7 @@ def test_bolt_handshake_error():
         b"\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00"
     )
     response = b"\x00\x00\x00\x00"
-    supported_versions = Bolt.protocol_handlers().keys()
+    supported_versions = Bolt.protocol_handlers.keys()
 
     with pytest.raises(BoltHandshakeError) as e:
         error = BoltHandshakeError(

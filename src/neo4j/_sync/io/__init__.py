@@ -31,6 +31,11 @@ __all__ = [
 ]
 
 
+from . import (  # noqa - imports needed to register protocol handlers
+    _bolt3,
+    _bolt4,
+    _bolt5,
+)
 from ._bolt import Bolt
 from ._common import (
     check_supported_server_product,
