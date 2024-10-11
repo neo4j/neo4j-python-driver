@@ -136,6 +136,9 @@ class AsyncBolt5x0(AsyncBolt):
             or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
@@ -200,6 +203,9 @@ class AsyncBolt5x0(AsyncBolt):
         dehydration_hooks=None,
         hydration_hooks=None,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         routing_context = self.routing_context or {}
         db_context = {}
         if database is not None:
@@ -221,7 +227,7 @@ class AsyncBolt5x0(AsyncBolt):
             response=Response(
                 self, "route", hydration_hooks, on_success=metadata.update
             ),
-            dehydration_hooks=hydration_hooks,
+            dehydration_hooks=dehydration_hooks,
         )
         await self.send_all()
         await self.fetch_all()
@@ -248,6 +254,9 @@ class AsyncBolt5x0(AsyncBolt):
             or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         if not parameters:
             parameters = {}
         extra = {}
@@ -298,6 +307,9 @@ class AsyncBolt5x0(AsyncBolt):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
@@ -317,6 +329,9 @@ class AsyncBolt5x0(AsyncBolt):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
@@ -347,6 +362,9 @@ class AsyncBolt5x0(AsyncBolt):
             or notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -381,6 +399,9 @@ class AsyncBolt5x0(AsyncBolt):
         )
 
     def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: COMMIT", self.local_port)
         self._append(
             b"\x12",
@@ -392,6 +413,9 @@ class AsyncBolt5x0(AsyncBolt):
     def rollback(
         self, dehydration_hooks=None, hydration_hooks=None, **handlers
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
         self._append(
             b"\x13",
@@ -407,6 +431,9 @@ class AsyncBolt5x0(AsyncBolt):
         Add a RESET message to the outgoing queue, send it and consume all
         remaining messages.
         """
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: RESET", self.local_port)
         response = ResetResponse(self, "reset", hydration_hooks)
         self._append(
@@ -416,6 +443,9 @@ class AsyncBolt5x0(AsyncBolt):
         await self.fetch_all()
 
     def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: GOODBYE", self.local_port)
         self._append(b"\x02", (), dehydration_hooks=dehydration_hooks)
 
@@ -580,6 +610,9 @@ class AsyncBolt5x1(AsyncBolt5x0):
             or self.notifications_disabled_classifications is not None
         ):
             self.assert_notification_filtering_support()
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
@@ -620,6 +653,9 @@ class AsyncBolt5x1(AsyncBolt5x0):
         check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         logged_auth_dict = dict(self.auth_dict)
         if "credentials" in logged_auth_dict:
             logged_auth_dict["credentials"] = "*******"
@@ -632,6 +668,9 @@ class AsyncBolt5x1(AsyncBolt5x0):
         )
 
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         log.debug("[#%04X]  C: LOGOFF", self.local_port)
         self._append(
             b"\x6b",
@@ -658,6 +697,10 @@ class AsyncBolt5x2(AsyncBolt5x1):
         return headers
 
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
+
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
@@ -709,6 +752,9 @@ class AsyncBolt5x2(AsyncBolt5x1):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         if not parameters:
             parameters = {}
         extra = {}
@@ -773,6 +819,9 @@ class AsyncBolt5x2(AsyncBolt5x1):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -838,6 +887,9 @@ class AsyncBolt5x4(AsyncBolt5x3):
             "telemetry.enabled", False
         ):
             return
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         api_raw = int(api)
         log.debug(
             "[#%04X]  C: TELEMETRY %i  # (%r)", self.local_port, api_raw, api
@@ -877,6 +929,9 @@ class AsyncBolt5x5(AsyncBolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         if not parameters:
             parameters = {}
         extra = {}
@@ -941,6 +996,9 @@ class AsyncBolt5x5(AsyncBolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -982,7 +1040,7 @@ class AsyncBolt5x5(AsyncBolt5x4):
             dehydration_hooks=dehydration_hooks,
         )
 
-    DEFAULT_DIAGNOSTIC_RECORD = (
+    DEFAULT_STATUS_DIAGNOSTIC_RECORD = (
         ("OPERATION", ""),
         ("OPERATION_CODE", "0"),
         ("CURRENT_SCHEMA", "/"),
@@ -1009,7 +1067,7 @@ class AsyncBolt5x5(AsyncBolt5x4):
                             diag_record,
                         )
                         continue
-                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
+                    for key, value in self.DEFAULT_STATUS_DIAGNOSTIC_RECORD:
                         diag_record.setdefault(key, value)
 
             enrich(metadata)
@@ -1062,15 +1120,108 @@ class AsyncBolt5x6(AsyncBolt5x5):
                     if not isinstance(diag_record, dict):
                         log.info(
                             "[#%04X]  _: <CONNECTION> Server supplied an "
-                            "invalid diagnostic record (%r).",
+                            "invalid status diagnostic record (%r).",
                             self.local_port,
                             diag_record,
                         )
                         continue
-                    for key, value in self.DEFAULT_DIAGNOSTIC_RECORD:
+                    for key, value in self.DEFAULT_STATUS_DIAGNOSTIC_RECORD:
                         diag_record.setdefault(key, value)
 
             enrich(metadata)
             await AsyncUtil.callback(wrapped_handler, metadata)
 
         return handler
+
+
+class AsyncBolt5x7(AsyncBolt5x6):
+    PROTOCOL_VERSION = Version(5, 7)
+
+    DEFAULT_ERROR_DIAGNOSTIC_RECORD = (
+        AsyncBolt5x5.DEFAULT_STATUS_DIAGNOSTIC_RECORD
+    )
+
+    def _enrich_error_diagnostic_record(self, metadata):
+        if not isinstance(metadata, dict):
+            return
+        diag_record = metadata.setdefault("diagnostic_record", {})
+        if not isinstance(diag_record, dict):
+            log.info(
+                "[#%04X]  _: <CONNECTION> Server supplied an "
+                "invalid error diagnostic record (%r).",
+                self.local_port,
+                diag_record,
+            )
+        else:
+            for key, value in self.DEFAULT_ERROR_DIAGNOSTIC_RECORD:
+                diag_record.setdefault(key, value)
+        self._enrich_error_diagnostic_record(metadata.get("cause"))
+
+    async def _process_message(self, tag, fields):
+        """Process at most one message from the server, if available.
+
+        :returns: 2-tuple of number of detail messages and number of summary
+                 messages fetched
+        """
+        details = []
+        summary_signature = summary_metadata = None
+        if tag == b"\x71":  # RECORD
+            details = fields
+        elif fields:
+            summary_signature = tag
+            summary_metadata = fields[0]
+        else:
+            summary_signature = tag
+
+        if details:
+            # Do not log any data
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
+            await self.responses[0].on_records(details)
+
+        if summary_signature is None:
+            return len(details), 0
+
+        response = self.responses.popleft()
+        response.complete = True
+        if summary_signature == b"\x70":
+            log.debug(
+                "[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata
+            )
+            self._server_state_manager.transition(
+                response.message, summary_metadata
+            )
+            await response.on_success(summary_metadata or {})
+        elif summary_signature == b"\x7e":
+            log.debug("[#%04X]  S: IGNORED", self.local_port)
+            await response.on_ignored(summary_metadata or {})
+        elif summary_signature == b"\x7f":
+            log.debug(
+                "[#%04X]  S: FAILURE %r", self.local_port, summary_metadata
+            )
+            self._server_state_manager.state = self.bolt_states.FAILED
+            self._enrich_error_diagnostic_record(summary_metadata)
+            try:
+                await response.on_failure(summary_metadata or {})
+            except (ServiceUnavailable, DatabaseUnavailable):
+                if self.pool:
+                    await self.pool.deactivate(address=self.unresolved_address)
+                raise
+            except (NotALeader, ForbiddenOnReadOnlyDatabase):
+                if self.pool:
+                    await self.pool.on_write_failure(
+                        address=self.unresolved_address,
+                        database=self.last_database,
+                    )
+                raise
+            except Neo4jError as e:
+                if self.pool:
+                    await self.pool.on_neo4j_error(e, self)
+                raise
+        else:
+            sig_int = ord(summary_signature)
+            raise BoltProtocolError(
+                f"Unexpected response message with signature {sig_int:02X}",
+                self.unresolved_address,
+            )
+
+        return len(details), 1

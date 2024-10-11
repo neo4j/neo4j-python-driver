@@ -26,7 +26,8 @@ from neo4j._meta import (
     USER_AGENT,
 )
 from neo4j._sync.config import PoolConfig
-from neo4j._sync.io._bolt5 import Bolt5x6
+from neo4j._sync.io._bolt5 import Bolt5x7
+from neo4j.exceptions import Neo4jError
 
 from ...._async_compat import mark_sync_test
 from ....iter_util import powerset
@@ -36,7 +37,7 @@ from ....iter_util import powerset
 def test_conn_is_stale(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address, fake_socket(address), max_connection_lifetime
     )
     if set_stale:
@@ -48,7 +49,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address, fake_socket(address), max_connection_lifetime
     )
     if set_stale:
@@ -60,7 +61,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 def test_conn_is_not_stale(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address, fake_socket(address), max_connection_lifetime
     )
     if set_stale:
@@ -83,8 +84,8 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 @mark_sync_test
 def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.begin(*args, **kwargs)
@@ -113,8 +114,8 @@ def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
 @mark_sync_test
 def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.run(*args, **kwargs)
@@ -127,8 +128,8 @@ def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.discard(n=666)
@@ -149,8 +150,8 @@ def test_n_extra_in_discard(fake_socket):
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.discard(qid=test_input)
@@ -171,8 +172,8 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.discard(n=666, qid=test_input)
@@ -193,8 +194,8 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.pull(n=test_input)
@@ -215,8 +216,8 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.pull(qid=test_input)
@@ -230,8 +231,8 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address, socket, PoolConfig.max_connection_lifetime
     )
     connection.pull(n=666, qid=777)
@@ -247,12 +248,12 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/4.4.0"})
     sockets.server.send_message(b"\x70", {})
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address,
         sockets.client,
         PoolConfig.max_connection_lifetime,
@@ -273,8 +274,8 @@ def test_telemetry_message(
     fake_socket, api, serv_enabled, driver_disabled
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address,
         socket,
         PoolConfig.max_connection_lifetime,
@@ -316,15 +317,15 @@ def test_hint_recv_timeout_seconds(
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(
         b"\x70", {"server": "Neo4j/4.3.4", "hints": hints}
     )
     sockets.server.send_message(b"\x70", {})
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address, sockets.client, PoolConfig.max_connection_lifetime
     )
     with caplog.at_level(logging.INFO):
@@ -369,12 +370,12 @@ def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
     sockets.server.send_message(b"\x70", {})
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address,
         sockets.client,
         PoolConfig.max_connection_lifetime,
@@ -425,8 +426,8 @@ def test_supports_notification_filters(
     method_dis_clss,
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, Bolt5x6.UNPACKER_CLS)
-    connection = Bolt5x6(
+    socket = fake_socket(address, Bolt5x7.UNPACKER_CLS)
+    connection = Bolt5x7(
         address,
         socket,
         PoolConfig.max_connection_lifetime,
@@ -463,12 +464,12 @@ def test_hello_supports_notification_filters(
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     sockets.server.send_message(b"\x70", {})
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address,
         sockets.client,
         PoolConfig.max_connection_lifetime,
@@ -496,13 +497,13 @@ def test_user_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address, sockets.client, max_connection_lifetime, user_agent=user_agent
     )
     connection.hello()
@@ -523,13 +524,13 @@ def test_sends_bolt_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = Bolt5x6(
+    connection = Bolt5x7(
         address, sockets.client, max_connection_lifetime, user_agent=user_agent
     )
     connection.hello()
@@ -583,11 +584,11 @@ def test_tx_timeout(
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
     sockets.server.send_message(b"\x70", {})
-    connection = Bolt5x6(address, sockets.client, 0)
+    connection = Bolt5x7(address, sockets.client, 0)
     func = getattr(connection, func)
     if isinstance(res, Exception):
         with pytest.raises(type(res), match=str(res)):
@@ -619,10 +620,10 @@ def test_tracks_last_database(fake_socket_pair, actions):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
-    connection = Bolt5x6(address, sockets.client, 0)
+    connection = Bolt5x7(address, sockets.client, 0)
     sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     sockets.server.send_message(b"\x70", {})
     connection.hello()
@@ -703,10 +704,10 @@ def test_enriches_statuses(
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=Bolt5x6.PACKER_CLS,
-        unpacker_cls=Bolt5x6.UNPACKER_CLS,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
     )
-    connection = Bolt5x6(address, sockets.client, 0)
+    connection = Bolt5x7(address, sockets.client, 0)
 
     sent_metadata = {
         "statuses": [
@@ -760,3 +761,90 @@ def test_enriches_statuses(
     }
 
     assert received_metadata == expected_metadata
+
+
+@pytest.mark.parametrize(
+    "sent_diag_records",
+    powerset(
+        (
+            ...,
+            None,
+            {},
+            [],
+            "1",
+            1,
+            {"OPERATION_CODE": "0"},
+            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
+            {"OPERATION": "Foo", "OPERATION_CODE": 1, "CURRENT_SCHEMA": False},
+            {"OPERATION": "", "OPERATION_CODE": "0", "bar": "baz"},
+        ),
+        lower_limit=1,
+        upper_limit=3,
+    ),
+)
+@mark_sync_test
+def test_enriches_error_statuses(
+    sent_diag_records,
+    fake_socket_pair,
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt5x7.PACKER_CLS,
+        unpacker_cls=Bolt5x7.UNPACKER_CLS,
+    )
+    connection = Bolt5x7(address, sockets.client, 0)
+    sent_diag_records = [
+        {**r, "_classification": "CLIENT_ERROR", "_status_parameters": {}}
+        if isinstance(r, dict)
+        else r
+        for r in sent_diag_records
+    ]
+
+    sent_metadata = _build_error_hierarchy_metadata(sent_diag_records)
+
+    sockets.server.send_message(b"\x7f", sent_metadata)
+
+    received_metadata = None
+
+    def on_failure(metadata):
+        nonlocal received_metadata
+        received_metadata = metadata
+
+    connection.run("RETURN 1", on_failure=on_failure)
+    connection.send_all()
+    with pytest.raises(Neo4jError):
+        connection.fetch_all()
+
+    def extend_diag_record(r):
+        if r is ...:
+            return dict(DEFAULT_DIAG_REC_PAIRS)
+        if isinstance(r, dict):
+            return dict((*DEFAULT_DIAG_REC_PAIRS, *r.items()))
+        return r
+
+    expected_diag_records = [extend_diag_record(r) for r in sent_diag_records]
+    expected_metadata = _build_error_hierarchy_metadata(expected_diag_records)
+
+    assert received_metadata == expected_metadata
+
+
+def _build_error_hierarchy_metadata(diag_records_metadata):
+    metadata = {
+        "gql_status": "FOO12",
+        "description": "but have you tried not doing that?!",
+        "message": "some people just can't be helped",
+        "neo4j_code": "Neo.ClientError.Generic.YouSuck",
+    }
+    if diag_records_metadata[0] is not ...:
+        metadata["diagnostic_record"] = diag_records_metadata[0]
+    current_root = metadata
+    for i, r in enumerate(diag_records_metadata[1:]):
+        current_root["cause"] = {
+            "description": f"error cause nr. {i + 1}",
+            "message": f"cause message {i + 1}",
+        }
+        current_root = current_root["cause"]
+        if r is not ...:
+            current_root["diagnostic_record"] = r
+    return metadata

@@ -294,6 +294,7 @@ class Session(Workspace):
             raise TypeError("query must be a string or a Query instance")
 
         if self._transaction:
+            # TODO: 6.0 - change this to be a TransactionError
             raise ClientError(
                 "Explicit Transaction must be handled explicitly"
             )

@@ -217,6 +217,7 @@ class AsyncBolt:
             try:
                 return vars(auth)
             except (KeyError, TypeError) as e:
+                # TODO: 6.0 - change this to be a DriverError (or subclass)
                 raise AuthError(
                     f"Cannot determine auth details from {auth!r}"
                 ) from e
@@ -306,6 +307,7 @@ class AsyncBolt:
             AsyncBolt5x4,
             AsyncBolt5x5,
             AsyncBolt5x6,
+            AsyncBolt5x7,
         )
 
         handlers = {
@@ -322,6 +324,7 @@ class AsyncBolt:
             AsyncBolt5x4.PROTOCOL_VERSION: AsyncBolt5x4,
             AsyncBolt5x5.PROTOCOL_VERSION: AsyncBolt5x5,
             AsyncBolt5x6.PROTOCOL_VERSION: AsyncBolt5x6,
+            AsyncBolt5x7.PROTOCOL_VERSION: AsyncBolt5x7,
         }
 
         if protocol_version is None:
@@ -458,7 +461,10 @@ class AsyncBolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 6):
+        if protocol_version == (5, 7):
+            from ._bolt5 import AsyncBolt5x7
+            bolt_cls = AsyncBolt5x7
+        elif protocol_version == (5, 6):
             from ._bolt5 import AsyncBolt5x6
             bolt_cls = AsyncBolt5x6
         elif protocol_version == (5, 5):
@@ -506,6 +512,7 @@ class AsyncBolt:
             await AsyncBoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
+            # TODO: 6.0 - raise public DriverError subclass instead
             raise BoltHandshakeError(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
@@ -908,6 +915,16 @@ class AsyncBolt:
 
     def new_hydration_scope(self):
         return self.hydration_handler.new_hydration_scope()
+
+    def _default_hydration_hooks(self, dehydration_hooks, hydration_hooks):
+        if dehydration_hooks is not None and hydration_hooks is not None:
+            return dehydration_hooks, hydration_hooks
+        hydration_scope = self.new_hydration_scope()
+        if dehydration_hooks is None:
+            dehydration_hooks = hydration_scope.dehydration_hooks
+        if hydration_hooks is None:
+            hydration_hooks = hydration_scope.hydration_hooks
+        return dehydration_hooks, hydration_hooks
 
     def _append(
         self, signature, fields=(), response=None, dehydration_hooks=None

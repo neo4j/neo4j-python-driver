@@ -3,7 +3,9 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- Deprecated setting attributes on `Neo4jError` like `message` and `code`.
+- Deprecated undocumented method `Neo4jError.hydrate`.  
+  It's internal and should not be used by client code.
 
 
 ## Version 5.25
