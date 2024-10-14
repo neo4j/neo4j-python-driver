@@ -26,7 +26,13 @@ from ..._api import TelemetryAPI
 from ..._async_compat import async_sleep
 from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
-from ..._meta import deprecated
+
+
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated
+else:
+    from ..._meta import deprecated
+
 from ..._util import ContextBool
 from ..._work import Query
 from ...api import (

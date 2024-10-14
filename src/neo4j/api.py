@@ -25,7 +25,12 @@ from urllib.parse import (
     urlparse,
 )
 
-from ._meta import deprecated
+
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated
+else:
+    from ._meta import deprecated
+
 from .exceptions import ConfigurationError
 
 

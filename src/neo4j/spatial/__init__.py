@@ -16,6 +16,9 @@
 
 """Spatial data types for interchange with the DBMS."""
 
+from __future__ import annotations
+
+
 __all__ = [
     "CartesianPoint",
     "Point",
@@ -25,10 +28,17 @@ __all__ = [
     "point_type",
 ]
 
+import typing as t
 from functools import wraps
 
 from .._codec.hydration.v1 import spatial as _hydration
-from .._meta import deprecated
+
+
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated
+else:
+    from .._meta import deprecated
+
 from .._spatial import (
     CartesianPoint,
     Point,
