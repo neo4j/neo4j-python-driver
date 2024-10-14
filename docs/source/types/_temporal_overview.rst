@@ -6,7 +6,7 @@ Sub-second values are measured to nanosecond precision and the types are compati
 .. warning::
     The temporal types were designed to be used with `pytz <https://pypi.org/project/pytz/>`_.
     Other :class:`datetime.tzinfo` implementations (e.g., :class:`datetime.timezone`, :mod:`zoneinfo`, :mod:`dateutil.tz`)
-    are not supported and likely won't work well.
+    are not supported and are unlikely to work well.
 
 The table below shows the general mappings between Cypher and the temporal types provided by the driver.
 
