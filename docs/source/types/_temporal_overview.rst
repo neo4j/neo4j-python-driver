@@ -23,10 +23,6 @@ LocalDateTime  :class:`neo4j.time.DateTime`  :class:`python:datetime.datetime`  
 Duration       :class:`neo4j.time.Duration`  :class:`python:datetime.timedelta`
 =============  ============================  ==================================  ============
 
-Sub-second values are measured to nanosecond precision and the types are mostly
-compatible with `pytz <https://pypi.org/project/pytz/>`_. Some timezones
-(e.g.,  ``pytz.utc``) work exclusively with the built-in ``datetime.datetime``.
-
 .. Note::
     Cypher has built-in support for handling temporal values, and the underlying
     database supports storing these temporal values as properties on nodes and relationships,
