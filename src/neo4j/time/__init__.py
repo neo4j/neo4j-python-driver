@@ -1487,6 +1487,43 @@ else:
     time_base_class = object
 
 
+def _dst(
+    tz: _tzinfo | None = None, dt: DateTime | None = None
+) -> timedelta | None:
+    if tz is None:
+        return None
+    try:
+        value = tz.dst(dt)
+    except TypeError:
+        if dt is None:
+            raise
+        # For timezone implementations not compatible with the custom
+        # datetime implementations, we can't do better than this.
+        value = tz.dst(dt.to_native())  # type: ignore
+    if value is None:
+        return None
+    if isinstance(value, timedelta):
+        if value.days != 0:
+            raise ValueError("dst must be less than a day")
+        if value.seconds % 60 != 0 or value.microseconds != 0:
+            raise ValueError("dst must be a whole number of minutes")
+        return value
+    raise TypeError("dst must be a timedelta")
+
+
+def _tz_name(tz: _tzinfo | None, dt: DateTime | None) -> str | None:
+    if tz is None:
+        return None
+    try:
+        return tz.tzname(dt)
+    except TypeError:
+        if dt is None:
+            raise
+        # For timezone implementations not compatible with the custom
+        # datetime implementations, we can't do better than this.
+        return tz.tzname(dt.to_native())
+
+
 class Time(time_base_class, metaclass=TimeType):
     """
     Time of day.
@@ -1996,23 +2033,7 @@ class Time(time_base_class, metaclass=TimeType):
         :raises TypeError: if `self.tzinfo.dst(self)` does return anything but
             None or a :class:`datetime.timedelta`.
         """
-        if self.tzinfo is None:
-            return None
-        try:
-            value = self.tzinfo.dst(self)  # type: ignore
-        except TypeError:
-            # For timezone implementations not compatible with the custom
-            # datetime implementations, we can't do better than this.
-            value = self.tzinfo.dst(self.to_native())  # type: ignore
-        if value is None:
-            return None
-        if isinstance(value, timedelta):
-            if value.days != 0:
-                raise ValueError("dst must be less than a day")
-            if value.seconds % 60 != 0 or value.microseconds != 0:
-                raise ValueError("dst must be a whole number of minutes")
-            return value
-        raise TypeError("dst must be a timedelta")
+        return _dst(self.tzinfo, None)
 
     def tzname(self) -> str | None:
         """
@@ -2021,14 +2042,7 @@ class Time(time_base_class, metaclass=TimeType):
         :returns: None if the time is local (i.e., has no timezone), else
             return `self.tzinfo.tzname(self)`
         """
-        if self.tzinfo is None:
-            return None
-        try:
-            return self.tzinfo.tzname(self)  # type: ignore
-        except TypeError:
-            # For timezone implementations not compatible with the custom
-            # datetime implementations, we can't do better than this.
-            return self.tzinfo.tzname(self.to_native())  # type: ignore
+        return _tz_name(self.tzinfo, None)
 
     def to_clock_time(self) -> ClockTime:
         """Convert to :class:`.ClockTime`."""
@@ -2202,16 +2216,14 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
+            utc_now = cls.from_clock_time(
+                Clock().utc_time(), UnixEpoch
+            ).replace(tzinfo=tz)
             try:
-                return tz.fromutc(  # type: ignore
-                    cls.from_clock_time(  # type: ignore
-                        Clock().utc_time(), UnixEpoch
-                    ).replace(tzinfo=tz)
-                )
+                return tz.fromutc(utc_now)  # type: ignore
             except TypeError:
                 # For timezone implementations not compatible with the custom
                 # datetime implementations, we can't do better than this.
-                utc_now = cls.from_clock_time(Clock().utc_time(), UnixEpoch)
                 utc_now_native = utc_now.to_native()
                 now_native = tz.fromutc(utc_now_native)
                 now = cls.from_native(now_native)
@@ -2809,7 +2821,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         See :meth:`.Time.dst`.
         """
-        return self.__time.dst()
+        return _dst(self.tzinfo, self)
 
     def tzname(self) -> str | None:
         """
@@ -2817,7 +2829,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         See :meth:`.Time.tzname`.
         """
-        return self.__time.tzname()
+        return _tz_name(self.tzinfo, self)
 
     def time_tuple(self):
         raise NotImplementedError
