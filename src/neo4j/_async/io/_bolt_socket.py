@@ -66,7 +66,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
     async def _parse_handshake_response_v1(self, ctx, response):
         agreed_version = response[-1], response[-2]
         log.debug(
-            "[#%04X]  S: <HANDSHAKE v1> 0x%06X%02X",
+            "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
             ctx.local_port,
             agreed_version[1],
             agreed_version[0],
@@ -87,7 +87,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
 
         if log.getEffectiveLevel() >= logging.DEBUG:
             log.debug(
-                "[#%04X]  S: <HANDSHAKE v2> %s [%i] %s %s",
+                "[#%04X]  S: <HANDSHAKE> %s [%i] %s %s",
                 ctx.local_port,
                 BytesPrinter(response),
                 num_offerings,
@@ -97,7 +97,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 BytesPrinter(self._encode_varint(_capabilities_offer)),
             )
 
-        supported_versions = sorted(self.Bolt.protocol_handlers().keys())
+        supported_versions = sorted(self.Bolt.protocol_handlers.keys())
         chosen_version = 0, 0
         for v in supported_versions:
             for offer_major, offer_minor, offer_range in offerings:
@@ -115,7 +115,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         capabilities = self._encode_varint(chosen_capabilities)
         ctx.ctx = "handshake v2 chosen capabilities"
         log.debug(
-            "[#%04X]  C: <HANDSHAKE v2> 0x%06X%02X %s",
+            "[#%04X]  C: <HANDSHAKE> 0x%06X%02X %s",
             ctx.local_port,
             chosen_version[1],
             chosen_version[0],
