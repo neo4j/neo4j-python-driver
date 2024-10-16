@@ -1497,7 +1497,7 @@ def _dst(
     except TypeError:
         if dt is None:
             raise
-            # For timezone implementations not compatible with the custom
+        # For timezone implementations not compatible with the custom
         # datetime implementations, we can't do better than this.
         value = tz.dst(dt.to_native())  # type: ignore
     if value is None:
