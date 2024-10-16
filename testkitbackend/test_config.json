@@ -47,7 +47,6 @@
     "Feature:Auth:Kerberos": true,
     "Feature:Auth:Managed": true,
     "Feature:Bolt:3.0": true,
-    "Feature:Bolt:4.2": true,
     "Feature:Bolt:4.3": true,
     "Feature:Bolt:4.4": true,
     "Feature:Bolt:5.0": true,
