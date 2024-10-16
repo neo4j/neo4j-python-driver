@@ -29,7 +29,8 @@ if t.TYPE_CHECKING:
 
 def powerset(
     iterable: t.Iterable[_T],
-    limit: int | None = None,
+    lower_limit: int | None = None,
+    upper_limit: int | None = None,
 ) -> t.Iterable[tuple[_T, ...]]:
     """
     Build the powerset of an iterable.
@@ -39,12 +40,19 @@ def powerset(
         >>> tuple(powerset([1, 2, 3]))
         ((), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
-        >>> tuple(powerset([1, 2, 3], limit=2))
+        >>> tuple(powerset([1, 2, 3], upper_limit=2))
         ((), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3))
+
+        >>> tuple(powerset([1, 2, 3], lower_limit=2))
+        ((1, 2), (1, 3), (2, 3), (1, 2, 3))
 
     :return: The powerset of the iterable.
     """
     s = list(iterable)
-    if limit is None:
-        limit = len(s)
-    return chain.from_iterable(combinations(s, r) for r in range(limit + 1))
+    if upper_limit is None:
+        upper_limit = len(s)
+    if lower_limit is None:
+        lower_limit = 0
+    return chain.from_iterable(
+        combinations(s, r) for r in range(lower_limit, upper_limit + 1)
+    )

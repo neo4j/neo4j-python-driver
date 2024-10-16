@@ -591,5 +591,6 @@ def test_record_with_error(accessor, should_raise) -> None:
     with pytest.raises(BrokenRecordError) as raised:
         accessor(r)
     exc_value = raised.value
+    assert exc_value.__cause__ is not None
     assert exc_value.__cause__ is exc
     assert list(traceback.walk_tb(exc_value.__cause__.__traceback__)) == frames

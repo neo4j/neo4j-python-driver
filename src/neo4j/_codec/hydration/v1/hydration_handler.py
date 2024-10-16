@@ -154,7 +154,6 @@ class _GraphHydrator(GraphHydrator):
 class HydrationHandler(HydrationHandlerABC):
     def __init__(self):
         super().__init__()
-        self._created_scope = False
         self.struct_hydration_functions = {
             **self.struct_hydration_functions,
             b"X": spatial.hydrate_point,
@@ -201,8 +200,6 @@ class HydrationHandler(HydrationHandlerABC):
     def patch_utc(self):
         from ..v2 import temporal as temporal_v2
 
-        assert not self._created_scope
-
         del self.struct_hydration_functions[b"F"]
         del self.struct_hydration_functions[b"f"]
         self.struct_hydration_functions.update(
@@ -226,5 +223,4 @@ class HydrationHandler(HydrationHandlerABC):
             )
 
     def new_hydration_scope(self):
-        self._created_scope = True
         return HydrationScope(self, _GraphHydrator())

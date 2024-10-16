@@ -532,7 +532,7 @@ def raises_if_db(db):
             {"OPERATION_CODE": "0"},
             {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
         ),
-        limit=3,
+        upper_limit=3,
     ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))

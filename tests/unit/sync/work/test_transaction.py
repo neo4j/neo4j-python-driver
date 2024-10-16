@@ -315,7 +315,12 @@ def test_server_error_propagates(scripted_connection, error):
             (
                 "pull",
                 {
-                    "on_failure": ({"code": "Neo.ClientError.Made.Up"},),
+                    "on_failure": (
+                        {
+                            "neo4j_code": "Neo.ClientError.Made.Up",
+                            "gql_status": "50N42",
+                        },
+                    ),
                     "on_summary": None,
                 },
             )

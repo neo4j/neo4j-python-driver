@@ -623,7 +623,7 @@ def test_tracks_last_database(fake_socket_pair, actions):
             {"OPERATION_CODE": "0"},
             {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
         ),
-        limit=3,
+        upper_limit=3,
     ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))

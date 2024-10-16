@@ -219,6 +219,7 @@ class Bolt:
             try:
                 return vars(auth)
             except (KeyError, TypeError) as e:
+                # TODO: 6.0 - change this to be a DriverError (or subclass)
                 raise AuthError(
                     f"Cannot determine auth details from {auth!r}"
                 ) from e
@@ -309,7 +310,7 @@ class Bolt:
         :returns: bytes
         """
         return (
-            b"\x00\x00\x01\xff\x00\x06\x06\x05\x00\x04\x04\x04\x00\x00\x00\x03"
+            b"\x00\x00\x01\xff\x00\x07\x07\x05\x00\x04\x04\x04\x00\x00\x00\x03"
         )
 
     @classmethod
@@ -392,6 +393,7 @@ class Bolt:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             BoltSocket.close_socket(s)
 
+            # TODO: 6.0 - raise public DriverError subclass instead
             raise BoltHandshakeError(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
@@ -794,6 +796,16 @@ class Bolt:
 
     def new_hydration_scope(self):
         return self.hydration_handler.new_hydration_scope()
+
+    def _default_hydration_hooks(self, dehydration_hooks, hydration_hooks):
+        if dehydration_hooks is not None and hydration_hooks is not None:
+            return dehydration_hooks, hydration_hooks
+        hydration_scope = self.new_hydration_scope()
+        if dehydration_hooks is None:
+            dehydration_hooks = hydration_scope.dehydration_hooks
+        if hydration_hooks is None:
+            hydration_hooks = hydration_scope.hydration_hooks
+        return dehydration_hooks, hydration_hooks
 
     def _append(
         self, signature, fields=(), response=None, dehydration_hooks=None

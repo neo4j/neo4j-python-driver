@@ -1989,6 +1989,17 @@ Errors
 ******
 
 
+GQL Errors
+==========
+.. autoexception:: neo4j.exceptions.GqlError()
+    :show-inheritance:
+    :members: gql_status, message, gql_status_description, gql_raw_classification, gql_classification, diagnostic_record, __cause__
+
+.. autoclass:: neo4j.exceptions.GqlErrorClassification()
+    :show-inheritance:
+    :members:
+
+
 Neo4j Errors
 ============
 

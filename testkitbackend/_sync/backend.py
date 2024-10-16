@@ -34,6 +34,7 @@ from neo4j.exceptions import (
     UnsupportedServerProduct,
 )
 
+from .. import totestkit
 from .._driver_logger import (
     buffer_handler,
     log,
@@ -124,6 +125,17 @@ class Backend:
 
     @staticmethod
     def _exc_stems_from_driver(exc):
+        if isinstance(
+            exc,
+            (
+                Neo4jError,
+                DriverError,
+                UnsupportedServerProduct,
+                BoltError,
+                MarkdAsDriverError,
+            ),
+        ):
+            return True
         stack = traceback.extract_tb(exc.__traceback__)
         for frame in stack[-1:1:-1]:
             p = Path(frame.filename)
@@ -134,42 +146,37 @@ class Backend:
         return None
 
     @staticmethod
-    def _exc_msg(exc, max_depth=10):
-        if isinstance(exc, Neo4jError) and exc.message is not None:
-            return str(exc.message)
+    def _get_tb(exc):
+        return "".join(
+            traceback.format_exception(
+                type(exc), exc, getattr(exc, "__traceback__", None)
+            )
+        )
 
-        depth = 0
-        res = str(exc)
-        while getattr(exc, "__cause__", None) is not None:
-            depth += 1
-            if depth >= max_depth:
-                break
-            res += f"\nCaused by: {exc.__cause__!r}"
-            exc = exc.__cause__
-        return res
-
-    def write_driver_exc(self, exc):
-        log.debug(traceback.format_exc())
+    def _serialize_driver_exc(self, exc):
+        log.debug(exc.args)
+        log.debug(self._get_tb(exc))
 
         key = self.next_key()
         self.errors[key] = exc
 
-        payload = {"id": key, "msg": ""}
+        return totestkit.driver_exc(exc, id_=key)
 
-        if isinstance(exc, MarkdAsDriverError):
-            wrapped_exc = exc.wrapped_exc
-            payload["errorType"] = str(type(wrapped_exc))
-            if wrapped_exc.args:
-                payload["msg"] = self._exc_msg(wrapped_exc.args[0])
-            payload["retryable"] = False
-        else:
-            payload["errorType"] = str(type(exc))
-            payload["msg"] = self._exc_msg(exc)
-            if isinstance(exc, Neo4jError):
-                payload["code"] = exc.code
-            payload["retryable"] = getattr(exc, "is_retryable", bool)()
+    @staticmethod
+    def _serialize_backend_error(exc):
+        tb = Backend._get_tb(exc)
+        log.error(tb)
+        return {"name": "BackendError", "data": {"msg": tb}}
 
-        self.send_response("DriverError", payload)
+    def _serialize_exc(self, exc):
+        try:
+            if isinstance(exc, requests.FrontendError):
+                return {"name": "FrontendError", "data": {"msg": str(exc)}}
+            if self._exc_stems_from_driver(exc):
+                return self._serialize_driver_exc(exc)
+        except Exception as e:
+            return self._serialize_backend_error(e)
+        return self._serialize_backend_error(exc)
 
     def _process(self, request):
         # Process a received request.
@@ -190,23 +197,9 @@ class Backend:
                     f"Backend does not support some properties of the {name} "
                     f"request: {', '.join(unused_keys)}"
                 )
-        except (
-            Neo4jError,
-            DriverError,
-            UnsupportedServerProduct,
-            BoltError,
-            MarkdAsDriverError,
-        ) as e:
-            self.write_driver_exc(e)
-        except requests.FrontendError as e:
-            self.send_response("FrontendError", {"msg": str(e)})
         except Exception as e:
-            if self._exc_stems_from_driver(e):
-                self.write_driver_exc(e)
-            else:
-                tb = traceback.format_exc()
-                log.error(tb)
-                self.send_response("BackendError", {"msg": tb})
+            data = self._serialize_exc(e)
+            self.send_response(data["name"], data["data"])
 
     def send_response(self, name, data):
         """Send a response to backend."""

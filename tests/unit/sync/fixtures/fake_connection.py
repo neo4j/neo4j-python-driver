@@ -206,7 +206,7 @@ def scripted_connection_generator(fake_connection_generator):
                                 cb_args = default_cb_args
                             res = cb(*cb_args)
                             if cb_name == "on_failure":
-                                error = Neo4jError.hydrate(**cb_args[0])
+                                error = Neo4jError._hydrate_gql(**cb_args[0])
                             # suppress in case the callback is not async
                             with suppress(TypeError):
                                 res

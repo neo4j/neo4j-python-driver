@@ -338,6 +338,7 @@ class IOPool(abc.ABC):
                     or not self.cond.wait(timeout)
                 ):
                     log.debug("[#0000]  _: <POOL> acquisition timed out")
+                    # TODO: 6.0 - change this to be a DriverError (or subclass)
                     raise ClientError(
                         "failed to obtain a connection from the pool within "
                         f"{deadline.original_timeout!r}s (timeout)"
@@ -1052,8 +1053,10 @@ class Neo4jPool(IOPool):
         liveness_check_timeout,
     ):
         if access_mode not in {WRITE_ACCESS, READ_ACCESS}:
+            # TODO: 6.0 - change this to be a ValueError
             raise ClientError(f"Non valid 'access_mode'; {access_mode}")
         if not timeout:
+            # TODO: 6.0 - change this to be a ValueError
             raise ClientError(
                 f"'timeout' must be a float larger than 0; {timeout}"
             )

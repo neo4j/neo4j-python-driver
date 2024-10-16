@@ -690,7 +690,7 @@ DEFAULT_DIAG_REC_PAIRS = (
             {"OPERATION": "Foo", "OPERATION_CODE": 1, "CURRENT_SCHEMA": False},
             {"OPERATION": "", "OPERATION_CODE": "0", "bar": "baz"},
         ),
-        limit=3,
+        upper_limit=3,
     ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))

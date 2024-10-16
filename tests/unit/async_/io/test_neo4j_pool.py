@@ -535,11 +535,13 @@ async def test_passes_pool_config_to_connection(mocker):
     "error",
     (
         ServiceUnavailable(),
-        Neo4jError.hydrate(
-            "message", "Neo.ClientError.Statement.EntityNotFound"
+        Neo4jError._hydrate_neo4j(
+            code="Neo.ClientError.Statement.EntityNotFound",
+            message="message",
         ),
-        Neo4jError.hydrate(
-            "message", "Neo.ClientError.Security.AuthorizationExpired"
+        Neo4jError._hydrate_neo4j(
+            code="Neo.ClientError.Security.AuthorizationExpired",
+            message="message",
         ),
     ),
 )
@@ -578,20 +580,20 @@ async def test_discovery_is_retried(custom_routing_opener, error):
 @pytest.mark.parametrize(
     "error",
     map(
-        lambda args: Neo4jError.hydrate(*args),
+        lambda args: Neo4jError._hydrate_neo4j(code=args[0], message=args[1]),
         (
-            ("message", "Neo.ClientError.Database.DatabaseNotFound"),
-            ("message", "Neo.ClientError.Transaction.InvalidBookmark"),
-            ("message", "Neo.ClientError.Transaction.InvalidBookmarkMixture"),
-            ("message", "Neo.ClientError.Statement.TypeError"),
-            ("message", "Neo.ClientError.Statement.ArgumentError"),
-            ("message", "Neo.ClientError.Request.Invalid"),
-            ("message", "Neo.ClientError.Security.AuthenticationRateLimit"),
-            ("message", "Neo.ClientError.Security.CredentialsExpired"),
-            ("message", "Neo.ClientError.Security.Forbidden"),
-            ("message", "Neo.ClientError.Security.TokenExpired"),
-            ("message", "Neo.ClientError.Security.Unauthorized"),
-            ("message", "Neo.ClientError.Security.MadeUpError"),
+            ("Neo.ClientError.Database.DatabaseNotFound", "message"),
+            ("Neo.ClientError.Transaction.InvalidBookmark", "message"),
+            ("Neo.ClientError.Transaction.InvalidBookmarkMixture", "message"),
+            ("Neo.ClientError.Statement.TypeError", "message"),
+            ("Neo.ClientError.Statement.ArgumentError", "message"),
+            ("Neo.ClientError.Request.Invalid", "message"),
+            ("Neo.ClientError.Security.AuthenticationRateLimit", "message"),
+            ("Neo.ClientError.Security.CredentialsExpired", "message"),
+            ("Neo.ClientError.Security.Forbidden", "message"),
+            ("Neo.ClientError.Security.TokenExpired", "message"),
+            ("Neo.ClientError.Security.Unauthorized", "message"),
+            ("Neo.ClientError.Security.MadeUpError", "message"),
         ),
     ),
 )
@@ -627,7 +629,7 @@ async def test_fast_failing_discovery(custom_routing_opener, error):
 @pytest.mark.parametrize(
     ("error", "marks_unauthenticated", "fetches_new"),
     (
-        (Neo4jError.hydrate("message", args[0]), *args[1:])
+        (Neo4jError._hydrate_neo4j(code=args[0], message="message"), *args[1:])
         for args in (
             ("Neo.ClientError.Database.DatabaseNotFound", False, False),
             ("Neo.ClientError.Statement.TypeError", False, False),

@@ -767,7 +767,7 @@ class GqlStatusObject:
 
         .. note::
             This means these codes are not guaranteed to be stable and may
-            change in future versions.
+            change in future versions of the driver or the server.
         """
         if hasattr(self, "_gql_status"):
             return self._gql_status
