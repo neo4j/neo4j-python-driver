@@ -31,7 +31,13 @@ from operator import xor as xor_operator
 
 from ._codec.hydration import BrokenHydrationObject
 from ._conf import iter_items
-from ._meta import deprecated
+
+
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated
+else:
+    from ._meta import deprecated
+
 from ._spatial import Point
 from .exceptions import BrokenRecordError
 from .graph import (

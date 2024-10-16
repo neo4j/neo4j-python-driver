@@ -111,15 +111,23 @@ def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
         @deprecated("'foo' has been deprecated in favour of 'bar'")
         def foo(x):
             pass
+
+        @property
+        @deprecated("'bar' will be internal without a replacement")
+        def bar(self):
+            return "bar"
+
+        @property
+        def baz(self):
+            return self._baz
+
+        @baz.setter
+        @deprecated("'baz' will be read-only in the future")
+        def baz(self, value):
+            self._baz = value
+
     """
     return _make_warning_decorator(message, deprecation_warn)
-
-
-def deprecated_property(message: str):
-    def decorator(f):
-        return property(deprecated(message)(f))
-
-    return t.cast(property, decorator)
 
 
 # TODO: 6.0 - remove this class, replace usage with PreviewWarning
