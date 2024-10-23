@@ -355,6 +355,7 @@ texinfo_documents = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "dateutil": ("https://dateutil.readthedocs.io/en/stable/", None),
 }
 
 autodoc_default_options = {

@@ -3,6 +3,11 @@ Temporal data types are implemented by the ``neo4j.time`` module.
 It provides a set of types compliant with ISO-8601 and Cypher, which are similar to those found in the built-in ``datetime`` module.
 Sub-second values are measured to nanosecond precision and the types are compatible with `pytz <https://pypi.org/project/pytz/>`_.
 
+.. warning::
+    The temporal types were designed to be used with `pytz <https://pypi.org/project/pytz/>`_.
+    Other :class:`datetime.tzinfo` implementations (e.g., :class:`datetime.timezone`, :mod:`zoneinfo`, :mod:`dateutil.tz`)
+    are not supported and are unlikely to work well.
+
 The table below shows the general mappings between Cypher and the temporal types provided by the driver.
 
 In addition, the built-in temporal types can be passed as parameters and will be mapped appropriately.
@@ -17,10 +22,6 @@ DateTime       :class:`neo4j.time.DateTime`  :class:`python:datetime.datetime`  
 LocalDateTime  :class:`neo4j.time.DateTime`  :class:`python:datetime.datetime`   ``None``
 Duration       :class:`neo4j.time.Duration`  :class:`python:datetime.timedelta`
 =============  ============================  ==================================  ============
-
-Sub-second values are measured to nanosecond precision and the types are mostly
-compatible with `pytz <https://pypi.org/project/pytz/>`_. Some timezones
-(e.g.,  ``pytz.utc``) work exclusively with the built-in ``datetime.datetime``.
 
 .. Note::
     Cypher has built-in support for handling temporal values, and the underlying
