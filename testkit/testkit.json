@@ -1,6 +1,6 @@
 {
   "testkit": {
     "uri": "https://github.com/neo4j-drivers/testkit.git",
-    "ref": "5.0"
+    "ref": "bolt-handshake-v2"
   }
 }

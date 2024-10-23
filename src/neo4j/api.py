@@ -414,7 +414,13 @@ class ServerInfo:
 # TODO: 6.0 - this class should not be public.
 #       As far the user is concerned, protocol versions should simply be a
 #       tuple[int, int].
-class Version(tuple):
+if t.TYPE_CHECKING:
+    _version_base = t.Tuple[int, int]
+else:
+    _version_base = tuple
+
+
+class Version(_version_base):
     def __new__(cls, *v):
         return super().__new__(cls, v)
 

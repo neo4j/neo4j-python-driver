@@ -19,9 +19,9 @@ import asyncio
 import pytest
 
 import neo4j.auth_management
-from neo4j._async_compat.network import BoltSocket
 from neo4j._exceptions import BoltHandshakeError
 from neo4j._sync.io import Bolt
+from neo4j._sync.io._bolt_socket import BoltSocket
 
 from ...._async_compat import (
     mark_sync_test,
@@ -29,20 +29,17 @@ from ...._async_compat import (
 )
 
 
-# python -m pytest tests/unit/io/test_class_bolt.py -s -v
-
-
 # [bolt-version-bump] search tag when changing bolt version support
 def test_class_method_protocol_handlers():
     # fmt: off
     expected_handlers = {
         (3, 0),
-        (4, 1), (4, 2), (4, 3), (4, 4),
+        (4, 0), (4, 1), (4, 2), (4, 3), (4, 4),
         (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7),
     }
     # fmt: on
 
-    protocol_handlers = Bolt.protocol_handlers()
+    protocol_handlers = Bolt.protocol_handlers
 
     assert len(protocol_handlers) == len(expected_handlers)
     assert protocol_handlers.keys() == expected_handlers
@@ -52,39 +49,34 @@ def test_class_method_protocol_handlers():
 @pytest.mark.parametrize(
     ("test_input", "expected"),
     [
-        ((0, 0), 0),
-        ((1, 0), 0),
-        ((2, 0), 0),
-        ((3, 0), 1),
-        ((4, 0), 0),
-        ((4, 1), 1),
-        ((4, 2), 1),
-        ((4, 3), 1),
-        ((4, 4), 1),
-        ((5, 0), 1),
-        ((5, 1), 1),
-        ((5, 2), 1),
-        ((5, 3), 1),
-        ((5, 4), 1),
-        ((5, 5), 1),
-        ((5, 6), 1),
-        ((5, 7), 1),
-        ((5, 8), 0),
-        ((6, 0), 0),
+        ((0, 0), False),
+        ((1, 0), False),
+        ((2, 0), False),
+        ((3, 0), True),
+        ((3, 1), False),
+        ((4, 0), True),
+        ((4, 1), True),
+        ((4, 2), True),
+        ((4, 3), True),
+        ((4, 4), True),
+        ((4, 5), False),
+        ((5, 0), True),
+        ((5, 1), True),
+        ((5, 2), True),
+        ((5, 3), True),
+        ((5, 4), True),
+        ((5, 5), True),
+        ((5, 6), True),
+        ((5, 7), True),
+        ((5, 8), False),
+        ((6, 0), False),
     ],
 )
 def test_class_method_protocol_handlers_with_protocol_version(
     test_input, expected
 ):
-    protocol_handlers = Bolt.protocol_handlers(
-        protocol_version=test_input
-    )
-    assert len(protocol_handlers) == expected
-
-
-def test_class_method_protocol_handlers_with_invalid_protocol_version():
-    with pytest.raises(TypeError):
-        Bolt.protocol_handlers(protocol_version=2)
+    protocol_handlers = Bolt.protocol_handlers
+    assert (test_input in protocol_handlers) == expected
 
 
 # [bolt-version-bump] search tag when changing bolt version support
@@ -92,7 +84,7 @@ def test_class_method_get_handshake():
     handshake = Bolt.get_handshake()
     assert (
         handshake
-        == b"\x00\x07\x07\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
+        == b"\x00\x00\x01\xff\x00\x07\x07\x05\x00\x04\x04\x04\x00\x00\x00\x03"
     )
 
 
@@ -119,6 +111,10 @@ def test_cancel_hello_in_open(mocker, none_auth):
     bolt_mock.socket = socket_mock
     bolt_mock.hello.side_effect = asyncio.CancelledError()
     bolt_mock.local_port = 1234
+    mocker.patch.dict(
+        Bolt.protocol_handlers,
+        {(5, 0): bolt_cls_mock},
+    )
 
     with pytest.raises(asyncio.CancelledError):
         Bolt.open(address, auth_manager=none_auth)
@@ -131,6 +127,7 @@ def test_cancel_hello_in_open(mocker, none_auth):
     ("bolt_version", "bolt_cls_path"),
     (
         ((3, 0), "neo4j._sync.io._bolt3.Bolt3"),
+        ((4, 0), "neo4j._sync.io._bolt4.Bolt4x0"),
         ((4, 1), "neo4j._sync.io._bolt4.Bolt4x1"),
         ((4, 2), "neo4j._sync.io._bolt4.Bolt4x2"),
         ((4, 3), "neo4j._sync.io._bolt4.Bolt4x3"),
@@ -166,6 +163,10 @@ def test_version_negotiation(
     bolt_cls_mock.return_value.local_port = 1234
     bolt_mock = bolt_cls_mock.return_value
     bolt_mock.socket = socket_mock
+    mocker.patch.dict(
+        Bolt.protocol_handlers,
+        {bolt_version: bolt_cls_mock},
+    )
 
     connection = Bolt.open(address, auth_manager=none_auth)
 
@@ -179,7 +180,6 @@ def test_version_negotiation(
     (
         (0, 0),
         (2, 0),
-        (4, 0),
         (3, 1),
         (5, 8),
         (6, 0),
@@ -188,7 +188,7 @@ def test_version_negotiation(
 @mark_sync_test
 def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     supported_protocols = (
-        "('3.0', '4.1', '4.2', '4.3', '4.4', "
+        "('3.0', '4.0', '4.1', '4.2', '4.3', '4.4', "
         "'5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7')"
     )
 
@@ -222,12 +222,6 @@ def test_cancel_manager_in_open(mocker):
     )
     socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
     socket_mock.getpeername.return_value = address
-    bolt_cls_mock = mocker.patch(
-        "neo4j._sync.io._bolt5.Bolt5x0", autospec=True
-    )
-    bolt_mock = bolt_cls_mock.return_value
-    bolt_mock.socket = socket_mock
-    bolt_mock.local_port = 1234
 
     auth_manager = mocker.MagicMock(
         spec=neo4j.auth_management.AuthManager
@@ -250,12 +244,6 @@ def test_fail_manager_in_open(mocker):
     )
     socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
     socket_mock.getpeername.return_value = address
-    bolt_cls_mock = mocker.patch(
-        "neo4j._sync.io._bolt5.Bolt5x0", autospec=True
-    )
-    bolt_mock = bolt_cls_mock.return_value
-    bolt_mock.socket = socket_mock
-    bolt_mock.local_port = 1234
 
     auth_manager = mocker.MagicMock(
         spec=neo4j.auth_management.AuthManager
