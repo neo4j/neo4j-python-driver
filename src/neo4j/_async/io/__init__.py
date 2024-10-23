@@ -31,6 +31,7 @@ __all__ = [
 ]
 
 
+# [bolt-version-bump] search tag when changing bolt version support
 from . import (  # noqa - imports needed to register protocol handlers
     _bolt3,
     _bolt4,
