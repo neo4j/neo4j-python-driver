@@ -30,6 +30,7 @@ from neo4j import (
 from neo4j.debug import watch
 
 from . import env
+from ._teamcity import *  # noqa - needed for pytest to pick up the hooks
 
 
 # from neo4j.debug import watch
