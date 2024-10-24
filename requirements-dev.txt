@@ -25,6 +25,7 @@ pytest-cov>=3.0.0
 pytest-mock>=3.6.1
 teamcity-messages>=1.29
 tox>=4.0.0
+teamcity-messages>=1.32
 
 # needed for building docs
 sphinx

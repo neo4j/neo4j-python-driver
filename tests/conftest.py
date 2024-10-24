@@ -17,11 +17,19 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from functools import wraps
 
 import pytest
 import pytest_asyncio
+
+
+try:
+    import teamcity
+    import teamcity.messages
+except ImportError:
+    teamcity = None
 
 from neo4j import (
     AsyncGraphDatabase,
@@ -201,3 +209,38 @@ def aio_benchmark(benchmark, event_loop):
 def watcher():
     with watch("neo4j", out=sys.stdout, colour=True):
         yield
+
+
+def _get_teamcity_suite_name(config):
+    if not teamcity:
+        return None
+    if getattr(config.option, "no_teamcity", 0) >= 1:
+        enabled = False
+    elif getattr(config.option, "teamcity", 0) >= 1:
+        enabled = True
+    else:
+        enabled = teamcity.is_running_under_teamcity() or (
+            os.environ.get("TEST_IN_TEAMCITY", "").upper()
+            in {"TRUE", "1", "Y", "YES", "ON"}
+        )
+    if not enabled:
+        return None
+    suite_name = os.environ.get("TEAMCITY_SUITE_NAME", "")
+    if not suite_name:
+        return None
+    return suite_name
+
+
+def pytest_sessionstart(session):
+    suite_name = _get_teamcity_suite_name(session.config)
+    if not suite_name:
+        return
+    session.config._neo4j_teamcity_suite_name = suite_name
+    teamcity.messages.TeamcityServiceMessages().testSuiteStarted(suite_name)
+
+
+def pytest_unconfigure(config):
+    suite_name = getattr(config, "_neo4j_teamcity_suite_name", None)
+    if not suite_name:
+        return
+    teamcity.messages.TeamcityServiceMessages().testSuiteFinished(suite_name)
