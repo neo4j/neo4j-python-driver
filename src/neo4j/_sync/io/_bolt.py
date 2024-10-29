@@ -1029,12 +1029,23 @@ class Bolt:
         direct_driver = getattr(self.pool, "is_direct_pool", False)
         user_cancelled = isinstance(error, asyncio.CancelledError)
 
+        if not (user_cancelled or self._closing):
+            log_call = log.error
+        else:
+            log_call = log.debug
         if error:
-            log.debug(
-                "[#%04X]  _: <CONNECTION> error: %r", self.local_port, error
+            log_call(
+                "[#%04X]  _: <CONNECTION> error: %s: %r",
+                self.local_port,
+                message,
+                error,
             )
-        if not user_cancelled:
-            log.error(message)
+        else:
+            log_call(
+                "[#%04X]  _: <CONNECTION> error: %s",
+                self.local_port,
+                message,
+            )
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
         # connection from the client side, and remove the address
