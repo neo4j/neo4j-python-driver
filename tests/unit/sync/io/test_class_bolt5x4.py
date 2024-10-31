@@ -281,7 +281,7 @@ def test_telemetry_message(
         telemetry_disabled=driver_disabled,
     )
     if serv_enabled:
-        connection.configuration_hints["telemetry.enabled"] = True
+        connection.connection_hints["telemetry.enabled"] = True
     connection.telemetry(api)
     connection.send_all()
 

@@ -64,6 +64,8 @@ class Bolt4x0(Bolt):
 
     PROTOCOL_VERSION = Version(4, 0)
 
+    ssr_enabled = False
+
     supports_multiple_results = True
 
     supports_multiple_databases = True
@@ -614,10 +616,10 @@ class Bolt4x3(Bolt4x2):
         )
 
         def on_success(metadata):
-            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.connection_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
-            if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
+            if "connection.recv_timeout_seconds" in self.connection_hints:
+                recv_timeout = self.connection_hints[
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:

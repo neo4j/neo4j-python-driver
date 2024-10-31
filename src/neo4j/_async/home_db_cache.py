@@ -28,7 +28,7 @@ from .._async_compat.concurrency import AsyncCooperativeLock
 
 if t.TYPE_CHECKING:
     # TAuthKey = t.Tuple[t.Tuple[]]
-    TKey = str | tuple[tuple[str, t.Hashable], ...] | None
+    TKey = str | tuple[tuple[str, t.Hashable], ...] | tuple[None]
     TVal = tuple[float, str]
 
 
@@ -39,17 +39,18 @@ class AsyncHomeDbCache:
 
     def __init__(
         self,
-        ttl: float = float("inf"),
         enabled: bool = True,
+        ttl: float = float("inf"),
         max_size: int | None = None,
     ) -> None:
         if math.isnan(ttl) or ttl <= 0:
-            raise ValueError("home db cache ttl must be greater 0")
+            raise ValueError(f"home db cache ttl must be greater 0, got {ttl}")
         self._enabled = enabled
         self._ttl = ttl
         self._cache: dict[TKey, TVal] = {}
         self._lock = AsyncCooperativeLock()
         self._last_clean = monotonic()
+        self._max_size = max_size
 
     def compute_key(
         self,
@@ -57,14 +58,16 @@ class AsyncHomeDbCache:
         auth: dict | None,
     ) -> TKey:
         if not self._enabled:
-            return None
+            return (None,)
         if imp_user is not None:
             return imp_user
         if auth is not None:
             return _hashable_dict(auth)
-        return None
+        return (None,)
 
     def get(self, key: TKey) -> str | None:
+        if not self._enabled:
+            return None
         with self._lock:
             val = self._cache.get(key)
             if val is None:
@@ -79,6 +82,8 @@ class AsyncHomeDbCache:
             return val[1]
 
     def set(self, key: TKey, value: str | None) -> None:
+        if not self._enabled:
+            return
         with self._lock:
             if value is None:
                 self._cache.pop(key, None)
@@ -86,6 +91,8 @@ class AsyncHomeDbCache:
                 self._cache[key] = (monotonic(), value)
 
     def clear(self) -> None:
+        if not self._enabled:
+            return
         with self._lock:
             self._cache = {}
             self._last_clean = monotonic()

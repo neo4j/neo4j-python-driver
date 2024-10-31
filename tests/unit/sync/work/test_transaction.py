@@ -248,7 +248,9 @@ def test_transaction_no_rollback_on_defunct_connections(
 def test_transaction_begin_pipelining(
     fake_connection, pipeline
 ) -> None:
-    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
+    tx = Transaction(
+        fake_connection, 2, None, noop, noop, noop, None
+    )
     database = "db"
     imp_user = None
     bookmarks = ["bookmark1", "bookmark2"]

@@ -157,10 +157,7 @@ class Bolt:
             ),
             self.PROTOCOL_VERSION,
         )
-        # so far `connection.recv_timeout_seconds` is the only available
-        # configuration hint that exists. Therefore, all hints can be stored at
-        # connection level. This might change in the future.
-        self.configuration_hints = {}
+        self.connection_hints = {}
         self.patch = {}
         self.outbox = Outbox(
             self.socket,
@@ -208,6 +205,10 @@ class Bolt:
     @property
     def connection_id(self):
         return self.server_info._metadata.get("connection_id", "<unknown id>")
+
+    @property
+    @abc.abstractmethod
+    def ssr_enabled(self) -> bool: ...
 
     @property
     @abc.abstractmethod
@@ -291,6 +292,7 @@ class Bolt:
             Bolt5x5,
             Bolt5x6,
             Bolt5x7,
+            Bolt5x8,
         )
 
         handlers = {
@@ -308,6 +310,7 @@ class Bolt:
             Bolt5x5.PROTOCOL_VERSION: Bolt5x5,
             Bolt5x6.PROTOCOL_VERSION: Bolt5x6,
             Bolt5x7.PROTOCOL_VERSION: Bolt5x7,
+            Bolt5x8.PROTOCOL_VERSION: Bolt5x8,
         }
 
         if protocol_version is None:
@@ -444,7 +447,10 @@ class Bolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 7):
+        if protocol_version == (5, 8):
+            from ._bolt5 import Bolt5x8
+            bolt_cls = Bolt5x8
+        elif protocol_version == (5, 7):
             from ._bolt5 import Bolt5x7
             bolt_cls = Bolt5x7
         elif protocol_version == (5, 6):

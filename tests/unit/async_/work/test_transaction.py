@@ -248,7 +248,9 @@ async def test_transaction_no_rollback_on_defunct_connections(
 async def test_transaction_begin_pipelining(
     async_fake_connection, pipeline
 ) -> None:
-    tx = AsyncTransaction(async_fake_connection, 2, None, noop, noop, noop)
+    tx = AsyncTransaction(
+        async_fake_connection, 2, None, noop, noop, noop, None
+    )
     database = "db"
     imp_user = None
     bookmarks = ["bookmark1", "bookmark2"]

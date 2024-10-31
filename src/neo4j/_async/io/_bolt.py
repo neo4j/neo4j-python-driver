@@ -157,10 +157,7 @@ class AsyncBolt:
             ),
             self.PROTOCOL_VERSION,
         )
-        # so far `connection.recv_timeout_seconds` is the only available
-        # configuration hint that exists. Therefore, all hints can be stored at
-        # connection level. This might change in the future.
-        self.configuration_hints = {}
+        self.connection_hints = {}
         self.patch = {}
         self.outbox = AsyncOutbox(
             self.socket,
@@ -208,6 +205,10 @@ class AsyncBolt:
     @property
     def connection_id(self):
         return self.server_info._metadata.get("connection_id", "<unknown id>")
+
+    @property
+    @abc.abstractmethod
+    def ssr_enabled(self) -> bool: ...
 
     @property
     @abc.abstractmethod
@@ -291,6 +292,7 @@ class AsyncBolt:
             AsyncBolt5x5,
             AsyncBolt5x6,
             AsyncBolt5x7,
+            AsyncBolt5x8,
         )
 
         handlers = {
@@ -308,6 +310,7 @@ class AsyncBolt:
             AsyncBolt5x5.PROTOCOL_VERSION: AsyncBolt5x5,
             AsyncBolt5x6.PROTOCOL_VERSION: AsyncBolt5x6,
             AsyncBolt5x7.PROTOCOL_VERSION: AsyncBolt5x7,
+            AsyncBolt5x8.PROTOCOL_VERSION: AsyncBolt5x8,
         }
 
         if protocol_version is None:
@@ -444,7 +447,10 @@ class AsyncBolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 7):
+        if protocol_version == (5, 8):
+            from ._bolt5 import AsyncBolt5x8
+            bolt_cls = AsyncBolt5x8
+        elif protocol_version == (5, 7):
             from ._bolt5 import AsyncBolt5x7
             bolt_cls = AsyncBolt5x7
         elif protocol_version == (5, 6):

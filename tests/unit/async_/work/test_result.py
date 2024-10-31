@@ -1366,7 +1366,9 @@ async def test_notification_warning(
             ]
         },
     )
-    result = AsyncResult(connection, 1, warn_notification_severity, noop, noop)
+    result = AsyncResult(
+        connection, 1, warn_notification_severity, noop, noop, None
+    )
     if expected_warning is None:
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # assert not warnings are emitted
@@ -1408,7 +1410,7 @@ async def test_notification_logging(
         records=Records(["foo"], ()),
         summary_meta={"notifications": [notification_data]},
     )
-    result = AsyncResult(connection, 1, None, noop, noop)
+    result = AsyncResult(connection, 1, None, noop, noop, None)
     with caplog.at_level(logging.INFO, logger="neo4j.notifications"):
         await result._run("CYPHER", {}, None, None, "r", None, None, None)
         await result.consume()

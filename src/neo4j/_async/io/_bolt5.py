@@ -108,6 +108,10 @@ class AsyncBolt5x0(AsyncBolt):
         return self._client_state_manager
 
     @property
+    def ssr_enabled(self) -> bool:
+        return False
+
+    @property
     def is_reset(self):
         # We can't be sure of the server's state if there are still pending
         # responses. Unless the last message we sent was RESET. In that case
@@ -141,10 +145,10 @@ class AsyncBolt5x0(AsyncBolt):
         )
 
         def on_success(metadata):
-            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.connection_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
-            if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
+            if "connection.recv_timeout_seconds" in self.connection_hints:
+                recv_timeout = self.connection_hints[
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
@@ -615,10 +619,10 @@ class AsyncBolt5x1(AsyncBolt5x0):
         )
 
         def on_success(metadata):
-            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.connection_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
-            if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
+            if "connection.recv_timeout_seconds" in self.connection_hints:
+                recv_timeout = self.connection_hints[
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
@@ -702,10 +706,10 @@ class AsyncBolt5x2(AsyncBolt5x1):
         )
 
         def on_success(metadata):
-            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.connection_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
-            if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
+            if "connection.recv_timeout_seconds" in self.connection_hints:
+                recv_timeout = self.connection_hints[
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
@@ -883,7 +887,7 @@ class AsyncBolt5x4(AsyncBolt5x3):
         hydration_hooks=None,
         **handlers,
     ) -> None:
-        if self.telemetry_disabled or not self.configuration_hints.get(
+        if self.telemetry_disabled or not self.connection_hints.get(
             "telemetry.enabled", False
         ):
             return
@@ -1225,3 +1229,11 @@ class AsyncBolt5x7(AsyncBolt5x6):
             )
 
         return len(details), 1
+
+
+class AsyncBolt5x8(AsyncBolt5x7):
+    PROTOCOL_VERSION = Version(5, 8)
+
+    @property
+    def ssr_enabled(self) -> bool:
+        return self.connection_hints.get("ssr.enabled", False) is True

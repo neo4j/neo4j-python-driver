@@ -148,6 +148,8 @@ class Bolt3(Bolt):
 
     PROTOCOL_VERSION = Version(3, 0)
 
+    ssr_enabled = False
+
     supports_multiple_results = False
 
     supports_multiple_databases = False

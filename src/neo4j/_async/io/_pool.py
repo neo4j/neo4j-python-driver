@@ -80,6 +80,37 @@ class AcquireAuth:
     force_auth: bool = False
 
 
+@dataclass
+class ConnectionFeatureTracker:
+    feature_check: t.Callable[[AsyncBolt], bool]
+    with_feature: int = 0
+    without_feature: int = 0
+
+    @property
+    def has_feature(self):
+        return self.with_feature > 0 and self.without_feature == 0
+
+    def add_connection(self, connection):
+        if self.feature_check(connection):
+            self.with_feature += 1
+        else:
+            self.without_feature += 1
+
+    def remove_connection(self, connection):
+        if self.feature_check(connection):
+            if self.with_feature == 0:
+                raise ValueError(
+                    "No connections to be removed from feature tracker"
+                )
+            self.with_feature -= 1
+        else:
+            if self.without_feature == 0:
+                raise ValueError(
+                    "No connections to be removed from feature tracker"
+                )
+            self.without_feature -= 1
+
+
 class AsyncIOPool(abc.ABC):
     """A collection of connections to one or more server addresses."""
 
@@ -96,10 +127,17 @@ class AsyncIOPool(abc.ABC):
         self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
         self.home_db_cache = AsyncHomeDbCache(max_size=10_000)
+        self._ssr_feature_tracker = ConnectionFeatureTracker(
+            feature_check=lambda connection: connection.ssr_enabled
+        )
 
     @property
     @abc.abstractmethod
     def is_direct_pool(self) -> bool: ...
+
+    @property
+    def ssr_enabled(self) -> bool:
+        return self._ssr_feature_tracker.has_feature
 
     async def __aenter__(self):
         return self
@@ -135,6 +173,20 @@ class AsyncIOPool(abc.ABC):
             # connection isn't in the pool anymore.
             with suppress(ValueError):
                 self.connections.get(address, []).remove(connection)
+                self._ssr_feature_tracker.remove_connection(connection)
+
+    def _add_connections(self, address, *connections):
+        with self.lock:
+            self.connections[address].extend(connections)
+            for connection in connections:
+                self._ssr_feature_tracker.add_connection(connection)
+
+    def _remove_connections(self, address, *connections):
+        with self.lock:
+            existing_connections = self.connections.get(address, [])
+            for connection in connections:
+                existing_connections.remove(connection)
+                self._ssr_feature_tracker.remove_connection(connection)
 
     async def _acquire_from_pool_checked(
         self, address, health_check, deadline
@@ -195,7 +247,7 @@ class AsyncIOPool(abc.ABC):
                 with self.lock:
                     self.connections_reservations[address] -= 1
                     released_reservation = True
-                    self.connections[address].append(connection)
+                    self._add_connections(address, connection)
                 return connection
             finally:
                 if not released_reservation:
@@ -495,8 +547,7 @@ class AsyncIOPool(abc.ABC):
             # First remove all connections in question, then try to close them.
             # If closing of a connection fails, we will end up in this method
             # again.
-            for conn in closable_connections:
-                connections.remove(conn)
+            self._remove_connections(address, *closable_connections)
             if not self.connections[address]:
                 del self.connections[address]
 
@@ -542,6 +593,8 @@ class AsyncIOPool(abc.ABC):
                     for address in list(self.connections)
                     for connection in self.connections.pop(address, ())
                 ]
+            for connection in connections:
+                self._ssr_feature_tracker.remove_connection(connection)
             await self._close_connections(connections)
         except TypeError:
             pass
