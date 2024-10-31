@@ -273,12 +273,12 @@ class AuthManagers:
                 # assume we know our tokens expire every 60 seconds
                 expires_in = 60
 
-                return ExpiringAuth(
-                    auth=neo4j.bearer_auth(sso_token),
-                    # Include a little buffer so that we fetch a new token
-                    # *before* the old one expires
-                    expires_in=expires_in - 10
-                )
+                # Include a little buffer so that we fetch a new token
+                # *before* the old one expires
+                expires_in -= 10
+
+                auth = neo4j.bearer_auth(sso_token)
+                return ExpiringAuth(auth=auth).expires_in(expires_in)
 
 
             with neo4j.GraphDatabase.driver(
