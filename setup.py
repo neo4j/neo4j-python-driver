@@ -69,6 +69,8 @@ def change_project_name(new_name):
         fd.seek(0)
         pyproject = tomlkit.parse(fd.read())
         old_name = pyproject["project"]["name"]
+        if old_name == new_name:
+            return None
         pyproject["project"]["name"] = new_name
         fd.seek(0)
         fd.truncate()
@@ -82,7 +84,8 @@ def changed_package_name(new_name):
     try:
         yield
     finally:
-        change_project_name(old_name)
+        if old_name is not None:
+            change_project_name(old_name)
 
 
 with changed_package_name(package):
