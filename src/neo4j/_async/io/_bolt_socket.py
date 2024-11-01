@@ -242,7 +242,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         response = await self._handshake_read(ctx, 4)
 
         if response == b"HTTP":
-            log.debug("[#%04X]  S: <CLOSE>", local_port)
+            log.debug("[#%04X]  C: <CLOSE> (received b'HTTP')", local_port)
             await self.close()
             raise ServiceUnavailable(
                 f"Cannot to connect to Bolt service on {resolved_address!r} "
