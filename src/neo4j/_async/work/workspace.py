@@ -34,10 +34,7 @@ from ...exceptions import (
     SessionExpired,
 )
 from .._debug import AsyncNonConcurrentMethodChecker
-from ..io import (
-    AcquireAuth,
-    AsyncNeo4jPool,
-)
+from ..io import AcquireAuth
 
 
 if t.TYPE_CHECKING:
@@ -236,9 +233,7 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         acquire_auth: AcquireAuth,
         ssr_enabled: bool,
     ) -> _TargetDatabase:
-        if self._config.database is not None or not isinstance(
-            self._pool, AsyncNeo4jPool
-        ):
+        if self._config.database is not None or self._pool.is_direct_pool:
             self._set_pinned_database(self._config.database)
             log.debug(
                 "[#0000]  _: <WORKSPACE> routing towards fixed database: %s",
