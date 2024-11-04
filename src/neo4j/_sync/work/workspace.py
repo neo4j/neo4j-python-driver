@@ -216,6 +216,10 @@ class Workspace(NonConcurrentMethodChecker):
             # race condition: in the meantime, the pool added a connection,
             # which does not support SSR.
             # => we need to fall back to explicit home database resolution
+            log.debug(
+                "[#0000]  _: <WORKSPACE> detected ssr support race; "
+                "falling back to explicit home database resolution",
+            )
             self._disconnect()
             routing_target = self._get_routing_target_database(
                 acquire_auth, ssr_enabled=False
