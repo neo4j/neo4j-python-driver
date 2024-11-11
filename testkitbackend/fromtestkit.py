@@ -211,9 +211,10 @@ def to_auth_token(data, key):
             auth_token["credentials"],
             auth_token["realm"],
             auth_token["scheme"],
-            **auth_token.get("parameters", {}),
+            **auth_token.get("parameters") or {},
         )
-        auth_token.mark_item_as_read("parameters", recursive=True)
+        if "parameters" in auth_token:
+            auth_token.mark_item_as_read("parameters", recursive=True)
     return auth
 
 
