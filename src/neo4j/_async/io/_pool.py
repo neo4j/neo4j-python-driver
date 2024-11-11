@@ -75,9 +75,15 @@ log = getLogger("neo4j.pool")
 
 
 @dataclass
-class AcquireAuth:
+class AcquisitionAuth:
     auth: AsyncAuthManager | AuthManager | None
     force_auth: bool = False
+
+
+@dataclass
+class AcquisitionDatabase:
+    name: str | None
+    guessed: bool = False
 
 
 @dataclass
@@ -315,7 +321,7 @@ class AsyncIOPool(abc.ABC):
         This method is thread safe.
         """
         if auth is None:
-            auth = AcquireAuth(None)
+            auth = AcquisitionAuth(None)
         force_auth = auth.force_auth
         auth = auth.auth
         if liveness_check_timeout is None:
@@ -410,8 +416,9 @@ class AsyncIOPool(abc.ABC):
         timeout,
         database,
         bookmarks,
-        auth: AcquireAuth,
+        auth: AcquisitionAuth,
         liveness_check_timeout,
+        database_callback=None,
     ):
         """
         Acquire a connection to a server that can satisfy a set of parameters.
@@ -423,6 +430,7 @@ class AsyncIOPool(abc.ABC):
         :param bookmarks:
         :param auth:
         :param liveness_check_timeout:
+        :param database_callback:
         """
         ...
 
@@ -640,8 +648,9 @@ class AsyncBoltPool(AsyncIOPool):
         timeout,
         database,
         bookmarks,
-        auth: AcquireAuth,
+        auth: AcquisitionAuth,
         liveness_check_timeout,
+        database_callback=None,
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
@@ -730,6 +739,10 @@ class AsyncNeo4jPool(AsyncIOPool):
                     database=database, routers=[self.address]
                 )
             return self.routing_tables[database]
+
+    async def get_routing_table(self, database):
+        async with self.refresh_lock:
+            return self.routing_tables.get(database)
 
     async def fetch_routing_info(
         self, address, database, imp_user, bookmarks, auth, acquisition_timeout
@@ -942,13 +955,16 @@ class AsyncNeo4jPool(AsyncIOPool):
         :raise neo4j.exceptions.ServiceUnavailable:
         """
         async with self.refresh_lock:
-            routing_table = await self.get_or_create_routing_table(database)
-            # copied because it can be modified
-            existing_routers = set(routing_table.routers)
-
-            prefer_initial_routing_address = self.routing_tables[
-                database
-            ].initialized_without_writers
+            routing_table = await self.get_routing_table(database)
+            if routing_table is not None:
+                # copied because it can be modified
+                existing_routers = set(routing_table.routers)
+                prefer_initial_routing_address = (
+                    routing_table.initialized_without_writers
+                )
+            else:
+                existing_routers = {self.address}
+                prefer_initial_routing_address = True
 
             if (
                 prefer_initial_routing_address
@@ -998,12 +1014,17 @@ class AsyncNeo4jPool(AsyncIOPool):
 
     async def update_connection_pool(self, *, database):
         async with self.refresh_lock:
-            routing_tables = [await self.get_or_create_routing_table(database)]
+            rt = await self.get_routing_table(database)
+            routing_tables = [rt] if rt is not None else []
             for db in self.routing_tables:
                 if db == database:
                     continue
                 routing_tables.append(self.routing_tables[db])
-        servers = set.union(*(rt.servers() for rt in routing_tables))
+
+        servers = set.union(
+            *(rt.servers() for rt in routing_tables),
+            self.address,
+        )
         for address in list(self.connections):
             if address._unresolved not in servers:
                 await super().deactivate(address)
@@ -1012,13 +1033,13 @@ class AsyncNeo4jPool(AsyncIOPool):
         self,
         *,
         access_mode,
-        database,
+        database: AcquisitionDatabase,
         imp_user,
         bookmarks,
         auth=None,
         acquisition_timeout=None,
         database_callback=None,
-    ):
+    ) -> bool:
         """
         Update the routing table if stale.
 
@@ -1050,8 +1071,10 @@ class AsyncNeo4jPool(AsyncIOPool):
                     )
                     del self.routing_tables[database_]
 
-            routing_table = await self.get_or_create_routing_table(database)
-            if routing_table.is_fresh(readonly=(access_mode == READ_ACCESS)):
+            routing_table = await self.get_routing_table(database.name)
+            if routing_table is not None and routing_table.is_fresh(
+                readonly=(access_mode == READ_ACCESS)
+            ):
                 # table is still valid
                 log.debug(
                     "[#0000]  _: <POOL> using existing routing table %r",
@@ -1059,15 +1082,18 @@ class AsyncNeo4jPool(AsyncIOPool):
                 )
                 return False
 
+            async def wrapped_database_callback(database: str | None) -> None:
+                await AsyncUtil.callback(database_callback, database)
+                await self.update_connection_pool(database=database)
+
             await self.update_routing_table(
-                database=database,
+                database=database.name if not database.guessed else None,
                 imp_user=imp_user,
                 bookmarks=bookmarks,
                 auth=auth,
                 acquisition_timeout=acquisition_timeout,
-                database_callback=database_callback,
+                database_callback=wrapped_database_callback,
             )
-            await self.update_connection_pool(database=database)
 
             return True
 
@@ -1104,10 +1130,11 @@ class AsyncNeo4jPool(AsyncIOPool):
         self,
         access_mode,
         timeout,
-        database,
+        database: AcquisitionDatabase,
         bookmarks,
-        auth: AcquireAuth | None,
+        auth: AcquisitionAuth | None,
         liveness_check_timeout,
+        database_callback=None,
     ):
         if access_mode not in {WRITE_ACCESS, READ_ACCESS}:
             # TODO: 6.0 - change this to be a ValueError
@@ -1139,6 +1166,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             bookmarks=bookmarks,
             auth=auth,
             acquisition_timeout=timeout,
+            database_callback=database_callback,
         )
 
         while True:
@@ -1146,7 +1174,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                 # Get an address for a connection that have the fewest in-use
                 # connections.
                 address = await self._select_address(
-                    access_mode=access_mode, database=database
+                    access_mode=access_mode, database=database.name
                 )
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired(

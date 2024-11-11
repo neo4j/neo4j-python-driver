@@ -29,9 +29,9 @@ from threading import (
 
 import pytest
 
-from neo4j._async.io._pool import AcquireAuth as AsyncAcquireAuth
+from neo4j._async.io._pool import AcquisitionAuth as AsyncAcquisitionAuth
 from neo4j._deadline import Deadline
-from neo4j._sync.io._pool import AcquireAuth
+from neo4j._sync.io._pool import AcquisitionAuth
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...async_.test_auth_management import (
@@ -128,11 +128,11 @@ class TestMixedConnectionPoolTestCase:
 
     def test_full_pool_re_auth(self, fake_connection_generator, mocker):
         address = ("127.0.0.1", 7687)
-        acquire_auth1 = AcquireAuth(
+        acquire_auth1 = AcquisitionAuth(
             auth=static_auth_manager(("user1", "pass1"))
         )
         auth2 = ("user2", "pass2")
-        acquire_auth2 = AcquireAuth(auth=static_auth_manager(auth2))
+        acquire_auth2 = AcquisitionAuth(auth=static_auth_manager(auth2))
         acquire1_event = threading.Event()
         cx1 = None
 
@@ -243,11 +243,13 @@ class TestMixedConnectionPoolTestCase:
         self, async_fake_connection_generator, mocker
     ):
         address = ("127.0.0.1", 7687)
-        acquire_auth1 = AsyncAcquireAuth(
+        acquire_auth1 = AsyncAcquisitionAuth(
             auth=static_async_auth_manager(("user1", "pass1"))
         )
         auth2 = ("user2", "pass2")
-        acquire_auth2 = AsyncAcquireAuth(auth=static_async_auth_manager(auth2))
+        acquire_auth2 = AsyncAcquisitionAuth(
+            auth=static_async_auth_manager(auth2)
+        )
         cx1 = None
 
         async def acquire1(pool_):

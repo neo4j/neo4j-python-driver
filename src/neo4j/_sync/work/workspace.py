@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import logging
 import typing as t
-from dataclasses import dataclass
 
 from ..._async_compat.util import Util
 from ..._auth_management import to_auth_dict
@@ -34,7 +33,10 @@ from ...exceptions import (
     SessionExpired,
 )
 from .._debug import NonConcurrentMethodChecker
-from ..io import AcquireAuth
+from ..io import (
+    AcquisitionAuth,
+    AcquisitionDatabase,
+)
 
 
 if t.TYPE_CHECKING:
@@ -49,12 +51,6 @@ else:
 
 
 log = logging.getLogger("neo4j")
-
-
-@dataclass
-class _TargetDatabase:
-    database: str | None
-    from_cache: bool = False
 
 
 class Workspace(NonConcurrentMethodChecker):
@@ -105,21 +101,10 @@ class Workspace(NonConcurrentMethodChecker):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _make_routing_database_callback(
-        self,
-        cache_key: TKey,
-    ) -> t.Callable[[str], None]:
-        def _database_callback(database: str | None) -> None:
-            if not self._pinned_database:
-                self._set_pinned_database(database)
-            db_cache: HomeDbCache = self._pool.home_db_cache
-            db_cache.set(cache_key, database)
+    def _make_db_resolution_callback(self) -> t.Callable[[str], None] | None:
+        if self._pinned_database:
+            return None
 
-        return _database_callback
-
-    def _make_query_database_resolution_callback(
-        self,
-    ) -> t.Callable[[str], None] | None:
         def _database_callback(database: str | None) -> None:
             if not self._pinned_database:
                 self._set_pinned_database(database)
@@ -184,7 +169,7 @@ class Workspace(NonConcurrentMethodChecker):
     def _connect(self, access_mode, auth=None, **acquire_kwargs) -> None:
         acquisition_timeout = self._config.connection_acquisition_timeout
         force_auth = acquire_kwargs.pop("force_auth", False)
-        acquire_auth = AcquireAuth(auth, force_auth=force_auth)
+        acquire_auth = AcquisitionAuth(auth, force_auth=force_auth)
 
         if self._connection:
             # TODO: Investigate this
@@ -194,20 +179,21 @@ class Workspace(NonConcurrentMethodChecker):
             self._disconnect()
 
         ssr_enabled = self._pool.ssr_enabled
-        routing_target = self._get_routing_target_database(
+        target_db = self._get_routing_target_database(
             acquire_auth, ssr_enabled=ssr_enabled
         )
         acquire_kwargs_ = {
             "access_mode": access_mode,
             "timeout": acquisition_timeout,
-            "database": routing_target.database,
+            "database": target_db,
             "bookmarks": self._get_bookmarks(),
             "auth": acquire_auth,
             "liveness_check_timeout": None,
+            "database_callback": self._make_db_resolution_callback(),
         }
         acquire_kwargs_.update(acquire_kwargs)
         self._connection = self._pool.acquire(**acquire_kwargs_)
-        if routing_target.from_cache and (
+        if target_db.guessed and (
             not self._pool.ssr_enabled or not self._connection.ssr_enabled
         ):
             # race condition: in the meantime, the pool added a connection,
@@ -218,25 +204,25 @@ class Workspace(NonConcurrentMethodChecker):
                 "falling back to explicit home database resolution",
             )
             self._disconnect()
-            routing_target = self._get_routing_target_database(
+            target_db = self._get_routing_target_database(
                 acquire_auth, ssr_enabled=False
             )
-            acquire_kwargs_["database"] = routing_target.database
+            acquire_kwargs_["database"] = target_db
             self._connection = self._pool.acquire(**acquire_kwargs_)
         self._connection_access_mode = access_mode
 
     def _get_routing_target_database(
         self,
-        acquire_auth: AcquireAuth,
+        acquire_auth: AcquisitionAuth,
         ssr_enabled: bool,
-    ) -> _TargetDatabase:
+    ) -> AcquisitionDatabase:
         if self._config.database is not None or self._pool.is_direct_pool:
             self._set_pinned_database(self._config.database)
             log.debug(
                 "[#0000]  _: <WORKSPACE> routing towards fixed database: %s",
                 self._config.database,
             )
-            return _TargetDatabase(self._config.database)
+            return AcquisitionDatabase(self._config.database)
 
         auth = acquire_auth.auth
         resolved_auth = self._resolve_session_auth(auth)
@@ -257,7 +243,7 @@ class Workspace(NonConcurrentMethodChecker):
                     ),
                     cached_db,
                 )
-                return _TargetDatabase(cached_db, from_cache=True)
+                return AcquisitionDatabase(cached_db, guessed=True)
 
         acquisition_timeout = self._config.connection_acquisition_timeout
         log.debug("[#0000]  _: <WORKSPACE> resolve home database")
@@ -267,9 +253,9 @@ class Workspace(NonConcurrentMethodChecker):
             bookmarks=self._get_bookmarks(),
             auth=acquire_auth,
             acquisition_timeout=acquisition_timeout,
-            database_callback=self._make_routing_database_callback(cache_key),
+            database_callback=self._make_db_resolution_callback(),
         )
-        return _TargetDatabase(self._config.database)
+        return AcquisitionDatabase(self._config.database)
 
     @staticmethod
     def _resolve_session_auth(
