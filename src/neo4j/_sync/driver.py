@@ -212,8 +212,6 @@ class GraphDatabase:
                 config["client_certificate"] = (
                     _StaticClientCertificateProvider(client_certificate)
                 )
-            if client_certificate is not None:
-                preview_warn("Mutual TLS is a preview feature.", stack_level=2)
 
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config and config["trust"] not in {

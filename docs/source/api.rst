@@ -653,15 +653,12 @@ Specify a client certificate or certificate provider for mutual TLS (mTLS) authe
 This setting does not have any effect if ``encrypted`` is set to ``False``
 (and the URI scheme is ``bolt://`` or ``neo4j://``) or a custom ``ssl_context`` is configured.
 
-**This is a preview** (see :ref:`filter-warnings-ref`).
-It might be changed without following the deprecation policy.
-See also
-https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
 :Type: :class:`.ClientCertificate`, :class:`.ClientCertificateProvider` or :data:`None`.
 :Default: :data:`None`
 
 .. versionadded:: 5.19
+
+.. versionchanged:: 5.27 Stabilized from preview.
 
 .. autoclass:: neo4j.auth_management.ClientCertificate
     :members:
