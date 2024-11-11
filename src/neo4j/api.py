@@ -163,7 +163,7 @@ class Auth:
 AuthToken = Auth
 
 if t.TYPE_CHECKING:
-    _TAuth = t.Union[t.Tuple[t.Any, t.Any], Auth, None]
+    _TAuth = t.Union[t.Tuple[str, str], Auth, None]
 
 
 def basic_auth(user: str, password: str, realm: str | None = None) -> Auth:
