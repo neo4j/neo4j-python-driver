@@ -3,6 +3,10 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
+- No breaking or major changes.
+
+
+## Version 5.26
 - Python 3.13 support added.
 - Deprecated setting attributes on `Neo4jError` like `message` and `code`.
 - Deprecated undocumented method `Neo4jError.hydrate`.  

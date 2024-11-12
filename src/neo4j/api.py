@@ -163,7 +163,7 @@ class Auth:
 AuthToken = Auth
 
 if t.TYPE_CHECKING:
-    _TAuth = t.Union[t.Tuple[t.Any, t.Any], Auth, None]
+    _TAuth = t.Union[t.Tuple[str, str], Auth, None]
 
 
 def basic_auth(user: str, password: str, realm: str | None = None) -> Auth:
@@ -172,7 +172,7 @@ def basic_auth(user: str, password: str, realm: str | None = None) -> Auth:
 
     This will set the scheme to "basic" for the auth token.
 
-    :param user: user name, this will set the
+    :param user: user name, this will set the principal
     :param password: current password, this will set the credentials
     :param realm: specifies the authentication provider
 

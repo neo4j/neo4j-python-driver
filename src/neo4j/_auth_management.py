@@ -21,7 +21,6 @@ import time
 import typing as t
 from dataclasses import dataclass
 
-from ._meta import preview
 from .api import Auth
 from .exceptions import AuthError
 
@@ -217,7 +216,6 @@ class AsyncAuthManager(_Protocol, metaclass=abc.ABCMeta):
         ...
 
 
-@preview("Mutual TLS is a preview feature.")
 @dataclass
 class ClientCertificate:
     """
@@ -226,13 +224,9 @@ class ClientCertificate:
     The attributes are the same as the arguments to
     :meth:`ssl.SSLContext.load_cert_chain()`.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. versionadded:: 5.19
+
+    .. versionchanged:: 5.27 Stabilized from preview.
     """
 
     certfile: str | bytes | PathLike[str] | PathLike[bytes]
@@ -269,13 +263,9 @@ class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
         The provider **must not** interact with the driver in any way as this
         can cause deadlocks and undefined behaviour.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. versionadded:: 5.19
+
+    .. versionchanged:: 5.27 Stabilized from preview.
     """
 
     @abc.abstractmethod
@@ -302,17 +292,13 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
     The package provides some default implementations of this class in
     :class:`.AsyncClientCertificateProviders` for convenience.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. seealso::
         :class:`.ClientCertificateProvider`,
         :class:`.AsyncClientCertificateProviders`
 
     .. versionadded:: 5.19
+
+    .. versionchanged:: 5.27 Stabilized from preview.
     """
 
     @abc.abstractmethod

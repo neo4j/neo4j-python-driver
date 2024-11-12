@@ -31,7 +31,6 @@ from .._auth_management import (
     expiring_auth_has_expired,
     ExpiringAuth,
 )
-from .._meta import preview
 
 
 if t.TYPE_CHECKING:
@@ -273,12 +272,12 @@ class AuthManagers:
                 # assume we know our tokens expire every 60 seconds
                 expires_in = 60
 
-                return ExpiringAuth(
-                    auth=neo4j.bearer_auth(sso_token),
-                    # Include a little buffer so that we fetch a new token
-                    # *before* the old one expires
-                    expires_in=expires_in - 10
-                )
+                # Include a little buffer so that we fetch a new token
+                # *before* the old one expires
+                expires_in -= 10
+
+                auth = neo4j.bearer_auth(sso_token)
+                return ExpiringAuth(auth=auth).expires_in(expires_in)
 
 
             with neo4j.GraphDatabase.driver(
@@ -331,12 +330,6 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
     From that point on, the new certificate will be used for all new
     connections until :meth:`update_certificate` is called again and so on.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     Example::
 
         from neo4j import GraphDatabase
@@ -386,6 +379,8 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
         implementation internal. This entails removing the possibility to
         directly instantiate this class. Please use the factory method
         :meth:`.ClientCertificateProviders.rotating` instead.
+
+    .. versionchanged:: 5.27 Stabilized from preview.
     """
 
     @abc.abstractmethod
@@ -414,17 +409,12 @@ class ClientCertificateProviders:
     """
     A collection of :class:`.ClientCertificateProvider` factories.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. versionadded:: 5.19
+
+    .. versionchanged:: 5.27 Stabilized from preview.
     """
 
     @staticmethod
-    @preview("Mutual TLS is a preview feature.")
     def static(cert: ClientCertificate) -> ClientCertificateProvider:
         """
         Create a static client certificate provider.
@@ -435,7 +425,6 @@ class ClientCertificateProviders:
         return _StaticClientCertificateProvider(cert)
 
     @staticmethod
-    @preview("Mutual TLS is a preview feature.")
     def rotating(
         initial_cert: ClientCertificate,
     ) -> RotatingClientCertificateProvider:
