@@ -62,7 +62,7 @@ class HomeDbCache:
         if imp_user is not None:
             return imp_user
         if auth is not None:
-            return _hashable_dict(auth)
+            return _consolidate_auth_token(auth)
         return (None,)
 
     def get(self, key: TKey) -> str | None:
@@ -115,6 +115,14 @@ class HomeDbCache:
     @property
     def enabled(self) -> bool:
         return self._enabled
+
+
+def _consolidate_auth_token(auth: dict) -> tuple | str:
+    if auth.get("scheme") == "basic" and isinstance(
+        auth.get("principal"), str
+    ):
+        return auth["principal"]
+    return _hashable_dict(auth)
 
 
 def _hashable_dict(d: dict) -> tuple:
