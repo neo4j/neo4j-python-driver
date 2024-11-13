@@ -49,7 +49,12 @@ class HomeDbCache:
         self._ttl = ttl
         self._cache: dict[TKey, TVal] = {}
         self._lock = CooperativeLock()
-        self._last_clean = monotonic()
+        self._oldest_entry = monotonic()
+        if max_size is not None and max_size <= 0:
+            raise ValueError(
+                f"home db cache max_size must be greater 0 or None, "
+                f"got {max_size}"
+            )
         self._max_size = max_size
 
     def compute_key(
@@ -69,36 +74,40 @@ class HomeDbCache:
         if not self._enabled:
             return None
         with self._lock:
+            self._clean(monotonic())
             val = self._cache.get(key)
             if val is None:
                 return None
-            now = monotonic()
-            if now - val[0] > self._ttl:
-                del self._cache[key]
-                return None
-            # Saved some time with a cache hit,
-            # so we can waste some with cleaning the cache ;)
-            self._clean(now)
             return val[1]
 
     def set(self, key: TKey, value: str | None) -> None:
         if not self._enabled:
             return
         with self._lock:
+            now = monotonic()
+            self._clean(now)
             if value is None:
                 self._cache.pop(key, None)
             else:
-                self._cache[key] = (monotonic(), value)
+                self._cache[key] = (now, value)
 
     def clear(self) -> None:
         if not self._enabled:
             return
         with self._lock:
             self._cache = {}
-            self._last_clean = monotonic()
+            self._oldest_entry = monotonic()
 
-    def _clean(self, now: float) -> None:
-        if self._max_size is not None and len(self._cache) > self._max_size:
+    def _clean(self, now: float | None = None) -> None:
+        now = monotonic() if now is None else now
+        if now - self._oldest_entry > self._ttl:
+            self._cache = {
+                k: v for k, v in self._cache.items() if now - v[0] < self._ttl
+            }
+            self._oldest_entry = min(
+                (v[0] for v in self._cache.values()), default=now
+            )
+        if self._max_size and len(self._cache) > self._max_size:
             self._cache = dict(
                 heapq.nlargest(
                     self._max_size,
@@ -106,11 +115,9 @@ class HomeDbCache:
                     key=lambda item: item[1][0],
                 )
             )
-        if now - self._last_clean > self._ttl:
-            self._cache = {
-                k: v for k, v in self._cache.items() if now - v[0] < self._ttl
-            }
-            self._last_clean = now
+
+    def __len__(self) -> int:
+        return len(self._cache)
 
     @property
     def enabled(self) -> bool:
