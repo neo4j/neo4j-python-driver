@@ -1145,10 +1145,14 @@ class Neo4jPool(IOPool):
         from ...api import check_access_mode
 
         access_mode = check_access_mode(access_mode)
-        #     await self.ensure_routing_table_is_fresh(
-        #         access_mode=access_mode, database=database, imp_user=None,
-        #         bookmarks=bookmarks, acquisition_timeout=timeout
-        #     )
+
+        target_database = database.name
+
+        def wrapped_database_callback(new_database):
+            nonlocal target_database
+            if new_database is not None:
+                target_database = new_database
+            Util.callback(database_callback, new_database)
 
         log.debug(
             "[#0000]  _: <POOL> acquire routing connection, "
@@ -1163,7 +1167,11 @@ class Neo4jPool(IOPool):
             bookmarks=bookmarks,
             auth=auth,
             acquisition_timeout=timeout,
-            database_callback=database_callback,
+            database_callback=(
+                wrapped_database_callback
+                if database.guessed
+                else database_callback
+            ),
         )
 
         while True:
@@ -1171,7 +1179,7 @@ class Neo4jPool(IOPool):
                 # Get an address for a connection that have the fewest in-use
                 # connections.
                 address = self._select_address(
-                    access_mode=access_mode, database=database.name
+                    access_mode=access_mode, database=target_database
                 )
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired(
@@ -1182,7 +1190,7 @@ class Neo4jPool(IOPool):
                 log.debug(
                     "[#0000]  _: <POOL> acquire address, database=%r "
                     "address=%r",
-                    database,
+                    target_database,
                     address,
                 )
                 deadline = Deadline.from_timeout_or_deadline(timeout)
