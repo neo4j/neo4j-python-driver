@@ -17,6 +17,7 @@
 import pytest
 
 from neo4j._sync.config import PoolConfig
+from neo4j._sync.home_db_cache import HomeDbCache
 from neo4j._sync.io._pool import IOPool
 
 
@@ -32,6 +33,9 @@ def fake_pool(fake_connection_generator, mocker):
     pool.buffered_connection_mocks = []
     pool.acquired_connection_mocks = []
     pool.pool_config = PoolConfig()
+    pool.ssr_enabled = False
+    pool.is_direct_pool = True
+    pool.home_db_cache = HomeDbCache(enabled=False)
 
     def acquire_side_effect(*_, **__):
         if pool.buffered_connection_mocks:

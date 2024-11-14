@@ -108,7 +108,9 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             db=database,
             imp_user=imp_user,
             notifications_min_severity=notifications_min_severity,
-            notifications_disabled_classifications=notifications_disabled_classifications,
+            notifications_disabled_classifications=(
+                notifications_disabled_classifications
+            ),
             on_success=on_begin_success,
         )
         if not pipelined:

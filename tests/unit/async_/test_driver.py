@@ -277,6 +277,7 @@ async def test_driver_opens_write_session_by_default(
         bookmarks=mocker.ANY,
         auth=mocker.ANY,
         liveness_check_timeout=mocker.ANY,
+        database_callback=mocker.ANY,
     )
     tx._begin.assert_awaited_once_with(
         mocker.ANY,
