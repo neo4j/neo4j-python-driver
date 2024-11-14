@@ -249,9 +249,6 @@ Closing a driver will immediately shut down all connections in the pool.
 
             :data:`None` (default) uses the database configured on the server
             side.
-            Depending on the :ref:`max-home-database-delay-ref` configuration,
-            propagation of changes to the server side default might not be
-            immediate.
 
             .. Note::
                 It is recommended to always specify the database explicitly

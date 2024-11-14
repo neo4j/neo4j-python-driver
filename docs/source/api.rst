@@ -262,9 +262,6 @@ Closing a driver will immediately shut down all connections in the pool.
 
             :data:`None` (default) uses the database configured on the server
             side.
-            Depending on the :ref:`max-home-database-delay-ref` configuration,
-            propagation of changes to the server side default might not be
-            immediate.
 
             .. Note::
                 It is recommended to always specify the database explicitly
@@ -403,7 +400,6 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`liveness-check-timeout-ref`
 + :ref:`max-connection-pool-size-ref`
 + :ref:`max-transaction-retry-time-ref`
-+ :ref:`max-home-database-delay-ref`
 + :ref:`resolver-ref`
 + :ref:`trust-ref`
 + :ref:`ssl-context-ref`
@@ -524,26 +520,6 @@ The maximum total number of connections allowed, per host (i.e. cluster nodes), 
 
 :Type: ``float``
 :Default: ``30.0``
-
-
-.. _max-home-database-delay-ref:
-
-``max_home_database_delay``
----------------------------
-Defines an upper bound for how long (in seconds) a resolved home database can be cached.
-
-Set this value to ``0`` to prohibit any caching.
-This likely incurs a significant performance penalty (driver and server side).
-Set this value to ``float("inf")`` to allow the driver to cache resolutions forever.
-
-Note that in future driver/protocol versions, this setting might have no effect.
-
-:Type: ``float``
-:Default: ``5.0``
-
-.. versionadded:: 5.x
-
-.. seealso:: :meth:`Driver.force_home_database_resolution`
 
 
 .. _resolver-ref:
@@ -1057,16 +1033,13 @@ Specifically, the following applies:
   instance, if the user's home database name is 'movies' and the server
   supplies it to the driver upon database name fetching for the session,
   all queries within that session are executed with the explicit database
-  name 'movies' supplied. Changes to the user's home database will only be
-  picked up by future sessions. There might be an additional delay depending
-  on the :ref:`max-home-database-delay-ref` configuration. Resolving the
-  user's home database name requires additional network communication.
-  Therefore, it is either recommended to either specify the database name
-  explicitly or set the home database delay appropriately.
-  In clustered environments, it is strongly recommended to avoid a single
-  point of failure. For instance, by ensuring that the connection URI
-  resolves to multiple endpoints. For older Bolt protocol versions the
-  behavior is the same as described for the **bolt schemes** above.
+  name 'movies' supplied. Any change to the user’s home database is
+  reflected only in sessions created after such change takes effect. This
+  behavior may requires additional network communication. In clustered
+  environments, it is strongly recommended to avoid a single point of
+  failure. For instance, by ensuring that the connection URI resolves to
+  multiple endpoints. For older Bolt protocol versions the behavior is the
+  same as described for the **bolt schemes** above.
 
 
 .. code-block:: python
