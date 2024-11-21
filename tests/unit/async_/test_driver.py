@@ -484,17 +484,15 @@ async def test_with_custom_ducktype_sync_bookmark_manager(
 
 @mark_async_test
 async def test_with_static_client_certificate() -> None:
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        cert = ClientCertificate("foo")
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        async with AsyncGraphDatabase.driver(
-            "bolt://localhost", client_certificate=cert
-        ) as driver:
-            passed_provider = driver._pool.pool_config.client_certificate
-            assert isinstance(
-                passed_provider, _AsyncStaticClientCertificateProvider
-            )
-            assert passed_provider._cert is cert
+    cert = ClientCertificate("foo")
+    async with AsyncGraphDatabase.driver(
+        "bolt://localhost", client_certificate=cert
+    ) as driver:
+        passed_provider = driver._pool.pool_config.client_certificate
+        assert isinstance(
+            passed_provider, _AsyncStaticClientCertificateProvider
+        )
+        assert passed_provider._cert is cert
 
 
 @mark_async_test
@@ -506,11 +504,10 @@ async def test_with_custom_inherited_client_certificate_provider(
             return None
 
     provider = Provider()
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        async with AsyncGraphDatabase.driver(
-            "bolt://localhost", client_certificate=provider
-        ) as driver:
-            assert driver._pool.pool_config.client_certificate is provider
+    async with AsyncGraphDatabase.driver(
+        "bolt://localhost", client_certificate=provider
+    ) as driver:
+        assert driver._pool.pool_config.client_certificate is provider
 
 
 @mark_async_test
@@ -522,11 +519,10 @@ async def test_with_custom_ducktype_client_certificate_provider(
             return None
 
     provider = Provider()
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        async with AsyncGraphDatabase.driver(
-            "bolt://localhost", client_certificate=provider
-        ) as driver:
-            assert driver._pool.pool_config.client_certificate is provider
+    async with AsyncGraphDatabase.driver(
+        "bolt://localhost", client_certificate=provider
+    ) as driver:
+        assert driver._pool.pool_config.client_certificate is provider
 
 
 if t.TYPE_CHECKING:

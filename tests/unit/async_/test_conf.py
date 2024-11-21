@@ -19,7 +19,6 @@ import ssl
 import pytest
 
 from neo4j import (
-    PreviewWarning,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
@@ -426,10 +425,8 @@ async def test_custom_ssl_context(encrypted, trusted_certificates):
 async def test_client_certificate(trusted_certificates, mocker) -> None:
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
 
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        cert = ClientCertificate("certfile", "keyfile", "password")
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        provider = AsyncClientCertificateProviders.rotating(cert)
+    cert = ClientCertificate("certfile", "keyfile", "password")
+    provider = AsyncClientCertificateProviders.rotating(cert)
     pool_config = AsyncPoolConfig.consume(
         {
             "client_certificate": provider,
@@ -455,8 +452,7 @@ async def test_client_certificate(trusted_certificates, mocker) -> None:
     ssl_context_mock.assert_not_called()
 
     # test cache invalidation
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        cert2 = ClientCertificate("certfile2", "keyfile2", "password2")
+    cert2 = ClientCertificate("certfile2", "keyfile2", "password2")
     await provider.update_certificate(cert2)
 
     ssl_context = await pool_config.get_ssl_context()

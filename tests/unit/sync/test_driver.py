@@ -483,17 +483,15 @@ def test_with_custom_ducktype_sync_bookmark_manager(
 
 @mark_sync_test
 def test_with_static_client_certificate() -> None:
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        cert = ClientCertificate("foo")
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        with GraphDatabase.driver(
-            "bolt://localhost", client_certificate=cert
-        ) as driver:
-            passed_provider = driver._pool.pool_config.client_certificate
-            assert isinstance(
-                passed_provider, _StaticClientCertificateProvider
-            )
-            assert passed_provider._cert is cert
+    cert = ClientCertificate("foo")
+    with GraphDatabase.driver(
+        "bolt://localhost", client_certificate=cert
+    ) as driver:
+        passed_provider = driver._pool.pool_config.client_certificate
+        assert isinstance(
+            passed_provider, _StaticClientCertificateProvider
+        )
+        assert passed_provider._cert is cert
 
 
 @mark_sync_test
@@ -505,11 +503,10 @@ def test_with_custom_inherited_client_certificate_provider(
             return None
 
     provider = Provider()
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        with GraphDatabase.driver(
-            "bolt://localhost", client_certificate=provider
-        ) as driver:
-            assert driver._pool.pool_config.client_certificate is provider
+    with GraphDatabase.driver(
+        "bolt://localhost", client_certificate=provider
+    ) as driver:
+        assert driver._pool.pool_config.client_certificate is provider
 
 
 @mark_sync_test
@@ -521,11 +518,10 @@ def test_with_custom_ducktype_client_certificate_provider(
             return None
 
     provider = Provider()
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        with GraphDatabase.driver(
-            "bolt://localhost", client_certificate=provider
-        ) as driver:
-            assert driver._pool.pool_config.client_certificate is provider
+    with GraphDatabase.driver(
+        "bolt://localhost", client_certificate=provider
+    ) as driver:
+        assert driver._pool.pool_config.client_certificate is provider
 
 
 if t.TYPE_CHECKING:

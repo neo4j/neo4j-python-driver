@@ -24,7 +24,6 @@ from freezegun.api import FrozenDateTimeFactory
 from neo4j import (
     Auth,
     basic_auth,
-    PreviewWarning,
 )
 from neo4j._meta import copy_signature
 from neo4j.auth_management import (
@@ -261,22 +260,14 @@ def client_cert_factory() -> t.Callable[[], ClientCertificate]:
     i = 0
 
     def factory() -> ClientCertificate:
-        with pytest.warns(PreviewWarning, match="Mutual TLS"):
-            return ClientCertificate(f"cert{i}")
+        return ClientCertificate(f"cert{i}")
 
     return factory
 
 
-@copy_signature(ClientCertificateProviders.static)
-def static_cert_provider(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        return ClientCertificateProviders.static(*args, **kwargs)
+static_cert_provider = ClientCertificateProviders.static
 
-
-@copy_signature(ClientCertificateProviders.rotating)
-def rotating_cert_provider(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Mutual TLS"):
-        return ClientCertificateProviders.rotating(*args, **kwargs)
+rotating_cert_provider = ClientCertificateProviders.rotating
 
 
 @mark_sync_test

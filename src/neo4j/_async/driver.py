@@ -213,8 +213,6 @@ class AsyncGraphDatabase:
                 config["client_certificate"] = (
                     _AsyncStaticClientCertificateProvider(client_certificate)
                 )
-            if client_certificate is not None:
-                preview_warn("Mutual TLS is a preview feature.", stack_level=2)
 
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config and config["trust"] not in {
@@ -1026,7 +1024,7 @@ class AsyncDriver:
             bookmark_manager: (
                 AsyncBookmarkManager | BookmarkManager | None
             ) = ...,
-            auth: Auth | tuple[t.Any, t.Any] = ...,
+            auth: Auth | tuple[str, str] = ...,
             notifications_min_severity: (
                 T_NotificationMinimumSeverity | None
             ) = ...,
@@ -1101,7 +1099,7 @@ class AsyncDriver:
             bookmark_manager: (
                 AsyncBookmarkManager | BookmarkManager | None
             ) = ...,
-            auth: Auth | tuple[t.Any, t.Any] = ...,
+            auth: Auth | tuple[str, str] = ...,
             notifications_min_severity: (
                 T_NotificationMinimumSeverity | None
             ) = ...,
@@ -1184,7 +1182,7 @@ class AsyncDriver:
 
         async def verify_authentication(
             self,
-            auth: Auth | tuple[t.Any, t.Any] | None = None,
+            auth: Auth | tuple[str, str] | None = None,
             # all other arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -1208,7 +1206,7 @@ class AsyncDriver:
 
         async def verify_authentication(
             self,
-            auth: Auth | tuple[t.Any, t.Any] | None = None,
+            auth: Auth | tuple[str, str] | None = None,
             **config,
         ) -> bool:
             """

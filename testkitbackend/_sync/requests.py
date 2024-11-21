@@ -174,16 +174,10 @@ def new_driver(backend, data):
             client_cert_provider_id
         ]
         data.mark_item_as_read_if_equals("clientCertificate", None)
-        expected_warnings.append(
-            (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\.")
-        )
     else:
         client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
         if client_cert is not None:
             kwargs["client_certificate"] = client_cert
-            expected_warnings.append(
-                (neo4j.PreviewWarning, r"Mutual TLS is a preview feature\.")
-            )
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
             backend,
