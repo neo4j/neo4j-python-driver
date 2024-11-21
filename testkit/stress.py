@@ -4,7 +4,7 @@ import sys
 if __name__ == "__main__":
     # Until below works
     sys.exit(0)
-    cmd = ["python", "-m", "tox", "-c", "tox-performance.ini"]
+    cmd = ["python", "-m", "tox", "-vv", "-c", "tox-performance.ini"]
     uri = "%s://%s:%s" % (
             os.environ["TEST_NEO4J_SCHEME"],
             os.environ["TEST_NEO4J_HOST"],

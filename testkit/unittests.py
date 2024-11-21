@@ -22,4 +22,4 @@ from _common import run_python
 
 
 if __name__ == "__main__":
-    run_python(["-m", "tox", "-c", "tox-unit.ini"])
+    run_python(["-m", "tox", "-vv", "-c", "tox-unit.ini"])
