@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import time
 import typing as t
 from datetime import (
     datetime,
@@ -26,7 +27,10 @@ import freezegun
 import pytest
 import pytz
 
+from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.home_db_cache import AsyncHomeDbCache
+from neo4j._async.io._pool import AsyncNeo4jPool
+from neo4j._conf import WorkspaceConfig
 from neo4j.time import DateTime
 
 
@@ -147,11 +151,16 @@ def test_key_auth_equality(auth1: dict, auth2: dict) -> None:
 def _assert_entries(
     cache: AsyncHomeDbCache,
     expected_entries: t.Collection[tuple[TKey, str]],
+    allow_subset: bool = False,
 ) -> None:
     __tracebackhide__ = True
-    assert len(cache) == len(expected_entries)
-    for key, value in expected_entries:
-        assert cache.get(key) == value
+    if not allow_subset:
+        assert len(cache) == len(expected_entries)
+        for key, value in expected_entries:
+            assert cache.get(key) == value
+    else:
+        hits = sum(cache.get(key) == value for key, value in expected_entries)
+        assert hits == len(cache)
 
 
 def _force_cache_clean(
@@ -229,7 +238,7 @@ def test_cache_max_size() -> None:
         cache.set(key, value)
 
         _force_cache_clean(cache)
-        _assert_entries(cache, entries)
+        _assert_entries(cache, entries, allow_subset=True)
 
 
 def test_cache_max_size_empty_cache() -> None:
@@ -237,3 +246,41 @@ def test_cache_max_size_empty_cache() -> None:
     assert len(cache) == 0
     _force_cache_clean(cache)
     assert len(cache) == 0
+
+
+def test_clean_up_time() -> None:
+    def get_default_cache():
+        pool = AsyncNeo4jPool(
+            lambda: None, AsyncPoolConfig(), WorkspaceConfig(), None
+        )
+        return pool.home_db_cache
+
+    repetitions = 5
+    scenario_timings = []
+
+    default_max_size = get_default_cache()._max_size
+    # Test assumes that by default the driver uses a home db cache only limited
+    # by its size.
+    assert default_max_size
+    for max_size, count in (
+        # no pruning needed
+        (default_max_size * 10, default_max_size * 10),
+        # pruning needed
+        (default_max_size, default_max_size * 10),
+    ):
+        cache = AsyncHomeDbCache(max_size=max_size)
+        keys = [cache.compute_key(f"key{i}", None) for i in range(count)]
+        rep_timings = []
+        for _ in range(repetitions):
+            t0 = time.perf_counter()
+            for key in keys:
+                cache.set(key, "value")
+            t1 = time.perf_counter()
+            rep_timings.append(t1 - t0)
+        scenario_timings.append(sum(rep_timings) / len(rep_timings))
+
+    # pruning shouldn't take more than 20 times the time of no pruning
+    # N.B., the pruning takes O(n * log(n)) where n is max_size. So to achieve
+    # this limit, either max_size needs to be sufficiently small or the pruning
+    # algorithm needs to be performant enough.
+    assert scenario_timings[1] <= 20 * scenario_timings[0]

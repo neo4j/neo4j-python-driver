@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import heapq
 import math
 import typing as t
 from time import monotonic
@@ -109,11 +108,11 @@ class HomeDbCache:
             )
         if self._max_size and len(self._cache) > self._max_size:
             self._cache = dict(
-                heapq.nlargest(
-                    self._max_size,
+                sorted(
                     self._cache.items(),
                     key=lambda item: item[1][0],
-                )
+                    reverse=True,
+                )[: int(self._max_size * 0.9)]
             )
 
     def __len__(self) -> int:
