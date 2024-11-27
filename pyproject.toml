@@ -55,10 +55,10 @@ Forum = "https://community.neo4j.com/c/drivers-stacks/python/"
 Discord = "https://discord.com/invite/neo4j"
 
 [project.optional-dependencies]
-numpy = ["numpy >= 1.7.0, < 2.0.0"]
+numpy = ["numpy >= 1.7.0, < 3.0.0"]
 pandas = [
     "pandas >= 1.1.0, < 3.0.0",
-    "numpy >= 1.7.0, < 2.0.0",
+    "numpy >= 1.7.0, < 3.0.0",
 ]
 pyarrow = ["pyarrow >= 1.0.0"]
 
@@ -67,7 +67,7 @@ pyarrow = ["pyarrow >= 1.0.0"]
 requires = [
     "setuptools == 68.0.0",  # dropped support for Python 3.7 in 68.1.0
     # TODO: 6.0 - can be removed once `setup.py` is simplified
-    "tomlkit == 0.11.8",
+    "tomlkit == 0.12.5",  # dropped support (at least CI testing) for Python 3.7 in 0.13.0
 ]
 build-backend = "setuptools.build_meta"
 
