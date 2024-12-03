@@ -51,6 +51,18 @@ Topics
 Installation
 ************
 
+.. TODO: 7.0 - remove this note
+
+.. note::
+
+    ``neo4j-driver`` is the old name for this package. It is now deprecated and
+    and will receive no further updates starting with 6.0.0. Make sure to
+    install ``neo4j`` as shown here.
+
+.. note::
+
+   It is always recommended to install python packages for user space in a :ref:`virtual environment <virtual-environment>`.
+
 To install the latest stable release, use:
 
 .. code:: bash
@@ -65,18 +77,17 @@ To install the latest pre-release, use:
     python -m pip install --pre neo4j
 
 
-.. TODO: 7.0 - remove this note
+Alternative Installation for Better Performance
+===============================================
 
-.. note::
+You may want to have a look at the available Rust extensions for this driver
+for better performance. The Rust extensions are not installed by default. For
+more information, see `neo4j-rust-ext`_.
 
-    ``neo4j-driver`` is the old name for this package. It is now deprecated and
-    and will receive no further updates starting with 6.0.0. Make sure to
-    install ``neo4j`` as shown above.
+.. _neo4j-rust-ext: https://github.com/neo4j/neo4j-python-driver-rust-ext
 
-.. note::
 
-   It is always recommended to install python packages for user space in a virtual environment.
-
+.. _virtual-environment:
 
 Virtual Environment
 ===================

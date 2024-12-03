@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import errno
 import logging
 import typing as t
 from contextlib import suppress
@@ -29,10 +30,12 @@ from contextlib import suppress
 from socket import (
     AF_INET,
     AF_INET6,
+    IPPROTO_TCP,
     SHUT_RDWR,
     SO_KEEPALIVE,
     socket,
     SOL_SOCKET,
+    TCP_NODELAY,
     timeout as SocketTimeout,  # noqa: N812 (it is a class)
 )
 # isort: on
@@ -395,6 +398,12 @@ class BoltSocketBase:
                     raise ValueError(
                         f"Unsupported address {resolved_address!r}"
                     )
+                try:
+                    s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+                except OSError as e:
+                    # option might not be supported on all platforms
+                    if e.errno != errno.ENOPROTOOPT:
+                        raise
                 t = s.gettimeout()
                 if timeout:
                     s.settimeout(timeout)
