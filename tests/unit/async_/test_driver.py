@@ -780,11 +780,10 @@ async def test_warn_notification_severity_driver_config(
         if min_sev_session is ...:
             session = driver.session()
         else:
-            session = driver.session(
-                # Works at runtime (will be ignored), but should be rejected by
-                # type checkers.
-                # type: ignore[call-arg]
-                warn_notification_severity=min_sev_session
+            # Works at runtime (will be ignored), but should be rejected by
+            # type checkers.
+            session = driver.session(  # type: ignore[call-arg]
+                warn_notification_severity=min_sev_session,
             )
         async with session:
             session_cls_mock.assert_called_once()
