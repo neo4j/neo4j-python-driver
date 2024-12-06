@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import socket
 import typing as t
 
 import freezegun
@@ -96,7 +97,7 @@ def writer(s: AsyncBoltSocket):
         (5, None, 0, 4, None),
         # timeout is not affected by time passed before the call
         (5, None, 7, 4, None),
-        (5, None, 0, 6, TimeoutError),
+        (5, None, 0, 6, socket.timeout),
         # test deadline
         (None, 5, 0, 4, None),
         (None, 5, 2, 2, None),
@@ -110,7 +111,7 @@ def writer(s: AsyncBoltSocket):
         # deadline triggered by time passed before
         (5, 5, 2, 4, SocketDeadlineExceededError),
         # the shorter one determines the error
-        (4, 5, 0, 6, TimeoutError),
+        (4, 5, 0, 6, socket.timeout),
         (5, 4, 0, 6, SocketDeadlineExceededError),
     ),
 )
