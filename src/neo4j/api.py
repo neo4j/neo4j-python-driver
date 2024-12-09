@@ -385,8 +385,7 @@ class ServerInfo:
         This is returned as a 2-tuple:class:`tuple` (subclass) of
         ``(major, minor)`` integers.
         """
-        # TODO: 6.0 - remove cast when support for Python 3.7 is dropped
-        return t.cast(tuple[int, int], self._protocol_version)
+        return self._protocol_version
 
     @property
     def agent(self) -> str:
