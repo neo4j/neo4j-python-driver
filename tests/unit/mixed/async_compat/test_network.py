@@ -44,19 +44,6 @@ if t.TYPE_CHECKING:
 
 @pytest.fixture
 def reader_factory(mocker):
-    # class MockReader(mocker.Mock):
-    #     def __init__(self, data=None):
-    #         super().__init__(spec=asyncio.StreamReader)
-    #         self._data = data
-    #         self._i = 0
-    #
-    #         if data is not None:
-    #             def read_side_effect(n):
-    #                 from_ = self._i
-    #                 self._i += n
-    #                 return self._data[from_ : self._i]
-    #
-    #             self.read.side_effect = read_side_effect
     def factory():
         return mocker.create_autospec(asyncio.StreamReader)
 
@@ -69,7 +56,6 @@ def writer_factory(mocker):
         return mocker.create_autospec(asyncio.StreamWriter)
 
     return factory
-    # return mocker.Mock(spec=asyncio.StreamWriter)
 
 
 @pytest.fixture
