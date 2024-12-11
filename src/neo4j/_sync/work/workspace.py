@@ -193,8 +193,12 @@ class Workspace(NonConcurrentMethodChecker):
         }
         acquire_kwargs_.update(acquire_kwargs)
         self._connection = self._pool.acquire(**acquire_kwargs_)
-        if target_db.guessed and (
-            not self._pool.ssr_enabled or not self._connection.ssr_enabled
+        if (
+            target_db.guessed
+            and not self._pinned_database
+            and (
+                not self._pool.ssr_enabled or not self._connection.ssr_enabled
+            )
         ):
             # race condition: in the meantime, the pool added a connection,
             # which does not support SSR.
