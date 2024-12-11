@@ -26,9 +26,14 @@ from .._async_compat.concurrency import AsyncCooperativeLock
 
 
 if t.TYPE_CHECKING:
-    # TAuthKey = t.Tuple[t.Tuple[]]
-    TKey = str | tuple[tuple[str, t.Hashable], ...] | tuple[None]
-    TVal = tuple[float, str]
+    import typing_extensions as te
+
+    TKey: te.TypeAlias = t.Union[
+        str,
+        t.Tuple[t.Tuple[str, t.Hashable], ...],
+        t.Tuple[None],
+    ]
+    TVal: te.TypeAlias = t.Tuple[float, str]
 
 
 class AsyncHomeDbCache:
