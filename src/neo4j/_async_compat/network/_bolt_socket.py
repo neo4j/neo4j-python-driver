@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import logging
 import struct
 import typing as t
@@ -29,10 +30,12 @@ from contextlib import suppress
 from socket import (
     AF_INET,
     AF_INET6,
+    IPPROTO_TCP,
     SHUT_RDWR,
     SO_KEEPALIVE,
     socket,
     SOL_SOCKET,
+    TCP_NODELAY,
     timeout as SocketTimeout,  # noqa: N812 (it is a class)
 )
 # isort: on
@@ -95,7 +98,7 @@ class AsyncBoltSocket:
         self._timeout = None
         self._deadline = None
 
-    async def _wait_for_io(self, io_fut):
+    async def _wait_for_io(self, io_async_fn, *args, **kwargs):
         timeout = self._timeout
         to_raise = SocketTimeout
         if self._deadline is not None:
@@ -106,6 +109,7 @@ class AsyncBoltSocket:
                 timeout = deadline_timeout
                 to_raise = SocketDeadlineExceededError
 
+        io_fut = io_async_fn(*args, **kwargs)
         if timeout is not None and timeout <= 0:
             # give the io-operation time for one loop cycle to do its thing
             io_fut = asyncio.create_task(io_fut)
@@ -154,20 +158,17 @@ class AsyncBoltSocket:
             self._timeout = timeout
 
     async def recv(self, n):
-        io_fut = self._reader.read(n)
-        return await self._wait_for_io(io_fut)
+        return await self._wait_for_io(self._reader.read, n)
 
     async def recv_into(self, buffer, nbytes):
         # FIXME: not particularly memory or time efficient
-        io_fut = self._reader.read(nbytes)
-        res = await self._wait_for_io(io_fut)
+        res = await self._wait_for_io(self._reader.read, nbytes)
         buffer[: len(res)] = res
         return len(res)
 
     async def sendall(self, data):
         self._writer.write(data)
-        io_fut = self._writer.drain()
-        return await self._wait_for_io(io_fut)
+        return await self._wait_for_io(self._writer.drain)
 
     async def close(self):
         self._writer.close()
@@ -548,6 +549,12 @@ class BoltSocket:
                 s = socket(AF_INET6)
             else:
                 raise ValueError(f"Unsupported address {resolved_address!r}")
+            try:
+                s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+            except OSError as e:
+                # option might not be supported on all platforms
+                if e.errno != errno.ENOPROTOOPT:
+                    raise
             t = s.gettimeout()
             if timeout:
                 s.settimeout(timeout)
