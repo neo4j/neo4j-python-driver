@@ -20,6 +20,8 @@ import pytest
 
 from neo4j._async_compat.concurrency import AsyncRLock
 
+from ...._async_util import gather_cancel
+
 
 @pytest.mark.asyncio
 async def test_async_r_lock():
@@ -36,7 +38,7 @@ async def test_async_r_lock():
             assert counter == counter_ + 1
 
     assert not lock.locked()
-    await asyncio.gather(worker(), worker(), worker())
+    await gather_cancel(worker(), worker(), worker())
     assert not lock.locked()
 
 
@@ -52,7 +54,7 @@ async def test_async_r_lock_is_reentrant():
                 assert lock.locked()
 
     assert not lock.locked()
-    await asyncio.gather(worker(), worker(), worker())
+    await gather_cancel(worker(), worker(), worker())
     assert not lock.locked()
 
 
@@ -69,7 +71,7 @@ async def test_async_r_lock_acquire_timeout_blocked():
         assert not await lock.acquire(timeout=0.1)
 
     assert not lock.locked()
-    await asyncio.gather(blocker(), waiter())
+    await gather_cancel(blocker(), waiter())
     assert lock.locked()  # blocker still owns it!
 
 
@@ -90,7 +92,7 @@ async def test_async_r_lock_acquire_timeout_released():
         # blocker: lock.release()
 
     assert not lock.locked()
-    await asyncio.gather(blocker(), waiter())
+    await gather_cancel(blocker(), waiter())
     assert lock.locked()  # waiter still owns it!
 
 
@@ -162,7 +164,7 @@ async def test_async_r_lock_acquire_non_blocking():
         lock.release()
 
     assert not lock.locked()
-    await asyncio.gather(blocker(), waiter_non_blocking(), waiter())
+    await gather_cancel(blocker(), waiter_non_blocking(), waiter())
     assert lock.locked()  # waiter_non_blocking still owns it!
 
 
@@ -225,7 +227,7 @@ async def test_async_r_lock_acquire_non_blocking_exception(mocker):
         awaits += 1
 
     assert not lock.locked()
-    await asyncio.gather(blocker(), waiter_non_blocking())
+    await gather_cancel(blocker(), waiter_non_blocking())
     assert not lock.locked()
 
 
