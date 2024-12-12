@@ -1035,7 +1035,7 @@ Specifically, the following applies:
   all queries within that session are executed with the explicit database
   name 'movies' supplied. Any change to the user’s home database is
   reflected only in sessions created after such change takes effect. This
-  behavior may requires additional network communication. In clustered
+  behavior may require additional network communication. In clustered
   environments, it is strongly recommended to avoid a single point of
   failure. For instance, by ensuring that the connection URI resolves to
   multiple endpoints. For older Bolt protocol versions the behavior is the
