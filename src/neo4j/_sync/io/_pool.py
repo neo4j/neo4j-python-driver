@@ -1011,12 +1011,7 @@ class Neo4jPool(IOPool):
 
     def update_connection_pool(self, *, database):
         with self.refresh_lock:
-            rt = self.get_routing_table(database)
-            routing_tables = [rt] if rt is not None else []
-            for db in self.routing_tables:
-                if db == database:
-                    continue
-                routing_tables.append(self.routing_tables[db])
+            routing_tables = list(self.routing_tables.values())
 
         servers = set.union(
             *(rt.servers() for rt in routing_tables),
