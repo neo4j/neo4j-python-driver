@@ -119,6 +119,9 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         return _database_callback
 
     def _set_pinned_database(self, database):
+        if self._pinned_database:
+            return
+        log.debug("[#0000]  _: <WORKSPACE> pinning database: %r", database)
         self._pinned_database = True
         self._config.database = database
 
