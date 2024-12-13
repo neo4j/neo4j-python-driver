@@ -226,12 +226,16 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         acquire_auth: AcquisitionAuth,
         ssr_enabled: bool,
     ) -> AcquisitionDatabase:
-        if self._config.database is not None or self._pool.is_direct_pool:
-            self._set_pinned_database(self._config.database)
+        if (
+            self._pinned_database
+            or self._config.database is not None
+            or self._pool.is_direct_pool
+        ):
             log.debug(
                 "[#0000]  _: <WORKSPACE> routing towards fixed database: %s",
                 self._config.database,
             )
+            self._set_pinned_database(self._config.database)
             return AcquisitionDatabase(self._config.database)
 
         auth = acquire_auth.auth
