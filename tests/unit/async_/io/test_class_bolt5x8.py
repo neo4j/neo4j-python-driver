@@ -848,3 +848,25 @@ def _build_error_hierarchy_metadata(diag_records_metadata):
         if r is not ...:
             current_root["diagnostic_record"] = r
     return metadata
+
+
+@pytest.mark.parametrize("ssr_hint", (True, False, None))
+@mark_async_test
+async def test_ssr_enabled(ssr_hint, fake_socket_pair):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=AsyncBolt5x8.PACKER_CLS,
+        unpacker_cls=AsyncBolt5x8.UNPACKER_CLS,
+    )
+    meta = {"server": "Neo4j/4.3.4"}
+    if ssr_hint is not None:
+        meta["hints"] = {"ssr.enabled": ssr_hint}
+    await sockets.server.send_message(b"\x70", meta)
+    await sockets.server.send_message(b"\x70", {})
+    connection = AsyncBolt5x8(
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime
+    )
+    assert connection.ssr_enabled is False
+    await connection.hello()
+    assert connection.ssr_enabled is bool(ssr_hint)

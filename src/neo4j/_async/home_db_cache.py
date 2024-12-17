@@ -60,6 +60,11 @@ class AsyncHomeDbCache:
                 f"got {max_size}"
             )
         self._max_size = max_size
+        self._truncate_size = (
+            min(max_size, int(0.01 * max_size * math.log(max_size)))
+            if max_size is not None
+            else None
+        )
 
     def compute_key(
         self,
@@ -106,7 +111,9 @@ class AsyncHomeDbCache:
         now = monotonic() if now is None else now
         if now - self._oldest_entry > self._ttl:
             self._cache = {
-                k: v for k, v in self._cache.items() if now - v[0] < self._ttl
+                k: v
+                for k, v in self._cache.items()
+                if now - v[0] < self._ttl * 0.9
             }
             self._oldest_entry = min(
                 (v[0] for v in self._cache.values()), default=now
@@ -117,7 +124,7 @@ class AsyncHomeDbCache:
                     self._cache.items(),
                     key=lambda item: item[1][0],
                     reverse=True,
-                )[: int(self._max_size * 0.9)]
+                )[: self._truncate_size]
             )
 
     def __len__(self) -> int:

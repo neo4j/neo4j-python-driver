@@ -101,14 +101,15 @@ class Workspace(NonConcurrentMethodChecker):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _make_db_resolution_callback(self) -> t.Callable[[str], None] | None:
+    def _make_db_resolution_callback(
+        self,
+    ) -> t.Callable[[str | None], None] | None:
         if self._pinned_database:
             return None
 
         def _database_callback(database: str | None) -> None:
-            if not self._pinned_database:
-                self._set_pinned_database(database)
-            if self._last_cache_key is None:
+            self._set_pinned_database(database)
+            if self._last_cache_key is None or database is None:
                 return
             db_cache: HomeDbCache = self._pool.home_db_cache
             db_cache.set(self._last_cache_key, database)
@@ -203,7 +204,7 @@ class Workspace(NonConcurrentMethodChecker):
                 not self._pool.ssr_enabled or not self._connection.ssr_enabled
             )
         ):
-            # race condition: in the meantime, the pool added a connection,
+            # race condition: in the meantime the pool added a connection
             # which does not support SSR.
             # => we need to fall back to explicit home database resolution
             log.debug(

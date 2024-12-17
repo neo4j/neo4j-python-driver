@@ -102,13 +102,13 @@ class ConnectionFeatureTracker:
     def remove_connection(self, connection):
         if self.feature_check(connection):
             if self.with_feature == 0:
-                raise ValueError(
+                raise RuntimeError(
                     "No connections to be removed from feature tracker"
                 )
             self.with_feature -= 1
         else:
             if self.without_feature == 0:
-                raise ValueError(
+                raise RuntimeError(
                     "No connections to be removed from feature tracker"
                 )
             self.without_feature -= 1
@@ -140,7 +140,8 @@ class IOPool(abc.ABC):
 
     @property
     def ssr_enabled(self) -> bool:
-        return self._ssr_feature_tracker.has_feature
+        with self.lock:
+            return self._ssr_feature_tracker.has_feature
 
     def __enter__(self):
         return self
@@ -598,8 +599,8 @@ class IOPool(abc.ABC):
                     for address in list(self.connections)
                     for connection in self.connections.pop(address, ())
                 ]
-            for connection in connections:
-                self._ssr_feature_tracker.remove_connection(connection)
+                for connection in connections:
+                    self._ssr_feature_tracker.remove_connection(connection)
             self._close_connections(connections)
         except TypeError:
             pass
@@ -1009,7 +1010,7 @@ class Neo4jPool(IOPool):
             log.error("Unable to retrieve routing information")
             raise ServiceUnavailable("Unable to retrieve routing information")
 
-    def update_connection_pool(self, *, database):
+    def update_connection_pool(self):
         with self.refresh_lock:
             routing_tables = list(self.routing_tables.values())
 
@@ -1074,12 +1075,14 @@ class Neo4jPool(IOPool):
                 )
                 return False
 
+            database_request = database.name if not database.guessed else None
+
             def wrapped_database_callback(database: str | None) -> None:
                 Util.callback(database_callback, database)
-                self.update_connection_pool(database=database)
+                self.update_connection_pool()
 
             self.update_routing_table(
-                database=database.name if not database.guessed else None,
+                database=database_request,
                 imp_user=imp_user,
                 bookmarks=bookmarks,
                 auth=auth,

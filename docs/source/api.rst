@@ -165,7 +165,7 @@ Closing a driver will immediately shut down all connections in the pool.
 .. autoclass:: neo4j.Driver()
     :members: session, execute_query_bookmark_manager, encrypted, close,
               verify_connectivity, get_server_info, verify_authentication,
-              supports_session_auth, supports_multi_db, force_home_database_resolution
+              supports_session_auth, supports_multi_db
 
     .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.execute_query_bookmark_manager, auth_=None, result_transformer_=Result.to_eager_result, **kwargs)
 

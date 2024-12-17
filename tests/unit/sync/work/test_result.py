@@ -60,7 +60,10 @@ from neo4j.warnings import (
     Neo4jWarning,
 )
 
-from ...._async_compat import mark_sync_test
+from ...._async_compat import (
+    mark_sync_test,
+    wrap_async,
+)
 
 
 if t.TYPE_CHECKING:
@@ -1424,23 +1427,21 @@ def test_notification_logging(
     assert caplog.messages[0] == expected_message
 
 
-@pytest.mark.parametrize("cb", (True, False))
+@pytest.mark.parametrize(
+    "cb",
+    (True, False) if Util.is_async_code else (False,),
+)
 @pytest.mark.parametrize("resolved_db", (..., None, "resolved_db"))
 @mark_sync_test
 def test_on_database_callback(cb, resolved_db):
     cb_calls = []
 
+    def db_callback(db):
+        nonlocal cb_calls
+        cb_calls.append(db)
+
     if cb:
-
-        def db_callback(db):
-            nonlocal cb_calls
-            cb_calls.append(db)
-
-    else:
-
-        def db_callback(db):
-            nonlocal cb_calls
-            cb_calls.append(db)
+        db_callback = wrap_async(db_callback)
 
     run_meta = {}
     if resolved_db is not ...:

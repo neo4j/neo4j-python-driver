@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 import typing as t
 from datetime import (
@@ -258,10 +259,15 @@ def test_clean_up_time() -> None:
     repetitions = 5
     scenario_timings = []
 
-    default_max_size = get_default_cache()._max_size
     # Test assumes that by default the driver uses a home db cache only limited
     # by its size.
-    assert default_max_size
+    default_cache = get_default_cache()
+    default_max_size = default_cache._max_size
+    assert isinstance(default_max_size, int)
+    # If ttl ever get used, this test needs to be updated to also test pruning
+    # by TTL.
+    assert math.isinf(default_cache._ttl) and default_cache._ttl > 0
+
     for max_size, count in (
         # no pruning needed
         (default_max_size * 10, default_max_size * 10),
@@ -280,7 +286,8 @@ def test_clean_up_time() -> None:
         scenario_timings.append(sum(rep_timings) / len(rep_timings))
 
     # pruning shouldn't take more than 20 times the time of no pruning
-    # N.B., the pruning takes O(n * log(n)) where n is max_size. So to achieve
-    # this limit, either max_size needs to be sufficiently small or the pruning
-    # algorithm needs to be performant enough.
+    # N.B., the pruning takes O(n * log(n)) where n is max_size. By only
+    # pruning O(n * log(n)) elements, we get an amortized pruning overhead of
+    # O(1) (as long as max_size is small enough to be able to choose a positive
+    # pruning size).
     assert scenario_timings[1] <= 20 * scenario_timings[0]

@@ -435,12 +435,12 @@ async def test_session_run_parameter_precedence(
     assert call.kwargs["parameters"] == expected_params
 
 
-@pytest.mark.parametrize("db", (None, "adb")[:1])
-@pytest.mark.parametrize("routing", (True, False)[:1])
+@pytest.mark.parametrize("db", (None, "adb"))
+@pytest.mark.parametrize("routing", (True, False))
 # no home db resolution when connected to Neo4j 4.3 or earlier
-@pytest.mark.parametrize("home_db_gets_resolved", (True, False)[:1])
+@pytest.mark.parametrize("home_db_gets_resolved", (True, False))
 @pytest.mark.parametrize(
-    "additional_session_bookmarks", (None, ["session", "bookmarks"])[:1]
+    "additional_session_bookmarks", (None, ["session", "bookmarks"])
 )
 @mark_async_test
 async def test_with_bookmark_manager(
@@ -720,7 +720,10 @@ async def test_session_custom_api_telemetry(async_fake_pool, mode):
 @pytest.mark.parametrize("imp_user", (None, "imp_user"))
 @pytest.mark.parametrize(
     "auth",
-    (None, Auth(scheme="magic-auth", principal=None, credentials="tada")),
+    (
+        None,
+        Auth(scheme="magic-auth", principal=None, credentials="tada"),
+    ),
 )
 @mark_async_test
 async def test_uses_home_db_cache_when_expected(

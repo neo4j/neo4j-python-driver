@@ -105,13 +105,13 @@ class ConnectionFeatureTracker:
     def remove_connection(self, connection):
         if self.feature_check(connection):
             if self.with_feature == 0:
-                raise ValueError(
+                raise RuntimeError(
                     "No connections to be removed from feature tracker"
                 )
             self.with_feature -= 1
         else:
             if self.without_feature == 0:
-                raise ValueError(
+                raise RuntimeError(
                     "No connections to be removed from feature tracker"
                 )
             self.without_feature -= 1
@@ -143,7 +143,8 @@ class AsyncIOPool(abc.ABC):
 
     @property
     def ssr_enabled(self) -> bool:
-        return self._ssr_feature_tracker.has_feature
+        with self.lock:
+            return self._ssr_feature_tracker.has_feature
 
     async def __aenter__(self):
         return self
@@ -601,8 +602,8 @@ class AsyncIOPool(abc.ABC):
                     for address in list(self.connections)
                     for connection in self.connections.pop(address, ())
                 ]
-            for connection in connections:
-                self._ssr_feature_tracker.remove_connection(connection)
+                for connection in connections:
+                    self._ssr_feature_tracker.remove_connection(connection)
             await self._close_connections(connections)
         except TypeError:
             pass
@@ -1012,7 +1013,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             log.error("Unable to retrieve routing information")
             raise ServiceUnavailable("Unable to retrieve routing information")
 
-    async def update_connection_pool(self, *, database):
+    async def update_connection_pool(self):
         async with self.refresh_lock:
             routing_tables = list(self.routing_tables.values())
 
@@ -1077,12 +1078,14 @@ class AsyncNeo4jPool(AsyncIOPool):
                 )
                 return False
 
+            database_request = database.name if not database.guessed else None
+
             async def wrapped_database_callback(database: str | None) -> None:
                 await AsyncUtil.callback(database_callback, database)
-                await self.update_connection_pool(database=database)
+                await self.update_connection_pool()
 
             await self.update_routing_table(
-                database=database.name if not database.guessed else None,
+                database=database_request,
                 imp_user=imp_user,
                 bookmarks=bookmarks,
                 auth=auth,
