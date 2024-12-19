@@ -83,7 +83,8 @@ class Graph:
     def __reduce__(self):
         state = self.__dict__.copy()
         relationship_types = tuple(state.pop("_relationship_types", {}).keys())
-        return Graph._restore, relationship_types, state
+        restore_args = (relationship_types,)
+        return Graph._restore, restore_args, state
 
     @staticmethod
     def _restore(relationship_types: tuple[str, ...]) -> Graph:

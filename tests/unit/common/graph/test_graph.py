@@ -77,6 +77,18 @@ class GraphBuilder:
         return self._hydrator.graph
 
 
+GRAPH = (
+    GraphBuilder()
+    .with_node("Person", name="Alice")
+    .with_node("Person", name="Bob")
+    .with_node("Person", "Missed", name="Cas")
+    .with_relationship(0, 1, "KNOWS", since=1999)
+    .with_relationship(1, 2, "KNOWS", since=2001)
+    .with_relationship(2, 0, "FOLLOWS", since=2005)
+    .build()
+)
+
+
 def assert_graph_clone(graph1: Graph, graph2: Graph):
     assert graph1 is not graph2
     assert graph1 != graph2
@@ -207,18 +219,6 @@ def all_relationship_ids(*graphs: Graph) -> set[str]:
     }
 
 
-GRAPH = (
-    GraphBuilder()
-    .with_node("Person", name="Alice")
-    .with_node("Person", name="Bob")
-    .with_node("Person", name="Cas")
-    .with_relationship(0, 1, "KNOWS", since=1999)
-    .with_relationship(1, 2, "KNOWS", since=2001)
-    .with_relationship(2, 0, "KNOWS", since=2005)
-    .build()
-)
-
-
 def test_pickle_graph():
     graph1 = GRAPH
     graph2 = pickle.loads(pickle.dumps(graph1))
@@ -226,8 +226,9 @@ def test_pickle_graph():
     assert_graph_clone(graph1, graph2)
 
 
-def test_pickle_node():
-    node1 = GRAPH.nodes["e0"]
+@pytest.mark.parametrize("id_", ("e0", "e2"))
+def test_pickle_node(id_):
+    node1 = GRAPH.nodes[id_]
     node2 = pickle.loads(pickle.dumps(node1))
 
     assert_node_clone(node1, node2)
@@ -237,8 +238,9 @@ def test_pickle_node():
     assert_graph_clone(graph1, graph2)
 
 
-def test_pickle_relationship():
-    rel1 = GRAPH.relationships["e0"]
+@pytest.mark.parametrize("id_", ("e0", "e2"))
+def test_pickle_relationship(id_):
+    rel1 = GRAPH.relationships[id_]
     rel2 = pickle.loads(pickle.dumps(rel1))
 
     assert_relationship_clone(rel1, rel2)
@@ -271,8 +273,9 @@ def test_deepcopy_graph():
     assert_graph_clone(graph1, graph2)
 
 
-def test_deepcopy_node():
-    node1 = GRAPH.nodes["e0"]
+@pytest.mark.parametrize("id_", ("e0", "e2"))
+def test_deepcopy_node(id_):
+    node1 = GRAPH.nodes[id_]
     node2 = copy.deepcopy(node1)
 
     assert_node_clone(node1, node2)
@@ -282,8 +285,9 @@ def test_deepcopy_node():
     assert_graph_clone(graph1, graph2)
 
 
-def test_deepcopy_relationship():
-    rel1 = GRAPH.relationships["e0"]
+@pytest.mark.parametrize("id_", ("e0", "e2"))
+def test_deepcopy_relationship(id_):
+    rel1 = GRAPH.relationships[id_]
     rel2 = copy.deepcopy(rel1)
 
     assert_relationship_clone(rel1, rel2)
@@ -321,8 +325,9 @@ def test_copy_graph():
         assert node2.graph is graph1
 
 
-def test_copy_node():
-    node1 = GRAPH.nodes["e0"]
+@pytest.mark.parametrize("id_", ("e0", "e2"))
+def test_copy_node(id_):
+    node1 = GRAPH.nodes[id_]
     node2 = copy.copy(node1)
 
     assert_node_copy(node1, node2)
@@ -332,8 +337,9 @@ def test_copy_node():
     assert graph1 is graph2
 
 
-def test_copy_relationship():
-    rel1 = GRAPH.relationships["e0"]
+@pytest.mark.parametrize("id_", ("e0", "e2"))
+def test_copy_relationship(id_):
+    rel1 = GRAPH.relationships[id_]
     rel2 = copy.copy(rel1)
 
     assert_relationship_copy(rel1, rel2)
