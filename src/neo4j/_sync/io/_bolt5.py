@@ -327,15 +327,16 @@ class Bolt5x0(Bolt):
         qid=-1,
         dehydration_hooks=None,
         hydration_hooks=None,
+        compressed=False,
         **handlers,
     ):
         dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
             dehydration_hooks, hydration_hooks
         )
-        extra = {"n": n}
+        extra = {"n": n, "compressed": False}
         if qid != -1:
             extra["qid"] = qid
-        log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
+        log.debug("[#%04X]  C: PULL %s%r", self.local_port, "(compressed) " if compressed else "", extra)
         self._append(
             b"\x3f",
             (extra,),
@@ -927,6 +928,7 @@ class Bolt5x5(Bolt5x4):
         notifications_disabled_classifications=None,
         dehydration_hooks=None,
         hydration_hooks=None,
+        compressed=False,
         **handlers,
     ):
         dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
@@ -971,9 +973,19 @@ class Bolt5x5(Bolt5x4):
                 ) from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
-        fields = (query, parameters, extra)
+
+        if compressed:
+            import zlib
+            import json
+            extra["compressed"] = compressed
+            query = zlib.compress(query.encode("UTF-8"))
+            parameters = zlib.compress(json.dumps(parameters).encode("UTF-8"))
+            fields = (extra, query, parameters)
+        else:
+            fields = (query, parameters, extra)
+
         log.debug(
-            "[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields))
+            "[#%04X]  C: RUN %s%s", self.local_port, "(compressed)" if compressed else "", " ".join(map(repr, fields))
         )
         self._append(
             b"\x10",
