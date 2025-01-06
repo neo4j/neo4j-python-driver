@@ -327,15 +327,16 @@ class Bolt5x0(Bolt):
         qid=-1,
         dehydration_hooks=None,
         hydration_hooks=None,
+        compressed=False,
         **handlers,
     ):
         dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
             dehydration_hooks, hydration_hooks
         )
-        extra = {"n": n}
+        extra = {"n": n, "compressed": False}
         if qid != -1:
             extra["qid"] = qid
-        log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
+        log.debug("[#%04X]  C: PULL %s%r", self.local_port, "(compressed) " if compressed else "", extra)
         self._append(
             b"\x3f",
             (extra,),
