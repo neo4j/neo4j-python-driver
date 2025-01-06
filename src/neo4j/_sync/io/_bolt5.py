@@ -1237,3 +1237,83 @@ class Bolt5x7(Bolt5x6):
             )
 
         return len(details), 1
+
+    def run(
+        self,
+        query,
+        parameters=None,
+        mode=None,
+        bookmarks=None,
+        metadata=None,
+        timeout=None,
+        db=None,
+        imp_user=None,
+        notifications_min_severity=None,
+        notifications_disabled_classifications=None,
+        dehydration_hooks=None,
+        hydration_hooks=None,
+        compressed=False,
+        **handlers,
+    ):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
+        if not parameters:
+            parameters = {}
+        extra = {}
+        if mode in {READ_ACCESS, "r"}:
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if (
+            self._client_state_manager.state
+            != self.bolt_states.TX_READY_OR_TX_STREAMING
+        ):
+            self.last_database = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = (
+                notifications_min_severity
+            )
+        if notifications_disabled_classifications is not None:
+            extra["notifications_disabled_classifications"] = (
+                notifications_disabled_classifications
+            )
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError(
+                    "Bookmarks must be provided as iterable"
+                ) from None
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError(
+                    "Metadata must be coercible to a dict"
+                ) from None
+        if timeout is not None:
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
+
+        if compressed:
+            import zlib
+            import json
+            extra["compressed"] = compressed
+            query = zlib.compress(query.encode("UTF-8"))
+            parameters = zlib.compress(json.dumps(parameters).encode("UTF-8"))
+            fields = (extra, query, parameters)
+        else:
+            fields = (query, parameters, extra)
+
+        log.debug(
+            "[#%04X]  C: RUN %s%s", self.local_port, "(compressed)" if compressed else "", " ".join(map(repr, fields))
+        )
+        self._append(
+            b"\x10",
+            fields,
+            Response(self, "run", hydration_hooks, **handlers),
+            dehydration_hooks=dehydration_hooks,
+        )
