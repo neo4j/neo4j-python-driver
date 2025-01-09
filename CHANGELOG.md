@@ -3,7 +3,8 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- Since `Node` and `Relationship`'s equality is based on the equality of the identity of the graph they're attached to, fixing `pickle` support of graph types (`Graph`, `Node`, `Relationship`, `Path`) also means that `deepcopy`ed Graph types are no longer equal to the original ones (as they should've never been).
+- Since the types of `Relationship`s are tied to the `Graph` object they belong to, fixing `pickle` support for graph types means that `Relationship`s with the same name will have a different type after `deepcopy`ing or pickling and unpickling them or their graph.
+  For more details, see https://github.com/neo4j/neo4j-python-driver/pull/1133
 
 
 ## Version 5.27
