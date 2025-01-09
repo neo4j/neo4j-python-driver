@@ -78,12 +78,8 @@ class Bolt5x0(Bolt):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._server_state_manager = ServerStateManager(
-            self.bolt_states.CONNECTED, on_change=self._on_server_state_change
-        )
-        self._client_state_manager = ClientStateManager(
-            self.bolt_states.CONNECTED, on_change=self._on_client_state_change
-        )
+        self._server_state_manager = ServerStateManager(self.bolt_states.CONNECTED, on_change=self._on_server_state_change)
+        self._client_state_manager = ClientStateManager(self.bolt_states.CONNECTED, on_change=self._on_client_state_change)
 
     def _on_server_state_change(self, old_state, new_state):
         log.debug(
@@ -131,22 +127,15 @@ class Bolt5x0(Bolt):
         return headers
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
-        if (
-            self.notifications_min_severity is not None
-            or self.notifications_disabled_classifications is not None
-        ):
+        if self.notifications_min_severity is not None or self.notifications_disabled_classifications is not None:
             self.assert_notification_filtering_support()
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
             if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
-                    "connection.recv_timeout_seconds"
-                ]
+                recv_timeout = self.configuration_hints["connection.recv_timeout_seconds"]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
                     self.socket.settimeout(recv_timeout)
                 else:
@@ -168,9 +157,7 @@ class Bolt5x0(Bolt):
         self._append(
             b"\x01",
             (headers,),
-            response=InitResponse(
-                self, "hello", hydration_hooks, on_success=on_success
-            ),
+            response=InitResponse(self, "hello", hydration_hooks, on_success=on_success),
             dehydration_hooks=dehydration_hooks,
         )
         self.send_all()
@@ -203,9 +190,7 @@ class Bolt5x0(Bolt):
         dehydration_hooks=None,
         hydration_hooks=None,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         routing_context = self.routing_context or {}
         db_context = {}
         if database is not None:
@@ -224,9 +209,7 @@ class Bolt5x0(Bolt):
         self._append(
             b"\x66",
             (routing_context, bookmarks, db_context),
-            response=Response(
-                self, "route", hydration_hooks, on_success=metadata.update
-            ),
+            response=Response(self, "route", hydration_hooks, on_success=metadata.update),
             dehydration_hooks=dehydration_hooks,
         )
         self.send_all()
@@ -249,14 +232,9 @@ class Bolt5x0(Bolt):
         hydration_hooks=None,
         **handlers,
     ):
-        if (
-            notifications_min_severity is not None
-            or notifications_disabled_classifications is not None
-        ):
+        if notifications_min_severity is not None or notifications_disabled_classifications is not None:
             self.assert_notification_filtering_support()
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         if not parameters:
             parameters = {}
         extra = {}
@@ -265,10 +243,7 @@ class Bolt5x0(Bolt):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
-        if (
-            self._client_state_manager.state
-            != self.bolt_states.TX_READY_OR_TX_STREAMING
-        ):
+        if self._client_state_manager.state != self.bolt_states.TX_READY_OR_TX_STREAMING:
             self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
@@ -276,22 +251,16 @@ class Bolt5x0(Bolt):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
-        log.debug(
-            "[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields))
-        )
+        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         self._append(
             b"\x10",
             fields,
@@ -307,9 +276,7 @@ class Bolt5x0(Bolt):
         hydration_hooks=None,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
@@ -330,9 +297,7 @@ class Bolt5x0(Bolt):
         compressed=False,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         extra = {"n": n, "compressed": False}
         if qid != -1:
             extra["qid"] = qid
@@ -358,14 +323,9 @@ class Bolt5x0(Bolt):
         hydration_hooks=None,
         **handlers,
     ):
-        if (
-            notifications_min_severity is not None
-            or notifications_disabled_classifications is not None
-        ):
+        if notifications_min_severity is not None or notifications_disabled_classifications is not None:
             self.assert_notification_filtering_support()
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -379,16 +339,12 @@ class Bolt5x0(Bolt):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
@@ -400,9 +356,7 @@ class Bolt5x0(Bolt):
         )
 
     def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         log.debug("[#%04X]  C: COMMIT", self.local_port)
         self._append(
             b"\x12",
@@ -411,12 +365,8 @@ class Bolt5x0(Bolt):
             dehydration_hooks=dehydration_hooks,
         )
 
-    def rollback(
-        self, dehydration_hooks=None, hydration_hooks=None, **handlers
-    ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+    def rollback(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
         self._append(
             b"\x13",
@@ -432,21 +382,15 @@ class Bolt5x0(Bolt):
         Add a RESET message to the outgoing queue, send it and consume all
         remaining messages.
         """
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         log.debug("[#%04X]  C: RESET", self.local_port)
         response = ResetResponse(self, "reset", hydration_hooks)
-        self._append(
-            b"\x0f", response=response, dehydration_hooks=dehydration_hooks
-        )
+        self._append(b"\x0f", response=response, dehydration_hooks=dehydration_hooks)
         self.send_all()
         self.fetch_all()
 
     def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         log.debug("[#%04X]  C: GOODBYE", self.local_port)
         self._append(b"\x02", (), dehydration_hooks=dehydration_hooks)
 
@@ -478,20 +422,14 @@ class Bolt5x0(Bolt):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == b"\x70":
-            log.debug(
-                "[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata
-            )
-            self._server_state_manager.transition(
-                response.message, summary_metadata
-            )
+            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
+            self._server_state_manager.transition(response.message, summary_metadata)
             response.on_success(summary_metadata or {})
         elif summary_signature == b"\x7e":
             log.debug("[#%04X]  S: IGNORED", self.local_port)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7f":
-            log.debug(
-                "[#%04X]  S: FAILURE %r", self.local_port, summary_metadata
-            )
+            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
             self._server_state_manager.state = self.bolt_states.FAILED
             try:
                 response.on_failure(summary_metadata or {})
@@ -598,30 +536,19 @@ class Bolt5x1(Bolt5x0):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._server_state_manager = ServerStateManager5x1(
-            BoltStates5x1.CONNECTED, on_change=self._on_server_state_change
-        )
-        self._client_state_manager = ClientStateManager5x1(
-            BoltStates5x1.CONNECTED, on_change=self._on_client_state_change
-        )
+        self._server_state_manager = ServerStateManager5x1(BoltStates5x1.CONNECTED, on_change=self._on_server_state_change)
+        self._client_state_manager = ClientStateManager5x1(BoltStates5x1.CONNECTED, on_change=self._on_client_state_change)
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
-        if (
-            self.notifications_min_severity is not None
-            or self.notifications_disabled_classifications is not None
-        ):
+        if self.notifications_min_severity is not None or self.notifications_disabled_classifications is not None:
             self.assert_notification_filtering_support()
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
             if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
-                    "connection.recv_timeout_seconds"
-                ]
+                recv_timeout = self.configuration_hints["connection.recv_timeout_seconds"]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
                     self.socket.settimeout(recv_timeout)
                 else:
@@ -640,9 +567,7 @@ class Bolt5x1(Bolt5x0):
         self._append(
             b"\x01",
             (headers,),
-            response=InitResponse(
-                self, "hello", hydration_hooks, on_success=on_success
-            ),
+            response=InitResponse(self, "hello", hydration_hooks, on_success=on_success),
             dehydration_hooks=dehydration_hooks,
         )
         self.logon(
@@ -654,9 +579,7 @@ class Bolt5x1(Bolt5x0):
         check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         logged_auth_dict = dict(self.auth_dict)
         if "credentials" in logged_auth_dict:
             logged_auth_dict["credentials"] = "*******"
@@ -669,9 +592,7 @@ class Bolt5x1(Bolt5x0):
         )
 
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         log.debug("[#%04X]  C: LOGOFF", self.local_port)
         self._append(
             b"\x6b",
@@ -688,27 +609,19 @@ class Bolt5x2(Bolt5x1):
     def get_base_headers(self):
         headers = super().get_base_headers()
         if self.notifications_min_severity is not None:
-            headers["notifications_minimum_severity"] = (
-                self.notifications_min_severity
-            )
+            headers["notifications_minimum_severity"] = self.notifications_min_severity
         if self.notifications_disabled_classifications is not None:
-            headers["notifications_disabled_categories"] = (
-                self.notifications_disabled_classifications
-            )
+            headers["notifications_disabled_categories"] = self.notifications_disabled_classifications
         return headers
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
             if "connection.recv_timeout_seconds" in self.configuration_hints:
-                recv_timeout = self.configuration_hints[
-                    "connection.recv_timeout_seconds"
-                ]
+                recv_timeout = self.configuration_hints["connection.recv_timeout_seconds"]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
                     self.socket.settimeout(recv_timeout)
                 else:
@@ -726,9 +639,7 @@ class Bolt5x2(Bolt5x1):
         self._append(
             b"\x01",
             (extra,),
-            response=InitResponse(
-                self, "hello", hydration_hooks, on_success=on_success
-            ),
+            response=InitResponse(self, "hello", hydration_hooks, on_success=on_success),
             dehydration_hooks=dehydration_hooks,
         )
 
@@ -753,9 +664,7 @@ class Bolt5x2(Bolt5x1):
         hydration_hooks=None,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         if not parameters:
             parameters = {}
         extra = {}
@@ -764,41 +673,28 @@ class Bolt5x2(Bolt5x1):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
-        if (
-            self._client_state_manager.state
-            != self.bolt_states.TX_READY_OR_TX_STREAMING
-        ):
+        if self._client_state_manager.state != self.bolt_states.TX_READY_OR_TX_STREAMING:
             self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if notifications_min_severity is not None:
-            extra["notifications_minimum_severity"] = (
-                notifications_min_severity
-            )
+            extra["notifications_minimum_severity"] = notifications_min_severity
         if notifications_disabled_classifications is not None:
-            extra["notifications_disabled_categories"] = (
-                notifications_disabled_classifications
-            )
+            extra["notifications_disabled_categories"] = notifications_disabled_classifications
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
-        log.debug(
-            "[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields))
-        )
+        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         self._append(
             b"\x10",
             fields,
@@ -820,9 +716,7 @@ class Bolt5x2(Bolt5x1):
         hydration_hooks=None,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -836,26 +730,18 @@ class Bolt5x2(Bolt5x1):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         if notifications_min_severity is not None:
-            extra["notifications_minimum_severity"] = (
-                notifications_min_severity
-            )
+            extra["notifications_minimum_severity"] = notifications_min_severity
         if notifications_disabled_classifications is not None:
-            extra["notifications_disabled_categories"] = (
-                notifications_disabled_classifications
-            )
+            extra["notifications_disabled_categories"] = notifications_disabled_classifications
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(
             b"\x11",
@@ -884,17 +770,11 @@ class Bolt5x4(Bolt5x3):
         hydration_hooks=None,
         **handlers,
     ) -> None:
-        if self.telemetry_disabled or not self.configuration_hints.get(
-            "telemetry.enabled", False
-        ):
+        if self.telemetry_disabled or not self.configuration_hints.get("telemetry.enabled", False):
             return
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         api_raw = int(api)
-        log.debug(
-            "[#%04X]  C: TELEMETRY %i  # (%r)", self.local_port, api_raw, api
-        )
+        log.debug("[#%04X]  C: TELEMETRY %i  # (%r)", self.local_port, api_raw, api)
         self._append(
             b"\x54",
             (api_raw,),
@@ -909,9 +789,7 @@ class Bolt5x5(Bolt5x4):
     def get_base_headers(self):
         headers = super().get_base_headers()
         if "notifications_disabled_categories" in headers:
-            headers["notifications_disabled_classifications"] = headers.pop(
-                "notifications_disabled_categories"
-            )
+            headers["notifications_disabled_classifications"] = headers.pop("notifications_disabled_categories")
         return headers
 
     def run(
@@ -930,9 +808,7 @@ class Bolt5x5(Bolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         if not parameters:
             parameters = {}
         extra = {}
@@ -941,41 +817,28 @@ class Bolt5x5(Bolt5x4):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
-        if (
-            self._client_state_manager.state
-            != self.bolt_states.TX_READY_OR_TX_STREAMING
-        ):
+        if self._client_state_manager.state != self.bolt_states.TX_READY_OR_TX_STREAMING:
             self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if notifications_min_severity is not None:
-            extra["notifications_minimum_severity"] = (
-                notifications_min_severity
-            )
+            extra["notifications_minimum_severity"] = notifications_min_severity
         if notifications_disabled_classifications is not None:
-            extra["notifications_disabled_classifications"] = (
-                notifications_disabled_classifications
-            )
+            extra["notifications_disabled_classifications"] = notifications_disabled_classifications
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
-        log.debug(
-            "[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields))
-        )
+        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         self._append(
             b"\x10",
             fields,
@@ -997,9 +860,7 @@ class Bolt5x5(Bolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         extra = {}
         if mode in {READ_ACCESS, "r"}:
             # It will default to mode "w" if nothing is specified
@@ -1013,26 +874,18 @@ class Bolt5x5(Bolt5x4):
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         if notifications_min_severity is not None:
-            extra["notifications_minimum_severity"] = (
-                notifications_min_severity
-            )
+            extra["notifications_minimum_severity"] = notifications_min_severity
         if notifications_disabled_classifications is not None:
-            extra["notifications_disabled_classifications"] = (
-                notifications_disabled_classifications
-            )
+            extra["notifications_disabled_classifications"] = notifications_disabled_classifications
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(
             b"\x11",
@@ -1062,8 +915,7 @@ class Bolt5x5(Bolt5x4):
                     diag_record = status.setdefault("diagnostic_record", {})
                     if not isinstance(diag_record, dict):
                         log.info(
-                            "[#%04X]  _: <CONNECTION> Server supplied an "
-                            "invalid diagnostic record (%r).",
+                            "[#%04X]  _: <CONNECTION> Server supplied an " "invalid diagnostic record (%r).",
                             self.local_port,
                             diag_record,
                         )
@@ -1084,9 +936,7 @@ class Bolt5x5(Bolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
-        handlers["on_success"] = self._make_enrich_statuses_handler(
-            wrapped_handler=handlers.get("on_success")
-        )
+        handlers["on_success"] = self._make_enrich_statuses_handler(wrapped_handler=handlers.get("on_success"))
         super().discard(n, qid, dehydration_hooks, hydration_hooks, **handlers)
 
     def pull(
@@ -1097,9 +947,7 @@ class Bolt5x5(Bolt5x4):
         hydration_hooks=None,
         **handlers,
     ):
-        handlers["on_success"] = self._make_enrich_statuses_handler(
-            wrapped_handler=handlers.get("on_success")
-        )
+        handlers["on_success"] = self._make_enrich_statuses_handler(wrapped_handler=handlers.get("on_success"))
         super().pull(n, qid, dehydration_hooks, hydration_hooks, **handlers)
 
 
@@ -1120,8 +968,7 @@ class Bolt5x6(Bolt5x5):
                     diag_record = status.setdefault("diagnostic_record", {})
                     if not isinstance(diag_record, dict):
                         log.info(
-                            "[#%04X]  _: <CONNECTION> Server supplied an "
-                            "invalid status diagnostic record (%r).",
+                            "[#%04X]  _: <CONNECTION> Server supplied an " "invalid status diagnostic record (%r).",
                             self.local_port,
                             diag_record,
                         )
@@ -1138,9 +985,7 @@ class Bolt5x6(Bolt5x5):
 class Bolt5x7(Bolt5x6):
     PROTOCOL_VERSION = Version(5, 7)
 
-    DEFAULT_ERROR_DIAGNOSTIC_RECORD = (
-        Bolt5x5.DEFAULT_STATUS_DIAGNOSTIC_RECORD
-    )
+    DEFAULT_ERROR_DIAGNOSTIC_RECORD = Bolt5x5.DEFAULT_STATUS_DIAGNOSTIC_RECORD
 
     def _enrich_error_diagnostic_record(self, metadata):
         if not isinstance(metadata, dict):
@@ -1148,8 +993,7 @@ class Bolt5x7(Bolt5x6):
         diag_record = metadata.setdefault("diagnostic_record", {})
         if not isinstance(diag_record, dict):
             log.info(
-                "[#%04X]  _: <CONNECTION> Server supplied an "
-                "invalid error diagnostic record (%r).",
+                "[#%04X]  _: <CONNECTION> Server supplied an " "invalid error diagnostic record (%r).",
                 self.local_port,
                 diag_record,
             )
@@ -1185,20 +1029,14 @@ class Bolt5x7(Bolt5x6):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == b"\x70":
-            log.debug(
-                "[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata
-            )
-            self._server_state_manager.transition(
-                response.message, summary_metadata
-            )
+            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
+            self._server_state_manager.transition(response.message, summary_metadata)
             response.on_success(summary_metadata or {})
         elif summary_signature == b"\x7e":
             log.debug("[#%04X]  S: IGNORED", self.local_port)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7f":
-            log.debug(
-                "[#%04X]  S: FAILURE %r", self.local_port, summary_metadata
-            )
+            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
             self._server_state_manager.state = self.bolt_states.FAILED
             self._enrich_error_diagnostic_record(summary_metadata)
             try:
@@ -1244,9 +1082,7 @@ class Bolt5x7(Bolt5x6):
         compressed=False,
         **handlers,
     ):
-        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
-            dehydration_hooks, hydration_hooks
-        )
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(dehydration_hooks, hydration_hooks)
         if not parameters:
             parameters = {}
         extra = {}
@@ -1255,51 +1091,40 @@ class Bolt5x7(Bolt5x6):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
-        if (
-            self._client_state_manager.state
-            != self.bolt_states.TX_READY_OR_TX_STREAMING
-        ):
+        if self._client_state_manager.state != self.bolt_states.TX_READY_OR_TX_STREAMING:
             self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if notifications_min_severity is not None:
-            extra["notifications_minimum_severity"] = (
-                notifications_min_severity
-            )
+            extra["notifications_minimum_severity"] = notifications_min_severity
         if notifications_disabled_classifications is not None:
-            extra["notifications_disabled_classifications"] = (
-                notifications_disabled_classifications
-            )
+            extra["notifications_disabled_classifications"] = notifications_disabled_classifications
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError(
-                    "Bookmarks must be provided as iterable"
-                ) from None
+                raise TypeError("Bookmarks must be provided as iterable") from None
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
-                raise TypeError(
-                    "Metadata must be coercible to a dict"
-                ) from None
+                raise TypeError("Metadata must be coercible to a dict") from None
         if timeout is not None:
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
 
-        if compressed:
-            import zlib
+        # if compressed:
+        if True:
             import json
-            extra["compressed"] = compressed
-            query = zlib.compress(query.encode("UTF-8"))
-            parameters = zlib.compress(json.dumps(parameters).encode("UTF-8"))
-            fields = (extra, query, parameters)
-        else:
-            fields = (query, parameters, extra)
+            import gzip
 
-        log.debug(
-            "[#%04X]  C: RUN %s%s", self.local_port, "(compressed)" if compressed else "", " ".join(map(repr, fields))
-        )
+            extra["compressed_statement"] = gzip.compress(bytes(query, "utf-8"))
+            extra["compressed_params"] = gzip.compress(bytes(json.dumps(parameters), "utf-8"))
+            query = ""
+            parameters = {}
+
+        fields = (query, parameters, extra)
+
+        log.debug("[#%04X]  C: RUN %s%s", self.local_port, "(compressed)" if compressed else "", " ".join(map(repr, fields)))
         self._append(
             b"\x10",
             fields,
