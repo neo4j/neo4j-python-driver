@@ -927,7 +927,7 @@ class Bolt5x5(Bolt5x4):
         notifications_disabled_classifications=None,
         dehydration_hooks=None,
         hydration_hooks=None,
-        compressed=None,
+        compressed=True,
         **handlers,
     ):
         dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
