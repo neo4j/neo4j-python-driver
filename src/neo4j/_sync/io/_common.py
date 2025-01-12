@@ -103,7 +103,7 @@ class Outbox:
         self._chunked_data = bytearray()
         self._buffer.clear()
 
-    def _chunk_data(self, compressed: bool):
+    def _chunk_data(self, compressed):
         if compressed:
             import gzip
             self._buffer.data = gzip.compress(self._buffer.data)
@@ -131,7 +131,7 @@ class Outbox:
                 raw_data_start += chunk_size
         self._buffer.clear()
 
-    def append_message(self, tag, fields, dehydration_hooks, compressed: bool = False):
+    def append_message(self, tag, fields, dehydration_hooks, compressed):
         with self._buffer.tmp_buffer():
             self._packer.pack_struct(tag, fields, dehydration_hooks)
 

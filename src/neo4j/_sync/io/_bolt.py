@@ -926,7 +926,7 @@ class Bolt:
             hydration_hooks = hydration_scope.hydration_hooks
         return dehydration_hooks, hydration_hooks
 
-    def _append(self, signature, fields=(), response=None, dehydration_hooks=None, compressed=False):
+    def _append(self, signature, fields=(), response=None, dehydration_hooks=None, compressed=None):
         """
         Append a message to the outgoing queue.
 
