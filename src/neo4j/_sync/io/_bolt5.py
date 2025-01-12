@@ -1113,21 +1113,22 @@ class Bolt5x7(Bolt5x6):
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
 
         # if compressed:
-        if True:
-            import json
-            import gzip
-
-            extra["compressed_statement"] = gzip.compress(bytes(query, "utf-8"))
-            extra["compressed_params"] = gzip.compress(bytes(json.dumps(parameters), "utf-8"))
-            query = ""
-            parameters = {}
+        # if False:
+        #     import json
+        #     import gzip
+        #
+        #     extra["compressed_statement"] = gzip.compress(bytes(query, "utf-8"))
+        #     extra["compressed_params"] = gzip.compress(bytes(json.dumps(parameters), "utf-8"))
+        #     query = ""
+        #     parameters = {}
 
         fields = (query, parameters, extra)
-
+        compressed=True
         log.debug("[#%04X]  C: RUN %s%s", self.local_port, "(compressed)" if compressed else "", " ".join(map(repr, fields)))
         self._append(
             b"\x10",
             fields,
             Response(self, "run", hydration_hooks, **handlers),
             dehydration_hooks=dehydration_hooks,
+            compressed=compressed,
         )

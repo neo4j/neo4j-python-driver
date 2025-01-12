@@ -926,9 +926,7 @@ class Bolt:
             hydration_hooks = hydration_scope.hydration_hooks
         return dehydration_hooks, hydration_hooks
 
-    def _append(
-        self, signature, fields=(), response=None, dehydration_hooks=None
-    ):
+    def _append(self, signature, fields=(), response=None, dehydration_hooks=None, compressed=False):
         """
         Append a message to the outgoing queue.
 
@@ -940,7 +938,7 @@ class Bolt:
             function). Dehydration functions receive the value and returns an
             object of type understood by packstream.
         """
-        self.outbox.append_message(signature, fields, dehydration_hooks)
+        self.outbox.append_message(signature, fields, dehydration_hooks, compressed=compressed)
         self.responses.append(response)
         if response:
             self._get_client_state_manager().transition(response.message)
