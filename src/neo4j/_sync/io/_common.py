@@ -106,7 +106,7 @@ class Outbox:
     def _chunk_data(self, compressed):
         if compressed:
             import gzip
-            self._buffer.data = gzip.compress(self._buffer.data)
+            self._buffer.data = bytearray(gzip.compress(self._buffer.data))
 
         data_len = len(self._buffer.data)
         num_full_chunks, chunk_rest = divmod(data_len, self._max_chunk_size)

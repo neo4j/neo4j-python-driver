@@ -252,7 +252,6 @@ class PackableBuffer:
         self.data = bytearray()
         # export write method for packer; "inline" for performance
         self.write = self.data.extend
-        self.clear = self.data.clear
         self._tmp_buffering = 0
 
     @contextmanager
@@ -269,6 +268,9 @@ class PackableBuffer:
 
     def is_tmp_buffering(self):
         return bool(self._tmp_buffering)
+
+    def clear(self):
+        self.data.clear()
 
 
 class Unpacker:
