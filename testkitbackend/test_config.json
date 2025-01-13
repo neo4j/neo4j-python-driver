@@ -27,6 +27,7 @@
     "Feature:API:Driver.VerifyAuthentication": true,
     "Feature:API:Driver.VerifyConnectivity": true,
     "Feature:API:Driver.SupportsSessionAuth": true,
+    "Feature:API:Driver:MaxConnectionLifetime": true,
     "Feature:API:Driver:NotificationsConfig": true,
     "Feature:API:Liveness.Check": true,
     "Feature:API:Result.List": true,
