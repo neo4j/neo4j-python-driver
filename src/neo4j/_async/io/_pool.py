@@ -1137,7 +1137,9 @@ class AsyncNeo4jPool(AsyncIOPool):
         if access_mode not in {WRITE_ACCESS, READ_ACCESS}:
             # TODO: 6.0 - change this to be a ValueError
             raise ClientError(f"Non valid 'access_mode'; {access_mode}")
-        if not timeout:
+        if (
+            isinstance(timeout, Deadline) and not timeout.original_timeout
+        ) or not timeout:
             # TODO: 6.0 - change this to be a ValueError
             raise ClientError(
                 f"'timeout' must be a float larger than 0; {timeout}"
