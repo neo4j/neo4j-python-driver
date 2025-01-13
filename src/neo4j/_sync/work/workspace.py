@@ -22,7 +22,6 @@ import typing as t
 from ..._async_compat.util import Util
 from ..._auth_management import to_auth_dict
 from ..._conf import WorkspaceConfig
-from ..._deadline import Deadline
 from ..._meta import (
     deprecation_warn,
     unclosed_resource_warn,
@@ -189,7 +188,7 @@ class Workspace(NonConcurrentMethodChecker):
         )
         acquire_kwargs_ = {
             "access_mode": access_mode,
-            "timeout": Deadline(acquisition_timeout),
+            "timeout": acquisition_timeout,
             "database": target_db,
             "bookmarks": self._get_bookmarks(),
             "auth": acquire_auth,
