@@ -200,12 +200,10 @@ class Workspace(NonConcurrentMethodChecker):
         if (
             target_db.guessed
             and not self._pinned_database
-            and (
-                not self._pool.ssr_enabled or not self._connection.ssr_enabled
-            )
+            and not self._connection.ssr_enabled
         ):
-            # race condition: in the meantime the pool added a connection
-            # which does not support SSR.
+            # race condition: we now have created a connection which does not
+            # support SSR.
             # => we need to fall back to explicit home database resolution
             log.debug(
                 "[#0000]  _: <WORKSPACE> detected ssr support race; "
