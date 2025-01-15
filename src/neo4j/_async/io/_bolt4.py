@@ -494,12 +494,12 @@ class AsyncBolt4x0(AsyncBolt):
                 await response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
-                    await self.pool.deactivate(address=self.unresolved_address)
+                    await self.pool.deactivate(address=self.address)
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
                     await self.pool.on_write_failure(
-                        address=self.unresolved_address,
+                        address=self.address,
                         database=self.last_database,
                     )
                 raise
@@ -511,7 +511,7 @@ class AsyncBolt4x0(AsyncBolt):
             sig_int = ord(summary_signature)
             raise BoltProtocolError(
                 f"Unexpected response message with signature {sig_int:02X}",
-                self.unresolved_address,
+                self.address,
             )
 
         return len(details), 1

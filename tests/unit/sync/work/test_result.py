@@ -149,7 +149,7 @@ class ConnectionStub:
         self.run_meta = run_meta
         self.summary_meta = summary_meta
         ConnectionStub.server_info.update({"server": "Neo4j/4.3.0"})
-        self.unresolved_address = None
+        self.address = None
         self._new_hydration_scope_called = False
 
     def send_all(self):

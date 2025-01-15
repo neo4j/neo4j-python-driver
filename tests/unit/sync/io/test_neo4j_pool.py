@@ -33,7 +33,10 @@ from neo4j._sync.io import (
     Bolt,
     Neo4jPool,
 )
-from neo4j.addressing import ResolvedAddress
+from neo4j.addressing import (
+    Address,
+    ResolvedAddress,
+)
 from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
     Neo4jError,
@@ -55,7 +58,7 @@ WRITER1_ADDRESS = ResolvedAddress(("1.2.3.1", 9020), host_name="host")
 
 @pytest.fixture
 def custom_routing_opener(fake_connection_generator, mocker):
-    def make_opener(failures=None, get_readers=None):
+    def make_opener(failures=None, get_readers=None, on_open=None):
         def routing_side_effect(*args, **kwargs):
             nonlocal failures
             res = next(failures, None)
@@ -84,7 +87,7 @@ def custom_routing_opener(fake_connection_generator, mocker):
 
         def open_(addr, auth, timeout):
             connection = fake_connection_generator()
-            connection.unresolved_address = addr
+            connection.address = addr
             connection.timeout = timeout
             connection.auth = auth
             route_mock = mocker.MagicMock()
@@ -92,6 +95,10 @@ def custom_routing_opener(fake_connection_generator, mocker):
             route_mock.side_effect = routing_side_effect
             connection.attach_mock(route_mock, "route")
             opener_.connections.append(connection)
+
+            if on_open is not None:
+                on_open(connection)
+
             return connection
 
         failures = iter(failures or [])
@@ -188,9 +195,9 @@ def test_chooses_right_connection_type(opener, type_):
     )
     pool.release(cx1)
     if type_ == "r":
-        assert cx1.unresolved_address == READER1_ADDRESS
+        assert cx1.address == READER1_ADDRESS
     else:
-        assert cx1.unresolved_address == WRITER1_ADDRESS
+        assert cx1.address == WRITER1_ADDRESS
 
 
 @mark_sync_test
@@ -206,7 +213,7 @@ def test_reuses_connection(opener):
 @mark_sync_test
 def test_closes_stale_connections(opener, break_on_close):
     def break_connection():
-        pool.deactivate(cx1.unresolved_address)
+        pool.deactivate(cx1.address)
 
         if cx_close_mock_side_effect:
             res = cx_close_mock_side_effect()
@@ -218,7 +225,7 @@ def test_closes_stale_connections(opener, break_on_close):
     pool = _simple_pool(opener)
     cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
     pool.release(cx1)
-    assert cx1 in pool.connections[cx1.unresolved_address]
+    assert cx1 in pool.connections[cx1.address]
     # simulate connection going stale (e.g. exceeding idle timeout) and then
     # breaking when the pool tries to close the connection
     cx1.stale.return_value = True
@@ -233,16 +240,16 @@ def test_closes_stale_connections(opener, break_on_close):
     else:
         cx1.close.assert_called_once()
     assert cx2 is not cx1
-    assert cx2.unresolved_address == cx1.unresolved_address
-    assert cx1 not in pool.connections[cx1.unresolved_address]
-    assert cx2 in pool.connections[cx2.unresolved_address]
+    assert cx2.address == cx1.address
+    assert cx1 not in pool.connections[cx1.address]
+    assert cx2 in pool.connections[cx2.address]
 
 
 @mark_sync_test
 def test_does_not_close_stale_connections_in_use(opener):
     pool = _simple_pool(opener)
     cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
-    assert cx1 in pool.connections[cx1.unresolved_address]
+    assert cx1 in pool.connections[cx1.address]
     # simulate connection going stale (e.g. exceeding idle timeout) while being
     # in use
     cx1.stale.return_value = True
@@ -250,9 +257,9 @@ def test_does_not_close_stale_connections_in_use(opener):
     pool.release(cx2)
     cx1.close.assert_not_called()
     assert cx2 is not cx1
-    assert cx2.unresolved_address == cx1.unresolved_address
-    assert cx1 in pool.connections[cx1.unresolved_address]
-    assert cx2 in pool.connections[cx2.unresolved_address]
+    assert cx2.address == cx1.address
+    assert cx1 in pool.connections[cx1.address]
+    assert cx2 in pool.connections[cx2.address]
 
     pool.release(cx1)
     # now that cx1 is back in the pool and still stale,
@@ -263,9 +270,9 @@ def test_does_not_close_stale_connections_in_use(opener):
     pool.release(cx3)
     cx1.close.assert_called_once()
     assert cx2 is cx3
-    assert cx3.unresolved_address == cx1.unresolved_address
-    assert cx1 not in pool.connections[cx1.unresolved_address]
-    assert cx3 in pool.connections[cx2.unresolved_address]
+    assert cx3.address == cx1.address
+    assert cx1 not in pool.connections[cx1.address]
+    assert cx3 in pool.connections[cx2.address]
 
 
 @mark_sync_test
@@ -314,7 +321,7 @@ def test_acquire_performs_no_liveness_check_on_fresh_connection(
     cx1 = pool._acquire(
         READER1_ADDRESS, None, Deadline(30), liveness_timeout
     )
-    assert cx1.unresolved_address == READER1_ADDRESS
+    assert cx1.address == READER1_ADDRESS
     cx1.reset.assert_not_called()
 
 
@@ -330,7 +337,7 @@ def test_acquire_performs_liveness_check_on_existing_connection(
     )
 
     # make sure we assume the right state
-    assert cx1.unresolved_address == READER1_ADDRESS
+    assert cx1.address == READER1_ADDRESS
     cx1.is_idle_for.assert_not_called()
     cx1.reset.assert_not_called()
 
@@ -367,7 +374,7 @@ def test_acquire_creates_connection_on_failed_liveness_check(
     )
 
     # make sure we assume the right state
-    assert cx1.unresolved_address == READER1_ADDRESS
+    assert cx1.address == READER1_ADDRESS
     cx1.is_idle_for.assert_not_called()
     cx1.reset.assert_not_called()
 
@@ -384,11 +391,11 @@ def test_acquire_creates_connection_on_failed_liveness_check(
         READER1_ADDRESS, None, Deadline(30), liveness_timeout
     )
     assert cx1 is not cx2
-    assert cx1.unresolved_address == cx2.unresolved_address
+    assert cx1.address == cx2.address
     cx1.is_idle_for.assert_called_once_with(liveness_timeout)
     cx2.reset.assert_not_called()
-    assert cx1 not in pool.connections[cx1.unresolved_address]
-    assert cx2 in pool.connections[cx1.unresolved_address]
+    assert cx1 not in pool.connections[cx1.address]
+    assert cx2 in pool.connections[cx1.address]
 
 
 @pytest.mark.parametrize(
@@ -412,8 +419,8 @@ def test_acquire_returns_other_connection_on_failed_liveness_check(
     )
 
     # make sure we assume the right state
-    assert cx1.unresolved_address == READER1_ADDRESS
-    assert cx2.unresolved_address == READER1_ADDRESS
+    assert cx1.address == READER1_ADDRESS
+    assert cx2.address == READER1_ADDRESS
     assert cx1 is not cx2
     cx1.is_idle_for.assert_not_called()
     cx2.is_idle_for.assert_not_called()
@@ -439,8 +446,8 @@ def test_acquire_returns_other_connection_on_failed_liveness_check(
     cx1.reset.assert_called_once()
     cx3.is_idle_for.assert_called_once_with(liveness_timeout)
     cx3.reset.assert_called_once()
-    assert cx1 not in pool.connections[cx1.unresolved_address]
-    assert cx3 in pool.connections[cx1.unresolved_address]
+    assert cx1 not in pool.connections[cx1.address]
+    assert cx3 in pool.connections[cx1.address]
 
 
 @mark_sync_test
@@ -701,7 +708,7 @@ def test_pool_closes_connections_dropped_from_rt(custom_routing_opener):
         opener, _pool_config(), WorkspaceConfig(), ROUTER1_ADDRESS
     )
     cx1 = pool.acquire(READ_ACCESS, 30, "db1", None, None, None)
-    assert cx1.unresolved_address == READER1_ADDRESS
+    assert cx1.address == READER1_ADDRESS
     pool.release(cx1)
 
     cx1.close.assert_not_called()
@@ -712,7 +719,7 @@ def test_pool_closes_connections_dropped_from_rt(custom_routing_opener):
     readers["db1"] = [str(READER2_ADDRESS)]
 
     cx2 = pool.acquire(READ_ACCESS, 30, "db1", None, None, None)
-    assert cx2.unresolved_address == READER2_ADDRESS
+    assert cx2.address == READER2_ADDRESS
 
     cx1.close.assert_called_once()
     assert len(pool.connections[READER1_ADDRESS]) == 0
@@ -740,14 +747,14 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
     )
     cx1 = pool.acquire(READ_ACCESS, 30, "db1", None, None, None)
     pool.release(cx1)
-    assert cx1.unresolved_address in {READER1_ADDRESS, READER2_ADDRESS}
+    assert cx1.address in {READER1_ADDRESS, READER2_ADDRESS}
     reader1_connection_count = len(pool.connections[READER1_ADDRESS])
     reader2_connection_count = len(pool.connections[READER2_ADDRESS])
     assert reader1_connection_count + reader2_connection_count == 1
 
     cx2 = pool.acquire(READ_ACCESS, 30, "db2", None, None, None)
     pool.release(cx2)
-    assert cx2.unresolved_address == READER1_ADDRESS
+    assert cx2.address == READER1_ADDRESS
     cx1.close.assert_not_called()
     cx2.close.assert_not_called()
     assert len(pool.connections[READER1_ADDRESS]) == 1
@@ -759,7 +766,7 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
 
     cx3 = pool.acquire(READ_ACCESS, 30, "db2", None, None, None)
     pool.release(cx3)
-    assert cx3.unresolved_address == READER3_ADDRESS
+    assert cx3.address == READER3_ADDRESS
 
     cx1.close.assert_not_called()
     cx2.close.assert_not_called()
@@ -767,3 +774,32 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
     assert len(pool.connections[READER1_ADDRESS]) == 1
     assert len(pool.connections[READER2_ADDRESS]) == reader2_connection_count
     assert len(pool.connections[READER3_ADDRESS]) == 1
+
+
+@mark_sync_test
+def test_configures_address_cb_on_connection(opener):
+    pool = _simple_pool(opener)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+
+    assert cx.address_callback == pool._move_connection
+
+
+@mark_sync_test
+def test_moves_connection_to_advertised_address_after_open(
+    custom_routing_opener,
+):
+    advertised_address = Address(("example.com", 1234))
+
+    def on_open(connection):
+        assert connection.address != advertised_address  # sanity check
+        connection.advertised_address = advertised_address
+
+    opener = custom_routing_opener(on_open=on_open)
+    pool = _simple_pool(opener)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+
+    # assert has been moved
+    assert cx.address == advertised_address
+    assert len(pool.connections[READER1_ADDRESS]) == 0
+    assert len(pool.connections[advertised_address]) == 1
+    assert cx in pool.connections[advertised_address]

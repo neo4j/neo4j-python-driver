@@ -24,6 +24,7 @@ from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
 from ..._meta import BOLT_AGENT_DICT
+from ...addressing import Address
 from ...api import (
     READ_ACCESS,
     Version,
@@ -496,12 +497,12 @@ class AsyncBolt5x0(AsyncBolt):
                 await response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
-                    await self.pool.deactivate(address=self.unresolved_address)
+                    await self.pool.deactivate(address=self.address)
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
                     await self.pool.on_write_failure(
-                        address=self.unresolved_address,
+                        address=self.address,
                         database=self.last_database,
                     )
                 raise
@@ -513,7 +514,7 @@ class AsyncBolt5x0(AsyncBolt):
             sig_int = ord(summary_signature)
             raise BoltProtocolError(
                 f"Unexpected response message with signature {sig_int:02X}",
-                self.unresolved_address,
+                self.address,
             )
 
         return len(details), 1
@@ -1204,12 +1205,12 @@ class AsyncBolt5x7(AsyncBolt5x6):
                 await response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
-                    await self.pool.deactivate(address=self.unresolved_address)
+                    await self.pool.deactivate(address=self.address)
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
                     await self.pool.on_write_failure(
-                        address=self.unresolved_address,
+                        address=self.address,
                         database=self.last_database,
                     )
                 raise
@@ -1221,7 +1222,51 @@ class AsyncBolt5x7(AsyncBolt5x6):
             sig_int = ord(summary_signature)
             raise BoltProtocolError(
                 f"Unexpected response message with signature {sig_int:02X}",
-                self.unresolved_address,
+                self.address,
             )
 
         return len(details), 1
+
+
+class AsyncBolt5x8(AsyncBolt5x7):
+    PROTOCOL_VERSION = Version(5, 8)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
+            dehydration_hooks, hydration_hooks
+        )
+        logged_auth_dict = dict(self.auth_dict)
+        if "credentials" in logged_auth_dict:
+            logged_auth_dict["credentials"] = "*******"
+        log.debug("[#%04X]  C: LOGON %r", self.local_port, logged_auth_dict)
+        self._append(
+            b"\x6a",
+            (self.auth_dict,),
+            response=LogonResponse(
+                self, "logon", hydration_hooks, on_success=self._logon_success
+            ),
+            dehydration_hooks=dehydration_hooks,
+        )
+
+    async def _logon_success(self, meta: object) -> None:
+        if not isinstance(meta, dict):
+            log.warning(
+                "[#%04X]  _: <NON-FATAL PROTOCOL VIOLATION> "
+                "LOGON expected dictionary metadata, got %r",
+                self.local_port,
+                meta,
+            )
+            return
+        address = meta.get("advertised_address", ...)
+        if address is ...:
+            return
+        if not isinstance(address, str):
+            log.warning(
+                "[#%04X]  _: <NON-FATAL PROTOCOL VIOLATION> "
+                "LOGON expected string advertised_address, got %r",
+                self.local_port,
+                address,
+            )
+            return
+        self.advertised_address = Address.parse(address, default_port=7687)
+        await AsyncUtil.callback(self.address_callback, self)

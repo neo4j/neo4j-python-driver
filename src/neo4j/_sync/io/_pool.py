@@ -116,7 +116,7 @@ class IOPool(abc.ABC):
         return None  # no free connection available
 
     def _remove_connection(self, connection):
-        address = connection.unresolved_address
+        address = connection.address
         with self.lock:
             log.debug(
                 "[#%04X]  _: <POOL> remove connection from pool %r %s",
@@ -130,6 +130,7 @@ class IOPool(abc.ABC):
             # connection isn't in the pool anymore.
             with suppress(ValueError):
                 self.connections.get(address, []).remove(connection)
+            self._log_pool_stats()
 
     def _acquire_from_pool_checked(
         self, address, health_check, deadline
@@ -191,11 +192,13 @@ class IOPool(abc.ABC):
                     self.connections_reservations[address] -= 1
                     released_reservation = True
                     self.connections[address].append(connection)
+                    self._log_pool_stats()
                 return connection
             finally:
                 if not released_reservation:
                     with self.lock:
                         self.connections_reservations[address] -= 1
+                        self._log_pool_stats()
 
         max_pool_size = self.pool_config.max_connection_pool_size
         infinite_pool_size = max_pool_size < 0 or max_pool_size == float("inf")
@@ -207,6 +210,7 @@ class IOPool(abc.ABC):
             if infinite_pool_size or pool_size < max_pool_size:
                 # there's room for a new connection
                 self.connections_reservations[address] += 1
+                self._log_pool_stats()
                 return connection_creator
         return None
 
@@ -344,7 +348,12 @@ class IOPool(abc.ABC):
                         f"{deadline.original_timeout!r}s (timeout)"
                     )
         log.debug("[#0000]  _: <POOL> trying to hand out new connection")
-        return connection_creator()
+        connection = connection_creator()
+        self._on_new_connection(connection)
+        return connection
+
+    def _on_new_connection(self, connection):
+        return
 
     @abc.abstractmethod
     def acquire(
@@ -494,6 +503,7 @@ class IOPool(abc.ABC):
                 connections.remove(conn)
             if not self.connections[address]:
                 del self.connections[address]
+            self._log_pool_stats()
 
         self._close_connections(closable_connections)
 
@@ -505,7 +515,7 @@ class IOPool(abc.ABC):
     def on_neo4j_error(self, error, connection):
         assert isinstance(error, Neo4jError)
         if error._unauthenticates_all_connections():
-            address = connection.unresolved_address
+            address = connection.address
             log.debug(
                 "[#0000]  _: <POOL> mark all connections to %r as "
                 "unauthenticated",
@@ -537,9 +547,29 @@ class IOPool(abc.ABC):
                     for address in list(self.connections)
                     for connection in self.connections.pop(address, ())
                 ]
+                self._log_pool_stats()
             self._close_connections(connections)
         except TypeError:
             pass
+
+    def _log_pool_stats(self):
+        level = logging.DEBUG
+        if log.isEnabledFor(level):
+            with self.lock:
+                addresses = sorted(
+                    set(self.connections.keys())
+                    | set(self.connections_reservations.keys())
+                )
+                stats = {
+                    address: {
+                        "connections": len(self.connections.get(address, ())),
+                        "reservations": self.connections_reservations.get(
+                            address, 0
+                        ),
+                    }
+                    for address in addresses
+                }
+                log.log(level, "[#0000]  _: <POOL> stats %r", stats)
 
 
 class BoltPool(IOPool):
@@ -852,6 +882,8 @@ class Neo4jPool(IOPool):
                     )
                     if callable(database_callback):
                         database_callback(new_database)
+
+                    self.update_connection_pool(database=new_database)
                     return True
             self.deactivate(router)
         return False
@@ -940,6 +972,9 @@ class Neo4jPool(IOPool):
             raise ServiceUnavailable("Unable to retrieve routing information")
 
     def update_connection_pool(self, *, database):
+        log.debug(
+            "[#0000]  _: <POOL> update connection pool, database=%r", database
+        )
         with self.refresh_lock:
             routing_tables = [self.get_or_create_routing_table(database)]
             for db in self.routing_tables:
@@ -949,6 +984,11 @@ class Neo4jPool(IOPool):
         servers = set.union(*(rt.servers() for rt in routing_tables))
         for address in list(self.connections):
             if address._unresolved not in servers:
+                log.debug(
+                    "[#0000]  _: <POOL> deactivating address (not used in any "
+                    "routing table): %r",
+                    address,
+                )
                 super().deactivate(address)
 
     def ensure_routing_table_is_fresh(
@@ -1010,7 +1050,6 @@ class Neo4jPool(IOPool):
                 acquisition_timeout=acquisition_timeout,
                 database_callback=database_callback,
             )
-            self.update_connection_pool(database=database)
 
             return True
 
@@ -1042,6 +1081,10 @@ class Neo4jPool(IOPool):
                     "No write service currently available"
                 )
         return choice(addresses_by_usage[min(addresses_by_usage)])
+
+    def _on_new_connection(self, connection):
+        self._move_connection(connection)
+        connection.address_callback = self._move_connection
 
     def acquire(
         self,
@@ -1146,3 +1189,32 @@ class Neo4jPool(IOPool):
             if table is not None:
                 table.writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
+
+    def _move_connection(self, connection):
+        to_addr = connection.advertised_address
+        if to_addr is None:
+            return
+        from_addr = connection.address
+        if from_addr == to_addr:
+            return
+        log.debug(
+            "[#%04X]  _: <POOL> moving connection from %r to %r",
+            connection.local_port,
+            from_addr,
+            to_addr,
+        )
+        with self.lock:
+            old_pool = self.connections[from_addr]
+            new_pool = self.connections[to_addr]
+            try:
+                old_pool.remove(connection)
+            except ValueError:
+                log.debug(
+                    "[#%04X]  _: <POOL> abort move (connection not in pool)",
+                    connection.local_port,
+                )
+                return
+            new_pool.append(connection)
+            connection.address = connection.advertised_address
+            self._log_pool_stats()
+            self.cond.notify_all()

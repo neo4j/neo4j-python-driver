@@ -123,7 +123,7 @@ class Result(NonConcurrentMethodChecker):
         self._on_error = on_error
         self._on_closed = on_closed
         self._metadata: dict = {}
-        self._address: Address = self._connection.unresolved_address
+        self._address: Address = self._connection.address
         self._keys: tuple[str, ...] = ()
         self._had_record = False
         self._record_buffer: deque[Record] = deque()

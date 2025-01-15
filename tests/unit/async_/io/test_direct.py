@@ -25,6 +25,7 @@ from neo4j._conf import (
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
+from neo4j.addressing import Address
 from neo4j.auth_management import AsyncAuthManagers
 from neo4j.exceptions import (
     ClientError,
@@ -36,6 +37,8 @@ from ...._async_compat import mark_async_test
 
 class AsyncFakeBoltPool(AsyncIOPool):
     is_direct_pool = False
+
+    __on_open = None
 
     def __init__(self, connection_gen, address, *, auth=None, **config):
         self.buffered_connection_mocks = []
@@ -54,6 +57,8 @@ class AsyncFakeBoltPool(AsyncIOPool):
             else:
                 mock = connection_gen()
                 mock.address = addr
+            if self.__on_open is not None:
+                self.__on_open(mock)
             return mock
 
         super().__init__(opener, self.pool_config, self.workspace_config)
@@ -273,3 +278,49 @@ async def test_liveness_check(
         cx1.reset.reset_mock()
         await pool.release(cx1)
         cx1.reset.assert_not_called()
+
+
+@pytest.fixture
+async def simple_pool_factory(async_fake_connection_generator):
+    pools = []
+
+    def factory(**config):
+        pool_ = AsyncFakeBoltPool(
+            async_fake_connection_generator,
+            ("127.0.0.1", 7687),
+            **config,
+        )
+        pools.append(pool_)
+        return pool_
+
+    yield factory
+
+    for pool in pools:
+        await pool.close()
+
+
+async def test_configures_no_address_cb_on_connection(simple_pool_factory):
+    pool = simple_pool_factory()
+    cx = await pool.acquire("r", Deadline(3), "test_db", None, None, None)
+
+    assert cx.address_callback is None
+
+
+async def test_does_not_move_connection_to_advertised_address_after_open(
+    simple_pool_factory,
+):
+    advertised_address = Address(("example.com", 1234))
+
+    def on_open(connection):
+        assert connection.address != advertised_address  # sanity check
+        connection.advertised_address = advertised_address
+
+    pool = simple_pool_factory()
+    pool._AsyncFakeBoltPool__on_open = on_open
+    cx = await pool.acquire("r", Deadline(3), "test_db", None, None, None)
+
+    # assert has been moved
+    assert cx.address == pool.address
+    assert len(pool.connections[pool.address]) == 1
+    assert len(pool.connections[advertised_address]) == 0
+    assert cx in pool.connections[pool.address]

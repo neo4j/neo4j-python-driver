@@ -61,6 +61,7 @@ from ._common import (
 
 if t.TYPE_CHECKING:
     from ..._api import TelemetryAPI
+    from ...addressing import Address
 
 
 # Set up logger
@@ -135,9 +136,12 @@ class AsyncBolt:
     # results for it.
     most_recent_qid = None
 
+    address_callback = None
+    advertised_address: Address | None = None
+
     def __init__(
         self,
-        unresolved_address,
+        address,
         sock,
         max_connection_lifetime,
         *,
@@ -149,12 +153,12 @@ class AsyncBolt:
         notifications_disabled_classifications=None,
         telemetry_disabled=False,
     ):
-        self.unresolved_address = unresolved_address
+        self._address = address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
         self.server_info = ServerInfo(
             ResolvedAddress(
-                sock.getpeername(), host_name=unresolved_address.host
+                sock.getpeername(), host_name=address._unresolved.host
             ),
             self.PROTOCOL_VERSION,
         )
@@ -199,6 +203,15 @@ class AsyncBolt:
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
             self.close()
+
+    @property
+    def address(self):
+        return self._address
+
+    @address.setter
+    def address(self, value):
+        self._address = value
+        self.server_info._address = value._unresolved
 
     @abc.abstractmethod
     def _get_server_state_manager(self) -> ServerStateManagerBase: ...
@@ -308,6 +321,7 @@ class AsyncBolt:
             AsyncBolt5x5,
             AsyncBolt5x6,
             AsyncBolt5x7,
+            AsyncBolt5x8,
         )
 
         handlers = {
@@ -325,6 +339,7 @@ class AsyncBolt:
             AsyncBolt5x5.PROTOCOL_VERSION: AsyncBolt5x5,
             AsyncBolt5x6.PROTOCOL_VERSION: AsyncBolt5x6,
             AsyncBolt5x7.PROTOCOL_VERSION: AsyncBolt5x7,
+            AsyncBolt5x8.PROTOCOL_VERSION: AsyncBolt5x8,
         }
 
         if protocol_version is None:
@@ -461,7 +476,10 @@ class AsyncBolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 7):
+        if protocol_version == (5, 8):
+            from ._bolt5 import AsyncBolt5x8
+            bolt_cls = AsyncBolt5x8
+        elif protocol_version == (5, 7):
             from ._bolt5 import AsyncBolt5x7
             bolt_cls = AsyncBolt5x7
         elif protocol_version == (5, 6):
@@ -954,12 +972,12 @@ class AsyncBolt:
         if self.closed():
             raise ServiceUnavailable(
                 "Failed to write to closed connection "
-                f"{self.unresolved_address!r} ({self.server_info.address!r})"
+                f"{self.address!r} ({self.server_info.address!r})"
             )
         if self.defunct():
             raise ServiceUnavailable(
                 "Failed to write to defunct connection "
-                f"{self.unresolved_address!r} ({self.server_info.address!r})"
+                f"{self.address!r} ({self.server_info.address!r})"
             )
 
         await self._send_all()
@@ -977,12 +995,12 @@ class AsyncBolt:
         if self._closed:
             raise ServiceUnavailable(
                 "Failed to read from closed connection "
-                f"{self.unresolved_address!r} ({self.server_info.address!r})"
+                f"{self.address!r} ({self.server_info.address!r})"
             )
         if self._defunct:
             raise ServiceUnavailable(
                 "Failed to read from defunct connection "
-                f"{self.unresolved_address!r} ({self.server_info.address!r})"
+                f"{self.address!r} ({self.server_info.address!r})"
             )
         if not self.responses:
             return 0, 0
@@ -1014,14 +1032,14 @@ class AsyncBolt:
     async def _set_defunct_read(self, error=None, silent=False):
         message = (
             "Failed to read from defunct connection "
-            f"{self.unresolved_address!r} ({self.server_info.address!r})"
+            f"{self.address!r} ({self.server_info.address!r})"
         )
         await self._set_defunct(message, error=error, silent=silent)
 
     async def _set_defunct_write(self, error=None, silent=False):
         message = (
             "Failed to write data to connection "
-            f"{self.unresolved_address!r} ({self.server_info.address!r})"
+            f"{self.address!r} ({self.server_info.address!r})"
         )
         await self._set_defunct(message, error=error, silent=silent)
 
@@ -1060,7 +1078,7 @@ class AsyncBolt:
             # connection again.
             await self.close()
             if self.pool and not self._get_server_state_manager().failed():
-                await self.pool.deactivate(address=self.unresolved_address)
+                await self.pool.deactivate(address=self.address)
 
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
