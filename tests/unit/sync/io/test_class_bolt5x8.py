@@ -21,15 +21,15 @@ import pytest
 
 import neo4j
 from neo4j._api import TelemetryAPI
-from neo4j._async.config import AsyncPoolConfig
-from neo4j._async.io._bolt5 import AsyncBolt5x7
 from neo4j._meta import (
     BOLT_AGENT_DICT,
     USER_AGENT,
 )
+from neo4j._sync.config import PoolConfig
+from neo4j._sync.io._bolt5 import Bolt5x8
 from neo4j.exceptions import Neo4jError
 
-from ...._async_compat import mark_async_test
+from ...._async_compat import mark_sync_test
 from ....iter_util import powerset
 
 
@@ -37,7 +37,7 @@ from ....iter_util import powerset
 def test_conn_is_stale(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
-    connection = AsyncBolt5x7(
+    connection = Bolt5x8(
         address, fake_socket(address), max_connection_lifetime
     )
     if set_stale:
@@ -49,7 +49,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
-    connection = AsyncBolt5x7(
+    connection = Bolt5x8(
         address, fake_socket(address), max_connection_lifetime
     )
     if set_stale:
@@ -61,7 +61,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 def test_conn_is_not_stale(fake_socket, set_stale):
     address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
-    connection = AsyncBolt5x7(
+    connection = Bolt5x8(
         address, fake_socket(address), max_connection_lifetime
     )
     if set_stale:
@@ -81,16 +81,16 @@ def test_conn_is_not_stale(fake_socket, set_stale):
         ),
     ),
 )
-@mark_async_test
-async def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
+@mark_sync_test
+def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.begin(*args, **kwargs)
-    await connection.send_all()
-    tag, is_fields = await socket.pop_message()
+    connection.send_all()
+    tag, is_fields = socket.pop_message()
     assert tag == b"\x11"
     assert tuple(is_fields) == expected_fields
 
@@ -111,30 +111,30 @@ async def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
         ),
     ),
 )
-@mark_async_test
-async def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
+@mark_sync_test
+def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.run(*args, **kwargs)
-    await connection.send_all()
-    tag, is_fields = await socket.pop_message()
+    connection.send_all()
+    tag, is_fields = socket.pop_message()
     assert tag == b"\x10"
     assert tuple(is_fields) == expected_fields
 
 
-@mark_async_test
-async def test_n_extra_in_discard(fake_socket):
+@mark_sync_test
+def test_n_extra_in_discard(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.discard(n=666)
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
+    connection.send_all()
+    tag, fields = socket.pop_message()
     assert tag == b"\x2f"
     assert len(fields) == 1
     assert fields[0] == {"n": 666}
@@ -147,16 +147,16 @@ async def test_n_extra_in_discard(fake_socket):
         (-1, {"n": -1}),
     ],
 )
-@mark_async_test
-async def test_qid_extra_in_discard(fake_socket, test_input, expected):
+@mark_sync_test
+def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.discard(qid=test_input)
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
+    connection.send_all()
+    tag, fields = socket.pop_message()
     assert tag == b"\x2f"
     assert len(fields) == 1
     assert fields[0] == expected
@@ -169,16 +169,16 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
         (-1, {"n": 666}),
     ],
 )
-@mark_async_test
-async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
+@mark_sync_test
+def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.discard(n=666, qid=test_input)
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
+    connection.send_all()
+    tag, fields = socket.pop_message()
     assert tag == b"\x2f"
     assert len(fields) == 1
     assert fields[0] == expected
@@ -191,16 +191,16 @@ async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
         (-1, {"n": -1}),
     ],
 )
-@mark_async_test
-async def test_n_extra_in_pull(fake_socket, test_input, expected):
+@mark_sync_test
+def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.pull(n=test_input)
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
+    connection.send_all()
+    tag, fields = socket.pop_message()
     assert tag == b"\x3f"
     assert len(fields) == 1
     assert fields[0] == expected
@@ -213,54 +213,54 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
         (-1, {"n": -1}),
     ],
 )
-@mark_async_test
-async def test_qid_extra_in_pull(fake_socket, test_input, expected):
+@mark_sync_test
+def test_qid_extra_in_pull(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.pull(qid=test_input)
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
+    connection.send_all()
+    tag, fields = socket.pop_message()
     assert tag == b"\x3f"
     assert len(fields) == 1
     assert fields[0] == expected
 
 
-@mark_async_test
-async def test_n_and_qid_extras_in_pull(fake_socket):
+@mark_sync_test
+def test_n_and_qid_extras_in_pull(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
-        address, socket, AsyncPoolConfig.max_connection_lifetime
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
+        address, socket, PoolConfig.max_connection_lifetime
     )
     connection.pull(n=666, qid=777)
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
+    connection.send_all()
+    tag, fields = socket.pop_message()
     assert tag == b"\x3f"
     assert len(fields) == 1
     assert fields[0] == {"n": 666, "qid": 777}
 
 
-@mark_async_test
-async def test_hello_passes_routing_metadata(fake_socket_pair):
+@mark_sync_test
+def test_hello_passes_routing_metadata(fake_socket_pair):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.4.0"})
-    await sockets.server.send_message(b"\x70", {})
-    connection = AsyncBolt5x7(
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/4.4.0"})
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x8(
         address,
         sockets.client,
-        AsyncPoolConfig.max_connection_lifetime,
+        PoolConfig.max_connection_lifetime,
         routing_context={"foo": "bar"},
     )
-    await connection.hello()
-    tag, fields = await sockets.server.pop_message()
+    connection.hello()
+    tag, fields = sockets.server.pop_message()
     assert tag == b"\x01"
     assert len(fields) == 1
     assert fields[0]["routing"] == {"foo": "bar"}
@@ -269,30 +269,30 @@ async def test_hello_passes_routing_metadata(fake_socket_pair):
 @pytest.mark.parametrize("api", TelemetryAPI)
 @pytest.mark.parametrize("serv_enabled", (True, False))
 @pytest.mark.parametrize("driver_disabled", (True, False))
-@mark_async_test
-async def test_telemetry_message(
+@mark_sync_test
+def test_telemetry_message(
     fake_socket, api, serv_enabled, driver_disabled
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
         address,
         socket,
-        AsyncPoolConfig.max_connection_lifetime,
+        PoolConfig.max_connection_lifetime,
         telemetry_disabled=driver_disabled,
     )
     if serv_enabled:
         connection.connection_hints["telemetry.enabled"] = True
     connection.telemetry(api)
-    await connection.send_all()
+    connection.send_all()
 
     if serv_enabled and not driver_disabled:
-        tag, fields = await socket.pop_message()
+        tag, fields = socket.pop_message()
         assert tag == b"\x54"
         assert fields == [int(api)]
     else:
         with pytest.raises(OSError):
-            await socket.pop_message()
+            socket.pop_message()
 
 
 @pytest.mark.parametrize(
@@ -310,26 +310,26 @@ async def test_telemetry_message(
         ({"connection.recv_timeout_seconds": "1"}, False),
     ),
 )
-@mark_async_test
-async def test_hint_recv_timeout_seconds(
+@mark_sync_test
+def test_hint_recv_timeout_seconds(
     fake_socket_pair, hints, valid, caplog, mocker
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
     sockets.client.settimeout = mocker.Mock()
-    await sockets.server.send_message(
+    sockets.server.send_message(
         b"\x70", {"server": "Neo4j/4.3.4", "hints": hints}
     )
-    await sockets.server.send_message(b"\x70", {})
-    connection = AsyncBolt5x7(
-        address, sockets.client, AsyncPoolConfig.max_connection_lifetime
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x8(
+        address, sockets.client, PoolConfig.max_connection_lifetime
     )
     with caplog.at_level(logging.INFO):
-        await connection.hello()
+        connection.hello()
     if valid:
         if "connection.recv_timeout_seconds" in hints:
             sockets.client.settimeout.assert_called_once_with(
@@ -365,24 +365,24 @@ CREDENTIALS = "+++super-secret-sauce+++"
         neo4j.Auth("scheme", "principal", CREDENTIALS, "realm", foo="bar"),
     ),
 )
-@mark_async_test
-async def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
+@mark_sync_test
+def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
-    await sockets.server.send_message(b"\x70", {})
-    connection = AsyncBolt5x7(
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x8(
         address,
         sockets.client,
-        AsyncPoolConfig.max_connection_lifetime,
+        PoolConfig.max_connection_lifetime,
         auth=auth,
     )
     with caplog.at_level(logging.DEBUG):
-        await connection.hello()
+        connection.hello()
 
     if isinstance(auth, tuple):
         auth = neo4j.basic_auth(*auth)
@@ -414,8 +414,8 @@ def _assert_notifications_in_extra(extra, expected):
     ("cls_dis_clss", "method_dis_clss"),
     itertools.product((None, [], ["HINT"], ["HINT", "DEPRECATION"]), repeat=2),
 )
-@mark_async_test
-async def test_supports_notification_filters(
+@mark_sync_test
+def test_supports_notification_filters(
     fake_socket,
     method,
     args,
@@ -426,11 +426,11 @@ async def test_supports_notification_filters(
     method_dis_clss,
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
-    socket = fake_socket(address, AsyncBolt5x7.UNPACKER_CLS)
-    connection = AsyncBolt5x7(
+    socket = fake_socket(address, Bolt5x8.UNPACKER_CLS)
+    connection = Bolt5x8(
         address,
         socket,
-        AsyncPoolConfig.max_connection_lifetime,
+        PoolConfig.max_connection_lifetime,
         notifications_min_severity=cls_min_sev,
         notifications_disabled_classifications=cls_dis_clss,
     )
@@ -441,9 +441,9 @@ async def test_supports_notification_filters(
         notifications_min_severity=method_min_sev,
         notifications_disabled_classifications=method_dis_clss,
     )
-    await connection.send_all()
+    connection.send_all()
 
-    _, fields = await socket.pop_message()
+    _, fields = socket.pop_message()
     extra = fields[extra_idx]
     expected = {}
     if method_min_sev is not None:
@@ -457,29 +457,29 @@ async def test_supports_notification_filters(
 @pytest.mark.parametrize(
     "dis_clss", (None, [], ["HINT"], ["HINT", "DEPRECATION"])
 )
-@mark_async_test
-async def test_hello_supports_notification_filters(
+@mark_sync_test
+def test_hello_supports_notification_filters(
     fake_socket_pair, min_sev, dis_clss
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
-    await sockets.server.send_message(b"\x70", {})
-    connection = AsyncBolt5x7(
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x8(
         address,
         sockets.client,
-        AsyncPoolConfig.max_connection_lifetime,
+        PoolConfig.max_connection_lifetime,
         notifications_min_severity=min_sev,
         notifications_disabled_classifications=dis_clss,
     )
 
-    await connection.hello()
+    connection.hello()
 
-    _tag, fields = await sockets.server.pop_message()
+    _tag, fields = sockets.server.pop_message()
     extra = fields[0]
     expected = {}
     if min_sev is not None:
@@ -489,26 +489,26 @@ async def test_hello_supports_notification_filters(
     _assert_notifications_in_extra(extra, expected)
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize(
     "user_agent", (None, "test user agent", "", USER_AGENT)
 )
-async def test_user_agent(fake_socket_pair, user_agent):
+def test_user_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
-    await sockets.server.send_message(b"\x70", {})
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = AsyncBolt5x7(
+    connection = Bolt5x8(
         address, sockets.client, max_connection_lifetime, user_agent=user_agent
     )
-    await connection.hello()
+    connection.hello()
 
-    _tag, fields = await sockets.server.pop_message()
+    _tag, fields = sockets.server.pop_message()
     extra = fields[0]
     if not user_agent:
         assert extra["user_agent"] == USER_AGENT
@@ -516,31 +516,31 @@ async def test_user_agent(fake_socket_pair, user_agent):
         assert extra["user_agent"] == user_agent
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize(
     "user_agent", (None, "test user agent", "", USER_AGENT)
 )
-async def test_sends_bolt_agent(fake_socket_pair, user_agent):
+def test_sends_bolt_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
-    await sockets.server.send_message(b"\x70", {})
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = AsyncBolt5x7(
+    connection = Bolt5x8(
         address, sockets.client, max_connection_lifetime, user_agent=user_agent
     )
-    await connection.hello()
+    connection.hello()
 
-    _tag, fields = await sockets.server.pop_message()
+    _tag, fields = sockets.server.pop_message()
     extra = fields[0]
     assert extra["bolt_agent"] == BOLT_AGENT_DICT
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize(
     ("func", "args", "extra_idx"),
     (
@@ -578,25 +578,25 @@ async def test_sends_bolt_agent(fake_socket_pair, user_agent):
         ),
     ),
 )
-async def test_tx_timeout(
+def test_tx_timeout(
     fake_socket_pair, func, args, extra_idx, timeout, res
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    await sockets.server.send_message(b"\x70", {})
-    connection = AsyncBolt5x7(address, sockets.client, 0)
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x8(address, sockets.client, 0)
     func = getattr(connection, func)
     if isinstance(res, Exception):
         with pytest.raises(type(res), match=str(res)):
             func(*args, timeout=timeout)
     else:
         func(*args, timeout=timeout)
-        await connection.send_all()
-        _tag, fields = await sockets.server.pop_message()
+        connection.send_all()
+        _tag, fields = sockets.server.pop_message()
         extra = fields[extra_idx]
         if timeout is None:
             assert "tx_timeout" not in extra
@@ -615,21 +615,21 @@ async def test_tx_timeout(
         2,
     ),
 )
-@mark_async_test
-async def test_tracks_last_database(fake_socket_pair, actions):
+@mark_sync_test
+def test_tracks_last_database(fake_socket_pair, actions):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    connection = AsyncBolt5x7(address, sockets.client, 0)
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
-    await sockets.server.send_message(b"\x70", {})
-    await connection.hello()
+    connection = Bolt5x8(address, sockets.client, 0)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    sockets.server.send_message(b"\x70", {})
+    connection.hello()
     assert connection.last_database is None
     for action, finish, db in actions:
-        await sockets.server.send_message(b"\x70", {})
+        sockets.server.send_message(b"\x70", {})
         if action == "run":
             connection.run("RETURN 1", db=db)
         elif action == "begin":
@@ -637,19 +637,19 @@ async def test_tracks_last_database(fake_socket_pair, actions):
         elif action == "begin_run":
             connection.begin(db=db)
             assert connection.last_database == db
-            await sockets.server.send_message(b"\x70", {})
+            sockets.server.send_message(b"\x70", {})
             connection.run("RETURN 1")
         else:
             raise ValueError(action)
 
         assert connection.last_database == db
-        await connection.send_all()
-        await connection.fetch_all()
+        connection.send_all()
+        connection.fetch_all()
         assert connection.last_database == db
 
-        await sockets.server.send_message(b"\x70", {})
+        sockets.server.send_message(b"\x70", {})
         if finish == "reset":
-            await connection.reset()
+            connection.reset()
         elif finish == "commit":
             if action == "run":
                 connection.pull()
@@ -663,8 +663,8 @@ async def test_tracks_last_database(fake_socket_pair, actions):
         else:
             raise ValueError(finish)
 
-        await connection.send_all()
-        await connection.fetch_all()
+        connection.send_all()
+        connection.fetch_all()
 
         assert connection.last_database == db
 
@@ -695,8 +695,8 @@ DEFAULT_DIAG_REC_PAIRS = (
     ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))
-@mark_async_test
-async def test_enriches_statuses(
+@mark_sync_test
+def test_enriches_statuses(
     sent_diag_records,
     method,
     fake_socket_pair,
@@ -704,10 +704,10 @@ async def test_enriches_statuses(
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    connection = AsyncBolt5x7(address, sockets.client, 0)
+    connection = Bolt5x8(address, sockets.client, 0)
 
     sent_metadata = {
         "statuses": [
@@ -724,7 +724,7 @@ async def test_enriches_statuses(
             for r in sent_diag_records
         ]
     }
-    await sockets.server.send_message(b"\x70", sent_metadata)
+    sockets.server.send_message(b"\x70", sent_metadata)
 
     received_metadata = None
 
@@ -733,8 +733,8 @@ async def test_enriches_statuses(
         received_metadata = metadata
 
     getattr(connection, method)(on_success=on_success)
-    await connection.send_all()
-    await connection.fetch_all()
+    connection.send_all()
+    connection.fetch_all()
 
     def extend_diag_record(r):
         if r is ...:
@@ -782,18 +782,18 @@ async def test_enriches_statuses(
         upper_limit=3,
     ),
 )
-@mark_async_test
-async def test_enriches_error_statuses(
+@mark_sync_test
+def test_enriches_error_statuses(
     sent_diag_records,
     fake_socket_pair,
 ):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
-    connection = AsyncBolt5x7(address, sockets.client, 0)
+    connection = Bolt5x8(address, sockets.client, 0)
     sent_diag_records = [
         {**r, "_classification": "CLIENT_ERROR", "_status_parameters": {}}
         if isinstance(r, dict)
@@ -803,7 +803,7 @@ async def test_enriches_error_statuses(
 
     sent_metadata = _build_error_hierarchy_metadata(sent_diag_records)
 
-    await sockets.server.send_message(b"\x7f", sent_metadata)
+    sockets.server.send_message(b"\x7f", sent_metadata)
 
     received_metadata = None
 
@@ -812,9 +812,9 @@ async def test_enriches_error_statuses(
         received_metadata = metadata
 
     connection.run("RETURN 1", on_failure=on_failure)
-    await connection.send_all()
+    connection.send_all()
     with pytest.raises(Neo4jError):
-        await connection.fetch_all()
+        connection.fetch_all()
 
     def extend_diag_record(r):
         if r is ...:
@@ -851,22 +851,22 @@ def _build_error_hierarchy_metadata(diag_records_metadata):
 
 
 @pytest.mark.parametrize("ssr_hint", (True, False, None))
-@mark_async_test
-async def test_ssr_enabled(ssr_hint, fake_socket_pair):
+@mark_sync_test
+def test_ssr_enabled(ssr_hint, fake_socket_pair):
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address,
-        packer_cls=AsyncBolt5x7.PACKER_CLS,
-        unpacker_cls=AsyncBolt5x7.UNPACKER_CLS,
+        packer_cls=Bolt5x8.PACKER_CLS,
+        unpacker_cls=Bolt5x8.UNPACKER_CLS,
     )
     meta = {"server": "Neo4j/4.3.4"}
     if ssr_hint is not None:
         meta["hints"] = {"ssr.enabled": ssr_hint}
-    await sockets.server.send_message(b"\x70", meta)
-    await sockets.server.send_message(b"\x70", {})
-    connection = AsyncBolt5x7(
-        address, sockets.client, AsyncPoolConfig.max_connection_lifetime
+    sockets.server.send_message(b"\x70", meta)
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x8(
+        address, sockets.client, PoolConfig.max_connection_lifetime
     )
     assert connection.ssr_enabled is False
-    await connection.hello()
-    assert connection.ssr_enabled is False
+    connection.hello()
+    assert connection.ssr_enabled is bool(ssr_hint)

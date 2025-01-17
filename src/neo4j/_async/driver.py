@@ -799,7 +799,8 @@ class AsyncDriver:
         :param database_:
             Database to execute the query against.
 
-            None (default) uses the database configured on the server side.
+            :data:`None` (default) uses the database configured on the server
+            side.
 
             .. Note::
                 It is recommended to always specify the database explicitly

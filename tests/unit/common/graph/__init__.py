@@ -12,34 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-"""
-Low-level functionality required for speaking Bolt.
-
-It is not intended to be used directly by driver users. Instead, the `session`
-module provides the main user-facing abstractions.
-"""
-
-__all__ = [
-    "AcquisitionAuth",
-    "AcquisitionDatabase",
-    "Bolt",
-    "BoltPool",
-    "Neo4jPool",
-    "ConnectionErrorHandler",
-    "check_supported_server_product",
-]
-
-
-from ._bolt import Bolt
-from ._common import (
-    check_supported_server_product,
-    ConnectionErrorHandler,
-)
-from ._pool import (
-    AcquisitionAuth,
-    AcquisitionDatabase,
-    BoltPool,
-    Neo4jPool,
-)

@@ -25,6 +25,7 @@ from time import monotonic
 
 from ..._async_compat.network import BoltSocket
 from ..._async_compat.util import Util
+from ..._auth_management import to_auth_dict
 from ..._codec.hydration import (
     HydrationHandlerABC,
     v1 as hydration_v1,
@@ -39,12 +40,10 @@ from ..._meta import USER_AGENT
 from ..._sync.config import PoolConfig
 from ...addressing import ResolvedAddress
 from ...api import (
-    Auth,
     ServerInfo,
     Version,
 )
 from ...exceptions import (
-    AuthError,
     ConfigurationError,
     DriverError,
     IncompleteCommit,
@@ -158,10 +157,7 @@ class Bolt:
             ),
             self.PROTOCOL_VERSION,
         )
-        # so far `connection.recv_timeout_seconds` is the only available
-        # configuration hint that exists. Therefore, all hints can be stored at
-        # connection level. This might change in the future.
-        self.configuration_hints = {}
+        self.connection_hints = {}
         self.patch = {}
         self.outbox = Outbox(
             self.socket,
@@ -187,7 +183,7 @@ class Bolt:
             self.user_agent = USER_AGENT
 
         self.auth = auth
-        self.auth_dict = self._to_auth_dict(auth)
+        self.auth_dict = to_auth_dict(auth)
         self.auth_manager = auth_manager
         self.telemetry_disabled = telemetry_disabled
 
@@ -206,25 +202,13 @@ class Bolt:
     @abc.abstractmethod
     def _get_client_state_manager(self) -> ClientStateManagerBase: ...
 
-    @classmethod
-    def _to_auth_dict(cls, auth):
-        # Determine auth details
-        if not auth:
-            return {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            return vars(Auth("basic", *auth))
-        else:
-            try:
-                return vars(auth)
-            except (KeyError, TypeError) as e:
-                # TODO: 6.0 - change this to be a DriverError (or subclass)
-                raise AuthError(
-                    f"Cannot determine auth details from {auth!r}"
-                ) from e
-
     @property
     def connection_id(self):
         return self.server_info._metadata.get("connection_id", "<unknown id>")
+
+    @property
+    @abc.abstractmethod
+    def ssr_enabled(self) -> bool: ...
 
     @property
     @abc.abstractmethod
@@ -308,6 +292,7 @@ class Bolt:
             Bolt5x5,
             Bolt5x6,
             Bolt5x7,
+            Bolt5x8,
         )
 
         handlers = {
@@ -325,6 +310,7 @@ class Bolt:
             Bolt5x5.PROTOCOL_VERSION: Bolt5x5,
             Bolt5x6.PROTOCOL_VERSION: Bolt5x6,
             Bolt5x7.PROTOCOL_VERSION: Bolt5x7,
+            Bolt5x8.PROTOCOL_VERSION: Bolt5x8,
         }
 
         if protocol_version is None:
@@ -461,7 +447,10 @@ class Bolt:
 
         # avoid new lines after imports for better readability and conciseness
         # fmt: off
-        if protocol_version == (5, 7):
+        if protocol_version == (5, 8):
+            from ._bolt5 import Bolt5x8
+            bolt_cls = Bolt5x8
+        elif protocol_version == (5, 7):
             from ._bolt5 import Bolt5x7
             bolt_cls = Bolt5x7
         elif protocol_version == (5, 6):
@@ -626,7 +615,7 @@ class Bolt:
 
         :returns: whether the auth was changed
         """
-        new_auth_dict = self._to_auth_dict(auth)
+        new_auth_dict = to_auth_dict(auth)
         if not force and new_auth_dict == self.auth_dict:
             self.auth_manager = auth_manager
             self.auth = auth

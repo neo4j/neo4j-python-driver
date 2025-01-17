@@ -47,6 +47,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         on_closed,
         on_error,
         on_cancel,
+        on_database,
     ):
         self._connection = connection
         self._error_handling_connection = ConnectionErrorHandler(
@@ -62,6 +63,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         self._on_closed = on_closed
         self._on_error = on_error
         self._on_cancel = on_cancel
+        self._on_database = on_database
         super().__init__()
 
     async def _enter(self) -> te.Self:
@@ -92,6 +94,11 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         notifications_disabled_classifications,
         pipelined=False,
     ):
+        async def on_begin_success(metadata_):
+            db = metadata_.get("db")
+            if isinstance(db, str):
+                await AsyncUtil.callback(self._on_database, db)
+
         self._database = database
         self._connection.begin(
             bookmarks=bookmarks,
@@ -101,7 +108,10 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             db=database,
             imp_user=imp_user,
             notifications_min_severity=notifications_min_severity,
-            notifications_disabled_classifications=notifications_disabled_classifications,
+            notifications_disabled_classifications=(
+                notifications_disabled_classifications
+            ),
+            on_success=on_begin_success,
         )
         if not pipelined:
             await self._error_handling_connection.send_all()
@@ -188,6 +198,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             self._warn_notification_severity,
             self._result_on_closed_handler,
             self._error_handler,
+            None,
         )
         self._results.append(result)
 

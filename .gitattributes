@@ -1,5 +1,5 @@
 # configure github not to display generated files
 /src/neo4j/_sync/** linguist-generated=true
-/tests/unit/sync_/** linguist-generated=true
-/tests/integration/sync_/** linguist-generated=true
+/tests/unit/sync/** linguist-generated=true
+/tests/integration/sync/** linguist-generated=true
 /testkitbackend/_sync/** linguist-generated=true

@@ -15,7 +15,9 @@
     "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id'":
       "test_subtest_skips.tz_id",
     "stub\\.routing\\.test_routing_v[0-9x]+\\.RoutingV[0-9x]+\\.test_should_drop_connections_failing_liveness_check":
-        "Liveness check error handling is not (yet) unified: https://github.com/neo-technology/drivers-adr/pull/83"
+        "Liveness check error handling is not (yet) unified: https://github.com/neo-technology/drivers-adr/pull/83",
+    "'stub.homedb.test_homedb.TestHomeDbMixedCluster.test_connection_acquisition_timeout_during_fallback'":
+      "TODO: 6.0 - pending unification: connection acquisition timeout should count towards the total time spent waiting for a connection (including routing, home db resolution, ...)"
   },
   "features": {
     "Feature:API:BookmarkManager": true,
@@ -27,6 +29,7 @@
     "Feature:API:Driver.VerifyAuthentication": true,
     "Feature:API:Driver.VerifyConnectivity": true,
     "Feature:API:Driver.SupportsSessionAuth": true,
+    "Feature:API:Driver:MaxConnectionLifetime": true,
     "Feature:API:Driver:NotificationsConfig": true,
     "Feature:API:Liveness.Check": true,
     "Feature:API:Result.List": true,
@@ -59,6 +62,7 @@
     "Feature:Bolt:5.5": true,
     "Feature:Bolt:5.6": true,
     "Feature:Bolt:5.7": true,
+    "Feature:Bolt:5.8": true,
     "Feature:Bolt:Patch:UTC": true,
     "Feature:Impersonation": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
@@ -70,6 +74,7 @@
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
     "Optimization:ExecuteQueryPipelining": true,
+    "Optimization:HomeDbCacheBasicPrincipalIsImpersonatedUser": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalBookmarksSet": true,
     "Optimization:MinimalResets": true,

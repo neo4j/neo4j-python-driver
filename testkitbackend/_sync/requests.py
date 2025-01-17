@@ -30,6 +30,7 @@ import neo4j
 import neo4j.api
 import neo4j.auth_management
 from neo4j._async_compat.util import Util
+from neo4j._routing import RoutingTable
 from neo4j.auth_management import (
     AuthManager,
     AuthManagers,
@@ -991,7 +992,9 @@ def get_routing_table(backend, data):
     driver_id = data["driverId"]
     database = data["database"]
     driver = backend.drivers[driver_id]
-    routing_table = driver._pool.routing_tables[database]
+    routing_table = driver._pool.get_routing_table(database)
+    if routing_table is None:
+        routing_table = RoutingTable(database=database)
     response_data = {
         "database": routing_table.database,
         "ttl": routing_table.ttl,

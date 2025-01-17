@@ -67,6 +67,7 @@ class FakeBoltPool(IOPool):
         bookmarks,
         auth,
         liveness_check_timeout,
+        database_callback=None,
     ):
         return self._acquire(
             self.address, auth, timeout, liveness_check_timeout

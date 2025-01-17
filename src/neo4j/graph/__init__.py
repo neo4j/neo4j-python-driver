@@ -80,6 +80,21 @@ class Graph:
             )
         return cls
 
+    def __reduce__(self):
+        state = self.__dict__.copy()
+        relationship_types = tuple(state.pop("_relationship_types", {}).keys())
+        restore_args = (relationship_types,)
+        return Graph._restore, restore_args, state
+
+    @staticmethod
+    def _restore(relationship_types: tuple[str, ...]) -> Graph:
+        graph = Graph().__new__(Graph)
+        graph.__dict__["_relationship_types"] = {
+            name: type(str(name), (Relationship,), {})
+            for name in relationship_types
+        }
+        return graph
+
 
 class Entity(t.Mapping[str, t.Any]):
     """
@@ -286,6 +301,14 @@ class Relationship(Entity):
         This is functionally equivalent to ``type(relationship).__name__``.
         """
         return type(self).__name__
+
+    def __reduce__(self):
+        return Relationship._restore, (self.graph, self.type), self.__dict__
+
+    @staticmethod
+    def _restore(graph: Graph, name: str) -> Relationship:
+        type_ = graph.relationship_type(name)
+        return type_.__new__(type_)
 
 
 class Path:

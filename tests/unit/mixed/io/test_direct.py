@@ -29,10 +29,11 @@ from threading import (
 
 import pytest
 
-from neo4j._async.io._pool import AcquireAuth as AsyncAcquireAuth
+from neo4j._async.io._pool import AcquisitionAuth as AsyncAcquisitionAuth
 from neo4j._deadline import Deadline
-from neo4j._sync.io._pool import AcquireAuth
+from neo4j._sync.io._pool import AcquisitionAuth
 
+from ...._async_util import gather_cancel
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...async_.test_auth_management import (
     static_auth_manager as static_async_auth_manager,
@@ -130,11 +131,11 @@ class TestMixedConnectionPoolTestCase:
 
     def test_full_pool_re_auth(self, fake_connection_generator, mocker):
         address = ("127.0.0.1", 7687)
-        acquire_auth1 = AcquireAuth(
+        acquire_auth1 = AcquisitionAuth(
             auth=static_auth_manager(("user1", "pass1"))
         )
         auth2 = ("user2", "pass2")
-        acquire_auth2 = AcquireAuth(auth=static_auth_manager(auth2))
+        acquire_auth2 = AcquisitionAuth(auth=static_auth_manager(auth2))
         acquire1_event = threading.Event()
         cx1 = None
 
@@ -195,7 +196,7 @@ class TestMixedConnectionPoolTestCase:
         async def waiter(pool_, acquired_counter_, release_event_):
             nonlocal pre_populated_connections, connections
 
-            if not await acquired_counter_.wait(5, timeout=1):
+            if not await acquired_counter_.wait(5, timeout=5):
                 raise RuntimeError("Acquire coroutines not fast enough")
             # The pool size should be 5, all are in-use
             self.assert_pool_size(address, 5, 0, pool_)
@@ -207,7 +208,7 @@ class TestMixedConnectionPoolTestCase:
             release_event_.set()
 
             # wait for all coroutines to release connections back to pool
-            if not await acquired_counter_.wait(10, timeout=5):
+            if not await acquired_counter_.wait(10, timeout=10):
                 raise RuntimeError("Acquire coroutines not fast enough")
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool_)
@@ -236,7 +237,7 @@ class TestMixedConnectionPoolTestCase:
                 )
                 for _ in range(10)
             ]
-            await asyncio.gather(
+            await gather_cancel(
                 waiter(pool, acquired_counter, release_event), *coroutines
             )
 
@@ -245,11 +246,13 @@ class TestMixedConnectionPoolTestCase:
         self, async_fake_connection_generator, mocker
     ):
         address = ("127.0.0.1", 7687)
-        acquire_auth1 = AsyncAcquireAuth(
+        acquire_auth1 = AsyncAcquisitionAuth(
             auth=static_async_auth_manager(("user1", "pass1"))
         )
         auth2 = ("user2", "pass2")
-        acquire_auth2 = AsyncAcquireAuth(auth=static_async_auth_manager(auth2))
+        acquire_auth2 = AsyncAcquisitionAuth(
+            auth=static_async_auth_manager(auth2)
+        )
         cx1 = None
 
         async def acquire1(pool_):
@@ -276,4 +279,4 @@ class TestMixedConnectionPoolTestCase:
         async with AsyncFakeBoltPool(
             async_fake_connection_generator, (), max_connection_pool_size=1
         ) as pool:
-            await asyncio.gather(acquire1(pool), acquire2(pool))
+            await gather_cancel(acquire1(pool), acquire2(pool))

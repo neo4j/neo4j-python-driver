@@ -14,32 +14,21 @@
 # limitations under the License.
 
 
-"""
-Low-level functionality required for speaking Bolt.
-
-It is not intended to be used directly by driver users. Instead, the `session`
-module provides the main user-facing abstractions.
-"""
-
-__all__ = [
-    "AcquisitionAuth",
-    "AcquisitionDatabase",
-    "Bolt",
-    "BoltPool",
-    "Neo4jPool",
-    "ConnectionErrorHandler",
-    "check_supported_server_product",
-]
+import asyncio
 
 
-from ._bolt import Bolt
-from ._common import (
-    check_supported_server_product,
-    ConnectionErrorHandler,
-)
-from ._pool import (
-    AcquisitionAuth,
-    AcquisitionDatabase,
-    BoltPool,
-    Neo4jPool,
-)
+async def gather_cancel(*coros_or_futures):
+    """
+    Return a future aggregating results from the given coroutines/futures.
+
+    A thin wrapper around asyncio.gather that cancels all coroutines/futures
+    if any of them raises an exception.
+    """
+    futures = [asyncio.ensure_future(coro) for coro in coros_or_futures]
+    try:
+        await asyncio.gather(*futures)
+    except:
+        for future in futures:
+            future.cancel()
+        await asyncio.gather(*futures, return_exceptions=True)
+        raise

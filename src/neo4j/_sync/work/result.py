@@ -114,6 +114,7 @@ class Result(NonConcurrentMethodChecker):
         warn_notification_severity,
         on_closed,
         on_error,
+        on_database,
     ) -> None:
         self._connection_cls = connection.__class__
         self._connection = ConnectionErrorHandler(
@@ -122,6 +123,7 @@ class Result(NonConcurrentMethodChecker):
         self._hydration_scope = connection.new_hydration_scope()
         self._on_error = on_error
         self._on_closed = on_closed
+        self._on_database = on_database
         self._metadata: dict = {}
         self._address: Address = self._connection.unresolved_address
         self._keys: tuple[str, ...] = ()
@@ -205,6 +207,9 @@ class Result(NonConcurrentMethodChecker):
                 self._connection.most_recent_qid = self._raw_qid
             self._keys = metadata.get("fields")
             self._attached = True
+            db_ = metadata.get("db")
+            if isinstance(db_, str):
+                Util.callback(self._on_database, db_)
 
         def on_failed_attach(metadata):
             self._metadata.update(metadata)
