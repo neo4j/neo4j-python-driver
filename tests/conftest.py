@@ -211,11 +211,12 @@ def watcher():
 def event_loop():
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
+    yield loop
     try:
-        yield loop
         _cancel_all_tasks(loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.run_until_complete(loop.shutdown_default_executor())
+        if sys.version_info >= (3, 9):
+            loop.run_until_complete(loop.shutdown_default_executor())
     finally:
         loop.close()
 
