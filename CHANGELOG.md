@@ -5,6 +5,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 ## NEXT RELEASE
 - Since the types of `Relationship`s are tied to the `Graph` object they belong to, fixing `pickle` support for graph types means that `Relationship`s with the same name will have a different type after `deepcopy`ing or pickling and unpickling them or their graph.
   For more details, see https://github.com/neo4j/neo4j-python-driver/pull/1133
+- Drop undocumented support for Bolt protocol versions 4.0 - 4.2.
 
 
 ## Version 5.27

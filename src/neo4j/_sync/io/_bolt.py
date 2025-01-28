@@ -136,6 +136,8 @@ class Bolt:
     # results for it.
     most_recent_qid = None
 
+    SKIP_REGISTRATION = False
+
     def __init__(
         self,
         unresolved_address,
@@ -262,6 +264,9 @@ class Bolt:
     protocol_handlers: t.ClassVar[dict[Version, type[Bolt]]] = {}
 
     def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
+        if cls.SKIP_REGISTRATION:
+            super().__init_subclass__(**kwargs)
+            return
         protocol_version = cls.PROTOCOL_VERSION
         if protocol_version is None:
             raise ValueError(
@@ -295,7 +300,7 @@ class Bolt:
         :returns: bytes
         """
         return (
-            b"\x00\x00\x01\xff\x00\x08\x08\x05\x00\x04\x04\x04\x00\x00\x00\x03"
+            b"\x00\x00\x01\xff\x00\x08\x08\x05\x00\x02\x04\x04\x00\x00\x00\x03"
         )
 
     @classmethod

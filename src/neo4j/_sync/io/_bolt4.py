@@ -74,6 +74,8 @@ class Bolt4x0(Bolt):
 
     supports_notification_filtering = False
 
+    SKIP_REGISTRATION = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
@@ -559,6 +561,8 @@ class Bolt4x3(Bolt4x2):
     """
 
     PROTOCOL_VERSION = Version(4, 3)
+
+    SKIP_REGISTRATION = False
 
     def get_base_headers(self):
         headers = super().get_base_headers()
