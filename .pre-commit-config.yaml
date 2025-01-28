@@ -19,10 +19,13 @@ repos:
           - batch
       - id: trailing-whitespace
         args: [ --markdown-linebreak-ext=md ]
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+  - repo: local
     hooks:
       - id: isort
+        name: isort
+        entry: isort
+        types_or: [ python, pyi ]
+        language: system
   - repo: https://github.com/sphinx-contrib/sphinx-lint
     rev: e83a1a42a73284d301c05baaffc176042ffbcf82
     hooks:
@@ -45,7 +48,7 @@ repos:
         name: mypy static type check
         entry: mypy
         args: [ --show-error-codes, src, tests, testkitbackend, benchkit ]
-        'types_or': [ python, pyi ]
+        types_or: [ python, pyi ]
         language: system
         pass_filenames: false
         require_serial: true

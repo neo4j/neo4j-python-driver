@@ -58,7 +58,8 @@ class Point(t.Tuple[float, ...]):
         def z(self) -> float: ...
 
     def __new__(cls, iterable: t.Iterable[float]) -> Point:
-        return tuple.__new__(cls, map(float, iterable))
+        # TODO: 6.0 - remove type ignore when support for Python 3.7 is dropped
+        return tuple.__new__(cls, map(float, iterable))  # type: ignore[type-var]
 
     def __repr__(self) -> str:
         return f"POINT({' '.join(map(str, self))})"

@@ -202,3 +202,42 @@ def aio_benchmark(benchmark, event_loop):
 def watcher():
     with watch("neo4j", out=sys.stdout, colour=True):
         yield
+
+
+# TODO: 6.0 -
+#       when support for Python 3.7 is dropped and pytest-asyncio is bumped
+#       check if this fixture is still needed
+@pytest.fixture
+def event_loop():
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    try:
+        yield loop
+        _cancel_all_tasks(loop)
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.run_until_complete(loop.shutdown_default_executor())
+    finally:
+        loop.close()
+
+
+def _cancel_all_tasks(loop):
+    to_cancel = asyncio.all_tasks(loop)
+    if not to_cancel:
+        return
+
+    for task in to_cancel:
+        task.cancel()
+
+    loop.run_until_complete(asyncio.gather(*to_cancel, return_exceptions=True))
+
+    for task in to_cancel:
+        if task.cancelled():
+            continue
+        if task.exception() is not None:
+            loop.call_exception_handler(
+                {
+                    "message": "unhandled exception during loop shutdown",
+                    "exception": task.exception(),
+                    "task": task,
+                }
+            )

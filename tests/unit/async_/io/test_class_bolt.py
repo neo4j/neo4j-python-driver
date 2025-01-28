@@ -35,7 +35,7 @@ def test_class_method_protocol_handlers():
     expected_handlers = {
         (3, 0),
         (4, 0), (4, 1), (4, 2), (4, 3), (4, 4),
-        (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7),
+        (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8),
     }
     # fmt: on
 
@@ -49,27 +49,26 @@ def test_class_method_protocol_handlers():
 @pytest.mark.parametrize(
     ("test_input", "expected"),
     [
-        ((0, 0), False),
-        ((1, 0), False),
-        ((2, 0), False),
-        ((3, 0), True),
-        ((3, 1), False),
-        ((4, 0), True),
-        ((4, 1), True),
-        ((4, 2), True),
-        ((4, 3), True),
-        ((4, 4), True),
-        ((4, 5), False),
-        ((5, 0), True),
-        ((5, 1), True),
-        ((5, 2), True),
-        ((5, 3), True),
-        ((5, 4), True),
-        ((5, 5), True),
-        ((5, 6), True),
-        ((5, 7), True),
-        ((5, 8), False),
-        ((6, 0), False),
+        ((0, 0), 0),
+        ((1, 0), 0),
+        ((2, 0), 0),
+        ((3, 0), 1),
+        ((4, 0), 1),
+        ((4, 1), 1),
+        ((4, 2), 1),
+        ((4, 3), 1),
+        ((4, 4), 1),
+        ((5, 0), 1),
+        ((5, 1), 1),
+        ((5, 2), 1),
+        ((5, 3), 1),
+        ((5, 4), 1),
+        ((5, 5), 1),
+        ((5, 6), 1),
+        ((5, 7), 1),
+        ((5, 8), 1),
+        ((5, 9), 0),
+        ((6, 0), 0),
     ],
 )
 def test_class_method_protocol_handlers_with_protocol_version(
@@ -84,7 +83,7 @@ def test_class_method_get_handshake():
     handshake = AsyncBolt.get_handshake()
     assert (
         handshake
-        == b"\x00\x00\x01\xff\x00\x07\x07\x05\x00\x04\x04\x04\x00\x00\x00\x03"
+        == b"\x00\x00\x01\xff\x00\x08\x08\x05\x00\x04\x04\x04\x00\x00\x00\x03"
     )
 
 
@@ -140,6 +139,7 @@ async def test_cancel_hello_in_open(mocker, none_auth):
         ((5, 5), "neo4j._async.io._bolt5.AsyncBolt5x5"),
         ((5, 6), "neo4j._async.io._bolt5.AsyncBolt5x6"),
         ((5, 7), "neo4j._async.io._bolt5.AsyncBolt5x7"),
+        ((5, 8), "neo4j._async.io._bolt5.AsyncBolt5x8"),
     ),
 )
 @mark_async_test
@@ -181,7 +181,7 @@ async def test_version_negotiation(
         (0, 0),
         (2, 0),
         (3, 1),
-        (5, 8),
+        (5, 9),
         (6, 0),
     ),
 )
@@ -189,7 +189,7 @@ async def test_version_negotiation(
 async def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     supported_protocols = (
         "('3.0', '4.0', '4.1', '4.2', '4.3', '4.4', "
-        "'5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7')"
+        "'5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8')"
     )
 
     address = ("localhost", 7687)

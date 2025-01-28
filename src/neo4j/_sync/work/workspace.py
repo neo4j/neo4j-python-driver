@@ -17,8 +17,10 @@
 from __future__ import annotations
 
 import logging
+import typing as t
 
 from ..._async_compat.util import Util
+from ..._auth_management import to_auth_dict
 from ..._conf import WorkspaceConfig
 from ..._meta import (
     deprecation_warn,
@@ -32,9 +34,20 @@ from ...exceptions import (
 )
 from .._debug import NonConcurrentMethodChecker
 from ..io import (
-    AcquireAuth,
-    Neo4jPool,
+    AcquisitionAuth,
+    AcquisitionDatabase,
 )
+
+
+if t.TYPE_CHECKING:
+    from ...api import _TAuth
+    from ...auth_management import AuthManager
+    from ..home_db_cache import (
+        HomeDbCache,
+        TKey,
+    )
+else:
+    _TAuth = t.Any
 
 
 log = logging.getLogger("neo4j")
@@ -47,8 +60,9 @@ class Workspace(NonConcurrentMethodChecker):
         self._config = config
         self._connection = None
         self._connection_access_mode = None
+        self._last_cache_key: TKey | None = None
         # Sessions are supposed to cache the database on which to operate.
-        self._cached_database = False
+        self._pinned_database = False
         self._bookmarks = ()
         self._initial_bookmarks = ()
         self._bookmark_manager = None
@@ -87,8 +101,26 @@ class Workspace(NonConcurrentMethodChecker):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _set_cached_database(self, database):
-        self._cached_database = True
+    def _make_db_resolution_callback(
+        self,
+    ) -> t.Callable[[str | None], None] | None:
+        if self._pinned_database:
+            return None
+
+        def _database_callback(database: str | None) -> None:
+            self._set_pinned_database(database)
+            if self._last_cache_key is None or database is None:
+                return
+            db_cache: HomeDbCache = self._pool.home_db_cache
+            db_cache.set(self._last_cache_key, database)
+
+        return _database_callback
+
+    def _set_pinned_database(self, database):
+        if self._pinned_database:
+            return
+        log.debug("[#0000]  _: <WORKSPACE> pinning database: %r", database)
+        self._pinned_database = True
         self._config.database = database
 
     def _initialize_bookmarks(self, bookmarks):
@@ -138,12 +170,10 @@ class Workspace(NonConcurrentMethodChecker):
             return
         self._update_bookmarks((bookmark,))
 
-    def _connect(self, access_mode, auth=None, **acquire_kwargs):
+    def _connect(self, access_mode, auth=None, **acquire_kwargs) -> None:
         acquisition_timeout = self._config.connection_acquisition_timeout
-        auth = AcquireAuth(
-            auth,
-            force_auth=acquire_kwargs.pop("force_auth", False),
-        )
+        force_auth = acquire_kwargs.pop("force_auth", False)
+        acquire_auth = AcquisitionAuth(auth, force_auth=force_auth)
 
         if self._connection:
             # TODO: Investigate this
@@ -151,40 +181,112 @@ class Workspace(NonConcurrentMethodChecker):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        if not self._cached_database:
-            if self._config.database is not None or not isinstance(
-                self._pool, Neo4jPool
-            ):
-                self._set_cached_database(self._config.database)
-            else:
-                # This is the first time we open a connection to a server in a
-                # cluster environment for this session without explicitly
-                # configured database. Hence, we request a routing table update
-                # to try to fetch the home database. If provided by the server,
-                # we shall use this database explicitly for all subsequent
-                # actions within this session.
-                log.debug("[#0000]  _: <WORKSPACE> resolve home database")
-                self._pool.update_routing_table(
-                    database=self._config.database,
-                    imp_user=self._config.impersonated_user,
-                    bookmarks=self._get_bookmarks(),
-                    auth=auth,
-                    acquisition_timeout=acquisition_timeout,
-                    database_callback=self._set_cached_database,
-                )
+
+        ssr_enabled = self._pool.ssr_enabled
+        target_db = self._get_routing_target_database(
+            acquire_auth, ssr_enabled=ssr_enabled
+        )
         acquire_kwargs_ = {
             "access_mode": access_mode,
             "timeout": acquisition_timeout,
-            "database": self._config.database,
+            "database": target_db,
             "bookmarks": self._get_bookmarks(),
-            "auth": auth,
+            "auth": acquire_auth,
             "liveness_check_timeout": None,
+            "database_callback": self._make_db_resolution_callback(),
         }
         acquire_kwargs_.update(acquire_kwargs)
         self._connection = self._pool.acquire(**acquire_kwargs_)
+        if (
+            target_db.guessed
+            and not self._pinned_database
+            and not self._connection.ssr_enabled
+        ):
+            # race condition: we now have created a connection which does not
+            # support SSR.
+            # => we need to fall back to explicit home database resolution
+            log.debug(
+                "[#0000]  _: <WORKSPACE> detected ssr support race; "
+                "falling back to explicit home database resolution",
+            )
+            self._disconnect()
+            target_db = self._get_routing_target_database(
+                acquire_auth, ssr_enabled=False
+            )
+            acquire_kwargs_["database"] = target_db
+            self._connection = self._pool.acquire(**acquire_kwargs_)
         self._connection_access_mode = access_mode
 
+    def _get_routing_target_database(
+        self,
+        acquire_auth: AcquisitionAuth,
+        ssr_enabled: bool,
+    ) -> AcquisitionDatabase:
+        if (
+            self._pinned_database
+            or self._config.database is not None
+            or self._pool.is_direct_pool
+        ):
+            log.debug(
+                "[#0000]  _: <WORKSPACE> routing towards fixed database: %s",
+                self._config.database,
+            )
+            self._set_pinned_database(self._config.database)
+            return AcquisitionDatabase(self._config.database)
+
+        auth = acquire_auth.auth
+        resolved_auth = self._resolve_session_auth(auth)
+        db_cache: HomeDbCache = self._pool.home_db_cache
+        cache_key = db_cache.compute_key(
+            self._config.impersonated_user,
+            resolved_auth,
+        )
+        self._last_cache_key = cache_key
+
+        if ssr_enabled:
+            cached_db = db_cache.get(cache_key)
+            if cached_db is not None:
+                log.debug(
+                    (
+                        "[#0000]  _: <WORKSPACE> routing towards cached "
+                        "database: %s"
+                    ),
+                    cached_db,
+                )
+                return AcquisitionDatabase(cached_db, guessed=True)
+
+        acquisition_timeout = self._config.connection_acquisition_timeout
+        log.debug("[#0000]  _: <WORKSPACE> resolve home database")
+        self._pool.update_routing_table(
+            database=self._config.database,
+            imp_user=self._config.impersonated_user,
+            bookmarks=self._get_bookmarks(),
+            auth=acquire_auth,
+            acquisition_timeout=acquisition_timeout,
+            database_callback=self._make_db_resolution_callback(),
+        )
+        return AcquisitionDatabase(self._config.database)
+
+    @staticmethod
+    def _resolve_session_auth(
+        auth: AuthManager | AuthManager | None,
+    ) -> dict | None:
+        if auth is None:
+            return None
+        # resolved_auth = await AsyncUtil.callback(auth.get_auth)
+        # The above line breaks mypy
+        # https://github.com/python/mypy/issues/15295
+        auth_getter: t.Callable[[], _TAuth | t.Union[_TAuth]] = (
+            auth.get_auth
+        )
+        # so we enforce the right type here
+        # (explicit type annotation above added as it's a necessary assumption
+        #  for this cast to be correct)
+        resolved_auth = t.cast(_TAuth, Util.callback(auth_getter))
+        return to_auth_dict(resolved_auth)
+
     def _disconnect(self, sync=False):
+        self._last_cache_key = None
         if self._connection:
             if sync:
                 try:

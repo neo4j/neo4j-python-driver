@@ -17,6 +17,7 @@
 import pytest
 
 from neo4j._async.config import AsyncPoolConfig
+from neo4j._async.home_db_cache import AsyncHomeDbCache
 from neo4j._async.io._pool import AsyncIOPool
 
 
@@ -32,6 +33,9 @@ def async_fake_pool(async_fake_connection_generator, mocker):
     pool.buffered_connection_mocks = []
     pool.acquired_connection_mocks = []
     pool.pool_config = AsyncPoolConfig()
+    pool.ssr_enabled = False
+    pool.is_direct_pool = True
+    pool.home_db_cache = AsyncHomeDbCache(enabled=False)
 
     def acquire_side_effect(*_, **__):
         if pool.buffered_connection_mocks:

@@ -14,8 +14,12 @@
 # limitations under the License.
 
 
+from functools import wraps as _wraps
+
 from .mark_decorator import (
+    async_fixture,
     AsyncTestDecorators,
+    fixture,
     mark_async_test,
     mark_sync_test,
     TestDecorators,
@@ -25,6 +29,19 @@ from .mark_decorator import (
 __all__ = [
     "AsyncTestDecorators",
     "TestDecorators",
+    "async_fixture",
+    "fixture",
     "mark_async_test",
     "mark_sync_test",
+    "wrap_async",
 ]
+
+
+def wrap_async(func):
+    @_wraps(func)
+    async def wrapper(*args, **kwargs):  # noqa: RUF029
+        # [noqa] the hole point of this wrapper is to turn a sync function into
+        # an async one for testing purposes
+        return func(*args, **kwargs)
+
+    return wrapper

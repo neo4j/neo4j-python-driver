@@ -22,14 +22,19 @@ from neo4j import (
     AsyncManagedTransaction,
     AsyncSession,
     AsyncTransaction,
+    Auth,
     Bookmarks,
     unit_of_work,
 )
 from neo4j._api import TelemetryAPI
+from neo4j._async.home_db_cache import AsyncHomeDbCache
 from neo4j._async.io import (
+    AcquisitionDatabase,
     AsyncBoltPool,
     AsyncNeo4jPool,
 )
+from neo4j._async_compat.util import AsyncUtil
+from neo4j._auth_management import to_auth_dict
 from neo4j._conf import SessionConfig
 from neo4j.api import (
     AsyncBookmarkManager,
@@ -490,8 +495,10 @@ async def test_with_bookmark_manager(
         async_fake_pool.update_routing_table.side_effect = (
             update_routing_table_side_effect
         )
+        async_fake_pool.is_direct_pool = False
     else:
         async_fake_pool.mock_add_spec(AsyncBoltPool)
+        async_fake_pool.is_direct_pool = True
 
     config = SessionConfig()
     config.bookmark_manager = bmm
@@ -699,3 +706,174 @@ async def test_session_custom_api_telemetry(async_fake_pool, mode):
         connection_mock.telemetry.assert_called_once()
         call_args = connection_mock.telemetry.call_args.args
         assert call_args[0] == TelemetryAPI.DRIVER
+
+
+@pytest.mark.parametrize(
+    ("db", "pool_ssr", "pool_routing", "expect_cache_usage"),
+    (
+        (db, ssr, routing, ssr and routing and not db)
+        for ssr in (True, False)
+        for routing in (True, False)
+        for db in (None, "mydb")
+    ),
+)
+@pytest.mark.parametrize("imp_user", (None, "imp_user"))
+@pytest.mark.parametrize(
+    "auth",
+    (
+        None,
+        Auth(scheme="magic-auth", principal=None, credentials="tada"),
+    ),
+)
+@mark_async_test
+async def test_uses_home_db_cache_when_expected(
+    async_fake_pool,
+    mocker,
+    db,
+    pool_ssr,
+    pool_routing,
+    expect_cache_usage,
+    imp_user,
+    auth,
+):
+    async_fake_pool.ssr_enabled = pool_ssr
+    if pool_routing:
+        async_fake_pool.is_direct_pool = False
+        async_fake_pool.mock_add_spec(AsyncNeo4jPool)
+    cache_spy = mocker.Mock(spec=AsyncHomeDbCache, wraps=AsyncHomeDbCache())
+    cached_db = "nice_cached_home_db"
+    key = object()
+    cache_spy.compute_key.return_value = key
+    cache_spy.get.return_value = cached_db
+    async_fake_pool.home_db_cache = cache_spy
+
+    config = SessionConfig()
+    config.impersonated_user = imp_user
+    config.auth = auth
+    config.database = db
+
+    async with AsyncSession(async_fake_pool, config) as session:
+        await session.run("RETURN 1")
+
+        if expect_cache_usage:
+            # assert using cache
+            assert cache_spy.mock_calls == [
+                mocker.call.compute_key(
+                    imp_user, to_auth_dict(auth) if auth else None
+                ),
+                mocker.call.get(key),
+            ]
+            # assert passing cache result as a guess to the pool
+            async_fake_pool.acquire.assert_awaited_once_with(
+                access_mode=mocker.ANY,
+                timeout=mocker.ANY,
+                database=AcquisitionDatabase(cached_db, guessed=True),
+                bookmarks=mocker.ANY,
+                auth=mocker.ANY,
+                liveness_check_timeout=mocker.ANY,
+                database_callback=mocker.ANY,
+            )
+        else:
+            # assert not using cache
+            cache_spy.get.assert_not_called()
+            # assert passing a non-guess to the pool
+            async_fake_pool.acquire.assert_awaited_once_with(
+                access_mode=mocker.ANY,
+                timeout=mocker.ANY,
+                database=AcquisitionDatabase(db, guessed=False),
+                bookmarks=mocker.ANY,
+                auth=mocker.ANY,
+                liveness_check_timeout=mocker.ANY,
+                database_callback=mocker.ANY,
+            )
+
+
+@pytest.mark.parametrize(
+    ("db", "pool_ssr", "pool_routing", "expect_cache_usage"),
+    (
+        (db, ssr, routing, ssr and routing and not db)
+        for ssr in (True, False)
+        for routing in (True, False)
+        for db in (None, "mydb")
+    ),
+)
+@pytest.mark.parametrize("resolution_at", ("route", "run", "begin"))
+@mark_async_test
+async def test_pinns_session_db_with_cache(
+    async_fake_pool,
+    mocker,
+    db,
+    pool_ssr,
+    pool_routing,
+    expect_cache_usage,
+    resolution_at,
+):
+    async def resolve_db():
+        if resolution_at == "route":
+            database_callback = async_fake_pool.acquire.call_args.kwargs[
+                "database_callback"
+            ]
+            await AsyncUtil.callback(database_callback, resolved_db)
+        elif resolution_at == "run":
+            database_callback = res_mock.call_args.args[-1]
+            await AsyncUtil.callback(database_callback, resolved_db)
+        elif resolution_at == "begin":
+            database_callback = tx_mock.call_args.args[-1]
+            await AsyncUtil.callback(database_callback, resolved_db)
+        else:
+            raise ValueError(f"Unknown resolution_at: {resolution_at}")
+
+    if resolution_at == "run":
+        res_mock = mocker.patch(
+            "neo4j._async.work.session.AsyncResult", autospec=True
+        )
+    elif resolution_at == "begin":
+        tx_mock = mocker.patch(
+            "neo4j._async.work.session.AsyncTransaction", autospec=True
+        )
+
+    resolved_db = "resolved_db"
+    async_fake_pool.ssr_enabled = pool_ssr
+    if pool_routing:
+        async_fake_pool.is_direct_pool = False
+        async_fake_pool.mock_add_spec(AsyncNeo4jPool)
+    cache_spy = mocker.Mock(spec=AsyncHomeDbCache, wraps=AsyncHomeDbCache())
+    key = object()
+    cache_spy.compute_key.return_value = key
+    async_fake_pool.home_db_cache = cache_spy
+
+    config = SessionConfig()
+    config.database = db
+
+    async with AsyncSession(async_fake_pool, config) as session:
+        if resolution_at == "begin":
+            async with await session.begin_transaction() as tx:
+                await tx.run("RETURN 1")
+        else:
+            await session.run("RETURN 1")
+
+        if expect_cache_usage:
+            # assert never using cache to pin a database
+            assert not session._pinned_database
+            assert config.database == db
+
+            await resolve_db()
+
+            assert session._pinned_database
+            assert config.database == resolved_db
+            cache_spy.set.assert_called_once_with(key, resolved_db)
+        else:
+            if not pool_routing or db:
+                assert session._pinned_database
+                assert config.database == db
+
+            await resolve_db()
+
+            if not pool_routing or db:
+                assert session._pinned_database
+                assert config.database == db
+                cache_spy.set.assert_not_called()
+            else:
+                cache_spy.set.assert_called_once_with(key, resolved_db)
+                assert session._pinned_database
+                assert config.database == resolved_db

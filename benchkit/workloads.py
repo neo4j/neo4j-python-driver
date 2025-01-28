@@ -543,7 +543,7 @@ class _WorkloadQuery:
 @dataclass
 class _WorkloadConfig:
     database: str | None
-    routing: t.Literal["r", "w"]
+    routing: te.Literal["r", "w"]
 
     @classmethod
     def parse(cls, data: t.Any) -> te.Self:
@@ -553,7 +553,7 @@ class _WorkloadConfig:
             if not isinstance(database, str):
                 raise TypeError("Workload database must be a string")
 
-        routing: t.Literal["r", "w"] = "w"
+        routing: te.Literal["r", "w"] = "w"
         if "routing" in data:
             raw_routing = data["routing"]
             if not isinstance(routing, str):

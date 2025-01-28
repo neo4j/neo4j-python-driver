@@ -22,7 +22,8 @@ module provides the main user-facing abstractions.
 """
 
 __all__ = [
-    "AcquireAuth",
+    "AcquisitionAuth",
+    "AcquisitionDatabase",
     "Bolt",
     "BoltPool",
     "Neo4jPool",
@@ -43,7 +44,8 @@ from ._common import (
     ConnectionErrorHandler,
 )
 from ._pool import (
-    AcquireAuth,
+    AcquisitionAuth,
+    AcquisitionDatabase,
     BoltPool,
     Neo4jPool,
 )

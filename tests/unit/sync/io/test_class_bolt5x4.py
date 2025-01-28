@@ -281,7 +281,7 @@ def test_telemetry_message(
         telemetry_disabled=driver_disabled,
     )
     if serv_enabled:
-        connection.configuration_hints["telemetry.enabled"] = True
+        connection.connection_hints["telemetry.enabled"] = True
     connection.telemetry(api)
     connection.send_all()
 
@@ -718,3 +718,25 @@ def test_does_not_enrich_diagnostic_record(
     connection.fetch_all()
 
     assert received_metadata == sent_metadata
+
+
+@pytest.mark.parametrize("ssr_hint", (True, False, None))
+@mark_sync_test
+def test_ssr_enabled(ssr_hint, fake_socket_pair):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(
+        address,
+        packer_cls=Bolt5x4.PACKER_CLS,
+        unpacker_cls=Bolt5x4.UNPACKER_CLS,
+    )
+    meta = {"server": "Neo4j/4.3.4"}
+    if ssr_hint is not None:
+        meta["hints"] = {"ssr.enabled": ssr_hint}
+    sockets.server.send_message(b"\x70", meta)
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x4(
+        address, sockets.client, PoolConfig.max_connection_lifetime
+    )
+    assert connection.ssr_enabled is False
+    connection.hello()
+    assert connection.ssr_enabled is False

@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import traceback
+import typing as t
 
 import pytest
 import pytz
@@ -166,39 +167,49 @@ def test_record_data_keys(keys, expected) -> None:
     (
         *(
             (value, value)
-            for value in (
-                None,
-                True,
-                False,
-                0,
-                1,
-                -1,
-                2147483647,
-                -2147483648,
-                3.141592653589,
-                "",
-                "Hello, world!",
-                "👋, 🌍!",
-                [],
-                [1, 2.0, "3", True, None],
-                {"foo": ["bar", 1]},
-                b"",
-                b"foobar",
-                Date(2021, 1, 1),
-                Time(12, 34, 56, 123456789),
-                Time(1, 2, 3, 4, pytz.FixedOffset(60)),
-                DateTime(2021, 1, 1, 12, 34, 56, 123456789),
-                DateTime(
-                    2018, 10, 12, 11, 37, 41, 474716862, pytz.FixedOffset(60)
+            for value in t.cast(
+                t.Tuple[t.Any],
+                (
+                    None,
+                    True,
+                    False,
+                    0,
+                    1,
+                    -1,
+                    2147483647,
+                    -2147483648,
+                    3.141592653589,
+                    "",
+                    "Hello, world!",
+                    "👋, 🌍!",
+                    [],
+                    [1, 2.0, "3", True, None],
+                    {"foo": ["bar", 1]},
+                    b"",
+                    b"foobar",
+                    Date(2021, 1, 1),
+                    Time(12, 34, 56, 123456789),
+                    Time(1, 2, 3, 4, pytz.FixedOffset(60)),
+                    DateTime(2021, 1, 1, 12, 34, 56, 123456789),
+                    DateTime(
+                        2018,
+                        10,
+                        12,
+                        11,
+                        37,
+                        41,
+                        474716862,
+                        pytz.FixedOffset(60),
+                    ),
+                    pytz.timezone("Europe/Stockholm").localize(
+                        DateTime(2018, 10, 12, 11, 37, 41, 474716862)
+                    ),
+                    Duration(1, 2, 3, 4, 5, 6, 7),
+                    CartesianPoint((1, 2.0)),
+                    CartesianPoint((1, 2.0, 3)),
+                    WGS84Point((1, 2.0)),
+                    WGS84Point((1, 2.0, 3)),
                 ),
-                pytz.timezone("Europe/Stockholm").localize(
-                    DateTime(2018, 10, 12, 11, 37, 41, 474716862)
-                ),
-                Duration(1, 2, 3, 4, 5, 6, 7),
-                CartesianPoint((1, 2.0)),
-                CartesianPoint((1, 2.0, 3)),
-                WGS84Point((1, 2.0)),
-                WGS84Point((1, 2.0, 3)),
             )
         ),
         *(

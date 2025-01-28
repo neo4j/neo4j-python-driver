@@ -12,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from unittest.mock import MagicMock
 
 import pytest
@@ -52,7 +50,7 @@ def test_transaction_context_when_committing(
     on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
     tx = Transaction(
-        fake_connection, 2, None, on_closed, on_error, on_cancel
+        fake_connection, 2, None, on_closed, on_error, on_cancel, None
     )
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -88,7 +86,7 @@ def test_transaction_context_with_explicit_rollback(
     on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
     tx = Transaction(
-        fake_connection, 2, None, on_closed, on_error, on_cancel
+        fake_connection, 2, None, on_closed, on_error, on_cancel, None
     )
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -120,7 +118,7 @@ def test_transaction_context_calls_rollback_on_error(
     on_error = MagicMock()
     on_cancel = MagicMock()
     tx = Transaction(
-        fake_connection, 2, None, on_closed, on_error, on_cancel
+        fake_connection, 2, None, on_closed, on_error, on_cancel, None
     )
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
@@ -141,7 +139,7 @@ def test_transaction_run_takes_no_query_object(fake_connection):
     on_error = MagicMock()
     on_cancel = MagicMock()
     tx = Transaction(
-        fake_connection, 2, None, on_closed, on_error, on_cancel
+        fake_connection, 2, None, on_closed, on_error, on_cancel, None
     )
     with pytest.raises(ValueError):
         tx.run(Query("RETURN 1"))
@@ -165,7 +163,7 @@ def test_transaction_run_parameters(
     on_error = MagicMock()
     on_cancel = MagicMock()
     tx = Transaction(
-        fake_connection, 2, None, on_closed, on_error, on_cancel
+        fake_connection, 2, None, on_closed, on_error, on_cancel, None
     )
     if not as_kwargs:
         params = {"parameters": params}
@@ -187,7 +185,9 @@ def test_transaction_run_parameters(
 def test_transaction_rollbacks_on_open_connections(
     fake_connection,
 ):
-    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
+    tx = Transaction(
+        fake_connection, 2, None, noop, noop, noop, None
+    )
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = False
         fake_connection.is_reset_mock.reset_mock()
@@ -201,7 +201,9 @@ def test_transaction_rollbacks_on_open_connections(
 def test_transaction_no_rollback_on_reset_connections(
     fake_connection,
 ):
-    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
+    tx = Transaction(
+        fake_connection, 2, None, noop, noop, noop, None
+    )
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = True
         fake_connection.is_reset_mock.reset_mock()
@@ -215,7 +217,9 @@ def test_transaction_no_rollback_on_reset_connections(
 def test_transaction_no_rollback_on_closed_connections(
     fake_connection,
 ):
-    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
+    tx = Transaction(
+        fake_connection, 2, None, noop, noop, noop, None
+    )
     with tx as tx_:
         fake_connection.closed.return_value = True
         fake_connection.closed.reset_mock()
@@ -231,7 +235,9 @@ def test_transaction_no_rollback_on_closed_connections(
 def test_transaction_no_rollback_on_defunct_connections(
     fake_connection,
 ):
-    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
+    tx = Transaction(
+        fake_connection, 2, None, noop, noop, noop, None
+    )
     with tx as tx_:
         fake_connection.defunct.return_value = True
         fake_connection.defunct.reset_mock()
@@ -246,9 +252,13 @@ def test_transaction_no_rollback_on_defunct_connections(
 @pytest.mark.parametrize("pipeline", (True, False))
 @mark_sync_test
 def test_transaction_begin_pipelining(
-    fake_connection, pipeline
+    fake_connection,
+    pipeline,
+    mocker,
 ) -> None:
-    tx = Transaction(fake_connection, 2, None, noop, noop, noop)
+    tx = Transaction(
+        fake_connection, 2, None, noop, noop, noop, None
+    )
     database = "db"
     imp_user = None
     bookmarks = ["bookmark1", "bookmark2"]
@@ -283,6 +293,7 @@ def test_transaction_begin_pipelining(
                 "notifications_disabled_classifications": (
                     notifications_disabled_classifications
                 ),
+                "on_success": mocker.ANY,
             },
         ),
     ]
@@ -333,7 +344,7 @@ def test_server_error_propagates(scripted_connection, error):
         raise ValueError(f"Unknown error type {error}")
     connection.set_script(script)
 
-    tx = Transaction(connection, 2, None, noop, noop, noop)
+    tx = Transaction(connection, 2, None, noop, noop, noop, None)
     res1 = tx.run("UNWIND range(1, 1000) AS n RETURN n")
     assert res1.__next__() == {"n": 1}
 
@@ -349,3 +360,45 @@ def test_server_error_propagates(scripted_connection, error):
         res1.__next__()
 
     assert exc1.value is exc2.value.__cause__
+
+
+@pytest.mark.parametrize("cb", (True, False))
+@pytest.mark.parametrize("resolved_db", (..., None, "resolved_db"))
+@mark_sync_test
+def test_on_database_callback(
+    scripted_connection, cb, resolved_db
+):
+    cb_calls = []
+
+    if cb:
+
+        def db_callback(db):
+            nonlocal cb_calls
+            cb_calls.append(db)
+    else:
+
+        def db_callback(db):
+            nonlocal cb_calls
+            cb_calls.append(db)
+
+    begin_meta = {}
+    if resolved_db is not ...:
+        begin_meta["db"] = resolved_db
+    connection = scripted_connection
+    connection.set_script(
+        [
+            ("begin", {"on_success": (begin_meta,), "on_summary": None}),
+        ]
+    )
+
+    result = Transaction(
+        connection, 1, None, noop, noop, noop, db_callback
+    )
+    result._begin(
+        None, None, None, None, None, None, None, None, pipelined=False
+    )
+
+    if resolved_db in {..., None}:
+        assert cb_calls == []
+    else:
+        assert cb_calls == [resolved_db]

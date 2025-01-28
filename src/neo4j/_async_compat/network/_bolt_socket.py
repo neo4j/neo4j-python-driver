@@ -89,7 +89,7 @@ class AsyncBoltSocketBase(abc.ABC):
         self._timeout = None
         self._deadline = None
 
-    async def _wait_for_io(self, io_fut):
+    async def _wait_for_io(self, io_async_fn, *args, **kwargs):
         timeout = self._timeout
         to_raise = SocketTimeout
         if self._deadline is not None:
@@ -100,6 +100,7 @@ class AsyncBoltSocketBase(abc.ABC):
                 timeout = deadline_timeout
                 to_raise = SocketDeadlineExceededError
 
+        io_fut = io_async_fn(*args, **kwargs)
         if timeout is not None and timeout <= 0:
             # give the io-operation time for one loop cycle to do its thing
             io_fut = asyncio.create_task(io_fut)
@@ -148,20 +149,17 @@ class AsyncBoltSocketBase(abc.ABC):
             self._timeout = timeout
 
     async def recv(self, n):
-        io_fut = self._reader.read(n)
-        return await self._wait_for_io(io_fut)
+        return await self._wait_for_io(self._reader.read, n)
 
     async def recv_into(self, buffer, nbytes):
         # FIXME: not particularly memory or time efficient
-        io_fut = self._reader.read(nbytes)
-        res = await self._wait_for_io(io_fut)
+        res = await self._wait_for_io(self._reader.read, nbytes)
         buffer[: len(res)] = res
         return len(res)
 
     async def sendall(self, data):
         self._writer.write(data)
-        io_fut = self._writer.drain()
-        return await self._wait_for_io(io_fut)
+        return await self._wait_for_io(self._writer.drain)
 
     async def close(self):
         self._writer.close()

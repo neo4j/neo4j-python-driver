@@ -20,7 +20,6 @@
 
 import pathlib
 import sys
-import warnings
 from contextlib import contextmanager
 
 import tomlkit
@@ -36,13 +35,6 @@ from neo4j._meta import (  # noqa: E402 import has to happen after sys path mani
     package,
 )
 
-
-if deprecated:
-    warnings.warn(
-        f"`{package}` is deprecated, please install `neo4j` instead.",
-        DeprecationWarning,
-        stacklevel=0,
-    )
 
 readme_path = THIS_DIR / "README.rst"
 readme = readme_path.read_text(encoding="utf-8")

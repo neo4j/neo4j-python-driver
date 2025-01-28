@@ -105,7 +105,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
     """
 
     _creation_stack: list[inspect.FrameInfo] | None
-    _creation_frame_cache: None | t.Literal[False] | inspect.FrameInfo
+    _creation_frame_cache: None | te.Literal[False] | inspect.FrameInfo
 
     def __init__(
         self,
@@ -114,6 +114,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         warn_notification_severity,
         on_closed,
         on_error,
+        on_database,
     ) -> None:
         self._connection_cls = connection.__class__
         self._connection = ConnectionErrorHandler(
@@ -122,6 +123,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         self._hydration_scope = connection.new_hydration_scope()
         self._on_error = on_error
         self._on_closed = on_closed
+        self._on_database = on_database
         self._metadata: dict = {}
         self._address: Address = self._connection.unresolved_address
         self._keys: tuple[str, ...] = ()
@@ -197,7 +199,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         }
         self._database = db
 
-        def on_attached(metadata):
+        async def on_attached(metadata):
             self._metadata.update(metadata)
             # For auto-commit there is no qid and Bolt 3 does not support qid
             self._raw_qid = metadata.get("qid", -1)
@@ -205,6 +207,9 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
                 self._connection.most_recent_qid = self._raw_qid
             self._keys = metadata.get("fields")
             self._attached = True
+            db_ = metadata.get("db")
+            if isinstance(db_, str):
+                await AsyncUtil.callback(self._on_database, db_)
 
         async def on_failed_attach(metadata):
             self._metadata.update(metadata)
@@ -356,7 +361,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
                 )
 
     @property
-    def _creation_frame(self) -> t.Literal[False] | inspect.FrameInfo:
+    def _creation_frame(self) -> te.Literal[False] | inspect.FrameInfo:
         if self._creation_frame_cache is not None:
             return self._creation_frame_cache
 

@@ -57,18 +57,3 @@ RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U pip && \
         python$version -m pip install -U coverage tox; \
     done
-
-# Installing pyarrow lib until pre-built wheel for Python 3.13 exists
-# https://github.com/apache/arrow/issues/43519
-RUN apt update && \
-    apt install -y -V lsb-release cmake gcc && \
-    distro_name=$(lsb_release --id --short | tr 'A-Z' 'a-z') && \
-    code_name=$(lsb_release --codename --short) && \
-    wget https://apache.jfrog.io/artifactory/arrow/${distro_name}/apache-arrow-apt-source-latest-${code_name}.deb && \
-    apt install -y -V ./apache-arrow-apt-source-latest-${code_name}.deb && \
-    apt update && \
-    apt install -y -V libarrow-dev libarrow-dataset-dev libarrow-flight-dev libparquet-dev && \
-    apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-ENV PYARROW_WITH_CUDA=off
-ENV PYARROW_WITH_GANDIVA=off
-ENV PYARROW_PARALLEL=8

@@ -30,6 +30,7 @@ from neo4j._conf import (
 from neo4j._deadline import Deadline
 from neo4j._sync.config import PoolConfig
 from neo4j._sync.io import (
+    AcquisitionDatabase,
     Bolt,
     Neo4jPool,
 )
@@ -53,11 +54,27 @@ READER3_ADDRESS = ResolvedAddress(("1.2.3.1", 9012), host_name="host")
 WRITER1_ADDRESS = ResolvedAddress(("1.2.3.1", 9020), host_name="host")
 
 
+def make_home_db_resolve(home_db):
+    def _home_db_resolve(db):
+        return db or home_db
+
+    return _home_db_resolve
+
+
+_default_db_resolve = make_home_db_resolve("neo4j")
+
+
 @pytest.fixture
 def custom_routing_opener(fake_connection_generator, mocker):
-    def make_opener(failures=None, get_readers=None):
+    def make_opener(
+        failures=None,
+        get_readers=None,
+        db_resolve=_default_db_resolve,
+        on_open=None,
+    ):
         def routing_side_effect(*args, **kwargs):
             nonlocal failures
+            opener_.route_requests.append(kwargs.get("database"))
             res = next(failures, None)
             if res is None:
                 routers = [
@@ -70,16 +87,18 @@ def custom_routing_opener(fake_connection_generator, mocker):
                 else:
                     readers = [str(READER1_ADDRESS)]
                 writers = [str(WRITER1_ADDRESS)]
-                return [
-                    {
-                        "ttl": 1000,
-                        "servers": [
-                            {"addresses": routers, "role": "ROUTE"},
-                            {"addresses": readers, "role": "READ"},
-                            {"addresses": writers, "role": "WRITE"},
-                        ],
-                    }
-                ]
+                rt = {
+                    "ttl": 1000,
+                    "servers": [
+                        {"addresses": routers, "role": "ROUTE"},
+                        {"addresses": readers, "role": "READ"},
+                        {"addresses": writers, "role": "WRITE"},
+                    ],
+                }
+                db = db_resolve(kwargs.get("database"))
+                if db is not ...:
+                    rt["db"] = db
+                return [rt]
             raise res
 
         def open_(addr, auth, timeout):
@@ -92,11 +111,16 @@ def custom_routing_opener(fake_connection_generator, mocker):
             route_mock.side_effect = routing_side_effect
             connection.attach_mock(route_mock, "route")
             opener_.connections.append(connection)
+
+            if callable(on_open):
+                on_open(connection)
+
             return connection
 
         failures = iter(failures or [])
         opener_ = mocker.MagicMock()
         opener_.connections = []
+        opener_.route_requests = []
         opener_.side_effect = open_
         return opener_
 
@@ -124,54 +148,101 @@ def _simple_pool(opener) -> Neo4jPool:
     )
 
 
+TEST_DB1 = AcquisitionDatabase("test_db1")
+TEST_DB2 = AcquisitionDatabase("test_db2")
+
+
+@pytest.mark.parametrize("guessed_db", (True, False))
 @mark_sync_test
-def test_acquires_new_routing_table_if_deleted(opener):
+def test_acquires_new_routing_table_if_deleted(
+    custom_routing_opener,
+    guessed_db,
+) -> None:
+    db = AcquisitionDatabase("test_db", guessed=guessed_db)
+    opener = custom_routing_opener(db_resolve=make_home_db_resolve(db.name))
     pool = _simple_pool(opener)
-    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx = pool.acquire(READ_ACCESS, 30, db, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables.get("test_db")
+    assert pool.routing_tables.get(db.name)
+    assert opener.route_requests == [None if guessed_db else db.name]
+    opener.route_requests = []
 
-    del pool.routing_tables["test_db"]
+    del pool.routing_tables[db.name]
 
-    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx = pool.acquire(READ_ACCESS, 30, db, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables.get("test_db")
+    assert pool.routing_tables.get(db.name)
+    assert opener.route_requests == [None if guessed_db else db.name]
 
 
+@pytest.mark.parametrize("guessed_db", (True, False))
 @mark_sync_test
-def test_acquires_new_routing_table_if_stale(opener):
+def test_acquires_new_routing_table_if_stale(
+    custom_routing_opener,
+    guessed_db,
+) -> None:
+    db = AcquisitionDatabase("test_db", guessed=guessed_db)
+    opener = custom_routing_opener(db_resolve=make_home_db_resolve(db.name))
     pool = _simple_pool(opener)
-    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx = pool.acquire(READ_ACCESS, 30, db, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables.get("test_db")
+    assert pool.routing_tables.get(db.name)
+    assert opener.route_requests == [None if guessed_db else db.name]
+    opener.route_requests = []
 
-    old_value = pool.routing_tables["test_db"].last_updated_time
-    pool.routing_tables["test_db"].ttl = 0
+    old_value = pool.routing_tables[db.name].last_updated_time
+    pool.routing_tables[db.name].ttl = 0
 
-    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx = pool.acquire(READ_ACCESS, 30, db, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables["test_db"].last_updated_time > old_value
+    assert pool.routing_tables[db.name].last_updated_time > old_value
+    assert opener.route_requests == [None if guessed_db else db.name]
 
 
 @mark_sync_test
 def test_removes_old_routing_table(opener):
     pool = _simple_pool(opener)
-    cx = pool.acquire(READ_ACCESS, 30, "test_db1", None, None, None)
+    cx = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables.get("test_db1")
-    cx = pool.acquire(READ_ACCESS, 30, "test_db2", None, None, None)
+    assert pool.routing_tables.get(TEST_DB1.name)
+    cx = pool.acquire(READ_ACCESS, 30, TEST_DB2, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables.get("test_db2")
+    assert pool.routing_tables.get(TEST_DB2.name)
 
-    old_value = pool.routing_tables["test_db1"].last_updated_time
-    pool.routing_tables["test_db1"].ttl = 0
-    db2_rt = pool.routing_tables["test_db2"]
+    old_value = pool.routing_tables[TEST_DB1.name].last_updated_time
+    pool.routing_tables[TEST_DB1.name].ttl = 0
+    db2_rt = pool.routing_tables[TEST_DB2.name]
     db2_rt.ttl = -RoutingConfig.routing_table_purge_delay
 
-    cx = pool.acquire(READ_ACCESS, 30, "test_db1", None, None, None)
+    cx = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx)
-    assert pool.routing_tables["test_db1"].last_updated_time > old_value
-    assert "test_db2" not in pool.routing_tables
+    assert pool.routing_tables[TEST_DB1.name].last_updated_time > old_value
+    assert TEST_DB2.name not in pool.routing_tables
+
+
+@pytest.mark.parametrize("guessed_db", (True, False))
+@mark_sync_test
+def test_db_resolution_callback(custom_routing_opener, guessed_db):
+    cb_calls = []
+
+    def cb(db_):
+        nonlocal cb_calls
+        cb_calls.append(db_)
+
+    db = AcquisitionDatabase("test_db", guessed=guessed_db)
+    home_db = "home_db"
+    expected_target_db = home_db if db.guessed else db.name
+
+    opener = custom_routing_opener(db_resolve=make_home_db_resolve(home_db))
+    pool = _simple_pool(opener)
+    cx = pool.acquire(
+        READ_ACCESS, 30, db, None, None, None, database_callback=cb
+    )
+    pool.release(cx)
+
+    assert pool.routing_tables.get(expected_target_db)
+    assert opener.route_requests == [None if guessed_db else db.name]
+    assert cb_calls == [expected_target_db]
 
 
 @pytest.mark.parametrize("type_", ("r", "w"))
@@ -181,7 +252,7 @@ def test_chooses_right_connection_type(opener, type_):
     cx1 = pool.acquire(
         READ_ACCESS if type_ == "r" else WRITE_ACCESS,
         30,
-        "test_db",
+        TEST_DB1,
         None,
         None,
         None,
@@ -196,9 +267,9 @@ def test_chooses_right_connection_type(opener, type_):
 @mark_sync_test
 def test_reuses_connection(opener):
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx1)
-    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     assert cx1 is cx2
 
 
@@ -216,7 +287,7 @@ def test_closes_stale_connections(opener, break_on_close):
         return None
 
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx1)
     assert cx1 in pool.connections[cx1.unresolved_address]
     # simulate connection going stale (e.g. exceeding idle timeout) and then
@@ -226,7 +297,7 @@ def test_closes_stale_connections(opener, break_on_close):
     if break_on_close:
         cx_close_mock_side_effect = cx_close_mock.side_effect
         cx_close_mock.side_effect = break_connection
-    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx2)
     if break_on_close:
         cx1.close.assert_called()
@@ -241,12 +312,12 @@ def test_closes_stale_connections(opener, break_on_close):
 @mark_sync_test
 def test_does_not_close_stale_connections_in_use(opener):
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     assert cx1 in pool.connections[cx1.unresolved_address]
     # simulate connection going stale (e.g. exceeding idle timeout) while being
     # in use
     cx1.stale.return_value = True
-    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx2)
     cx1.close.assert_not_called()
     assert cx2 is not cx1
@@ -259,7 +330,7 @@ def test_does_not_close_stale_connections_in_use(opener):
     # it should be closed when trying to acquire the next connection
     cx1.close.assert_not_called()
 
-    cx3 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx3 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx3)
     cx1.close.assert_called_once()
     assert cx2 is cx3
@@ -271,7 +342,7 @@ def test_does_not_close_stale_connections_in_use(opener):
 @mark_sync_test
 def test_release_resets_connections(opener):
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     cx1.is_reset_mock.return_value = False
     cx1.is_reset_mock.reset_mock()
     pool.release(cx1)
@@ -282,7 +353,7 @@ def test_release_resets_connections(opener):
 @mark_sync_test
 def test_release_does_not_resets_closed_connections(opener):
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     cx1.closed.return_value = True
     cx1.closed.reset_mock()
     cx1.is_reset_mock.reset_mock()
@@ -295,7 +366,7 @@ def test_release_does_not_resets_closed_connections(opener):
 @mark_sync_test
 def test_release_does_not_resets_defunct_connections(opener):
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     cx1.defunct.return_value = True
     cx1.defunct.reset_mock()
     cx1.is_reset_mock.reset_mock()
@@ -457,8 +528,8 @@ def test_multiple_broken_connections_on_close(opener, mocker):
 
     # create pool with 2 idle connections
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
-    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx1)
     pool.release(cx2)
 
@@ -470,7 +541,7 @@ def test_multiple_broken_connections_on_close(opener, mocker):
     # unreachable
     cx1.stale.return_value = True
 
-    cx3 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx3 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
 
     assert cx3 is not cx1
     assert cx3 is not cx2
@@ -479,11 +550,11 @@ def test_multiple_broken_connections_on_close(opener, mocker):
 @mark_sync_test
 def test_failing_opener_leaves_connections_in_use_alone(opener):
     pool = _simple_pool(opener)
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
 
     opener.side_effect = ServiceUnavailable("Server overloaded")
     with pytest.raises((ServiceUnavailable, SessionExpired)):
-        pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+        pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     assert not cx1.closed()
 
 
@@ -505,7 +576,7 @@ def test__acquire_new_later_without_room(opener):
     config = _pool_config()
     config.max_connection_pool_size = 1
     pool = Neo4jPool(opener, config, WorkspaceConfig(), ROUTER1_ADDRESS)
-    _ = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    _ = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     # pool is full now
     assert pool.connections_reservations[READER1_ADDRESS] == 0
     creator = pool._acquire_new_later(READER1_ADDRESS, None, Deadline(1))
@@ -559,13 +630,13 @@ def test_discovery_is_retried(custom_routing_opener, error):
         WorkspaceConfig(),
         ResolvedAddress(("1.2.3.1", 9999), host_name="host"),
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx1)
-    pool.routing_tables.get("test_db").ttl = 0
+    pool.routing_tables.get(TEST_DB1.name).ttl = 0
 
-    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx2)
-    assert pool.routing_tables.get("test_db")
+    assert pool.routing_tables.get(TEST_DB1.name)
 
     assert cx1 is cx2
 
@@ -611,12 +682,12 @@ def test_fast_failing_discovery(custom_routing_opener, error):
         WorkspaceConfig(),
         ResolvedAddress(("1.2.3.1", 9999), host_name="host"),
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx1)
-    pool.routing_tables.get("test_db").ttl = 0
+    pool.routing_tables.get(TEST_DB1.name).ttl = 0
 
     with pytest.raises(error.__class__) as exc:
-        pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+        pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
 
     assert exc.value is error
 
@@ -657,11 +728,11 @@ def test_connection_error_callback(
     config.auth = auth_manager
     pool = Neo4jPool(opener, config, WorkspaceConfig(), ROUTER1_ADDRESS)
     cxs_read = [
-        pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+        pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
         for _ in range(5)
     ]
     cxs_write = [
-        pool.acquire(WRITE_ACCESS, 30, "test_db", None, None, None)
+        pool.acquire(WRITE_ACCESS, 30, TEST_DB1, None, None, None)
         for _ in range(5)
     ]
 
@@ -690,7 +761,7 @@ def test_connection_error_callback(
 
 @mark_sync_test
 def test_pool_closes_connections_dropped_from_rt(custom_routing_opener):
-    readers = {"db1": [str(READER1_ADDRESS)]}
+    readers = {TEST_DB1.name: [str(READER1_ADDRESS)]}
 
     def get_readers(database):
         return readers[database]
@@ -700,7 +771,7 @@ def test_pool_closes_connections_dropped_from_rt(custom_routing_opener):
     pool = Neo4jPool(
         opener, _pool_config(), WorkspaceConfig(), ROUTER1_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, "db1", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     assert cx1.unresolved_address == READER1_ADDRESS
     pool.release(cx1)
 
@@ -708,10 +779,10 @@ def test_pool_closes_connections_dropped_from_rt(custom_routing_opener):
     assert len(pool.connections[READER1_ADDRESS]) == 1
 
     # force RT refresh, returning a different reader
-    del pool.routing_tables["db1"]
-    readers["db1"] = [str(READER2_ADDRESS)]
+    del pool.routing_tables[TEST_DB1.name]
+    readers[TEST_DB1.name] = [str(READER2_ADDRESS)]
 
-    cx2 = pool.acquire(READ_ACCESS, 30, "db1", None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     assert cx2.unresolved_address == READER2_ADDRESS
 
     cx1.close.assert_called_once()
@@ -726,8 +797,8 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
     custom_routing_opener,
 ):
     readers = {
-        "db1": [str(READER1_ADDRESS), str(READER2_ADDRESS)],
-        "db2": [str(READER1_ADDRESS)],
+        TEST_DB1.name: [str(READER1_ADDRESS), str(READER2_ADDRESS)],
+        TEST_DB2.name: [str(READER1_ADDRESS)],
     }
 
     def get_readers(database):
@@ -738,14 +809,14 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
     pool = Neo4jPool(
         opener, _pool_config(), WorkspaceConfig(), ROUTER1_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, "db1", None, None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx1)
     assert cx1.unresolved_address in {READER1_ADDRESS, READER2_ADDRESS}
     reader1_connection_count = len(pool.connections[READER1_ADDRESS])
     reader2_connection_count = len(pool.connections[READER2_ADDRESS])
     assert reader1_connection_count + reader2_connection_count == 1
 
-    cx2 = pool.acquire(READ_ACCESS, 30, "db2", None, None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB2, None, None, None)
     pool.release(cx2)
     assert cx2.unresolved_address == READER1_ADDRESS
     cx1.close.assert_not_called()
@@ -754,10 +825,10 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
     assert len(pool.connections[READER2_ADDRESS]) == reader2_connection_count
 
     # force RT refresh, returning a different reader
-    del pool.routing_tables["db2"]
-    readers["db2"] = [str(READER3_ADDRESS)]
+    del pool.routing_tables[TEST_DB2.name]
+    readers[TEST_DB2.name] = [str(READER3_ADDRESS)]
 
-    cx3 = pool.acquire(READ_ACCESS, 30, "db2", None, None, None)
+    cx3 = pool.acquire(READ_ACCESS, 30, TEST_DB2, None, None, None)
     pool.release(cx3)
     assert cx3.unresolved_address == READER3_ADDRESS
 
@@ -767,3 +838,79 @@ def test_pool_does_not_close_connections_dropped_from_rt_for_other_server(  # no
     assert len(pool.connections[READER1_ADDRESS]) == 1
     assert len(pool.connections[READER2_ADDRESS]) == reader2_connection_count
     assert len(pool.connections[READER3_ADDRESS]) == 1
+
+
+@mark_sync_test
+def test_tracks_ssr_connection_hints(custom_routing_opener):
+    connection_count = 0
+
+    def on_open(connection):
+        if connection.unresolved_address in {
+            ROUTER1_ADDRESS,
+            ROUTER2_ADDRESS,
+            ROUTER3_ADDRESS,
+        }:
+            connection.ssr_enabled = True
+            return
+        nonlocal connection_count
+        connection_count += 1
+        connection.ssr_enabled = connection_count != 2
+
+    opener = custom_routing_opener(on_open=on_open)
+    pool = Neo4jPool(
+        opener, _pool_config(), WorkspaceConfig(), ROUTER1_ADDRESS
+    )
+
+    # no connection in pool => cannot know => defensive assumption: off
+    assert not pool.ssr_enabled
+
+    # open 1st reader connection (supports SSR)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+    assert cx1.ssr_enabled  # double check we got the mocking right
+
+    assert pool.ssr_enabled
+
+    # open 2nd reader connection (does not support SSR)
+    cx2 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+    assert not cx2.ssr_enabled  # double check we got the mocking right
+
+    assert not pool.ssr_enabled
+
+    # open 3rd reader connection (supports SSR)
+    cx3 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+    assert cx3.ssr_enabled  # double check we got the mocking right
+
+    assert not pool.ssr_enabled
+
+    pool.release(cx1)
+    pool.release(cx2)
+    pool.release(cx3)
+
+    assert not pool.ssr_enabled
+
+    cxs = [
+        pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+        for _ in range(3)
+    ]
+    assert sum(not c.ssr_enabled for c in cxs) == 1  # double check
+
+    for cx in (cx for cx in cxs if not cx.ssr_enabled):
+        cx.close()
+
+    # after the single connection without SSR support is closed
+    for cx in cxs:
+        pool.release(cx)
+
+    # force pool cleaning up all stale connections:
+    cxs = [
+        pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+        for _ in range(3)
+    ]
+    assert all(cx.ssr_enabled for cx in cxs)  # double check
+
+    assert pool.ssr_enabled
+
+    for cx in cxs:
+        pool.release(cx)
+
+    assert pool.ssr_enabled

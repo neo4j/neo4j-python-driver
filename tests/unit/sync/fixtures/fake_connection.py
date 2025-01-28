@@ -127,7 +127,14 @@ def fake_connection_generator(session_mocker):
                 return func
 
             method_mock = parent.__getattr__(name)
-            if name in {"run", "commit", "pull", "rollback", "discard"}:
+            if name in {
+                "begin",
+                "run",
+                "commit",
+                "pull",
+                "rollback",
+                "discard",
+            }:
                 method_mock.side_effect = build_message_handler(name)
             return method_mock
 
@@ -218,7 +225,14 @@ def scripted_connection_generator(fake_connection_generator):
                 return func
 
             method_mock = parent.__getattr__(name)
-            if name in {"run", "commit", "pull", "rollback", "discard"}:
+            if name in {
+                "begin",
+                "run",
+                "commit",
+                "pull",
+                "rollback",
+                "discard",
+            }:
                 method_mock.side_effect = build_message_handler(name)
             return method_mock
 
