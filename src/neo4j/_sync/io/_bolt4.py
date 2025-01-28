@@ -552,6 +552,8 @@ class Bolt4x2(Bolt4x1):
 
     PROTOCOL_VERSION = Version(4, 2)
 
+    SKIP_REGISTRATION = False
+
 
 class Bolt4x3(Bolt4x2):
     """
@@ -561,8 +563,6 @@ class Bolt4x3(Bolt4x2):
     """
 
     PROTOCOL_VERSION = Version(4, 3)
-
-    SKIP_REGISTRATION = False
 
     def get_base_headers(self):
         headers = super().get_base_headers()
