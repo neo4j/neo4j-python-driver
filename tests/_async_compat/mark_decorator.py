@@ -15,13 +15,19 @@
 
 
 import pytest
+import pytest_asyncio
 
 
 mark_async_test = pytest.mark.asyncio
 
+async_fixture = pytest_asyncio.fixture
+
 
 def mark_sync_test(f):
     return f
+
+
+fixture = pytest.fixture
 
 
 class AsyncTestDecorators:

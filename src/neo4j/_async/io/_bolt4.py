@@ -74,6 +74,8 @@ class AsyncBolt4x0(AsyncBolt):
 
     supports_notification_filtering = False
 
+    SKIP_REGISTRATION = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
@@ -549,6 +551,8 @@ class AsyncBolt4x2(AsyncBolt4x1):
     """
 
     PROTOCOL_VERSION = Version(4, 2)
+
+    SKIP_REGISTRATION = False
 
 
 class AsyncBolt4x3(AsyncBolt4x2):

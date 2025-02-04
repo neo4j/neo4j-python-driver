@@ -190,6 +190,7 @@ def new_driver(backend, data):
         ("maxTxRetryTimeMs", "max_transaction_retry_time"),
         ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
         ("livenessCheckTimeoutMs", "liveness_check_timeout"),
+        ("maxConnectionLifetimeMs", "max_connection_lifetime"),
     ):
         if data.get(timeout_testkit) is not None:
             kwargs[timeout_driver] = data[timeout_testkit] / 1000

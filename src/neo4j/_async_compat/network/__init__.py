@@ -15,8 +15,8 @@
 
 
 from ._bolt_socket import (
-    AsyncBoltSocket,
-    BoltSocket,
+    AsyncBoltSocketBase,
+    BoltSocketBase,
 )
 from ._util import (
     AsyncNetworkUtil,
@@ -25,8 +25,8 @@ from ._util import (
 
 
 __all__ = [
-    "AsyncBoltSocket",
+    "AsyncBoltSocketBase",
     "AsyncNetworkUtil",
-    "BoltSocket",
+    "BoltSocketBase",
     "NetworkUtil",
 ]

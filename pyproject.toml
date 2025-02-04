@@ -122,7 +122,7 @@ use_parentheses = true
 
 [tool.pytest.ini_options]
 mock_use_standalone_module = true
-asyncio_mode = "auto"
+asyncio_mode = "strict"
 
 
 [tool.mypy]

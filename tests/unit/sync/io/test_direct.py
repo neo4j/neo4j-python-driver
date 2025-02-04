@@ -31,7 +31,10 @@ from neo4j.exceptions import (
     ServiceUnavailable,
 )
 
-from ...._async_compat import mark_sync_test
+from ...._async_compat import (
+    fixture,
+    mark_sync_test,
+)
 
 
 class FakeBoltPool(IOPool):
@@ -113,7 +116,7 @@ def test_bolt_connection_ping_timeout():
     assert protocol_version is None
 
 
-@pytest.fixture
+@fixture
 def pool(fake_connection_generator):
     with FakeBoltPool(
         fake_connection_generator, ("127.0.0.1", 7687)

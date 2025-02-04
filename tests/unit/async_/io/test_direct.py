@@ -31,7 +31,10 @@ from neo4j.exceptions import (
     ServiceUnavailable,
 )
 
-from ...._async_compat import mark_async_test
+from ...._async_compat import (
+    async_fixture,
+    mark_async_test,
+)
 
 
 class AsyncFakeBoltPool(AsyncIOPool):
@@ -113,7 +116,7 @@ async def test_bolt_connection_ping_timeout():
     assert protocol_version is None
 
 
-@pytest.fixture
+@async_fixture
 async def pool(async_fake_connection_generator):
     async with AsyncFakeBoltPool(
         async_fake_connection_generator, ("127.0.0.1", 7687)
