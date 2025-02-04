@@ -336,7 +336,6 @@ class AsyncBolt:
             await AsyncBoltSocket.close_socket(s)
             return protocol_version
 
-    # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     async def open(
         cls,

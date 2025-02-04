@@ -209,6 +209,9 @@ def watcher():
 #       check if this fixture is still needed
 @pytest.fixture
 def event_loop():
+    # Overwriting the default event loop injected by pytest-asyncio
+    # because its implementation doesn't properly shut down the loop
+    # (e.g., it doesn't call `shutdown_asyncgens`)
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     yield loop
@@ -222,6 +225,13 @@ def event_loop():
 
 
 def _cancel_all_tasks(loop):
+    # Copied from Python 3.13's asyncio package with minor modifications
+    # in exception wording and variable naming
+
+    # Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+    # 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022
+    # Python Software Foundation;
+    # All Rights Reserved
     to_cancel = asyncio.all_tasks(loop)
     if not to_cancel:
         return
