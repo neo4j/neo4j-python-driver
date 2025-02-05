@@ -19,6 +19,10 @@ else
               || check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"); then
             STATUS=1
         fi
+        if ! (check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}-py3-none-any.whl" \
+              || check_file "${DIST}/${PACKAGE}-${VERSION}-py3-none-any.whl"); then
+            STATUS=1
+        fi
     done
 fi
 
