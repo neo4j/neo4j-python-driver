@@ -18,9 +18,15 @@ from .notifications import (
     notification_factory,
     raw_notification_factory,
 )
+from .socket import (
+    async_bolt_socket_factory,
+    bolt_socket_factory,
+)
 
 
 __all__ = [
+    "async_bolt_socket_factory",
+    "bolt_socket_factory",
     "notification_factory",
     "raw_notification_factory",
 ]

@@ -204,16 +204,16 @@ class BoltSocket(BoltSocketBase):
         """
         local_port = self.getsockname()[1]
 
-        if log.getEffectiveLevel() >= logging.DEBUG:
-            handshake = self.Bolt.get_handshake()
-            handshake = struct.unpack(">16B", handshake)
-            handshake = [
-                handshake[i : i + 4] for i in range(0, len(handshake), 4)
+        handshake = self.Bolt.get_handshake()
+        if log.getEffectiveLevel() <= logging.DEBUG:
+            handshake_bytes = struct.unpack(">16B", handshake)
+            handshake_bytes = [
+                handshake[i : i + 4] for i in range(0, len(handshake_bytes), 4)
             ]
 
             supported_versions = [
                 f"0x{vx[0]:02X}{vx[1]:02X}{vx[2]:02X}{vx[3]:02X}"
-                for vx in handshake
+                for vx in handshake_bytes
             ]
 
             log.debug(
@@ -227,7 +227,7 @@ class BoltSocket(BoltSocketBase):
                 *supported_versions,
             )
 
-        request = self.Bolt.MAGIC_PREAMBLE + self.Bolt.get_handshake()
+        request = self.Bolt.MAGIC_PREAMBLE + handshake
 
         ctx = HandshakeCtx(
             ctx="handshake opening",

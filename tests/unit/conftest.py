@@ -22,6 +22,8 @@ from .async_.fixtures import (
     async_scripted_connection_generator,
 )
 from .fixtures import (
+    async_bolt_socket_factory,
+    bolt_socket_factory,
     notification_factory,
     raw_notification_factory,
 )
@@ -35,11 +37,13 @@ from .sync.fixtures import (
 
 
 __all__ = [
+    "async_bolt_socket_factory",
     "async_fake_connection",
     "async_fake_connection_generator",
     "async_fake_pool",
     "async_scripted_connection",
     "async_scripted_connection_generator",
+    "bolt_socket_factory",
     "fake_connection",
     "fake_connection_generator",
     "fake_pool",
