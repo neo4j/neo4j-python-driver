@@ -85,7 +85,7 @@ class BoltSocket(BoltSocketBase):
         ctx.ctx = "handshake v2 capabilities"
         _capabilities_offer = self._read_varint(ctx)
 
-        if log.getEffectiveLevel() >= logging.DEBUG:
+        if log.getEffectiveLevel() <= logging.DEBUG:
             log.debug(
                 "[#%04X]  S: <HANDSHAKE> %s [%i] %s %s",
                 ctx.local_port,
