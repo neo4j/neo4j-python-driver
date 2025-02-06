@@ -29,12 +29,12 @@ from neo4j._sync.io._bolt_socket import BoltSocket
 
 
 if t.TYPE_CHECKING:
-    _T = t.TypeVar("_T")
+    _T_co = t.TypeVar("_T_co", covariant=True)
 
-    class _SocketFactory[_T](t.Protocol):
+    class _SocketFactory(t.Protocol, t.Generic[_T_co]):
         def __call__(
             self, bytes_to_read: deque, bytes_written: deque | None = None
-        ) -> _T: ...
+        ) -> _T_co: ...
 
 
 log = logging.getLogger(__name__)
