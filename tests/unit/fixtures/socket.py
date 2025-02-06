@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import typing as t
 from collections import deque
 from socket import socket
 
@@ -25,6 +26,15 @@ import pytest
 
 from neo4j._async.io._bolt_socket import AsyncBoltSocket
 from neo4j._sync.io._bolt_socket import BoltSocket
+
+
+if t.TYPE_CHECKING:
+    _T = t.TypeVar("_T")
+
+    class _SocketFactory[_T](t.Protocol):
+        def __call__(
+            self, bytes_to_read: deque, bytes_written: deque | None = None
+        ) -> _T: ...
 
 
 log = logging.getLogger(__name__)
@@ -40,8 +50,8 @@ def _pop_read_n(d: deque, n: int, fn_name: str) -> bytes:
 
 
 @pytest.fixture
-def async_bolt_socket_factory(mocker):
-    def factory(bytes_to_read, bytes_written=None):
+def async_bolt_socket_factory(mocker) -> _SocketFactory[AsyncBoltSocket]:
+    def factory(bytes_to_read, bytes_written=None) -> AsyncBoltSocket:
         assert isinstance(bytes_to_read, deque)
         bytes(bytes_to_read)  # test that bytes_to_read contains only bytes
         write_buffer = []
@@ -83,8 +93,8 @@ def async_bolt_socket_factory(mocker):
 
 
 @pytest.fixture
-def bolt_socket_factory(mocker):
-    def factory(bytes_to_read, bytes_written=None):
+def bolt_socket_factory(mocker) -> _SocketFactory[BoltSocket]:
+    def factory(bytes_to_read, bytes_written=None) -> BoltSocket:
         assert isinstance(bytes_to_read, deque)
         bytes(bytes_to_read)  # test that bytes_to_read contains only bytes
 
