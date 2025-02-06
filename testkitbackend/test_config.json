@@ -76,6 +76,7 @@
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
     "Optimization:ExecuteQueryPipelining": true,
+    "Optimization:HomeDatabaseCache": true,
     "Optimization:HomeDbCacheBasicPrincipalIsImpersonatedUser": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalBookmarksSet": true,
