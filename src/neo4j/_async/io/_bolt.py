@@ -292,7 +292,7 @@ class AsyncBolt:
 
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
-    def get_handshake(cls):
+    def get_handshake(cls) -> bytes:
         """
         Return the supported Bolt versions as bytes.
 

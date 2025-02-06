@@ -39,7 +39,15 @@ from ...exceptions import (
 
 
 if t.TYPE_CHECKING:
+    from ssl import SSLContext
+
+    import typing_extensions as te
+
     from ..._deadline import Deadline
+    from ...addressing import (
+        Address,
+        ResolvedAddress,
+    )
 
 
 log = logging.getLogger("neo4j.io")
@@ -63,7 +71,11 @@ class BytesPrinter:
 
 
 class AsyncBoltSocket(AsyncBoltSocketBase):
-    async def _parse_handshake_response_v1(self, ctx, response):
+    async def _parse_handshake_response_v1(
+        self,
+        ctx: HandshakeCtx,
+        response: bytes,
+    ) -> tuple[int, int]:
         agreed_version = response[-1], response[-2]
         log.debug(
             "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
@@ -73,7 +85,11 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         )
         return agreed_version
 
-    async def _parse_handshake_response_v2(self, ctx, response):
+    async def _parse_handshake_response_v2(
+        self,
+        ctx: HandshakeCtx,
+        response: bytes,
+    ) -> tuple[int, int]:
         ctx.ctx = "handshake v2 offerings count"
         num_offerings = await self._read_varint(ctx)
         offerings = []
@@ -125,7 +141,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
 
         return chosen_version
 
-    async def _read_varint(self, ctx):
+    async def _read_varint(self, ctx: HandshakeCtx) -> int:
         next_byte = (await self._handshake_read(ctx, 1))[0]
         res = next_byte & 0x7F
         i = 0
@@ -136,7 +152,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         return res
 
     @staticmethod
-    def _encode_varint(n):
+    def _encode_varint(n: int) -> bytearray:
         res = bytearray()
         while n >= 0x80:
             res.append(n & 0x7F | 0x80)
@@ -144,7 +160,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         res.append(n)
         return res
 
-    async def _handshake_read(self, ctx, n):
+    async def _handshake_read(self, ctx: HandshakeCtx, n: int) -> bytes:
         original_timeout = self.gettimeout()
         self.settimeout(ctx.deadline.to_timeout())
         try:
@@ -193,7 +209,11 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         finally:
             self.settimeout(original_timeout)
 
-    async def _handshake(self, resolved_address, deadline):
+    async def _handshake(
+        self,
+        resolved_address: ResolvedAddress,
+        deadline: Deadline,
+    ) -> tuple[tuple[int, int], bytes, bytes]:
         """
         Perform BOLT handshake.
 
@@ -206,7 +226,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
 
         handshake = self.Bolt.get_handshake()
         if log.getEffectiveLevel() <= logging.DEBUG:
-            handshake_bytes = struct.unpack(">16B", handshake)
+            handshake_bytes: t.Sequence = struct.unpack(">16B", handshake)
             handshake_bytes = [
                 handshake[i : i + 4] for i in range(0, len(handshake_bytes), 4)
             ]
@@ -273,14 +293,14 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
     @classmethod
     async def connect(
         cls,
-        address,
+        address: Address,
         *,
-        tcp_timeout,
-        deadline,
-        custom_resolver,
-        ssl_context,
-        keep_alive,
-    ):
+        tcp_timeout: float | None,
+        deadline: Deadline,
+        custom_resolver: t.Callable | None,
+        ssl_context: SSLContext | None,
+        keep_alive: bool,
+    ) -> tuple[te.Self, tuple[int, int], bytes, bytes]:
         """
         Connect and perform a handshake.
 
@@ -313,10 +333,10 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 )
                 return s, agreed_version, handshake, response
             except (BoltError, DriverError, OSError) as error:
-                try:
-                    local_port = s.getsockname()[1]
-                except (OSError, AttributeError, TypeError):
-                    local_port = 0
+                local_port = 0
+                if isinstance(s, cls):
+                    with suppress(OSError, AttributeError, TypeError):
+                        local_port = s.getsockname()[1]
                 err_str = error.__class__.__name__
                 if str(error):
                     err_str += ": " + str(error)
@@ -331,10 +351,10 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 errors.append(error)
                 failed_addresses.append(resolved_address)
             except asyncio.CancelledError:
-                try:
-                    local_port = s.getsockname()[1]
-                except (OSError, AttributeError, TypeError):
-                    local_port = 0
+                local_port = 0
+                if isinstance(s, cls):
+                    with suppress(OSError, AttributeError, TypeError):
+                        local_port = s.getsockname()[1]
                 log.debug(
                     "[#%04X]  C: <CANCELED> %s", local_port, resolved_address
                 )

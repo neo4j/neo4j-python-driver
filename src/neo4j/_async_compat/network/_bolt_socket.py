@@ -79,7 +79,7 @@ def _sanitize_deadline(deadline):
 class AsyncBoltSocketBase(abc.ABC):
     Bolt: te.Final[type[AsyncBolt]] = None  # type: ignore[assignment]
 
-    def __init__(self, reader, protocol, writer):
+    def __init__(self, reader, protocol, writer) -> None:
         self._reader = reader  # type: asyncio.StreamReader
         self._protocol = protocol  # type: asyncio.StreamReaderProtocol
         self._writer = writer  # type: asyncio.StreamWriter
@@ -171,7 +171,7 @@ class AsyncBoltSocketBase(abc.ABC):
     @classmethod
     async def _connect_secure(
         cls, resolved_address, timeout, keep_alive, ssl_context
-    ):
+    ) -> te.Self:
         """
         Connect to the address and return the socket.
 
@@ -202,7 +202,7 @@ class AsyncBoltSocketBase(abc.ABC):
             keep_alive = 1 if keep_alive else 0
             s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
 
-            ssl_kwargs = {}
+            ssl_kwargs: dict[str, t.Any] = {}
 
             if ssl_context is not None:
                 hostname = resolved_address._host_name or None
