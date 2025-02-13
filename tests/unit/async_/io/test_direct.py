@@ -70,10 +70,11 @@ class AsyncFakeBoltPool(AsyncIOPool):
         bookmarks,
         auth,
         liveness_check_timeout,
+        unprepared=False,
         database_callback=None,
     ):
         return await self._acquire(
-            self.address, auth, timeout, liveness_check_timeout
+            self.address, auth, timeout, liveness_check_timeout, unprepared
         )
 
 

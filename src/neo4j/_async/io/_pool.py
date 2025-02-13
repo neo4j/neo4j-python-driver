@@ -274,7 +274,9 @@ class AsyncIOPool(abc.ABC):
                 return connection_creator
         return None
 
-    async def _re_auth_connection(self, connection, auth, force):
+    async def _re_auth_connection(self, connection, auth, force, unprepared):
+        if unprepared and not force:
+            return
         if auth:
             # Assert session auth is supported by the protocol.
             # The Bolt implementation will try as hard as it can to make the
@@ -312,7 +314,14 @@ class AsyncIOPool(abc.ABC):
             await connection.send_all()
             await connection.fetch_all()
 
-    async def _acquire(self, address, auth, deadline, liveness_check_timeout):
+    async def _acquire(
+        self,
+        address,
+        auth,
+        deadline,
+        liveness_check_timeout,
+        unprepared=False,
+    ):
         """
         Acquire a connection to a given address from the pool.
 
@@ -362,7 +371,7 @@ class AsyncIOPool(abc.ABC):
                 )
                 try:
                     await self._re_auth_connection(
-                        connection, auth, force_auth
+                        connection, auth, force_auth, unprepared
                     )
                 except ConfigurationError:
                     if auth:
@@ -419,6 +428,7 @@ class AsyncIOPool(abc.ABC):
         bookmarks,
         auth: AcquisitionAuth,
         liveness_check_timeout,
+        unprepared=False,
         database_callback=None,
     ):
         """
@@ -431,6 +441,9 @@ class AsyncIOPool(abc.ABC):
         :param bookmarks:
         :param auth:
         :param liveness_check_timeout:
+        :param unprepared: If True, no messages will be pipelined on the
+            connection. Meant to be used if no work is to be executed on the
+            connection.
         :param database_callback:
         """
         ...
@@ -651,6 +664,7 @@ class AsyncBoltPool(AsyncIOPool):
         bookmarks,
         auth: AcquisitionAuth,
         liveness_check_timeout,
+        unprepared=False,
         database_callback=None,
     ):
         # The access_mode and database is not needed for a direct connection,
@@ -663,7 +677,7 @@ class AsyncBoltPool(AsyncIOPool):
         )
         deadline = Deadline.from_timeout_or_deadline(timeout)
         return await self._acquire(
-            self.address, auth, deadline, liveness_check_timeout
+            self.address, auth, deadline, liveness_check_timeout, unprepared
         )
 
 
@@ -1132,6 +1146,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         bookmarks,
         auth: AcquisitionAuth | None,
         liveness_check_timeout,
+        unprepared=False,
         database_callback=None,
     ):
         if access_mode not in {WRITE_ACCESS, READ_ACCESS}:
@@ -1201,6 +1216,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                     auth,
                     deadline,
                     liveness_check_timeout,
+                    unprepared,
                 )
             except (ServiceUnavailable, SessionExpired):
                 await self.deactivate(address=address)

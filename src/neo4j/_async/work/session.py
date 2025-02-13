@@ -180,14 +180,16 @@ class AsyncSession(AsyncWorkspace):
 
     async def _get_server_info(self):
         assert not self._connection
-        await self._connect(READ_ACCESS, liveness_check_timeout=0)
+        await self._connect(
+            READ_ACCESS, liveness_check_timeout=0, unprepared=True
+        )
         server_info = self._connection.server_info
         await self._disconnect()
         return server_info
 
     async def _verify_authentication(self):
         assert not self._connection
-        await self._connect(READ_ACCESS, force_auth=True)
+        await self._connect(READ_ACCESS, force_auth=True, unprepared=True)
         await self._disconnect()
 
     @AsyncNonConcurrentMethodChecker._non_concurrent_method

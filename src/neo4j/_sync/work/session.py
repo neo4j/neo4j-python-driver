@@ -180,14 +180,16 @@ class Session(Workspace):
 
     def _get_server_info(self):
         assert not self._connection
-        self._connect(READ_ACCESS, liveness_check_timeout=0)
+        self._connect(
+            READ_ACCESS, liveness_check_timeout=0, unprepared=True
+        )
         server_info = self._connection.server_info
         self._disconnect()
         return server_info
 
     def _verify_authentication(self):
         assert not self._connection
-        self._connect(READ_ACCESS, force_auth=True)
+        self._connect(READ_ACCESS, force_auth=True, unprepared=True)
         self._disconnect()
 
     @NonConcurrentMethodChecker._non_concurrent_method
