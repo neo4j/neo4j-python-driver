@@ -14,15 +14,23 @@
 # limitations under the License.
 
 
-import neo4j
-
 from ._warning_check import warning_check
+from .time_warp_compat import (
+    GQL_STATUS_SUPPORT,
+    PREVIEW_WARNING_SUPPORTED,
+)
 
 
-with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
-    from neo4j import NotificationDisabledClassification
+__all__ = []
 
 
-__all__ = [
-    "NotificationDisabledClassification",
-]
+if PREVIEW_WARNING_SUPPORTED:
+    from neo4j import PreviewWarning
+
+    if GQL_STATUS_SUPPORT:
+        with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            from neo4j import NotificationDisabledClassification
+
+        __all__ += [
+            "NotificationDisabledClassification",
+        ]

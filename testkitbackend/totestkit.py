@@ -19,11 +19,7 @@ from __future__ import annotations
 import math
 
 import neo4j
-from neo4j.exceptions import (
-    GqlError,
-    Neo4jError,
-    ResultFailedError,
-)
+from neo4j.exceptions import Neo4jError
 from neo4j.graph import (
     Node,
     Path,
@@ -42,6 +38,12 @@ from neo4j.time import (
 
 from ._warning_check import warning_check
 from .exceptions import MarkdAsDriverError
+from .time_warp_compat import (
+    GQL_STATUS_SUPPORT,
+    is_gql_error,
+    is_result_failed_error,
+    SUMMARY_NOTIFICATION_SUPPORTED,
+)
 
 
 def record(rec):
@@ -72,6 +74,8 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         if summary_.notifications is None:
             gql_aware_protocol = summary_.server.protocol_version >= (5, 5)
             return [] if gql_aware_protocol else None
+        if not SUMMARY_NOTIFICATION_SUPPORTED:
+            return summary_.notifications
         return [
             serialize_notification(n) for n in summary_.summary_notifications
         ]
@@ -147,7 +151,9 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         ),
         "database": summary_.database,
         "notifications": serialize_notifications(),
-        "gqlStatusObjects": serialize_gql_status_objects(),
+        "gqlStatusObjects": (
+            serialize_gql_status_objects() if GQL_STATUS_SUPPORT else []
+        ),
         "plan": summary_.plan,
         "profile": summary_.profile,
         "query": {
@@ -316,7 +322,7 @@ def driver_exc(exc, id_=None):
         payload["msg"] = _exc_msg(exc)
         if isinstance(exc, Neo4jError):
             payload["code"] = exc.code
-        if isinstance(exc, GqlError):
+        if is_gql_error(exc):
             with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["gqlStatus"] = exc.gql_status
             with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
@@ -341,7 +347,7 @@ def _exc_msg(exc, max_depth=10):
         return str(exc.message)
 
     depth = 0
-    if isinstance(exc, GqlError):
+    if is_gql_error(exc):
         if isinstance(exc, Neo4jError):
             res = str(exc.message) if exc.message is not None else str(exc)
         else:
@@ -354,12 +360,12 @@ def _exc_msg(exc, max_depth=10):
         if (
             # Not including GqlError in the chain as they will be serialized
             # separately in the `cause` field.
-            isinstance(exc.__cause__, GqlError)
+            is_gql_error(exc.__cause__)
             # Special case for ResultFailedError:
             # Always serialize the cause in the message to please TestKit.
             # Else, the cause's class name will get lost (can't be serialized
             # as a field in of an error cause).
-            and not isinstance(exc, ResultFailedError)
+            and not is_result_failed_error(exc)
         ):
             break
         depth += 1
@@ -375,7 +381,7 @@ def driver_exc_cause(exc, max_depth=10):
         return None
     if max_depth <= 0:
         return None
-    if not isinstance(exc, GqlError):
+    if not is_gql_error(exc):
         return driver_exc_cause(
             getattr(exc, "__cause__", None), max_depth=max_depth - 1
         )

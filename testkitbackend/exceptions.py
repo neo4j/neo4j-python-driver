@@ -14,9 +14,27 @@
 # limitations under the License.
 
 
+from .time_warp_compat import VERSION
+
+
 class MarkdAsDriverError(Exception):
     """Wrap any error as DriverException."""
 
     def __init__(self, wrapped_exc):
         super().__init__()
         self.wrapped_exc = wrapped_exc
+
+
+class TimeWarpError(Exception):
+    """
+    Request cannot be fulfilled with in the current time warp mode.
+
+    The backend understood the request, but is running in time warp mode
+    against an older driver that does not support the requested feature.
+    """
+
+    def __init__(self, feature_name: str):
+        super().__init__(
+            f"{feature_name.capitalize()} is not supported in time warp mode "
+            f"(driver version {'.'.join(map(str, VERSION))})."
+        )

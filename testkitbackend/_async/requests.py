@@ -17,26 +17,16 @@
 from __future__ import annotations
 
 import datetime
-import json
 import re
-import ssl
 import typing as t
 import warnings
-from os import path
 
 from freezegun import freeze_time
 
 import neo4j
 import neo4j.api
-import neo4j.auth_management
 from neo4j._async_compat.util import AsyncUtil
 from neo4j._routing import RoutingTable
-from neo4j.auth_management import (
-    AsyncAuthManager,
-    AsyncAuthManagers,
-    AsyncClientCertificateProvider,
-    ExpiringAuth,
-)
 
 from .. import (
     fromtestkit,
@@ -44,7 +34,26 @@ from .. import (
     totestkit,
 )
 from .._warning_check import warnings_check
-from ..exceptions import MarkdAsDriverError
+from ..exceptions import (
+    MarkdAsDriverError,
+    TimeWarpError,
+)
+from ..test_config import (
+    FEATURES,
+    SKIPPED_TESTS,
+)
+from ..time_warp_compat import (
+    BMM_SUPPORT,
+    EXECUTE_QUERY_STABILIZED,
+    EXECUTE_QUERY_SUPPORT,
+    LIVENESS_CHECK_SUPPORT,
+    MTLS_SUPPORT,
+    NOTIFICATION_WARNINGS_SUPPORTED,
+    SESSION_AUTH_STABILIZED,
+    SESSION_AUTH_SUPPORTED,
+    TELEMETRY_SUPPORT,
+    VERSION,
+)
 
 
 if t.TYPE_CHECKING:
@@ -97,20 +106,6 @@ def request_handler(x: str | None | t.Callable = None):
 
 class FrontendError(Exception):
     pass
-
-
-def load_config():
-    config_path = path.join(path.dirname(__file__), "..", "test_config.json")
-    with open(config_path, encoding="utf-8") as fd:
-        config = json.load(fd)
-    skips = config["skips"]
-    features = [k for k, v in config["features"].items() if v is True]
-    if ssl.HAS_TLSv1_3:
-        features += ["Feature:TLS:1.3"]
-    return skips, features
-
-
-SKIPPED_TESTS, FEATURES = load_config()
 
 
 def _get_skip_reason(test_name):
@@ -185,23 +180,33 @@ async def new_driver(backend, data):
             data["resolverRegistered"],
             data["domainNameResolverRegistered"],
         )
-    for timeout_testkit, timeout_driver in (
+    timeout_configs = [
         ("connectionTimeoutMs", "connection_timeout"),
         ("maxTxRetryTimeMs", "max_transaction_retry_time"),
         ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
-        ("livenessCheckTimeoutMs", "liveness_check_timeout"),
         ("maxConnectionLifetimeMs", "max_connection_lifetime"),
-    ):
+    ]
+    if LIVENESS_CHECK_SUPPORT:
+        timeout_configs.append(
+            ("livenessCheckTimeoutMs", "liveness_check_timeout"),
+        )
+    elif data.get("livenessCheckTimeoutMs") is not None:
+        raise TimeWarpError("liveness check")
+    for timeout_testkit, timeout_driver in timeout_configs:
         if data.get(timeout_testkit) is not None:
             kwargs[timeout_driver] = data[timeout_testkit] / 1000
     for k in ("sessionConnectionTimeoutMs", "updateRoutingTableTimeoutMs"):
         if k in data:
             data.mark_item_as_read_if_equals(k, None)
-    for conf_name, data_name in (
+    copy_configs = [
         ("max_connection_pool_size", "maxConnectionPoolSize"),
         ("fetch_size", "fetchSize"),
-        ("telemetry_disabled", "telemetryDisabled"),
-    ):
+    ]
+    if TELEMETRY_SUPPORT:
+        copy_configs.append(("telemetry_disabled", "telemetryDisabled"))
+    elif data.get("telemetryDisabled") is not None:
+        raise TimeWarpError("telemetry")
+    for conf_name, data_name in copy_configs:
         if data.get(data_name):
             kwargs[conf_name] = data[data_name]
     for conf_name, data_name in (("encrypted", "encrypted"),):
@@ -220,18 +225,22 @@ async def new_driver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
 
-    expected_warnings.append(
-        (
-            neo4j.PreviewWarning,
-            r"notification warnings are a preview feature\.",
+    if NOTIFICATION_WARNINGS_SUPPORTED:
+        kwargs["warn_notification_severity"] = (
+            neo4j.NotificationMinimumSeverity.OFF
         )
-    )
+        expected_warnings.append(
+            (
+                neo4j.PreviewWarning,
+                r"notification warnings are a preview feature\.",
+            )
+        )
+
     with warnings_check(expected_warnings):
         driver = neo4j.AsyncGraphDatabase.driver(
             data["uri"],
             auth=auth,
             user_agent=data["userAgent"],
-            warn_notification_severity=neo4j.NotificationMinimumSeverity.OFF,
             **kwargs,
         )
     key = backend.next_key()
@@ -239,221 +248,222 @@ async def new_driver(backend, data):
     await backend.send_response("Driver", {"id": key})
 
 
-@request_handler
-async def new_auth_token_manager(backend, data):
-    auth_token_manager_id = backend.next_key()
+if SESSION_AUTH_STABILIZED:
+    from neo4j.auth_management import (
+        AsyncAuthManager,
+        AsyncAuthManagers,
+        ExpiringAuth,
+    )
 
-    class TestKitAuthManager(AsyncAuthManager):
-        async def get_auth(self):
+    @request_handler
+    async def new_auth_token_manager(backend, data):
+        auth_token_manager_id = backend.next_key()
+
+        class TestKitAuthManager(AsyncAuthManager):
+            async def get_auth(self):
+                key = backend.next_key()
+                await backend.send_response(
+                    "AuthTokenManagerGetAuthRequest",
+                    {
+                        "id": key,
+                        "authTokenManagerId": auth_token_manager_id,
+                    },
+                )
+                if not await backend.process_request():
+                    # connection was closed before end of next message
+                    return None
+                if key not in backend.auth_token_supplies:
+                    raise RuntimeError(
+                        "Backend did not receive expected "
+                        "AuthTokenManagerGetAuthCompleted message for id "
+                        f"{key}"
+                    )
+                return backend.auth_token_supplies.pop(key)
+
+            async def handle_security_exception(self, auth, error):
+                key = backend.next_key()
+                await backend.send_response(
+                    "AuthTokenManagerHandleSecurityExceptionRequest",
+                    {
+                        "id": key,
+                        "authTokenManagerId": auth_token_manager_id,
+                        "auth": totestkit.auth_token(auth),
+                        "errorCode": error.code,
+                    },
+                )
+                if not await backend.process_request():
+                    # connection was closed before end of next message
+                    return None
+                if key not in backend.auth_token_on_expiration_supplies:
+                    raise RuntimeError(
+                        "Backend did not receive expected "
+                        "AuthTokenManagerHandleSecurityExceptionCompleted "
+                        f"message for id {key}"
+                    )
+                return backend.auth_token_on_expiration_supplies.pop(key)
+
+        auth_manager = TestKitAuthManager()
+        backend.auth_token_managers[auth_token_manager_id] = auth_manager
+        await backend.send_response(
+            "AuthTokenManager", {"id": auth_token_manager_id}
+        )
+
+    @request_handler
+    async def auth_token_manager_get_auth_completed(backend, data):
+        auth_token = fromtestkit.to_auth_token(data, "auth")
+
+        backend.auth_token_supplies[data["requestId"]] = auth_token
+
+    @request_handler
+    async def auth_token_manager_handle_security_exception_completed(
+        backend, data
+    ):
+        handled = data["handled"]
+        backend.auth_token_on_expiration_supplies[data["requestId"]] = handled
+
+    @request_handler
+    async def auth_token_manager_close(backend, data):
+        auth_token_manager_id = data["id"]
+        del backend.auth_token_managers[auth_token_manager_id]
+        await backend.send_response(
+            "AuthTokenManager", {"id": auth_token_manager_id}
+        )
+
+    @request_handler
+    async def new_basic_auth_token_manager(backend, data):
+        auth_token_manager_id = backend.next_key()
+
+        async def auth_token_provider():
             key = backend.next_key()
             await backend.send_response(
-                "AuthTokenManagerGetAuthRequest",
+                "BasicAuthTokenProviderRequest",
                 {
                     "id": key,
-                    "authTokenManagerId": auth_token_manager_id,
+                    "basicAuthTokenManagerId": auth_token_manager_id,
                 },
             )
             if not await backend.process_request():
                 # connection was closed before end of next message
                 return None
-            if key not in backend.auth_token_supplies:
+            if key not in backend.basic_auth_token_supplies:
                 raise RuntimeError(
                     "Backend did not receive expected "
-                    f"AuthTokenManagerGetAuthCompleted message for id {key}"
+                    "BasicAuthTokenManagerCompleted message for id "
+                    f"{key}"
                 )
-            return backend.auth_token_supplies.pop(key)
+            return backend.basic_auth_token_supplies.pop(key)
 
-        async def handle_security_exception(self, auth, error):
+        auth_manager = AsyncAuthManagers.basic(auth_token_provider)
+        backend.auth_token_managers[auth_token_manager_id] = auth_manager
+        await backend.send_response(
+            "BasicAuthTokenManager", {"id": auth_token_manager_id}
+        )
+
+    @request_handler
+    async def basic_auth_token_provider_completed(backend, data):
+        auth = fromtestkit.to_auth_token(data, "auth")
+        backend.basic_auth_token_supplies[data["requestId"]] = auth
+
+    @request_handler
+    async def new_bearer_auth_token_manager(backend, data):
+        auth_token_manager_id = backend.next_key()
+
+        async def auth_token_provider():
             key = backend.next_key()
             await backend.send_response(
-                "AuthTokenManagerHandleSecurityExceptionRequest",
+                "BearerAuthTokenProviderRequest",
                 {
                     "id": key,
-                    "authTokenManagerId": auth_token_manager_id,
-                    "auth": totestkit.auth_token(auth),
-                    "errorCode": error.code,
+                    "bearerAuthTokenManagerId": auth_token_manager_id,
                 },
             )
             if not await backend.process_request():
                 # connection was closed before end of next message
-                return None
-            if key not in backend.auth_token_on_expiration_supplies:
+                return neo4j.auth_management.ExpiringAuth(None, None)
+            if key not in backend.expiring_auth_token_supplies:
                 raise RuntimeError(
                     "Backend did not receive expected "
-                    "AuthTokenManagerHandleSecurityExceptionCompleted message "
-                    f"for id {key}"
+                    "BearerAuthTokenManagerCompleted message for id "
+                    f"{key}"
                 )
-            return backend.auth_token_on_expiration_supplies.pop(key)
+            return backend.expiring_auth_token_supplies.pop(key)
 
-    auth_manager = TestKitAuthManager()
-    backend.auth_token_managers[auth_token_manager_id] = auth_manager
-    await backend.send_response(
-        "AuthTokenManager", {"id": auth_token_manager_id}
-    )
-
-
-@request_handler
-async def auth_token_manager_get_auth_completed(backend, data):
-    auth_token = fromtestkit.to_auth_token(data, "auth")
-
-    backend.auth_token_supplies[data["requestId"]] = auth_token
-
-
-@request_handler
-async def auth_token_manager_handle_security_exception_completed(
-    backend, data
-):
-    handled = data["handled"]
-    backend.auth_token_on_expiration_supplies[data["requestId"]] = handled
-
-
-@request_handler
-async def auth_token_manager_close(backend, data):
-    auth_token_manager_id = data["id"]
-    del backend.auth_token_managers[auth_token_manager_id]
-    await backend.send_response(
-        "AuthTokenManager", {"id": auth_token_manager_id}
-    )
-
-
-@request_handler
-async def new_basic_auth_token_manager(backend, data):
-    auth_token_manager_id = backend.next_key()
-
-    async def auth_token_provider():
-        key = backend.next_key()
+        auth_manager = AsyncAuthManagers.bearer(auth_token_provider)
+        backend.auth_token_managers[auth_token_manager_id] = auth_manager
         await backend.send_response(
-            "BasicAuthTokenProviderRequest",
-            {
-                "id": key,
-                "basicAuthTokenManagerId": auth_token_manager_id,
-            },
+            "BearerAuthTokenManager", {"id": auth_token_manager_id}
         )
-        if not await backend.process_request():
-            # connection was closed before end of next message
-            return None
-        if key not in backend.basic_auth_token_supplies:
-            raise RuntimeError(
-                "Backend did not receive expected "
-                "BasicAuthTokenManagerCompleted message for id "
-                f"{key}"
+
+    @request_handler
+    async def bearer_auth_token_provider_completed(backend, data):
+        temp_auth_data = data["auth"]
+        temp_auth_data.mark_item_as_read_if_equals(
+            "name", "AuthTokenAndExpiration"
+        )
+        temp_auth_data = temp_auth_data["data"]
+        auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
+        expiring_auth = ExpiringAuth(auth_token)
+        if temp_auth_data["expiresInMs"] is not None:
+            expires_in = temp_auth_data["expiresInMs"] / 1000
+            expiring_auth = expiring_auth.expires_in(expires_in)
+
+        backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
+
+
+if MTLS_SUPPORT:
+    from neo4j.auth_management import AsyncClientCertificateProvider
+
+    class TestKitClientCertificateProvider(AsyncClientCertificateProvider):
+        def __init__(self, backend):
+            self.id = backend.next_key()
+            self._backend = backend
+
+        async def get_certificate(self) -> ClientCertificate | None:
+            request_id = self._backend.next_key()
+            await self._backend.send_response(
+                "ClientCertificateProviderRequest",
+                {
+                    "id": request_id,
+                    "clientCertificateProviderId": self.id,
+                },
             )
-        return backend.basic_auth_token_supplies.pop(key)
+            if not await self._backend.process_request():
+                # connection was closed before end of next message
+                return None
+            if request_id not in self._backend.client_cert_supplies:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    "ClientCertificateProviderCompleted message for id "
+                    f"{request_id}"
+                )
+            return self._backend.client_cert_supplies.pop(request_id)
 
-    auth_manager = AsyncAuthManagers.basic(auth_token_provider)
-    backend.auth_token_managers[auth_token_manager_id] = auth_manager
-    await backend.send_response(
-        "BasicAuthTokenManager", {"id": auth_token_manager_id}
-    )
-
-
-@request_handler
-async def basic_auth_token_provider_completed(backend, data):
-    auth = fromtestkit.to_auth_token(data, "auth")
-    backend.basic_auth_token_supplies[data["requestId"]] = auth
-
-
-@request_handler
-async def new_bearer_auth_token_manager(backend, data):
-    auth_token_manager_id = backend.next_key()
-
-    async def auth_token_provider():
-        key = backend.next_key()
+    @request_handler
+    async def new_client_certificate_provider(backend, data):
+        provider = TestKitClientCertificateProvider(backend)
+        backend.client_cert_providers[provider.id] = provider
         await backend.send_response(
-            "BearerAuthTokenProviderRequest",
-            {
-                "id": key,
-                "bearerAuthTokenManagerId": auth_token_manager_id,
-            },
+            "ClientCertificateProvider", {"id": provider.id}
         )
-        if not await backend.process_request():
-            # connection was closed before end of next message
-            return neo4j.auth_management.ExpiringAuth(None, None)
-        if key not in backend.expiring_auth_token_supplies:
-            raise RuntimeError(
-                "Backend did not receive expected "
-                "BearerAuthTokenManagerCompleted message for id "
-                f"{key}"
-            )
-        return backend.expiring_auth_token_supplies.pop(key)
 
-    auth_manager = AsyncAuthManagers.bearer(auth_token_provider)
-    backend.auth_token_managers[auth_token_manager_id] = auth_manager
-    await backend.send_response(
-        "BearerAuthTokenManager", {"id": auth_token_manager_id}
-    )
-
-
-@request_handler
-async def bearer_auth_token_provider_completed(backend, data):
-    temp_auth_data = data["auth"]
-    temp_auth_data.mark_item_as_read_if_equals(
-        "name", "AuthTokenAndExpiration"
-    )
-    temp_auth_data = temp_auth_data["data"]
-    auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
-    expiring_auth = ExpiringAuth(auth_token)
-    if temp_auth_data["expiresInMs"] is not None:
-        expires_in = temp_auth_data["expiresInMs"] / 1000
-        expiring_auth = expiring_auth.expires_in(expires_in)
-
-    backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
-
-
-class TestKitClientCertificateProvider(AsyncClientCertificateProvider):
-    def __init__(self, backend):
-        self.id = backend.next_key()
-        self._backend = backend
-
-    async def get_certificate(self) -> ClientCertificate | None:
-        request_id = self._backend.next_key()
-        await self._backend.send_response(
-            "ClientCertificateProviderRequest",
-            {
-                "id": request_id,
-                "clientCertificateProviderId": self.id,
-            },
+    @request_handler
+    async def client_certificate_provider_close(backend, data):
+        client_cert_provider_id = data["id"]
+        del backend.client_cert_providers[client_cert_provider_id]
+        await backend.send_response(
+            "ClientCertificateProvider", {"id": client_cert_provider_id}
         )
-        if not await self._backend.process_request():
-            # connection was closed before end of next message
-            return None
-        if request_id not in self._backend.client_cert_supplies:
-            raise RuntimeError(
-                "Backend did not receive expected "
-                "ClientCertificateProviderCompleted message for id "
-                f"{request_id}"
-            )
-        return self._backend.client_cert_supplies.pop(request_id)
 
-
-@request_handler
-async def new_client_certificate_provider(backend, data):
-    provider = TestKitClientCertificateProvider(backend)
-    backend.client_cert_providers[provider.id] = provider
-    await backend.send_response(
-        "ClientCertificateProvider", {"id": provider.id}
-    )
-
-
-@request_handler
-async def client_certificate_provider_close(backend, data):
-    client_cert_provider_id = data["id"]
-    del backend.client_cert_providers[client_cert_provider_id]
-    await backend.send_response(
-        "ClientCertificateProvider", {"id": client_cert_provider_id}
-    )
-
-
-@request_handler
-async def client_certificate_provider_completed(backend, data):
-    has_update = data["hasUpdate"]
-    request_id = data["requestId"]
-    if not has_update:
-        data.mark_item_as_read("clientCertificate", recursive=True)
-        backend.client_cert_supplies[request_id] = None
-        return
-    client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
-    backend.client_cert_supplies[request_id] = client_cert
+    @request_handler
+    async def client_certificate_provider_completed(backend, data):
+        has_update = data["hasUpdate"]
+        request_id = data["requestId"]
+        if not has_update:
+            data.mark_item_as_read("clientCertificate", recursive=True)
+            backend.client_cert_supplies[request_id] = None
+            return
+        client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
+        backend.client_cert_supplies[request_id] = client_cert
 
 
 @request_handler
@@ -485,72 +495,114 @@ async def get_server_info(backend, data):
 async def check_multi_db_support(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    available = await driver.supports_multi_db()
+    expected_warnings = []
+    if VERSION < (5, 8):
+        expected_warnings.append(
+            (
+                neo4j.ExperimentalWarning,
+                "Feature support query, based on Bolt protocol version",
+            )
+        )
+    with warnings_check(expected_warnings):
+        available = await driver.supports_multi_db()
     await backend.send_response(
         "MultiDBSupport", {"id": backend.next_key(), "available": available}
     )
 
 
-@request_handler
-async def verify_authentication(backend, data):
-    driver_id = data["driverId"]
-    driver = backend.drivers[driver_id]
-    auth = fromtestkit.to_auth_token(data, "authorizationToken")
-    authenticated = await driver.verify_authentication(auth=auth)
-    await backend.send_response(
-        "DriverIsAuthenticated",
-        {"id": backend.next_key(), "authenticated": authenticated},
-    )
+if SESSION_AUTH_SUPPORTED:
 
-
-@request_handler
-async def check_session_auth_support(backend, data):
-    driver_id = data["driverId"]
-    driver = backend.drivers[driver_id]
-    available = await driver.supports_session_auth()
-    await backend.send_response(
-        "SessionAuthSupport",
-        {"id": backend.next_key(), "available": available},
-    )
-
-
-@request_handler
-async def execute_query(backend, data):
-    driver = backend.drivers[data["driverId"]]
-    cypher, params = fromtestkit.to_cypher_and_params(data)
-    config = data.get("config", {})
-    kwargs = {}
-    for config_key, kwargs_key in (
-        ("database", "database_"),
-        ("routing", "routing_"),
-        ("impersonatedUser", "impersonated_user_"),
-    ):
-        value = config.get(config_key, None)
-        if value is not None:
-            kwargs[kwargs_key] = value
-    tx_kwargs = fromtestkit.to_tx_kwargs(config)
-    query = neo4j.Query(cypher, **tx_kwargs) if tx_kwargs else cypher
-    bookmark_manager_id = config.get("bookmarkManagerId")
-    if bookmark_manager_id is not None:
-        if bookmark_manager_id == -1:
-            kwargs["bookmark_manager_"] = None
-        else:
-            bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
-            kwargs["bookmark_manager_"] = bookmark_manager
-    if "authorizationToken" in config:
-        kwargs["auth_"] = fromtestkit.to_auth_token(
-            config, "authorizationToken"
+    @request_handler
+    async def verify_authentication(backend, data):
+        driver_id = data["driverId"]
+        driver = backend.drivers[driver_id]
+        auth = fromtestkit.to_auth_token(data, "authorizationToken")
+        expected_warnings = []
+        if not SESSION_AUTH_STABILIZED:
+            expected_warnings.append(
+                (
+                    neo4j.PreviewWarning,
+                    r"User switching is a preview feature\.",
+                )
+            )
+        with warnings_check(expected_warnings):
+            authenticated = await driver.verify_authentication(auth=auth)
+        await backend.send_response(
+            "DriverIsAuthenticated",
+            {"id": backend.next_key(), "authenticated": authenticated},
         )
 
-    eager_result = await driver.execute_query(query, params, **kwargs)
-    await backend.send_response(
-        "EagerResult",
-        {
-            "keys": eager_result.keys,
-            "records": list(map(totestkit.record, eager_result.records)),
-            "summary": totestkit.summary(eager_result.summary),
-        },
-    )
+    @request_handler
+    async def check_session_auth_support(backend, data):
+        driver_id = data["driverId"]
+        driver = backend.drivers[driver_id]
+        available = await driver.supports_session_auth()
+        await backend.send_response(
+            "SessionAuthSupport",
+            {"id": backend.next_key(), "available": available},
+        )
+
+
+if EXECUTE_QUERY_SUPPORT:
+
+    @request_handler
+    async def execute_query(backend, data):
+        driver = backend.drivers[data["driverId"]]
+        cypher, params = fromtestkit.to_cypher_and_params(data)
+        config = data.get("config", {})
+        expected_warnings = []
+        kwargs = {}
+        for config_key, kwargs_key in (
+            ("database", "database_"),
+            ("routing", "routing_"),
+            ("impersonatedUser", "impersonated_user_"),
+        ):
+            value = config.get(config_key, None)
+            if value is not None:
+                kwargs[kwargs_key] = value
+        tx_kwargs = fromtestkit.to_tx_kwargs(config)
+        query = neo4j.Query(cypher, **tx_kwargs) if tx_kwargs else cypher
+        bookmark_manager_id = config.get("bookmarkManagerId")
+        if bookmark_manager_id is not None:
+            if bookmark_manager_id == -1:
+                kwargs["bookmark_manager_"] = None
+            else:
+                bookmark_manager = backend.bookmark_managers[
+                    bookmark_manager_id
+                ]
+                kwargs["bookmark_manager_"] = bookmark_manager
+        if "authorizationToken" in config:
+            if SESSION_AUTH_SUPPORTED:
+                kwargs["auth_"] = fromtestkit.to_auth_token(
+                    config, "authorizationToken"
+                )
+                if not SESSION_AUTH_STABILIZED and kwargs["auth_"] is not None:
+                    expected_warnings.append(
+                        (
+                            neo4j.PreviewWarning,
+                            r"User switching is a preview feature\.",
+                        )
+                    )
+            else:
+                raise TimeWarpError("session auth")
+
+        if not EXECUTE_QUERY_STABILIZED:
+            expected_warnings.append(
+                (
+                    neo4j.ExperimentalWarning,
+                    r"Driver\.execute_query is experimental\.",
+                )
+            )
+
+        eager_result = await driver.execute_query(query, params, **kwargs)
+        await backend.send_response(
+            "EagerResult",
+            {
+                "keys": eager_result.keys,
+                "records": list(map(totestkit.record, eager_result.records)),
+                "summary": totestkit.summary(eager_result.summary),
+            },
+        )
 
 
 def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
@@ -617,91 +669,96 @@ async def domain_name_resolution_completed(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
-@request_handler
-async def new_bookmark_manager(backend, data):
-    bookmark_manager_id = backend.next_key()
+if BMM_SUPPORT:
 
-    bmm_kwargs = {}
-    data.mark_item_as_read("initialBookmarks", recursive=True)
-    bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
-    if data.get("bookmarksSupplierRegistered"):
-        bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
-            backend, bookmark_manager_id
-        )
-    if data.get("bookmarksConsumerRegistered"):
-        bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(
-            backend, bookmark_manager_id
-        )
+    @request_handler
+    async def new_bookmark_manager(backend, data):
+        bookmark_manager_id = backend.next_key()
 
-    bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
-    backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
-    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
-
-
-@request_handler
-async def bookmark_manager_close(backend, data):
-    bookmark_manager_id = data["id"]
-    del backend.bookmark_managers[bookmark_manager_id]
-    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
-
-
-def bookmarks_supplier(backend, bookmark_manager_id):
-    async def supplier():
-        key = backend.next_key()
-        await backend.send_response(
-            "BookmarksSupplierRequest",
-            {
-                "id": key,
-                "bookmarkManagerId": bookmark_manager_id,
-            },
-        )
-        if not await backend.process_request():
-            # connection was closed before end of next message
-            return []
-        if key not in backend.bookmarks_supplies:
-            raise RuntimeError(
-                "Backend did not receive expected "
-                f"BookmarksSupplierCompleted message for id {key}"
+        bmm_kwargs = {}
+        data.mark_item_as_read("initialBookmarks", recursive=True)
+        bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
+        if data.get("bookmarksSupplierRegistered"):
+            bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
+                backend, bookmark_manager_id
             )
-        return backend.bookmarks_supplies.pop(key)
-
-    return supplier
-
-
-@request_handler
-async def bookmarks_supplier_completed(backend, data):
-    backend.bookmarks_supplies[data["requestId"]] = (
-        neo4j.Bookmarks.from_raw_values(data["bookmarks"])
-    )
-
-
-def bookmarks_consumer(backend, bookmark_manager_id):
-    async def consumer(bookmarks):
-        key = backend.next_key()
-        await backend.send_response(
-            "BookmarksConsumerRequest",
-            {
-                "id": key,
-                "bookmarkManagerId": bookmark_manager_id,
-                "bookmarks": list(bookmarks.raw_values),
-            },
-        )
-        if not await backend.process_request():
-            # connection was closed before end of next message
-            return
-        if key not in backend.bookmarks_consumptions:
-            raise RuntimeError(
-                "Backend did not receive expected "
-                f"BookmarksConsumerCompleted message for id {key}"
+        if data.get("bookmarksConsumerRegistered"):
+            bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(
+                backend, bookmark_manager_id
             )
-        del backend.bookmarks_consumptions[key]
 
-    return consumer
+        bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(
+            **bmm_kwargs
+        )
+        backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
+        await backend.send_response(
+            "BookmarkManager",
+            {"id": bookmark_manager_id},
+        )
 
+    @request_handler
+    async def bookmark_manager_close(backend, data):
+        bookmark_manager_id = data["id"]
+        del backend.bookmark_managers[bookmark_manager_id]
+        await backend.send_response(
+            "BookmarkManager",
+            {"id": bookmark_manager_id},
+        )
 
-@request_handler
-async def bookmarks_consumer_completed(backend, data):
-    backend.bookmarks_consumptions[data["requestId"]] = True
+    def bookmarks_supplier(backend, bookmark_manager_id):
+        async def supplier():
+            key = backend.next_key()
+            await backend.send_response(
+                "BookmarksSupplierRequest",
+                {
+                    "id": key,
+                    "bookmarkManagerId": bookmark_manager_id,
+                },
+            )
+            if not await backend.process_request():
+                # connection was closed before end of next message
+                return []
+            if key not in backend.bookmarks_supplies:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    f"BookmarksSupplierCompleted message for id {key}"
+                )
+            return backend.bookmarks_supplies.pop(key)
+
+        return supplier
+
+    @request_handler
+    async def bookmarks_supplier_completed(backend, data):
+        backend.bookmarks_supplies[data["requestId"]] = (
+            neo4j.Bookmarks.from_raw_values(data["bookmarks"])
+        )
+
+    def bookmarks_consumer(backend, bookmark_manager_id):
+        async def consumer(bookmarks):
+            key = backend.next_key()
+            await backend.send_response(
+                "BookmarksConsumerRequest",
+                {
+                    "id": key,
+                    "bookmarkManagerId": bookmark_manager_id,
+                    "bookmarks": list(bookmarks.raw_values),
+                },
+            )
+            if not await backend.process_request():
+                # connection was closed before end of next message
+                return
+            if key not in backend.bookmarks_consumptions:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    f"BookmarksConsumerCompleted message for id {key}"
+                )
+            del backend.bookmarks_consumptions[key]
+
+        return consumer
+
+    @request_handler
+    async def bookmarks_consumer_completed(backend, data):
+        backend.bookmarks_consumptions[data["requestId"]] = True
 
 
 @request_handler
@@ -748,10 +805,13 @@ async def new_session(backend, data):
         config["bookmarks"] = neo4j.Bookmarks.from_raw_values(
             data["bookmarks"]
         )
-    if data.get("bookmarkManagerId") is not None:
-        config["bookmark_manager"] = backend.bookmark_managers[
-            data["bookmarkManagerId"]
-        ]
+    if BMM_SUPPORT:
+        if data.get("bookmarkManagerId") is not None:
+            config["bookmark_manager"] = backend.bookmark_managers[
+                data["bookmarkManagerId"]
+            ]
+    elif data.get("bookmarkManagerId") is not None:
+        raise TimeWarpError("bookmark managers")
     for conf_name, data_name in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),

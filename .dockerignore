@@ -4,5 +4,3 @@ dist
 venv*/
 .coverage
 tests/
-testkit/
-testkitbackend/

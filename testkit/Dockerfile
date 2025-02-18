@@ -1,11 +1,12 @@
-FROM ubuntu:20.04
+ARG TIME_WARP=""
+FROM ubuntu:20.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y locales && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 \
- && rm -rf /var/lib/apt/lists/*
+    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 && \
+    rm -rf /var/lib/apt/lists/*
 ENV LANG=en_US.UTF-8
 
 # Using apt-get update alone in a RUN statement causes caching issues and subsequent apt-get install instructions fail.
@@ -29,21 +30,24 @@ RUN apt-get update && \
         ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install our own CAs on the image.
-# Assumes Linux Debian based image.
-COPY CAs/* /usr/local/share/ca-certificates/
-# Store custom CAs somewhere where the backend can find them later.
-COPY CustomCAs/* /usr/local/share/custom-ca-certificates/
-RUN update-ca-certificates
-
 # Install pyenv
 RUN git clone https://github.com/pyenv/pyenv.git .pyenv
 ENV PYENV_ROOT=/.pyenv
 ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
+ENV PIP_NO_CACHE_DIR=1
 
-# Setup python version
-ENV PYTHON_VERSIONS="3.13 3.12 3.11 3.10 3.9 3.8 3.7"
 
+FROM base AS base-py-arg
+# Install all supported Python versions
+ARG PYTHON_VERSIONS="3.13 3.12 3.11 3.10 3.9 3.8 3.7"
+
+
+FROM base AS base-py-arg-single-python
+# Only install Python 3.10 in time warp mode
+ARG PYTHON_VERSIONS="3.10"
+
+
+FROM base-py-arg${TIME_WARP:+"-single-python"} AS base-py-install
 RUN for version in $PYTHON_VERSIONS; do \
         pyenv install $version; \
     done
@@ -57,3 +61,33 @@ RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U pip && \
         python$version -m pip install -U coverage tox; \
     done
+
+
+FROM base-py-install AS backend-timewarp
+WORKDIR /home/root/testkit
+COPY requirements*.txt .
+COPY testkit/backend.py testkit/build.py testkit/_common.py .
+RUN sed -i 's|-e \..*$||' requirements*.txt
+
+ARG TIME_WARP
+RUN for version in $PYTHON_VERSIONS; do \
+        TEST_BACKEND_VERSION="python$version" python build.py && \
+        python$version -m pip install --force-reinstall neo4j==${TIME_WARP}; \
+    done
+COPY testkitbackend ./testkitbackend
+ENTRYPOINT ["python", "backend.py"]
+
+
+FROM base-py-install AS backend
+# Install our own CAs on the image.
+# Assumes Linux Debian based image.
+COPY CAs/* /usr/local/share/ca-certificates/
+# Store custom CAs somewhere where the backend can find them later.
+COPY CustomCAs/* /usr/local/share/custom-ca-certificates/
+RUN update-ca-certificates
+
+
+FROM backend${TIME_WARP:+"-timewarp"} AS final
+ARG TIME_WARP
+ENV DRIVER_TIME_WARP=$TIME_WARP
+WORKDIR /home/root/testkit

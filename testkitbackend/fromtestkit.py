@@ -16,17 +16,13 @@
 
 from __future__ import annotations
 
+import typing as t
 from datetime import timedelta
 
 import pytz
 
 import neo4j
-from neo4j import (
-    NotificationDisabledCategory,
-    NotificationMinimumSeverity,
-    Query,
-)
-from neo4j.auth_management import ClientCertificate
+from neo4j import Query
 from neo4j.spatial import (
     CartesianPoint,
     WGS84Point,
@@ -38,7 +34,16 @@ from neo4j.time import (
     Time,
 )
 
-from ._preview_imports import NotificationDisabledClassification
+from .exceptions import TimeWarpError
+from .time_warp_compat import (
+    GQL_STATUS_SUPPORT,
+    MTLS_SUPPORT,
+    NOTIFICATION_FILTER_SUPPORTED,
+)
+
+
+if t.TYPE_CHECKING:
+    from neo4j.auth_management import ClientCertificate
 
 
 def to_cypher_and_params(data):
@@ -221,24 +226,48 @@ def to_client_cert(data, key) -> ClientCertificate | None:
     if data[key] is None:
         return None
     data[key].mark_item_as_read_if_equals("name", "ClientCertificate")
-    cert_data = data[key]["data"]
-    return ClientCertificate(
-        cert_data["certfile"], cert_data["keyfile"], cert_data["password"]
-    )
+    if MTLS_SUPPORT:
+        from neo4j.auth_management import ClientCertificate
+
+        cert_data = data[key]["data"]
+        return ClientCertificate(
+            cert_data["certfile"],
+            cert_data["keyfile"],
+            cert_data["password"],
+        )
+    else:
+        raise TimeWarpError("certificates for mTLS")
 
 
 def set_notifications_config(config, data):
-    if "notificationsMinSeverity" in data:
-        config["notifications_min_severity"] = NotificationMinimumSeverity[
-            data["notificationsMinSeverity"]
-        ]
-    if "notificationsDisabledCategories" in data:
-        config["notifications_disabled_categories"] = [
-            NotificationDisabledCategory[c]
-            for c in data["notificationsDisabledCategories"]
-        ]
-    if "notificationsDisabledClassifications" in data:
-        config["notifications_disabled_classifications"] = [
-            NotificationDisabledClassification[c]
-            for c in data["notificationsDisabledClassifications"]
-        ]
+    if NOTIFICATION_FILTER_SUPPORTED:
+        from neo4j import (
+            NotificationDisabledCategory,
+            NotificationMinimumSeverity,
+        )
+
+        if "notificationsMinSeverity" in data:
+            config["notifications_min_severity"] = NotificationMinimumSeverity[
+                data["notificationsMinSeverity"]
+            ]
+        if "notificationsDisabledCategories" in data:
+            config["notifications_disabled_categories"] = [
+                NotificationDisabledCategory[c]
+                for c in data["notificationsDisabledCategories"]
+            ]
+    elif (
+        "notificationsMinSeverity" in data
+        or "notificationsDisabledCategories" in data
+    ):
+        raise TimeWarpError("notification filtering")
+
+    if GQL_STATUS_SUPPORT:
+        from ._preview_imports import NotificationDisabledClassification
+
+        if "notificationsDisabledClassifications" in data:
+            config["notifications_disabled_classifications"] = [
+                NotificationDisabledClassification[c]
+                for c in data["notificationsDisabledClassifications"]
+            ]
+    elif "notificationsDisabledClassifications" in data:
+        raise TimeWarpError("GQL status object filtering")
