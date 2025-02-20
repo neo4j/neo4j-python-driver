@@ -12,7 +12,7 @@ Bolt protocol versions supported:
 * Bolt 5.0 - 5.8
 * Bolt 4.4
 
-See https://7687.org/bolt-compatibility/ for what Neo4j DBMS versions support which Bolt versions.
+See https://neo4j.com/docs/bolt/current/bolt-compatibility/ for what Neo4j DBMS versions support which Bolt versions.
 See https://neo4j.com/developer/kb/neo4j-supported-versions/ for a driver-server compatibility matrix.
 
 
