@@ -1066,6 +1066,8 @@ class ResultFailedError(ResultError):
      * itself encountered an error while fetching records
      * another result within the same transaction encountered an error while
        fetching records
+
+    .. versionadded: 5.14
     """
 
 
