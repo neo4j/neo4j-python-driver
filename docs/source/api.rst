@@ -967,6 +967,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 
 + :ref:`bookmarks-ref`
 + :ref:`database-ref`
++ :ref:`impersonated-user-ref`
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
 + :ref:`bookmark-manager-ref`
