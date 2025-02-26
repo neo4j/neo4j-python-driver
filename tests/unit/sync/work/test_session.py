@@ -877,3 +877,65 @@ def test_pinns_session_db_with_cache(
                 cache_spy.set.assert_called_once_with(key, resolved_db)
                 assert session._pinned_database
                 assert config.database == resolved_db
+
+
+@pytest.mark.parametrize(
+    "method", ("_get_server_info", "_verify_authentication")
+)
+@mark_sync_test
+def test_check_connections_are_unprepared_connection(
+    fake_pool,
+    method,
+):
+    config = SessionConfig()
+    with Session(fake_pool, config) as session:
+        getattr(session, method)()
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        fake_pool.acquire.assert_called_once()
+        unprepared = fake_pool.acquire.call_args.kwargs.get("unprepared")
+        assert unprepared is True
+
+
+def _explicit_transaction(session: Session):
+    with session.begin_transaction():
+        pass
+
+
+def _autocommit_transaction(session: Session):
+    session.run("RETURN 1")
+
+
+def _tx_func_read(session: Session):
+    def work(tx: ManagedTransaction):
+        pass
+
+    session.execute_read(work)
+
+
+def _tx_func_write(session: Session):
+    def work(tx: ManagedTransaction):
+        pass
+
+    session.execute_write(work)
+
+
+@pytest.mark.parametrize(
+    "method",
+    (
+        _explicit_transaction,
+        _autocommit_transaction,
+        _tx_func_read,
+        _tx_func_write,
+    ),
+)
+@mark_sync_test
+def test_work_connections_are_prepared_connection(
+    fake_pool, method
+):
+    config = SessionConfig()
+    with Session(fake_pool, config) as session:
+        method(session)
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        fake_pool.acquire.assert_called_once()
+        unprepared = fake_pool.acquire.call_args.kwargs.get("unprepared")
+        assert unprepared is False or unprepared is None

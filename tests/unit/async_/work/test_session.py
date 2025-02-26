@@ -877,3 +877,65 @@ async def test_pinns_session_db_with_cache(
                 cache_spy.set.assert_called_once_with(key, resolved_db)
                 assert session._pinned_database
                 assert config.database == resolved_db
+
+
+@pytest.mark.parametrize(
+    "method", ("_get_server_info", "_verify_authentication")
+)
+@mark_async_test
+async def test_check_connections_are_unprepared_connection(
+    async_fake_pool,
+    method,
+):
+    config = SessionConfig()
+    async with AsyncSession(async_fake_pool, config) as session:
+        await getattr(session, method)()
+        assert len(async_fake_pool.acquired_connection_mocks) == 1
+        async_fake_pool.acquire.assert_awaited_once()
+        unprepared = async_fake_pool.acquire.call_args.kwargs.get("unprepared")
+        assert unprepared is True
+
+
+async def _explicit_transaction(session: AsyncSession):
+    async with await session.begin_transaction():
+        pass
+
+
+async def _autocommit_transaction(session: AsyncSession):
+    await session.run("RETURN 1")
+
+
+async def _tx_func_read(session: AsyncSession):
+    async def work(tx: AsyncManagedTransaction):
+        pass
+
+    await session.execute_read(work)
+
+
+async def _tx_func_write(session: AsyncSession):
+    async def work(tx: AsyncManagedTransaction):
+        pass
+
+    await session.execute_write(work)
+
+
+@pytest.mark.parametrize(
+    "method",
+    (
+        _explicit_transaction,
+        _autocommit_transaction,
+        _tx_func_read,
+        _tx_func_write,
+    ),
+)
+@mark_async_test
+async def test_work_connections_are_prepared_connection(
+    async_fake_pool, method
+):
+    config = SessionConfig()
+    async with AsyncSession(async_fake_pool, config) as session:
+        await method(session)
+        assert len(async_fake_pool.acquired_connection_mocks) == 1
+        async_fake_pool.acquire.assert_awaited_once()
+        unprepared = async_fake_pool.acquire.call_args.kwargs.get("unprepared")
+        assert unprepared is False or unprepared is None
