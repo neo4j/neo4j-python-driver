@@ -314,6 +314,13 @@ class Driver:
 
     def close(self):
         """ Shut down, closing any open connections in the pool.
+
+        .. warning::
+
+            While the driver object is concurrency-safe, ``close`` is *not*.
+            Make sure you are not using the driver object or any resources
+            spawned from it (such as sessions or transactions) while calling
+            this method. Failing to do so results in unspecified behavior.
         """
         self._pool.close()
 
