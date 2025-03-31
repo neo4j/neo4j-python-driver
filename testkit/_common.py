@@ -16,6 +16,9 @@ def run(args, env=None):
 def run_python(args, env=None, warning_as_error=True):
     cmd = [TEST_BACKEND_VERSION, "-u"]
     if warning_as_error:
-        cmd += ["-W", "error"]
+        cmd += [
+            "-W", "error",
+            "-W", "default:License classifiers are deprecated::setuptools.dist",
+        ]
     cmd += list(args)
     run(cmd, env=env)
