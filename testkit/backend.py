@@ -23,4 +23,5 @@ if __name__ == "__main__":
     cmd = ["-m", "testkitbackend"]
     if "TEST_BACKEND_SERVER" in os.environ:
         cmd.append(os.environ["TEST_BACKEND_SERVER"])
-    run_python(cmd)
+    is_time_warp = bool(os.environ.get("DRIVER_TIME_WARP"))
+    run_python(cmd, warning_as_error=not is_time_warp)

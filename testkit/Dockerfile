@@ -43,8 +43,8 @@ ARG PYTHON_VERSIONS="3.13 3.12 3.11 3.10 3.9 3.8 3.7"
 
 
 FROM base AS base-py-arg-single-python
-# Only install Python 3.10 in time warp mode
-ARG PYTHON_VERSIONS="3.10"
+# Only install Python 3.7 in time warp mode
+ARG PYTHON_VERSIONS="3.7"
 
 
 FROM base-py-arg${TIME_WARP:+"-single-python"} AS base-py-install
@@ -91,3 +91,4 @@ FROM backend${TIME_WARP:+"-timewarp"} AS final
 ARG TIME_WARP
 ENV DRIVER_TIME_WARP=$TIME_WARP
 WORKDIR /home/root/testkit
+EXPOSE 9876/tcp
