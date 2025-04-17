@@ -126,6 +126,7 @@ def _get_blocked_testkit_features() -> frozenset[str]:
             (
                 "Feature:Bolt:HandshakeManifestV1",
                 "Feature:Bolt:5.8",
+                "Optimization:HomeDatabaseCache",
                 "Optimization:HomeDbCacheBasicPrincipalIsImpersonatedUser",
             )
         )
