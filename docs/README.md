@@ -2,7 +2,7 @@
 Sphinx Documentation
 ====================
 
-Building the docs requires Python 3.8+
+Building the docs requires Python 3.10+
 
 In project root
 ```
