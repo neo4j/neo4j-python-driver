@@ -224,7 +224,7 @@ class Bolt4x0(Bolt):
         self.send_all()
         self.fetch_all()
         return [
-            dict(zip(metadata.get("fields", ()), values, strict=False))
+            dict(zip(metadata.get("fields", ()), values, strict=True))
             for values in records
         ]
 

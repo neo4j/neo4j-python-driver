@@ -93,7 +93,7 @@ class Record(tuple, Mapping):
         fields = " ".join(
             f"{field}={value!r}"
             for field, value in zip(
-                self.__keys, super().__iter__(), strict=False
+                self.__keys, super().__iter__(), strict=True
             )
         )
         return f"<{self.__class__.__name__} {fields}>"

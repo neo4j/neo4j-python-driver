@@ -247,7 +247,7 @@ class Result(NonConcurrentMethodChecker):
                     for record in records
                 )
                 self._record_buffer.extend(
-                    Record(zip(self._keys, record, strict=False))
+                    Record(zip(self._keys, record, strict=True))
                     for record in records
                 )
 
@@ -919,7 +919,7 @@ class Result(NonConcurrentMethodChecker):
                 else:
                     # The rows have different keys. We need to pass a list
                     # of dicts to pandas
-                    rows = [dict(zip(df_keys, r, strict=False)) for r in rows]
+                    rows = [dict(zip(df_keys, r, strict=True)) for r in rows]
                     df_keys = False
                     rows.append(row)
             if df_keys is False:
