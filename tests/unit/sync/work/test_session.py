@@ -135,11 +135,13 @@ def test_opens_connection_on_tx_begin(fake_pool):
 def test_keeps_connection_on_tx_run(
     fake_pool, test_run_args, repetitions
 ):
-    with Session(fake_pool, SessionConfig()) as session:
-        with session.begin_transaction() as tx:
-            for _ in range(repetitions):
-                tx.run(*test_run_args)
-                assert session._connection is not None
+    with (
+        Session(fake_pool, SessionConfig()) as session,
+        session.begin_transaction() as tx,
+    ):
+        for _ in range(repetitions):
+            tx.run(*test_run_args)
+            assert session._connection is not None
 
 
 @pytest.mark.parametrize(
@@ -150,12 +152,14 @@ def test_keeps_connection_on_tx_run(
 def test_keeps_connection_on_tx_consume(
     fake_pool, test_run_args, repetitions
 ):
-    with Session(fake_pool, SessionConfig()) as session:
-        with session.begin_transaction() as tx:
-            for _ in range(repetitions):
-                result = tx.run(*test_run_args)
-                result.consume()
-                assert session._connection is not None
+    with (
+        Session(fake_pool, SessionConfig()) as session,
+        session.begin_transaction() as tx,
+    ):
+        for _ in range(repetitions):
+            result = tx.run(*test_run_args)
+            result.consume()
+            assert session._connection is not None
 
 
 @pytest.mark.parametrize(

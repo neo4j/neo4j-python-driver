@@ -382,7 +382,7 @@ else:
 
 
 class Duration(  # type: ignore[misc]
-    t.Tuple[int, int, int, int], duration_base_class
+    tuple[int, int, int, int], duration_base_class
 ):
     r"""
     A difference between two points in time.

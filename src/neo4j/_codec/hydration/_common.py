@@ -24,8 +24,8 @@ from ..packstream import Structure
 
 @dataclass
 class DehydrationHooks:
-    exact_types: t.Dict[t.Type, t.Callable[[t.Any], t.Any]]
-    subtypes: t.Dict[t.Type, t.Callable[[t.Any], t.Any]]
+    exact_types: dict[type, t.Callable[[t.Any], t.Any]]
+    subtypes: dict[type, t.Callable[[t.Any], t.Any]]
 
     def update(self, exact_types=None, subtypes=None):
         exact_types = exact_types or {}

@@ -67,14 +67,14 @@ class NotificationMinimumSeverity(str, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_NotificationMinimumSeverity = t.Union[
-        NotificationMinimumSeverity,
-        te.Literal[
+    T_NotificationMinimumSeverity = (
+        NotificationMinimumSeverity
+        | te.Literal[
             "OFF",
             "WARNING",
             "INFORMATION",
-        ],
-    ]
+        ]
+    )
     __all__.append("T_NotificationMinimumSeverity")
 
 
@@ -213,10 +213,10 @@ class NotificationDisabledClassification(str, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_NotificationDisabledCategory = t.Union[
-        NotificationDisabledCategory,
-        NotificationDisabledClassification,
-        te.Literal[
+    T_NotificationDisabledCategory = (
+        NotificationDisabledCategory
+        | NotificationDisabledClassification
+        | te.Literal[
             "HINT",
             "UNRECOGNIZED",
             "UNSUPPORTED",
@@ -226,8 +226,8 @@ if t.TYPE_CHECKING:
             "SECURITY",
             "TOPOLOGY",
             "SCHEMA",
-        ],
-    ]
+        ]
+    )
     __all__.append("T_NotificationDisabledCategory")
 
 
@@ -343,8 +343,5 @@ class TelemetryAPI(int, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_RoutingControl = t.Union[
-        RoutingControl,
-        te.Literal["r", "w"],
-    ]
+    T_RoutingControl = RoutingControl | te.Literal["r", "w"]
     __all__.append("T_RoutingControl")

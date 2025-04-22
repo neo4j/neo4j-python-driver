@@ -144,8 +144,7 @@ extend-exclude = [
 preview = true  # to get CPY lints
 extend-ignore = [
     "RUF002",  # allow ’ (RIGHT SINGLE QUOTATION MARK) to be used as an apostrophe (e.g. "it’s")
-    "SIM117",  # TODO: when Python 3.10+ is the minimum,
-               #       we can start to use multi-item `with` statements
+
     # pydocstyle
     "D1",   # disable check for undocumented items (way too noisy)
     "D203", # `one-blank-line-before-class`
@@ -195,6 +194,9 @@ extend-ignore = [
     # needs fixing in ruff to work with typing.Protocol
     # https://github.com/astral-sh/ruff/issues/13307
     "FURB180",
+
+    # rule is deprected and suggests not recommended practice
+    "UP038",
 ]
 select = [
     # ruff

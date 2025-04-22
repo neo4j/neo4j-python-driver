@@ -163,7 +163,7 @@ class Auth:
 AuthToken = Auth
 
 if t.TYPE_CHECKING:
-    _TAuth = t.Union[t.Tuple[str, str], Auth, None]
+    _TAuth: t.TypeAlias = tuple[str, str] | Auth | None
 
 
 def basic_auth(user: str, password: str, realm: str | None = None) -> Auth:
@@ -385,7 +385,6 @@ class ServerInfo:
         This is returned as a 2-tuple:class:`tuple` (subclass) of
         ``(major, minor)`` integers.
         """
-        # TODO: 6.0 - remove cast when support for Python 3.7 is dropped
         return self._protocol_version
 
     @property
@@ -416,7 +415,7 @@ class ServerInfo:
 #       As far the user is concerned, protocol versions should simply be a
 #       tuple[int, int].
 if t.TYPE_CHECKING:
-    _version_base = t.Tuple[int, int]
+    _version_base = tuple[int, int]
 else:
     _version_base = tuple
 

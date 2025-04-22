@@ -526,38 +526,38 @@ def test_with_custom_ducktype_client_certificate_provider(
 
 
 if t.TYPE_CHECKING:
-    _T_NotificationMinimumSeverity = t.Union[
-        NotificationMinimumSeverity,
-        te.Literal[
+    _T_NotificationMinimumSeverity: t.TypeAlias = (
+        NotificationMinimumSeverity
+        | te.Literal[
             "OFF",
             "WARNING",
             "INFORMATION",
-        ],
-    ]
+        ]
+    )
 
-    _T_NotificationDisabledCategory = t.Union[
-        NotificationDisabledCategory,
-        te.Literal[
+    _T_NotificationDisabledCategory: t.TypeAlias = (
+        NotificationDisabledCategory
+        | te.Literal[
             "HINT",
             "UNRECOGNIZED",
             "UNSUPPORTED",
             "PERFORMANCE",
             "DEPRECATION",
             "GENERIC",
-        ],
-    ]
+        ]
+    )
 
-    _T_NotificationDisabledClassification = t.Union[
-        NotificationDisabledClassification,
-        te.Literal[
+    _T_NotificationDisabledClassification: t.TypeAlias = (
+        NotificationDisabledClassification
+        | te.Literal[
             "HINT",
             "UNRECOGNIZED",
             "UNSUPPORTED",
             "PERFORMANCE",
             "DEPRECATION",
             "GENERIC",
-        ],
-    ]
+        ]
+    )
 
 
 if t.TYPE_CHECKING:
@@ -763,11 +763,11 @@ def test_warn_notification_severity_driver_config(
 ) -> None:
     if inspect.isclass(expected) and issubclass(expected, Exception):
         assert min_sev is not ...  # makes no sense to test
-        with pytest.raises(expected):
-            with pytest.warns(PreviewWarning, match="notification warnings"):
-                GraphDatabase.driver(
-                    uri, warn_notification_severity=min_sev
-                )
+        with (
+            pytest.raises(expected),
+            pytest.warns(PreviewWarning, match="notification warnings"),
+        ):
+            GraphDatabase.driver(uri, warn_notification_severity=min_sev)
         return
     if min_sev is ...:
         driver = GraphDatabase.driver(uri)

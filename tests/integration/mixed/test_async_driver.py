@@ -18,13 +18,9 @@
 # FIXME: activate lint and fix it
 
 import asyncio
-import sys
-
-import pytest
 
 import neo4j
 
-from ... import env
 from ..._async_compat import mark_async_test
 
 

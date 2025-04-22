@@ -98,7 +98,7 @@ def expiring_auth(*args, **kwargs):
 @pytest.mark.parametrize("auth", SAMPLE_AUTHS)
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 def test_static_manager(
-    auth: t.Union[t.Tuple[str, str], Auth, None], error: Neo4jError
+    auth: tuple[str, str] | Auth | None, error: Neo4jError
 ) -> None:
     manager: AuthManager = static_auth_manager(auth)
     assert manager.get_auth() is auth
@@ -120,8 +120,8 @@ def test_static_manager(
 )
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 def test_basic_manager_manual_expiry(
-    auth1: t.Union[t.Tuple[str, str], Auth, None],
-    auth2: t.Union[t.Tuple[str, str], Auth, None],
+    auth1: tuple[str, str] | Auth | None,
+    auth2: tuple[str, str] | Auth | None,
     error: Neo4jError,
     mocker,
 ) -> None:
@@ -146,10 +146,10 @@ def test_basic_manager_manual_expiry(
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 @pytest.mark.parametrize("expires_at", (None, 0.001, 1, 1000.0))
 def test_bearer_manager_manual_expiry(
-    auth1: t.Union[t.Tuple[str, str], Auth, None],
-    auth2: t.Union[t.Tuple[str, str], Auth, None],
+    auth1: tuple[str, str] | Auth | None,
+    auth2: tuple[str, str] | Auth | None,
     error: Neo4jError,
-    expires_at: t.Optional[float],
+    expires_at: float | None,
     mocker,
 ) -> None:
     def return_value_generator(auth):
@@ -174,9 +174,9 @@ def test_bearer_manager_manual_expiry(
 )
 @pytest.mark.parametrize("expires_at", (None, -1, 1.0, 1, 1000.0))
 def test_bearer_manager_time_expiry(
-    auth1: t.Union[t.Tuple[str, str], Auth, None],
-    auth2: t.Union[t.Tuple[str, str], Auth, None],
-    expires_at: t.Optional[float],
+    auth1: tuple[str, str] | Auth | None,
+    auth2: tuple[str, str] | Auth | None,
+    expires_at: float | None,
     mocker,
 ) -> None:
     with freeze_time("1970-01-01 00:00:00") as frozen_time:
@@ -209,11 +209,9 @@ def test_bearer_manager_time_expiry(
 
 
 def _test_manager(
-    auth1: t.Union[t.Tuple[str, str], Auth, None],
-    auth2: t.Union[t.Tuple[str, str], Auth, None],
-    return_value_generator: t.Callable[
-        [t.Union[t.Tuple[str, str], Auth, None]], T
-    ],
+    auth1: tuple[str, str] | Auth | None,
+    auth2: tuple[str, str] | Auth | None,
+    return_value_generator: t.Callable[[tuple[str, str] | Auth | None], T],
     manager_factory: t.Callable[
         [t.Callable[[], t.Union[T]]], AuthManager
     ],

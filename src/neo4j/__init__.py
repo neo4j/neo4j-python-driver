@@ -225,7 +225,7 @@ def __getattr__(name) -> _t.Any:
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-def __dir__() -> _t.List[str]:
+def __dir__() -> list[str]:
     return __all__
 
 

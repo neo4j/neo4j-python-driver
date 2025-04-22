@@ -38,15 +38,6 @@ __all__ = [
 
 class AsyncUtil:
     @staticmethod
-    async def iter(it):
-        async for x in it:
-            yield x
-
-    @staticmethod
-    async def next(it):
-        return await it.__anext__()
-
-    @staticmethod
     async def list(it):
         return [x async for x in it]
 
@@ -97,8 +88,6 @@ class AsyncUtil:
 
 
 class Util:
-    iter: t.ClassVar = iter
-    next: t.ClassVar = next
     list: t.ClassVar = list
 
     @staticmethod
