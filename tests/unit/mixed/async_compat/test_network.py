@@ -37,9 +37,9 @@ if t.TYPE_CHECKING:
         TickingDateTimeFactory,
     )
 
-    TFreezeTime: te.TypeAlias = (
-        StepTickTimeFactory | TickingDateTimeFactory | FrozenDateTimeFactory
-    )
+    TFreezeTime: te.TypeAlias = t.Union[
+        StepTickTimeFactory, TickingDateTimeFactory, FrozenDateTimeFactory
+    ]
 
 
 @pytest.fixture

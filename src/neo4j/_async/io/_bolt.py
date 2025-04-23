@@ -59,8 +59,6 @@ from ._common import (
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     from ..._api import TelemetryAPI
 
 
@@ -263,7 +261,7 @@ class AsyncBolt:
 
     protocol_handlers: t.ClassVar[dict[Version, type[AsyncBolt]]] = {}
 
-    def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
+    def __init_subclass__(cls, **kwargs: t.Any) -> None:
         if cls.SKIP_REGISTRATION:
             super().__init_subclass__(**kwargs)
             return
