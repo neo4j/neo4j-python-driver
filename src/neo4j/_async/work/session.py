@@ -543,8 +543,11 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        args: _P.args,
-        kwargs: _P.kwargs,
+        # *args: _P.args, **kwargs: _P.kwargs
+        # gives more type safety, but is less performant and makes for harder
+        # to read call sites
+        args: t.Any,
+        kwargs: t.Any,
     ) -> _R:
         self._check_state()
         if not callable(transaction_function):
