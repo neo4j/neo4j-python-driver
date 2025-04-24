@@ -3,7 +3,9 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- Remove deprecated exports from `neo4j`:
+  - `log`, `Config`, `PoolConfig`, `SessionConfig`, `WorkspaceConfig` (internal - no replacement)
+  - `SummaryNotificationPosition` (use `SummaryInputPosition` instead)
 
 
 ## Version 5.28
