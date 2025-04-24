@@ -3,7 +3,8 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- Remove deprecated package alias `neo4j-driver`. Use `pip install neo4j` instead.
+- Remove `setup.py`. Please use a recent enough packaging/build tool that supports `pyproject.toml`
 
 
 ## Version 5.28
