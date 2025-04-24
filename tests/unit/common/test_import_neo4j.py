@@ -171,13 +171,8 @@ NEO4J_MODULES = (
     ("addressing", None),
     ("api", None),
     ("auth_management", None),
-    ("conf", DeprecationWarning),
-    ("data", DeprecationWarning),
     ("debug", None),
     ("exceptions", None),
-    ("meta", DeprecationWarning),
-    ("packstream", DeprecationWarning),
-    ("routing", DeprecationWarning),
     ("warnings", None),
 )
 

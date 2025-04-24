@@ -3,7 +3,19 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- Remove deprecated modules:
+  - `neo4j.conf`
+  - `neo4j.data`
+  - `neo4j.meta`
+  - `neo4j.packstream`
+  - `neo4j.routing`
+  - `neo4j.time.arithmetic`
+  - `neo4j.time.clock_implementation`
+  - `neo4j.time.hydration`
+  - `neo4j.time.metaclasses`
+  - `neo4j.work`
+  - `neo4j.work.query`
+  - `neo4j.work.summary`
 
 
 ## Version 5.28
