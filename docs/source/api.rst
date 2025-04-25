@@ -2109,6 +2109,8 @@ Client-side errors
 
     * :class:`neo4j.exceptions.ReadServiceUnavailable`
 
+    * :class:`neo4j.exceptions.UnsupportedServerProduct`
+
     * :class:`neo4j.exceptions.IncompleteCommit`
 
   * :class:`neo4j.exceptions.ConfigurationError`
@@ -2162,6 +2164,9 @@ Client-side errors
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.ReadServiceUnavailable()
+    :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.UnsupportedServerProduct()
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.IncompleteCommit()

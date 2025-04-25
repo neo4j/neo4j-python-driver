@@ -624,6 +624,8 @@ class AsyncSession(AsyncWorkspace):
                 raise
 
         if errors:
+            # TODO: 7.0 - when Python 3.11+ is the minimum,
+            #             use exception groups
             raise errors[-1]
         else:
             raise ServiceUnavailable("Transaction failed")

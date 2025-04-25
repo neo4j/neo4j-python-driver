@@ -43,6 +43,7 @@ from socket import (
 from ssl import (
     CertificateError,
     HAS_SNI,
+    SSLContext,
     SSLError,
     SSLSocket,
 )
@@ -62,6 +63,10 @@ if t.TYPE_CHECKING:
 
     from ..._async.io import AsyncBolt
     from ..._sync.io import Bolt
+    from ...addressing import (
+        Address,
+        ResolvedAddress,
+    )
 
 
 log = logging.getLogger("neo4j.io")
@@ -274,20 +279,24 @@ class AsyncBoltSocketBase(abc.ABC):
             raise
 
     @abc.abstractmethod
-    async def _handshake(self, resolved_address, deadline): ...
+    async def _handshake(
+        self,
+        resolved_address: ResolvedAddress,
+        deadline: Deadline,
+    ) -> tuple[int, int]: ...
 
     @classmethod
     @abc.abstractmethod
     async def connect(
         cls,
-        address,
+        address: Address,
         *,
-        tcp_timeout,
-        deadline,
-        custom_resolver,
-        ssl_context,
-        keep_alive,
-    ): ...
+        tcp_timeout: float | None,
+        deadline: Deadline,
+        custom_resolver: t.Callable | None,
+        ssl_context: SSLContext | None,
+        keep_alive: bool,
+    ) -> tuple[te.Self, tuple[int, int]]: ...
 
     @classmethod
     async def close_socket(cls, socket_):
@@ -461,20 +470,24 @@ class BoltSocketBase:
         return cls(s)
 
     @abc.abstractmethod
-    def _handshake(self, resolved_address, deadline): ...
+    def _handshake(
+        self,
+        resolved_address: ResolvedAddress,
+        deadline: Deadline,
+    ) -> tuple[int, int]: ...
 
     @classmethod
     @abc.abstractmethod
     def connect(
         cls,
-        address,
+        address: Address,
         *,
-        tcp_timeout,
-        deadline,
-        custom_resolver,
-        ssl_context,
-        keep_alive,
-    ): ...
+        tcp_timeout: float | None,
+        deadline: Deadline,
+        custom_resolver: t.Callable | None,
+        ssl_context: SSLContext | None,
+        keep_alive: bool,
+    ) -> tuple[te.Self, tuple[int, int]]: ...
 
     @classmethod
     def close_socket(cls, socket_):

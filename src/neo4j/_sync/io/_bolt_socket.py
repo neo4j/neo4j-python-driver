@@ -213,7 +213,7 @@ class BoltSocket(BoltSocketBase):
         self,
         resolved_address: ResolvedAddress,
         deadline: Deadline,
-    ) -> tuple[tuple[int, int], bytes, bytes]:
+    ) -> tuple[int, int]:
         """
         Perform BOLT handshake.
 
@@ -288,7 +288,7 @@ class BoltSocket(BoltSocketBase):
                 response,
             )
 
-        return agreed_version, handshake, response
+        return agreed_version
 
     @classmethod
     def connect(
@@ -300,7 +300,7 @@ class BoltSocket(BoltSocketBase):
         custom_resolver: t.Callable | None,
         ssl_context: SSLContext | None,
         keep_alive: bool,
-    ) -> tuple[te.Self, tuple[int, int], bytes, bytes]:
+    ) -> tuple[te.Self, tuple[int, int]]:
         """
         Connect and perform a handshake.
 
@@ -328,10 +328,8 @@ class BoltSocket(BoltSocketBase):
                 s = cls._connect_secure(
                     resolved_address, tcp_timeout, keep_alive, ssl_context
                 )
-                agreed_version, handshake, response = s._handshake(
-                    resolved_address, deadline
-                )
-                return s, agreed_version, handshake, response
+                agreed_version = s._handshake(resolved_address, deadline)
+                return s, agreed_version
             except (BoltError, DriverError, OSError) as error:
                 local_port = 0
                 if isinstance(s, cls):
@@ -367,6 +365,7 @@ class BoltSocket(BoltSocketBase):
                     cls.close_socket(s)
                 raise
         address_strs = tuple(map(str, failed_addresses))
+        # TODO: 7.0 - when Python 3.11+ is the minimum, use exception groups
         if not errors:
             raise ServiceUnavailable(
                 f"Couldn't connect to {address} (resolved to {address_strs})"

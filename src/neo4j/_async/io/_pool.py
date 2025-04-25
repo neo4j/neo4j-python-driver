@@ -850,6 +850,8 @@ class AsyncNeo4jPool(AsyncIOPool):
                 "[#0000]  _: <POOL> failed to fetch routing info from %r",
                 address,
             )
+            # TODO: 7.0 - when Python 3.11+ is the minimum,
+            #       use exception groups instead of swallowing discovery errors
             return None
         else:
             servers = new_routing_info[0]["servers"]

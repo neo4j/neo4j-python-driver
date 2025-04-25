@@ -48,6 +48,7 @@ from ...exceptions import (
     IncompleteCommit,
     ServiceUnavailable,
     SessionExpired,
+    UnsupportedServerProduct,
 )
 from ..config import AsyncPoolConfig
 from ._bolt_socket import AsyncBoltSocket
@@ -336,16 +337,15 @@ class AsyncBolt:
             await AsyncBoltSocket.close_socket(s)
             return protocol_version
 
-    @classmethod
+    @staticmethod
     async def open(
-        cls,
         address,
         *,
         auth_manager=None,
         deadline=None,
         routing_context=None,
         pool_config=None,
-    ):
+    ) -> AsyncBolt:
         """
         Open a new Bolt connection to a given server address.
 
@@ -366,7 +366,7 @@ class AsyncBolt:
         if deadline is None:
             deadline = Deadline(None)
 
-        s, protocol_version, handshake, data = await AsyncBoltSocket.connect(
+        s, protocol_version = await AsyncBoltSocket.connect(
             address,
             tcp_timeout=pool_config.connection_timeout,
             deadline=deadline,
@@ -377,19 +377,16 @@ class AsyncBolt:
 
         pool_config.protocol_version = protocol_version
         protocol_handlers = AsyncBolt.protocol_handlers
-        bolt_cls = protocol_handlers.get(protocol_version)
+        bolt_cls = protocol_handlers.get(Version(protocol_version))
         if bolt_cls is None:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             await AsyncBoltSocket.close_socket(s)
 
             # TODO: 6.0 - raise public DriverError subclass instead
-            raise BoltHandshakeError(
+            raise UnsupportedServerProduct(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
                 f"{tuple(map(str, AsyncBolt.protocol_handlers.keys()))}.",
-                address=address,
-                request_data=handshake,
-                response_data=data,
             )
 
         try:

@@ -3,7 +3,10 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- Changed errors raised under certain circumstances
+  - `neo4j.exceptions.UnsupportedServerProduct` if no common bolt protocol version could be negotiated with the server
+   (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
+    `UnsupportedServerProduct` is now a subclass of `ServiceUnavailable` (instead of `Exception` directly).
 
 
 ## Version 5.28
