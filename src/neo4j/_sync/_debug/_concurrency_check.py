@@ -129,7 +129,7 @@ class NonConcurrentMethodChecker:
                             tbs = deepcopy(self.__tracebacks)
                     if acquired:
                         try:
-                            item = iter_.__next__()
+                            item = next(iter_)
                         except StopIteration:
                             return
                         finally:

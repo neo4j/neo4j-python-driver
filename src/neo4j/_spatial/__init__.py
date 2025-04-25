@@ -27,7 +27,7 @@ srid_table: dict[int, tuple[type[Point], int]] = {}
 srid_table_lock = Lock()
 
 
-class Point(t.Tuple[float, ...]):
+class Point(tuple[float, ...]):
     """
     Base-class for spatial data.
 
@@ -58,8 +58,7 @@ class Point(t.Tuple[float, ...]):
         def z(self) -> float: ...
 
     def __new__(cls, iterable: t.Iterable[float]) -> Point:
-        # TODO: 6.0 - remove type ignore when support for Python 3.7 is dropped
-        return tuple.__new__(cls, map(float, iterable))  # type: ignore[type-var]
+        return tuple.__new__(cls, map(float, iterable))
 
     def __repr__(self) -> str:
         return f"POINT({' '.join(map(str, self))})"
@@ -103,7 +102,7 @@ def point_type(
         for field_alias in (subclass_field, "xyz"[index]):
             attributes[field_alias] = property(accessor)
 
-    cls = t.cast(t.Type[Point], type(name, (Point,), attributes))
+    cls = t.cast(type[Point], type(name, (Point,), attributes))
 
     with srid_table_lock:
         for dim, srid_ in srid_map.items():

@@ -346,18 +346,18 @@ def test_server_error_propagates(scripted_connection, error):
 
     tx = Transaction(connection, 2, None, noop, noop, noop, None)
     res1 = tx.run("UNWIND range(1, 1000) AS n RETURN n")
-    assert res1.__next__() == {"n": 1}
+    assert next(res1) == {"n": 1}
 
     res2 = tx.run("RETURN 'causes error later'")
     assert res2.fetch(2) == [{"n": 1}, {"n": 2}]
     with pytest.raises(expected_error) as exc1:
-        res2.__next__()
+        next(res2)
 
     # can finish the buffer
     assert res1.fetch(1) == [{"n": 2}]
     # then fails because the connection was broken by res2
     with pytest.raises(ResultFailedError) as exc2:
-        res1.__next__()
+        next(res1)
 
     assert exc1.value is exc2.value.__cause__
 

@@ -16,13 +16,10 @@ breaking API changes.
 
 See also: https://neo4j.com/developer/kb/neo4j-supported-versions/
 
-+ Python 3.13 supported (since driver version 5.26.0).
-+ Python 3.12 supported (since driver version 5.14.0).
-+ Python 3.11 supported (since driver version 5.3.0).
++ Python 3.13 supported.
++ Python 3.12 supported.
++ Python 3.11 supported.
 + Python 3.10 supported.
-+ Python 3.9 supported.
-+ Python 3.8 supported.
-+ Python 3.7 supported.
 
 
 Installation

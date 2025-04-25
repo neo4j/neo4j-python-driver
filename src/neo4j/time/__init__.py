@@ -382,7 +382,7 @@ else:
 
 
 class Duration(  # type: ignore[misc]
-    t.Tuple[int, int, int, int], duration_base_class
+    tuple[int, int, int, int], duration_base_class
 ):
     r"""
     A difference between two points in time.
@@ -470,8 +470,7 @@ class Duration(  # type: ignore[misc]
         )
         if not MIN_INT64 <= avg_total_seconds <= MAX_INT64:
             raise ValueError(f"Duration value out of range: {tuple_!r}")
-        # TODO: 6.0 - remove type ignore when support for Python 3.7 is dropped
-        return tuple.__new__(cls, tuple_)  # type: ignore[type-var]
+        return tuple.__new__(cls, tuple_)
 
     def __bool__(self) -> bool:
         """Falsy if all primary instance attributes are."""

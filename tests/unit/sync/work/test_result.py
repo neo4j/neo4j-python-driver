@@ -272,32 +272,32 @@ def fetch_and_compare_all_records(
     elif method == "next":
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
-            record = Util.next(result)
+            record = next(result)
             received_records.append([record.get(key, None)])
         if limit is None:
             with pytest.raises(StopIteration):
-                Util.next(result)
+                next(result)
             assert result._exhausted
     elif method == "one iter":
-        iter_ = Util.iter(result)
+        iter_ = iter(result)
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
-            record = Util.next(iter_)
+            record = next(iter_)
             received_records.append([record.get(key, None)])
         if limit is None:
             with pytest.raises(StopIteration):
-                Util.next(iter_)
+                next(iter_)
             assert result._exhausted
     elif method == "new iter":
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
-            iter_ = Util.iter(result)
-            record = Util.next(iter_)
+            iter_ = iter(result)
+            record = next(iter_)
             received_records.append([record.get(key, None)])
         if limit is None:
-            iter_ = Util.iter(result)
+            iter_ = iter(result)
             with pytest.raises(StopIteration):
-                Util.next(iter_)
+                next(iter_)
             assert result._exhausted
     else:
         raise ValueError
@@ -329,37 +329,37 @@ def test_result_iteration_mixed_methods():
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, 4, None, noop, noop, None)
     result._run("CYPHER", {}, None, None, "r", None, None, None)
-    iter1 = Util.iter(result)
-    iter2 = Util.iter(result)
+    iter1 = iter(result)
+    iter2 = iter(result)
 
-    record = Util.next(iter1)
+    record = next(iter1)
     assert record.get("x") == records[0][0]
-    record = Util.next(iter2)
+    record = next(iter2)
     assert record.get("x") == records[1][0]
-    record = Util.next(iter2)
+    record = next(iter2)
     assert record.get("x") == records[2][0]
-    record = Util.next(iter1)
+    record = next(iter1)
     assert record.get("x") == records[3][0]
-    record = Util.next(iter1)
+    record = next(iter1)
     assert record.get("x") == records[4][0]
-    record = Util.next(result)
+    record = next(result)
     assert record.get("x") == records[5][0]
-    record = Util.next(iter2)
+    record = next(iter2)
     assert record.get("x") == records[6][0]
-    record = Util.next(iter1)
+    record = next(iter1)
     assert record.get("x") == records[7][0]
-    record = Util.next(Util.iter(result))
+    record = next(iter(result))
     assert record.get("x") == records[8][0]
     assert [r.get("x") for r in result] == [records[9][0]]
 
     with pytest.raises(StopIteration):
-        Util.next(iter1)
+        next(iter1)
     with pytest.raises(StopIteration):
-        Util.next(iter2)
+        next(iter2)
     with pytest.raises(StopIteration):
-        Util.next(result)
+        next(result)
     with pytest.raises(StopIteration):
-        Util.next(Util.iter(result))
+        next(iter(result))
 
     assert [r.get("x") for r in result] == []
 
@@ -436,8 +436,8 @@ def test_result_peek(records, fetch_size):
         else:
             assert isinstance(record, Record)
             assert record.get("x") == records[i][0]
-            iter_ = Util.iter(result)
-            Util.next(iter_)  # consume the record
+            iter_ = iter(result)
+            next(iter_)  # consume the record
 
 
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
@@ -547,7 +547,7 @@ def test_consume(records, consume_one, summary_meta, consume_times):
     result._run("CYPHER", {}, None, None, "r", None, None, None)
     if consume_one:
         with suppress(StopIteration):
-            Util.next(Util.iter(result))
+            next(iter(result))
     for _ in range(consume_times):
         summary = result.consume()
         assert isinstance(summary, ResultSummary)
@@ -775,7 +775,7 @@ def test_to_eager_result(records):
     assert len(eager_result.records) == len(records)
     assert all(
         list(record) == list(raw)
-        for record, raw in zip(eager_result.records, records)
+        for record, raw in zip(eager_result.records, records, strict=True)
     )
 
     assert eager_result.summary is eager_result[1]
@@ -794,10 +794,20 @@ def test_to_eager_result(records):
 @pytest.mark.parametrize(
     ("keys", "values", "types", "instances"),
     (
-        (["i"], list(zip(range(5))), ["int64"], None),
-        (["x"], list(zip((n - 0.5) / 5 for n in range(5))), ["float64"], None),
-        (["s"], list(zip(("foo", "bar", "baz", "foobar"))), ["object"], None),
-        (["l"], list(zip(([1, 2], [3, 4]))), ["object"], None),
+        (["i"], list(zip(range(5), strict=True)), ["int64"], None),
+        (
+            ["x"],
+            list(zip(((n - 0.5) / 5 for n in range(5)), strict=True)),
+            ["float64"],
+            None,
+        ),
+        (
+            ["s"],
+            list(zip(("foo", "bar", "baz", "foobar"), strict=True)),
+            ["object"],
+            None,
+        ),
+        (["l"], list(zip(([1, 2], [3, 4]), strict=True)), ["object"], None),
         (
             ["n"],
             list(
@@ -815,7 +825,8 @@ def test_to_eager_result(records):
                             {"a": [1, "a"]},
                             "cool_id",
                         ),
-                    )
+                    ),
+                    strict=True,
                 )
             ),
             ["object"],
@@ -841,7 +852,8 @@ def test_to_eager_result(records):
                             "1337",
                             "69",
                         ),
-                    )
+                    ),
+                    strict=True,
                 )
             ),
             ["object"],
@@ -881,7 +893,7 @@ def test_to_df(keys, values, types, instances, test_default_expand):
     (
         (
             ["i"],
-            list(zip(range(5))),
+            list(zip(range(5), strict=True)),
             ["i"],
             [[0], [1], [2], [3], [4]],
             ["int64"],
@@ -889,35 +901,35 @@ def test_to_df(keys, values, types, instances, test_default_expand):
         # test variable name escaping
         (
             ["i.[]->.().{}.\\"],
-            list(zip(range(5))),
+            list(zip(range(5), strict=True)),
             ["i\\.[]->\\.()\\.{}\\.\\\\"],
             [[0], [1], [2], [3], [4]],
             ["int64"],
         ),
         (
             ["x"],
-            list(zip((n - 0.5) / 5 for n in range(5))),
+            list(zip(((n - 0.5) / 5 for n in range(5)), strict=True)),
             ["x"],
             [[-0.1], [0.1], [0.3], [0.5], [0.7]],
             ["float64"],
         ),
         (
             ["s"],
-            list(zip(("foo", "bar", "baz", "foobar"))),
+            list(zip(("foo", "bar", "baz", "foobar"), strict=True)),
             ["s"],
             [["foo"], ["bar"], ["baz"], ["foobar"]],
             ["object"],
         ),
         (
             ["l"],
-            list(zip(([1, 2], [3, 4]))),
+            list(zip(([1, 2], [3, 4]), strict=True)),
             ["l[].0", "l[].1"],
             [[1, 2], [3, 4]],
             ["int64", "int64"],
         ),
         (
             ["l"],
-            list(zip(([1, 2], [3, 4, 5], [6]))),
+            list(zip(([1, 2], [3, 4, 5], [6]), strict=True)),
             ["l[].0", "l[].1", "l[].2"],
             [[1, 2, None], [3, 4, 5], [6, None, None]],
             # pandas turns None in int columns into NaN
@@ -926,7 +938,9 @@ def test_to_df(keys, values, types, instances, test_default_expand):
         ),
         (
             ["d"],
-            list(zip(({"a": 1, "b": 2}, {"a": 3, "b": 4, "": 0}))),
+            list(
+                zip(({"a": 1, "b": 2}, {"a": 3, "b": 4, "": 0}), strict=True)
+            ),
             ["d{}.a", "d{}.b", "d{}."],
             [[1, 2, None], [3, 4, 0]],
             ["int64", "int64", "float64"],
@@ -934,14 +948,14 @@ def test_to_df(keys, values, types, instances, test_default_expand):
         # test key escaping
         (
             ["d"],
-            list(zip(({"a.[]\\{}->.().{}.": 1, "b": 2},))),
+            list(zip(({"a.[]\\{}->.().{}.": 1, "b": 2},), strict=True)),
             ["d{}.a\\.[]\\\\{}->\\.()\\.{}\\.", "d{}.b"],
             [[1, 2]],
             ["int64", "int64"],
         ),
         (
             ["d"],
-            list(zip(({"a": 1, "b": 2}, {"a": 3, "c": 4}))),
+            list(zip(({"a": 1, "b": 2}, {"a": 3, "c": 4}), strict=True)),
             ["d{}.a", "d{}.b", "d{}.c"],
             [[1, 2, None], [3, None, 4]],
             # pandas turns None in int columns into NaN
@@ -950,7 +964,12 @@ def test_to_df(keys, values, types, instances, test_default_expand):
         ),
         (
             ["x"],
-            list(zip(([{"foo": "bar", "baz": [42, 0.1]}, "foobar"],))),
+            list(
+                zip(
+                    ([{"foo": "bar", "baz": [42, 0.1]}, "foobar"],),
+                    strict=True,
+                )
+            ),
             ["x[].0{}.foo", "x[].0{}.baz[].0", "x[].0{}.baz[].1", "x[].1"],
             [["bar", 42, 0.1, "foobar"]],
             ["object", "int64", "float64", "object"],
@@ -981,7 +1000,8 @@ def test_to_df(keys, values, types, instances, test_default_expand):
                             ["LABEL_A", "LABEL_B"],
                             {"a": [1, "a"], "d": 3},
                         ),
-                    )
+                    ),
+                    strict=True,
                 )
             ),
             [
@@ -1033,7 +1053,8 @@ def test_to_df(keys, values, types, instances, test_default_expand):
                             "r-1337",
                             "r-69",
                         ),
-                    )
+                    ),
+                    strict=True,
                 )
             ),
             [

@@ -26,8 +26,8 @@ from ..api import (
 )
 
 
-TBmSupplier = t.Callable[[], t.Union[Bookmarks, t.Union[Bookmarks]]]
-TBmConsumer = t.Callable[[Bookmarks], t.Union[None, t.Union[None]]]
+TBmSupplier = t.Callable[[], Bookmarks | t.Union[Bookmarks]]
+TBmConsumer = t.Callable[[Bookmarks], None | t.Union[None]]
 
 
 def _bookmarks_to_set(
