@@ -38,10 +38,7 @@ from ..._exceptions import (
 from ..._meta import USER_AGENT
 from ..._sync.config import PoolConfig
 from ...addressing import ResolvedAddress
-from ...api import (
-    ServerInfo,
-    Version,
-)
+from ...api import ServerInfo
 from ...exceptions import (
     ConfigurationError,
     DriverError,
@@ -110,7 +107,7 @@ class AsyncBolt:
 
     MAGIC_PREAMBLE = b"\x60\x60\xb0\x17"
 
-    PROTOCOL_VERSION: Version = None  # type: ignore[assignment]
+    PROTOCOL_VERSION: tuple[int, int] = None  # type: ignore[assignment]
 
     # flag if connection needs RESET to go back to READY state
     is_reset = False
@@ -262,7 +259,7 @@ class AsyncBolt:
                 f"{self.server_info.agent!r}"
             )
 
-    protocol_handlers: t.ClassVar[dict[Version, type[AsyncBolt]]] = {}
+    protocol_handlers: t.ClassVar[dict[tuple[int, int], type[AsyncBolt]]] = {}
 
     def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
         if cls.SKIP_REGISTRATION:
@@ -274,7 +271,7 @@ class AsyncBolt:
                 "AsyncBolt subclasses must define PROTOCOL_VERSION"
             )
         if not (
-            isinstance(protocol_version, Version)
+            isinstance(protocol_version, tuple)
             and len(protocol_version) == 2
             and all(isinstance(i, int) for i in protocol_version)
         ):
@@ -377,7 +374,7 @@ class AsyncBolt:
 
         pool_config.protocol_version = protocol_version
         protocol_handlers = AsyncBolt.protocol_handlers
-        bolt_cls = protocol_handlers.get(Version(protocol_version))
+        bolt_cls = protocol_handlers.get(protocol_version)
         if bolt_cls is None:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             await AsyncBoltSocket.close_socket(s)

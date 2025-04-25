@@ -1148,6 +1148,9 @@ class UnsupportedServerProduct(ServiceUnavailable):
         Before it was a subclass of :class:`Exception`.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
 
 # DriverError > ServiceUnavailable > IncompleteCommit
 class IncompleteCommit(ServiceUnavailable):

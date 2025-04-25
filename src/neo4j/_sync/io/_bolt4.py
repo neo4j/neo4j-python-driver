@@ -22,7 +22,6 @@ from ..._exceptions import BoltProtocolError
 from ...api import (
     READ_ACCESS,
     SYSTEM_DATABASE,
-    Version,
 )
 from ...exceptions import (
     ConfigurationError,
@@ -62,7 +61,7 @@ class Bolt4x0(Bolt):
     This is supported by Neo4j versions 4.0-4.4.
     """
 
-    PROTOCOL_VERSION = Version(4, 0)
+    PROTOCOL_VERSION = (4, 0)
 
     ssr_enabled = False
 
@@ -529,7 +528,7 @@ class Bolt4x1(Bolt4x0):
     This is supported by Neo4j versions 4.1 - 4.4.
     """
 
-    PROTOCOL_VERSION = Version(4, 1)
+    PROTOCOL_VERSION = (4, 1)
 
     def get_base_headers(self):
         # Bolt 4.1 passes the routing context, originally taken from
@@ -551,7 +550,7 @@ class Bolt4x2(Bolt4x1):
     This is supported by Neo4j version 4.2 - 4.4.
     """
 
-    PROTOCOL_VERSION = Version(4, 2)
+    PROTOCOL_VERSION = (4, 2)
 
     SKIP_REGISTRATION = False
 
@@ -563,7 +562,7 @@ class Bolt4x3(Bolt4x2):
     This is supported by Neo4j version 4.3 - 4.4.
     """
 
-    PROTOCOL_VERSION = Version(4, 3)
+    PROTOCOL_VERSION = (4, 3)
 
     def get_base_headers(self):
         headers = super().get_base_headers()
@@ -668,7 +667,7 @@ class Bolt4x4(Bolt4x3):
     This is supported by Neo4j version 4.4.
     """
 
-    PROTOCOL_VERSION = Version(4, 4)
+    PROTOCOL_VERSION = (4, 4)
 
     def route(
         self,

@@ -24,10 +24,7 @@ from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
 from ..._meta import BOLT_AGENT_DICT
-from ...api import (
-    READ_ACCESS,
-    Version,
-)
+from ...api import READ_ACCESS
 from ...exceptions import (
     DatabaseUnavailable,
     ForbiddenOnReadOnlyDatabase,
@@ -62,7 +59,7 @@ log = getLogger("neo4j.io")
 class AsyncBolt5x0(AsyncBolt):
     """Protocol handler for Bolt 5.0."""
 
-    PROTOCOL_VERSION = Version(5, 0)
+    PROTOCOL_VERSION = (5, 0)
 
     HYDRATION_HANDLER_CLS = hydration_v2.HydrationHandler
 
@@ -593,7 +590,7 @@ class ClientStateManager5x1(ClientStateManager):
 class AsyncBolt5x1(AsyncBolt5x0):
     """Protocol handler for Bolt 5.1."""
 
-    PROTOCOL_VERSION = Version(5, 1)
+    PROTOCOL_VERSION = (5, 1)
 
     supports_re_auth = True
 
@@ -684,7 +681,7 @@ class AsyncBolt5x1(AsyncBolt5x0):
 
 
 class AsyncBolt5x2(AsyncBolt5x1):
-    PROTOCOL_VERSION = Version(5, 2)
+    PROTOCOL_VERSION = (5, 2)
 
     supports_notification_filtering = True
 
@@ -869,7 +866,7 @@ class AsyncBolt5x2(AsyncBolt5x1):
 
 
 class AsyncBolt5x3(AsyncBolt5x2):
-    PROTOCOL_VERSION = Version(5, 3)
+    PROTOCOL_VERSION = (5, 3)
 
     def get_base_headers(self):
         headers = super().get_base_headers()
@@ -878,7 +875,7 @@ class AsyncBolt5x3(AsyncBolt5x2):
 
 
 class AsyncBolt5x4(AsyncBolt5x3):
-    PROTOCOL_VERSION = Version(5, 4)
+    PROTOCOL_VERSION = (5, 4)
 
     def telemetry(
         self,
@@ -907,7 +904,7 @@ class AsyncBolt5x4(AsyncBolt5x3):
 
 
 class AsyncBolt5x5(AsyncBolt5x4):
-    PROTOCOL_VERSION = Version(5, 5)
+    PROTOCOL_VERSION = (5, 5)
 
     def get_base_headers(self):
         headers = super().get_base_headers()
@@ -1107,7 +1104,7 @@ class AsyncBolt5x5(AsyncBolt5x4):
 
 
 class AsyncBolt5x6(AsyncBolt5x5):
-    PROTOCOL_VERSION = Version(5, 6)
+    PROTOCOL_VERSION = (5, 6)
 
     def _make_enrich_statuses_handler(self, wrapped_handler=None):
         async def handler(metadata):
@@ -1139,7 +1136,7 @@ class AsyncBolt5x6(AsyncBolt5x5):
 
 
 class AsyncBolt5x7(AsyncBolt5x6):
-    PROTOCOL_VERSION = Version(5, 7)
+    PROTOCOL_VERSION = (5, 7)
 
     DEFAULT_ERROR_DIAGNOSTIC_RECORD = (
         AsyncBolt5x5.DEFAULT_STATUS_DIAGNOSTIC_RECORD
@@ -1232,7 +1229,7 @@ class AsyncBolt5x7(AsyncBolt5x6):
 
 
 class AsyncBolt5x8(AsyncBolt5x7):
-    PROTOCOL_VERSION = Version(5, 8)
+    PROTOCOL_VERSION = (5, 8)
 
     @property
     def ssr_enabled(self) -> bool:

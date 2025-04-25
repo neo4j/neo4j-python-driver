@@ -22,10 +22,7 @@ from logging import getLogger
 from ssl import SSLSocket
 
 from ..._exceptions import BoltProtocolError
-from ...api import (
-    READ_ACCESS,
-    Version,
-)
+from ...api import READ_ACCESS
 from ...exceptions import (
     ConfigurationError,
     DatabaseUnavailable,
@@ -146,7 +143,7 @@ class Bolt3(Bolt):
     This is supported by Neo4j versions 3.5, 4.0, 4.1, 4.2, 4.3, and 4.4.
     """
 
-    PROTOCOL_VERSION = Version(3, 0)
+    PROTOCOL_VERSION = (3, 0)
 
     ssr_enabled = False
 
