@@ -224,7 +224,8 @@ class AsyncBolt4x0(AsyncBolt):
         await self.send_all()
         await self.fetch_all()
         return [
-            dict(zip(metadata.get("fields", ()), values)) for values in records
+            dict(zip(metadata.get("fields", ()), values, strict=True))
+            for values in records
         ]
 
     def run(

@@ -20,12 +20,13 @@ import asyncio
 import enum
 import typing as t
 from dataclasses import dataclass
-from typing import Iterator
 
 import typing_extensions as te
 
 
 if t.TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from neo4j import (
         AsyncDriver,
         AsyncManagedTransaction,

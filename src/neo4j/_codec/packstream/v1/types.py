@@ -14,24 +14,22 @@
 # limitations under the License.
 
 
-import typing as t
-
 from ...._optional_deps import (
     np,
     pd,
 )
 
 
-NONE_VALUES: t.Tuple = (None,)
-TRUE_VALUES: t.Tuple = (True,)
-FALSE_VALUES: t.Tuple = (False,)
-INT_TYPES: t.Tuple[t.Type, ...] = (int,)
-FLOAT_TYPES: t.Tuple[t.Type, ...] = (float,)
+NONE_VALUES: tuple = (None,)
+TRUE_VALUES: tuple = (True,)
+FALSE_VALUES: tuple = (False,)
+INT_TYPES: tuple[type, ...] = (int,)
+FLOAT_TYPES: tuple[type, ...] = (float,)
 # we can't put tuple here because spatial types subclass tuple,
 # and we don't want to treat them as sequences
-SEQUENCE_TYPES: t.Tuple[t.Type, ...] = (list,)
-MAPPING_TYPES: t.Tuple[t.Type, ...] = (dict,)
-BYTES_TYPES: t.Tuple[t.Type, ...] = (bytes, bytearray)
+SEQUENCE_TYPES: tuple[type, ...] = (list,)
+MAPPING_TYPES: tuple[type, ...] = (dict,)
+BYTES_TYPES: tuple[type, ...] = (bytes, bytearray)
 
 
 if np is not None:

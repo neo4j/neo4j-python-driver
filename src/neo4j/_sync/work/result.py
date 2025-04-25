@@ -78,7 +78,7 @@ for _ in range(__package__.count(".") + 1):
     _driver_dir = _driver_dir.parent
 
 _T = t.TypeVar("_T")
-_TResultKey = t.Union[int, str]
+_TResultKey: t.TypeAlias = int | str
 
 
 _RESULT_FAILED_ERROR = (
@@ -247,7 +247,8 @@ class Result(NonConcurrentMethodChecker):
                     for record in records
                 )
                 self._record_buffer.extend(
-                    Record(zip(self._keys, record)) for record in records
+                    Record(zip(self._keys, record, strict=True))
+                    for record in records
                 )
 
         def _on_summary():
@@ -420,7 +421,7 @@ class Result(NonConcurrentMethodChecker):
 
         :raises StopIteration: if no more records are available.
         """
-        return self.__iter__().__next__()
+        return next(iter(self))
 
     def _attach(self):
         # Set the Result object in an attached state by fetching messages
@@ -918,7 +919,7 @@ class Result(NonConcurrentMethodChecker):
                 else:
                     # The rows have different keys. We need to pass a list
                     # of dicts to pandas
-                    rows = [dict(zip(df_keys, r)) for r in rows]
+                    rows = [dict(zip(df_keys, r, strict=True)) for r in rows]
                     df_keys = False
                     rows.append(row)
             if df_keys is False:

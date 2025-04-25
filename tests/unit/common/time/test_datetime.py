@@ -20,8 +20,8 @@ import copy
 import itertools
 import operator
 import pickle
-import sys
 import typing as t
+import zoneinfo
 from datetime import (
     datetime,
     timedelta,
@@ -195,23 +195,18 @@ class TestDateTime:
         assert t.dst() is None
         assert t.tzname() == "UTC"
 
-    if sys.version_info >= (3, 9):
-
-        def test_now_with_zoneinfo_utc_tz(self) -> None:
-            # not fully supported tzinfo implementation
-            import zoneinfo
-
-            t = DateTime.now(zoneinfo.ZoneInfo("UTC"))
-            assert t.year == 1970
-            assert t.month == 1
-            assert t.day == 1
-            assert t.hour == 12
-            assert t.minute == 34
-            assert t.second == 56
-            assert t.nanosecond == 789000001
-            assert t.utcoffset() == timedelta(seconds=0)
-            assert t.dst() == timedelta(seconds=0)
-            assert t.tzname() == "UTC"
+    def test_now_with_zoneinfo_utc_tz(self) -> None:
+        t = DateTime.now(zoneinfo.ZoneInfo("UTC"))
+        assert t.year == 1970
+        assert t.month == 1
+        assert t.day == 1
+        assert t.hour == 12
+        assert t.minute == 34
+        assert t.second == 56
+        assert t.nanosecond == 789000001
+        assert t.utcoffset() == timedelta(seconds=0)
+        assert t.dst() == timedelta(seconds=0)
+        assert t.tzname() == "UTC"
 
     def test_utc_now(self) -> None:
         t = DateTime.utc_now()

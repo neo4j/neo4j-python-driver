@@ -23,7 +23,7 @@ authors = [
     {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
 ]
 dependencies = ["pytz"]
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 keywords = ["neo4j", "graph", "database"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -31,9 +31,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -65,9 +62,7 @@ pyarrow = ["pyarrow >= 1.0.0"]
 
 [build-system]
 requires = [
-    "setuptools == 68.0.0; python_version <= '3.7'",  # dropped support for Python 3.7 in 68.1.0
-    "setuptools == 75.3.0; python_version == '3.8'",  # dropped support for Python 3.8 in 75.4.0
-    "setuptools == 75.6.0; python_version >= '3.9'",
+    "setuptools == 75.6.0",
     # TODO: 6.0 - can be removed once `setup.py` is simplified
     "tomlkit == 0.12.5",  # dropped support (at least CI testing) for Python 3.7 in 0.13.0
 ]
@@ -123,6 +118,7 @@ use_parentheses = true
 [tool.pytest.ini_options]
 mock_use_standalone_module = true
 asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope="function"
 
 
 [tool.mypy]
@@ -148,8 +144,7 @@ extend-exclude = [
 preview = true  # to get CPY lints
 extend-ignore = [
     "RUF002",  # allow ’ (RIGHT SINGLE QUOTATION MARK) to be used as an apostrophe (e.g. "it’s")
-    "SIM117",  # TODO: when Python 3.10+ is the minimum,
-               #       we can start to use multi-item `with` statements
+
     # pydocstyle
     "D1",   # disable check for undocumented items (way too noisy)
     "D203", # `one-blank-line-before-class`
@@ -199,6 +194,9 @@ extend-ignore = [
     # needs fixing in ruff to work with typing.Protocol
     # https://github.com/astral-sh/ruff/issues/13307
     "FURB180",
+
+    # rule is deprected and suggests not recommended practice
+    "UP038",
 ]
 select = [
     # ruff

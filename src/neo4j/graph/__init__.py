@@ -76,7 +76,7 @@ class Graph:
             cls = self._relationship_types[name]
         except KeyError:
             cls = self._relationship_types[name] = t.cast(
-                t.Type[Relationship], type(str(name), (Relationship,), {})
+                type[Relationship], type(str(name), (Relationship,), {})
             )
         return cls
 
