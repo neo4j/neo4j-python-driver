@@ -22,11 +22,6 @@ import errno
 import logging
 import typing as t
 from contextlib import suppress
-
-
-# fmt: off
-# isort: off
-# isort seems buggy with the noqa comment
 from socket import (
     AF_INET,
     AF_INET6,
@@ -37,8 +32,6 @@ from socket import (
     SOL_SOCKET,
     TCP_NODELAY,
 )
-# isort: on
-# fmt: on
 from ssl import (
     CertificateError,
     HAS_SNI,
