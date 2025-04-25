@@ -919,7 +919,7 @@ async def result_next(backend, data):
     result = backend.results[data["resultId"]]
 
     try:
-        record = await AsyncUtil.next(AsyncUtil.iter(result))
+        record = await anext(aiter(result))
     except StopAsyncIteration:
         await backend.send_response("NullRecord", {})
         return

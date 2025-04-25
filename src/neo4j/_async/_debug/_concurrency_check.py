@@ -129,7 +129,7 @@ class AsyncNonConcurrentMethodChecker:
                             tbs = deepcopy(self.__tracebacks)
                     if acquired:
                         try:
-                            item = await iter_.__anext__()
+                            item = await anext(iter_)
                         except StopAsyncIteration:
                             return
                         finally:

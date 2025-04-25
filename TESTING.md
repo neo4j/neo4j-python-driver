@@ -1,6 +1,6 @@
 # Neo4j Driver Testing
 To run driver tests, [Tox](https://tox.readthedocs.io) is required as well as at least one version of Python.
-The versions of Python supported by this driver are CPython 3.7 - 3.12
+The versions of Python supported by this driver are CPython 3.10 - 3.13
 
 ## Testing with TestKit
 TestKit is the shared test suite used by all official (and some community contributed) Neo4j drivers to ensure consistent and correct behavior across all drivers.

@@ -16,7 +16,6 @@
 
 import abc
 import sys
-import typing as t
 from os import environ
 
 
@@ -27,7 +26,7 @@ class _LazyEval(abc.ABC):
 
 
 class _LazyEvalEnv(_LazyEval):
-    def __init__(self, env_key, type_: t.Type = str, default=...):
+    def __init__(self, env_key, type_: type = str, default=...):
         self.env_key = env_key
         self.type_ = type_
         self.default = default

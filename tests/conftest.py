@@ -204,26 +204,6 @@ def watcher():
         yield
 
 
-# TODO: 6.0 -
-#       when support for Python 3.7 is dropped and pytest-asyncio is bumped
-#       check if this fixture is still needed
-@pytest.fixture
-def event_loop():
-    # Overwriting the default event loop injected by pytest-asyncio
-    # because its implementation doesn't properly shut down the loop
-    # (e.g., it doesn't call `shutdown_asyncgens`)
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    try:
-        _cancel_all_tasks(loop)
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        if sys.version_info >= (3, 9):
-            loop.run_until_complete(loop.shutdown_default_executor())
-    finally:
-        loop.close()
-
-
 def _cancel_all_tasks(loop):
     # Copied from Python 3.13's asyncio package with minor modifications
     # in exception wording and variable naming

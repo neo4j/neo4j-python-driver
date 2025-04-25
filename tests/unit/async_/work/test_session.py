@@ -135,11 +135,13 @@ async def test_opens_connection_on_tx_begin(async_fake_pool):
 async def test_keeps_connection_on_tx_run(
     async_fake_pool, test_run_args, repetitions
 ):
-    async with AsyncSession(async_fake_pool, SessionConfig()) as session:
-        async with await session.begin_transaction() as tx:
-            for _ in range(repetitions):
-                await tx.run(*test_run_args)
-                assert session._connection is not None
+    async with (
+        AsyncSession(async_fake_pool, SessionConfig()) as session,
+        await session.begin_transaction() as tx,
+    ):
+        for _ in range(repetitions):
+            await tx.run(*test_run_args)
+            assert session._connection is not None
 
 
 @pytest.mark.parametrize(
@@ -150,12 +152,14 @@ async def test_keeps_connection_on_tx_run(
 async def test_keeps_connection_on_tx_consume(
     async_fake_pool, test_run_args, repetitions
 ):
-    async with AsyncSession(async_fake_pool, SessionConfig()) as session:
-        async with await session.begin_transaction() as tx:
-            for _ in range(repetitions):
-                result = await tx.run(*test_run_args)
-                await result.consume()
-                assert session._connection is not None
+    async with (
+        AsyncSession(async_fake_pool, SessionConfig()) as session,
+        await session.begin_transaction() as tx,
+    ):
+        for _ in range(repetitions):
+            result = await tx.run(*test_run_args)
+            await result.consume()
+            assert session._connection is not None
 
 
 @pytest.mark.parametrize(

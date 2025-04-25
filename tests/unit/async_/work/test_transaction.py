@@ -346,18 +346,18 @@ async def test_server_error_propagates(async_scripted_connection, error):
 
     tx = AsyncTransaction(connection, 2, None, noop, noop, noop, None)
     res1 = await tx.run("UNWIND range(1, 1000) AS n RETURN n")
-    assert await res1.__anext__() == {"n": 1}
+    assert await anext(res1) == {"n": 1}
 
     res2 = await tx.run("RETURN 'causes error later'")
     assert await res2.fetch(2) == [{"n": 1}, {"n": 2}]
     with pytest.raises(expected_error) as exc1:
-        await res2.__anext__()
+        await anext(res2)
 
     # can finish the buffer
     assert await res1.fetch(1) == [{"n": 2}]
     # then fails because the connection was broken by res2
     with pytest.raises(ResultFailedError) as exc2:
-        await res1.__anext__()
+        await anext(res1)
 
     assert exc1.value is exc2.value.__cause__
 

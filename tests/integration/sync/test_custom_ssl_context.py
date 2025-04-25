@@ -38,12 +38,14 @@ def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
-    with neo4j.GraphDatabase.driver(
-        uri, auth=auth, ssl_context=fake_ssl_context
-    ) as driver:
-        with driver.session() as session:
-            with pytest.raises(NoNeedToGoFurtherError):
-                session.run("RETURN 1")
+    with (
+        neo4j.GraphDatabase.driver(
+            uri, auth=auth, ssl_context=fake_ssl_context
+        ) as driver,
+        driver.session() as session,
+    ):
+        with pytest.raises(NoNeedToGoFurtherError):
+            session.run("RETURN 1")
 
     assert (
         fake_ssl_context.wrap_socket.call_count
