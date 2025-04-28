@@ -603,11 +603,11 @@ def parse_neo4j_uri(uri):
 
 # TODO: 6.0 - make this function private
 def check_access_mode(access_mode):
-    if access_mode is None:
-        return WRITE_ACCESS
     if access_mode not in {READ_ACCESS, WRITE_ACCESS}:
-        msg = f"Unsupported access mode {access_mode}"
-        raise ConfigurationError(msg)
+        raise ValueError(
+            f"Unsupported access mode {access_mode}, must be one of "
+            f"'{READ_ACCESS}' or '{WRITE_ACCESS}'."
+        )
 
     return access_mode
 
