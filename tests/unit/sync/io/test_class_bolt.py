@@ -19,9 +19,9 @@ import asyncio
 import pytest
 
 import neo4j.auth_management
-from neo4j._exceptions import BoltHandshakeError
 from neo4j._sync.io import Bolt
 from neo4j._sync.io._bolt_socket import BoltSocket
+from neo4j.exceptions import UnsupportedServerProduct
 
 from ...._async_compat import (
     mark_sync_test,
@@ -199,7 +199,7 @@ def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     socket_cls_mock.connect.return_value = (socket_mock, bolt_version)
     socket_mock.getpeername.return_value = address
 
-    with pytest.raises(BoltHandshakeError) as exc:
+    with pytest.raises(UnsupportedServerProduct) as exc:
         Bolt.open(address, auth_manager=none_auth)
 
     assert exc.match(supported_protocols)

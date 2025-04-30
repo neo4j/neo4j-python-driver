@@ -32,6 +32,7 @@ from ..._exceptions import (
     BoltError,
     BoltProtocolError,
 )
+from ..._io import BoltProtocolVersion
 from ...exceptions import (
     DriverError,
     ServiceUnavailable,
@@ -75,7 +76,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         self,
         ctx: HandshakeCtx,
         response: bytes,
-    ) -> tuple[int, int]:
+    ) -> BoltProtocolVersion:
         agreed_version = response[-1], response[-2]
         log.debug(
             "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
@@ -83,13 +84,13 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
             agreed_version[1],
             agreed_version[0],
         )
-        return agreed_version
+        return BoltProtocolVersion(*agreed_version)
 
     async def _parse_handshake_response_v2(
         self,
         ctx: HandshakeCtx,
         response: bytes,
-    ) -> tuple[int, int]:
+    ) -> BoltProtocolVersion:
         ctx.ctx = "handshake v2 offerings count"
         num_offerings = await self._read_varint(ctx)
         offerings = []
@@ -114,7 +115,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
             )
 
         supported_versions = sorted(self.Bolt.protocol_handlers.keys())
-        chosen_version = 0, 0
+        chosen_version = BoltProtocolVersion(0, 0)
         for v in supported_versions:
             for offer_major, offer_minor, offer_range in offerings:
                 offer_max = (offer_major, offer_minor)
@@ -125,7 +126,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
 
         ctx.ctx = "handshake v2 chosen version"
         await self._handshake_send(
-            ctx, bytes((0, 0, chosen_version[1], chosen_version[0]))
+            ctx, bytes((0, 0, chosen_version.minor, chosen_version.major))
         )
         chosen_capabilities = 0
         capabilities = self._encode_varint(chosen_capabilities)
@@ -133,8 +134,8 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         log.debug(
             "[#%04X]  C: <HANDSHAKE> 0x%06X%02X %s",
             ctx.local_port,
-            chosen_version[1],
-            chosen_version[0],
+            chosen_version.minor,
+            chosen_version.major,
             BytesPrinter(capabilities),
         )
         await self._handshake_send(ctx, b"\x00")
@@ -213,7 +214,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         self,
         resolved_address: ResolvedAddress,
         deadline: Deadline,
-    ) -> tuple[int, int]:
+    ) -> BoltProtocolVersion:
         """
         Perform BOLT handshake.
 
@@ -300,7 +301,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         custom_resolver: t.Callable | None,
         ssl_context: SSLContext | None,
         keep_alive: bool,
-    ) -> tuple[te.Self, tuple[int, int]]:
+    ) -> tuple[te.Self, BoltProtocolVersion]:
         """
         Connect and perform a handshake.
 

@@ -54,6 +54,7 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
     from ..._async.io import AsyncBolt
+    from ..._io import BoltProtocolVersion
     from ..._sync.io import Bolt
     from ...addressing import (
         Address,
@@ -275,7 +276,7 @@ class AsyncBoltSocketBase(abc.ABC):
         self,
         resolved_address: ResolvedAddress,
         deadline: Deadline,
-    ) -> tuple[int, int]: ...
+    ) -> BoltProtocolVersion: ...
 
     @classmethod
     @abc.abstractmethod
@@ -288,7 +289,7 @@ class AsyncBoltSocketBase(abc.ABC):
         custom_resolver: t.Callable | None,
         ssl_context: SSLContext | None,
         keep_alive: bool,
-    ) -> tuple[te.Self, tuple[int, int]]: ...
+    ) -> tuple[te.Self, BoltProtocolVersion]: ...
 
     @classmethod
     async def close_socket(cls, socket_):
@@ -466,7 +467,7 @@ class BoltSocketBase:
         self,
         resolved_address: ResolvedAddress,
         deadline: Deadline,
-    ) -> tuple[int, int]: ...
+    ) -> BoltProtocolVersion: ...
 
     @classmethod
     @abc.abstractmethod
@@ -479,7 +480,7 @@ class BoltSocketBase:
         custom_resolver: t.Callable | None,
         ssl_context: SSLContext | None,
         keep_alive: bool,
-    ) -> tuple[te.Self, tuple[int, int]]: ...
+    ) -> tuple[te.Self, BoltProtocolVersion]: ...
 
     @classmethod
     def close_socket(cls, socket_):

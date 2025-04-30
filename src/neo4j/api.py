@@ -69,7 +69,6 @@ __all__ = [
     "BookmarkManager",
     "Bookmarks",
     "ServerInfo",
-    "Version",
     "basic_auth",
     "bearer_auth",
     "check_access_mode",
@@ -367,7 +366,7 @@ class Bookmarks:
 class ServerInfo:
     """Represents a package of information relating to a Neo4j server."""
 
-    def __init__(self, address: Address, protocol_version: Version):
+    def __init__(self, address: Address, protocol_version: tuple[int, int]):
         self._address = address
         self._protocol_version = protocol_version
         self._metadata: dict = {}
@@ -409,47 +408,6 @@ class ServerInfo:
         connection initialisation.
         """
         self._metadata.update(metadata)
-
-
-# TODO: 6.0 - this class should not be public.
-#       As far the user is concerned, protocol versions should simply be a
-#       tuple[int, int].
-if t.TYPE_CHECKING:
-    _version_base = tuple[int, int]
-else:
-    _version_base = tuple
-
-
-class Version(_version_base):
-    def __new__(cls, *v):
-        return super().__new__(cls, v)
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}{super().__repr__()}"
-
-    def __str__(self):
-        return ".".join(map(str, self))
-
-    def to_bytes(self) -> bytes:
-        b = bytearray(4)
-        for i, v in enumerate(self):
-            if not 0 <= i < 2:
-                raise ValueError("Too many version components")
-            if isinstance(v, list):
-                b[-i - 1] = int(v[0] % 0x100)
-                b[-i - 2] = int((v[0] - v[-1]) % 0x100)
-            else:
-                b[-i - 1] = int(v % 0x100)
-        return bytes(b)
-
-    @classmethod
-    def from_bytes(cls, b: bytes) -> Version:
-        b = bytearray(b)
-        if len(b) != 4:
-            raise ValueError("Byte representation must be exactly four bytes")
-        if b[0] != 0 or b[1] != 0:
-            raise ValueError("First two bytes must contain zero")
-        return Version(b[-1], b[-2])
 
 
 class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):

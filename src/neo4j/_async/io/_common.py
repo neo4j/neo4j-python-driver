@@ -21,7 +21,7 @@ from struct import pack as struct_pack
 
 from ..._async_compat.util import AsyncUtil
 from ..._exceptions import SocketDeadlineExceededError
-from ...api import Version
+from ..._io import BoltProtocolVersion
 from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
@@ -30,7 +30,7 @@ from ...exceptions import (
 )
 
 
-GQL_ERROR_AWARE_PROTOCOL = Version(5, 7)
+GQL_ERROR_AWARE_PROTOCOL = BoltProtocolVersion(5, 7)
 
 log = logging.getLogger("neo4j.io")
 
