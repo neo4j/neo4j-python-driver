@@ -273,7 +273,7 @@ class Bolt:
             raise ValueError(
                 "Bolt subclasses must define PROTOCOL_VERSION"
             )
-        if not (isinstance(protocol_version, BoltProtocolVersion)):
+        if not isinstance(protocol_version, BoltProtocolVersion):
             raise TypeError(
                 "PROTOCOL_VERSION must be a BoltProtocolVersion, found "
                 f"{type(protocol_version)} for {cls.__name__}"
