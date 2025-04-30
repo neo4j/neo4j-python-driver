@@ -17,8 +17,7 @@
 name = "neo4j"
 description = "Neo4j Bolt driver for Python"
 license = {text = "Apache License, Version 2.0"}
-#TODO: 6.0 - static readme
-#readme = "README.rst"
+readme = "README.rst"
 authors = [
     {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
 ]
@@ -39,7 +38,7 @@ classifiers = [
     "Topic :: Software Development",
     "Typing :: Typed",
 ]
-dynamic = ["version", "readme"]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://neo4j.com/"
@@ -63,8 +62,6 @@ pyarrow = ["pyarrow >= 1.0.0"]
 [build-system]
 requires = [
     "setuptools == 75.6.0",
-    # TODO: 6.0 - can be removed once `setup.py` is simplified
-    "tomlkit == 0.12.5",  # dropped support (at least CI testing) for Python 3.7 in 0.13.0
 ]
 build-backend = "setuptools.build_meta"
 

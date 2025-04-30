@@ -4,6 +4,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
 - Python 3.7, 3.8, and 3.9 support has been dropped.
+- Remove deprecated package alias `neo4j-driver`. Use `pip install neo4j` instead.
+- Remove `setup.py`. Please use a recent enough packaging/build tool that supports `pyproject.toml`
 - Changed errors raised under certain circumstances
   - `neo4j.exceptions.UnsupportedServerProduct` if no common bolt protocol version could be negotiated with the server
    (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
