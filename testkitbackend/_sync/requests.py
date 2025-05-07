@@ -919,7 +919,7 @@ def result_next(backend, data):
     result = backend.results[data["resultId"]]
 
     try:
-        record = Util.next(Util.iter(result))
+        record = next(iter(result))
     except StopIteration:
         backend.send_response("NullRecord", {})
         return

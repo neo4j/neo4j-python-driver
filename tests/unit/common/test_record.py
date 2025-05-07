@@ -48,45 +48,67 @@ from neo4j.time import (
 
 
 def test_record_equality() -> None:
-    record1 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
-    record2 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
-    record3 = Record(zip(["name", "empire"], ["Stefan", "Das Deutschland"]))
+    record1 = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
+    record2 = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
+    record3 = Record(
+        zip(["name", "empire"], ["Stefan", "Das Deutschland"], strict=True)
+    )
     assert record1 == record2
     assert record1 != record3
     assert record2 != record3
 
 
 def test_record_hashing() -> None:
-    record1 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
-    record2 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
-    record3 = Record(zip(["name", "empire"], ["Stefan", "Das Deutschland"]))
+    record1 = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
+    record2 = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
+    record3 = Record(
+        zip(["name", "empire"], ["Stefan", "Das Deutschland"], strict=True)
+    )
     assert hash(record1) == hash(record2)
     assert hash(record1) != hash(record3)
     assert hash(record2) != hash(record3)
 
 
 def test_record_iter() -> None:
-    a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+    a_record = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
     assert list(iter(a_record)) == ["Nigel", "The British Empire"]
 
 
 def test_record_as_dict() -> None:
-    a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+    a_record = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
     assert dict(a_record) == {"name": "Nigel", "empire": "The British Empire"}
 
 
 def test_record_as_list() -> None:
-    a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+    a_record = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
     assert list(a_record) == ["Nigel", "The British Empire"]
 
 
 def test_record_len() -> None:
-    a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+    a_record = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
     assert len(a_record) == 2
 
 
 def test_record_repr() -> None:
-    a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+    a_record = Record(
+        zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
+    )
     assert (
         repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
     )
@@ -158,7 +180,9 @@ def _record_data_make_path() -> Path:
     ),
 )
 def test_record_data_keys(keys, expected) -> None:
-    record = Record(zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES))
+    record = Record(
+        zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES, strict=True)
+    )
     assert record.data(*keys) == expected
 
 
@@ -168,7 +192,7 @@ def test_record_data_keys(keys, expected) -> None:
         *(
             (value, value)
             for value in t.cast(
-                t.Tuple[t.Any],
+                tuple[t.Any],
                 (
                     None,
                     True,
@@ -257,18 +281,24 @@ def test_record_data_types(value, expected, wrapper) -> None:
 
 
 def test_record_index_error() -> None:
-    record = Record(zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES))
+    record = Record(
+        zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES, strict=True)
+    )
     with pytest.raises(IndexError):
         record.data(1, 0, 999)
 
 
 def test_record_keys() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r.keys() == ["name", "age", "married"]
 
 
 def test_record_values() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r.values() == ["Alice", 33, True]
     assert r.values("name") == ["Alice"]
     assert r.values("age", "name") == [33, "Alice"]
@@ -281,7 +311,9 @@ def test_record_values() -> None:
 
 
 def test_record_items() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r.items() == [("name", "Alice"), ("age", 33), ("married", True)]
     assert r.items("name") == [("name", "Alice")]
     assert r.items("age", "name") == [("age", 33), ("name", "Alice")]
@@ -298,7 +330,9 @@ def test_record_items() -> None:
 
 
 def test_record_index() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r.index("name") == 0
     assert r.index("age") == 1
     assert r.index("married") == 2
@@ -314,7 +348,9 @@ def test_record_index() -> None:
 
 
 def test_record_value() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r.value() == "Alice"
     assert r.value("name") == "Alice"
     assert r.value("age") == 33
@@ -331,7 +367,9 @@ def test_record_value() -> None:
 
 
 def test_record_value_kwargs() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r.value() == "Alice"
     assert r.value(key="name") == "Alice"
     assert r.value(key="age") == 33
@@ -346,7 +384,9 @@ def test_record_value_kwargs() -> None:
 
 
 def test_record_contains() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert "Alice" in r
     assert 33 in r
     assert True in r
@@ -362,27 +402,35 @@ def test_record_from_dict() -> None:
 
 
 def test_record_get_slice() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
-    assert Record(zip(["name", "age"], ["Alice", 33])) == r[0:2]
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
+    assert Record(zip(["name", "age"], ["Alice", 33], strict=True)) == r[0:2]
 
 
 def test_record_get_by_index() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r[0] == "Alice"
 
 
 def test_record_get_by_name() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r["name"] == "Alice"
 
 
 def test_record_get_by_out_of_bounds_index() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    r = Record(
+        zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
+    )
     assert r[9] is None
 
 
 def test_record_get_item() -> None:
-    r = Record(zip(["x", "y"], ["foo", "bar"]))
+    r = Record(zip(["x", "y"], ["foo", "bar"], strict=True))
     assert r["x"] == "foo"
     assert r["y"] == "bar"
     with pytest.raises(KeyError):
@@ -407,52 +455,52 @@ def test_record_repr_generic(len_: int) -> None:
     ("raw", "keys", "serialized"),
     (
         (
-            zip(["x", "y", "z"], [1, 2, 3]),
+            zip(["x", "y", "z"], [1, 2, 3], strict=True),
             (),
             {"x": 1, "y": 2, "z": 3},
         ),
         (
-            zip(["x", "y", "z"], [1, 2, 3]),
+            zip(["x", "y", "z"], [1, 2, 3], strict=True),
             (1, 2),
             {"y": 2, "z": 3},
         ),
         (
-            zip(["x", "y", "z"], [1, 2, 3]),
+            zip(["x", "y", "z"], [1, 2, 3], strict=True),
             ("z", "x"),
             {"x": 1, "z": 3},
         ),
         (
-            zip(["x"], [None]),
+            zip(["x"], [None], strict=True),
             (),
             {"x": None},
         ),
         (
-            zip(["x", "y"], [True, False]),
+            zip(["x", "y"], [True, False], strict=True),
             (),
             {"x": True, "y": False},
         ),
         (
-            zip(["x", "y", "z"], [0.0, 1.0, 3.141592653589]),
+            zip(["x", "y", "z"], [0.0, 1.0, 3.141592653589], strict=True),
             (),
             {"x": 0.0, "y": 1.0, "z": 3.141592653589},
         ),
         (
-            zip(["x"], ["hello, world"]),
+            zip(["x"], ["hello, world"], strict=True),
             (),
             {"x": "hello, world"},
         ),
         (
-            zip(["x"], [bytearray([1, 2, 3])]),
+            zip(["x"], [bytearray([1, 2, 3])], strict=True),
             (),
             {"x": bytearray([1, 2, 3])},
         ),
         (
-            zip(["x"], [[1, 2, 3]]),
+            zip(["x"], [[1, 2, 3]], strict=True),
             (),
             {"x": [1, 2, 3]},
         ),
         (
-            zip(["x"], [{"one": 1, "two": 2}]),
+            zip(["x"], [{"one": 1, "two": 2}], strict=True),
             (),
             {"x": {"one": 1, "two": 2}},
         ),
@@ -468,6 +516,7 @@ def test_record_repr_generic(len_: int) -> None:
                         {"name": "Alice"},
                     )
                 ],
+                strict=True,
             ),
             (),
             {"a": {"name": "Alice"}},
@@ -486,7 +535,9 @@ def test_data_relationship() -> None:
     alice_knows_bob = gh.hydrate_relationship(
         1, 1, 2, "KNOWS", {"since": 1999}
     )
-    record = Record(zip(["a", "b", "r"], [alice, bob, alice_knows_bob]))
+    record = Record(
+        zip(["a", "b", "r"], [alice, bob, alice_knows_bob], strict=True)
+    )
     assert record.data() == {
         "a": {"name": "Alice", "age": 33},
         "b": {"name": "Bob", "age": 44},
@@ -504,7 +555,7 @@ def test_data_unbound_relationship() -> None:
     some_one_knows_some_one = gh.hydrate_relationship(
         1, 42, 43, "KNOWS", {"since": 1999}
     )
-    record = Record(zip(["r"], [some_one_knows_some_one]))
+    record = Record(zip(["r"], [some_one_knows_some_one], strict=True))
     assert record.data() == {"r": ({}, "KNOWS", {})}
 
 
@@ -524,7 +575,7 @@ def test_data_path(cyclic) -> None:
     ]
     path = gh.hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
 
-    record = Record(zip(["r"], [path]))
+    record = Record(zip(["r"], [path], strict=True))
     assert record.data() == {
         "r": [dict(alice), "KNOWS", dict(bob), "DISLIKES", dict(carol)]
     }

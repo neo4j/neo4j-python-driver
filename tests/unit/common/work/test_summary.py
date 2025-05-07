@@ -443,7 +443,9 @@ def test_gql_statuses_keep_order(
 
     assert len(status_objects) == len(types)
     status: GqlStatusObject
-    for i, (type_, status) in enumerate(zip(types, status_objects)):
+    for i, (type_, status) in enumerate(
+        zip(types, status_objects, strict=True)
+    ):
         StatusOrderHelper.assert_status_data_matches(status, i, type_)
 
 
@@ -765,7 +767,9 @@ def test_summary_summary_notifications(
         return
 
     assert summary_in is not None
-    for notification_out, notification_in in zip(summary_out, summary_in):
+    for notification_out, notification_in in zip(
+        summary_out, summary_in, strict=True
+    ):
         code_out: str = notification_out.code
         code_in = notification_in.get("code", "")
         assert code_out == code_in

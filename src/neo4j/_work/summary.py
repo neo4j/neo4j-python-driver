@@ -36,7 +36,7 @@ if t.TYPE_CHECKING:
     from ..addressing import Address
     from ..api import ServerInfo
 
-    _T = te.TypeVar("_T")
+    _T = t.TypeVar("_T")
 
 
 class ResultSummary:

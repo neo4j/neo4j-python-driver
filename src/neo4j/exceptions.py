@@ -125,24 +125,15 @@ if t.TYPE_CHECKING:
         Transaction,
     )
 
-    _TTransaction = t.Union[
-        AsyncManagedTransaction,
-        AsyncTransaction,
-        ManagedTransaction,
-        Transaction,
-    ]
-    _TResult = t.Union[AsyncResult, Result]
-    _TSession = t.Union[AsyncSession, Session]
+    _TTransaction: t.TypeAlias = (
+        AsyncManagedTransaction
+        | AsyncTransaction
+        | ManagedTransaction
+        | Transaction
+    )
+    _TResult: t.TypeAlias = AsyncResult | Result
+    _TSession: t.TypeAlias = AsyncSession | Session
     _T = t.TypeVar("_T")
-else:
-    _TTransaction = t.Union[
-        "AsyncManagedTransaction",
-        "AsyncTransaction",
-        "ManagedTransaction",
-        "Transaction",
-    ]
-    _TResult = t.Union["AsyncResult", "Result"]
-    _TSession = t.Union["AsyncSession", "Session"]
 
 
 __all__ = [

@@ -84,9 +84,13 @@ _default_out_value = object()
 def assert_packable(packer_with_buffer, unpacker_with_buffer):
     def _recursive_nan_equal(a, b):
         if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
-            return all(_recursive_nan_equal(x, y) for x, y in zip(a, b))
+            return len(a) == len(b) and all(
+                _recursive_nan_equal(x, y) for x, y in zip(a, b, strict=True)
+            )
         elif isinstance(a, dict) and isinstance(b, dict):
-            return all(_recursive_nan_equal(a[k], b[k]) for k in a)
+            return len(a) == len(b) and all(
+                _recursive_nan_equal(a[k], b[k]) for k in a
+            )
         else:
             return a == b or (isnan(a) and isnan(b))
 

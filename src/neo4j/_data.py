@@ -54,7 +54,7 @@ from .time import (
 
 
 _T = t.TypeVar("_T")
-_K = t.Union[int, str]
+_K: t.TypeAlias = int | str
 
 
 class Record(tuple, Mapping):
@@ -92,7 +92,9 @@ class Record(tuple, Mapping):
     def __repr__(self) -> str:
         fields = " ".join(
             f"{field}={value!r}"
-            for field, value in zip(self.__keys, super().__iter__())
+            for field, value in zip(
+                self.__keys, super().__iter__(), strict=True
+            )
         )
         return f"<{self.__class__.__name__} {fields}>"
 
@@ -140,7 +142,7 @@ class Record(tuple, Mapping):
         if isinstance(key, slice):
             keys = self.__keys[key]
             values = super().__getitem__(key)
-            return self.__class__(zip(keys, values))
+            return self.__class__(zip(keys, values, strict=True))
         try:
             index = self.index(key)
         except IndexError:
@@ -154,7 +156,7 @@ class Record(tuple, Mapping):
         key = slice(start, stop)
         keys = self.__keys[key]
         values = tuple(self)[key]
-        return self.__class__(zip(keys, values))
+        return self.__class__(zip(keys, values, strict=True))
 
     def get(self, key: str, default: object = None) -> t.Any:
         """

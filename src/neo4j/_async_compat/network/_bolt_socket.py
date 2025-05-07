@@ -22,11 +22,6 @@ import errno
 import logging
 import typing as t
 from contextlib import suppress
-
-
-# fmt: off
-# isort: off
-# isort seems buggy with the noqa comment
 from socket import (
     AF_INET,
     AF_INET6,
@@ -36,10 +31,7 @@ from socket import (
     socket,
     SOL_SOCKET,
     TCP_NODELAY,
-    timeout as SocketTimeout,  # noqa: N812 (it is a class)
 )
-# isort: on
-# fmt: on
 from ssl import (
     CertificateError,
     HAS_SNI,
@@ -91,7 +83,7 @@ class AsyncBoltSocketBase(abc.ABC):
 
     async def _wait_for_io(self, io_async_fn, *args, **kwargs):
         timeout = self._timeout
-        to_raise = SocketTimeout
+        to_raise = TimeoutError
         if self._deadline is not None:
             deadline_timeout = self._deadline.to_timeout()
             if deadline_timeout <= 0:
@@ -345,7 +337,7 @@ class BoltSocketBase:
             self._socket.settimeout(deadline_timeout)
             try:
                 return func(*args, **kwargs)
-            except SocketTimeout as e:
+            except TimeoutError as e:
                 raise SocketDeadlineExceededError("timed out") from e
             finally:
                 self._socket.settimeout(timeout)
@@ -410,7 +402,7 @@ class BoltSocketBase:
                 s.settimeout(t)
                 keep_alive = 1 if keep_alive else 0
                 s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
-            except SocketTimeout:
+            except TimeoutError:
                 log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
                 raise ServiceUnavailable(
                     "Timed out trying to establish connection to "

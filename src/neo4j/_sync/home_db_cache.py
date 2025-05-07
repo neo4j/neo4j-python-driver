@@ -28,12 +28,8 @@ from .._async_compat.concurrency import CooperativeLock
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
-    TKey: te.TypeAlias = t.Union[
-        str,
-        t.Tuple[t.Tuple[str, t.Hashable], ...],
-        t.Tuple[None],
-    ]
-    TVal: te.TypeAlias = t.Tuple[float, str]
+    TKey: te.TypeAlias = str | tuple[tuple[str, t.Hashable], ...] | tuple[None]
+    TVal: te.TypeAlias = tuple[float, str]
 
 
 class HomeDbCache:

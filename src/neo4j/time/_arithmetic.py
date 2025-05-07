@@ -14,10 +14,7 @@
 # limitations under the License.
 
 
-from typing import (
-    Tuple,
-    TypeVar,
-)
+from typing import TypeVar
 
 
 __all__ = [
@@ -94,7 +91,7 @@ _TDividend = TypeVar("_TDividend", int, float)
 
 def symmetric_divmod(
     dividend: _TDividend, divisor: float
-) -> Tuple[int, _TDividend]:
+) -> tuple[int, _TDividend]:
     number = type(dividend)
     if dividend >= 0:
         quotient, remainder = divmod(dividend, divisor)
