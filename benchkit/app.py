@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import sys
 import typing as t
 from contextlib import contextmanager
 from multiprocessing import Semaphore
@@ -44,10 +43,7 @@ if t.TYPE_CHECKING:
     from .workloads import Workload
 
 
-if sys.version_info < (3, 8):
-    T_App: te.TypeAlias = "Sanic"
-else:
-    T_App: te.TypeAlias = "Sanic[Config, BenchKitContext]"
+T_App: te.TypeAlias = "Sanic[Config, BenchKitContext]"
 
 
 def create_app() -> T_App:

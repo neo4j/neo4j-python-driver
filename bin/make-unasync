@@ -113,6 +113,8 @@ class CustomRule(unasync.Rule):
         # it's not pretty, but it works
         # typing.Awaitable[...] -> typing.Union[...]
         self.token_replacements["Awaitable"] = "Union"
+        self.token_replacements["aiter"] = "iter"
+        self.token_replacements["anext"] = "next"
 
     def _unasync_tokens(self, tokens):
         # copy from unasync to fix handling of multiline strings
@@ -300,16 +302,15 @@ def apply_isort(paths):
 
 def apply_changes(paths):
     def files_equal(path1, path2):
-        with open(path1, "rb") as f1:
-            with open(path2, "rb") as f2:
+        with open(path1, "rb") as f1, open(path2, "rb") as f2:
+            data1 = f1.read(1024)
+            data2 = f2.read(1024)
+            while data1 or data2:
+                if data1 != data2:
+                    changed_paths[path1] = path2
+                    return False
                 data1 = f1.read(1024)
                 data2 = f2.read(1024)
-                while data1 or data2:
-                    if data1 != data2:
-                        changed_paths[path1] = path2
-                        return False
-                    data1 = f1.read(1024)
-                    data2 = f2.read(1024)
         return True
 
     changed_paths = {}
