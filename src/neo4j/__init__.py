@@ -43,7 +43,6 @@ from ._conf import (
 )
 from ._data import Record
 from ._meta import (
-    deprecation_warn as _deprecation_warn,
     ExperimentalWarning,
     get_user_agent,
     preview_warn as _preview_warn,
