@@ -34,7 +34,6 @@ if t.TYPE_CHECKING:
 # Can be automatically overridden in builds
 package = "neo4j"
 version = "5.28.dev0"
-deprecated_package = False
 
 
 def _compute_bolt_agent() -> dict[str, str]:
