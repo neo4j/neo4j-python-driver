@@ -15,7 +15,6 @@
 
 
 import typing as _t
-from logging import getLogger as _getLogger
 
 from ._api import (  # noqa: F401 dynamic attributes
     NotificationCategory,
@@ -37,25 +36,18 @@ from ._async.work import (
     AsyncSession,
     AsyncTransaction,
 )
-from ._conf import (  # noqa: F401 dynamic attribute
-    Config as _Config,
-    SessionConfig as _SessionConfig,
+from ._conf import (
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
-    WorkspaceConfig as _WorkspaceConfig,
 )
 from ._data import Record
 from ._meta import (
-    deprecation_warn as _deprecation_warn,
     ExperimentalWarning,
     get_user_agent,
     preview_warn as _preview_warn,
     PreviewWarning,
     version as __version__,
-)
-from ._sync.config import (  # noqa: F401 dynamic attribute
-    PoolConfig as _PoolConfig,
 )
 from ._sync.driver import (
     BoltDriver,
@@ -87,7 +79,6 @@ if _t.TYPE_CHECKING:
     from ._work import (
         GqlStatusObject,  # noqa: TCH004 false positive (dynamic attribute)
         NotificationClassification,  # noqa: TCH004 false positive (dynamic attribute)
-        SummaryInputPosition as SummaryNotificationPosition,  # noqa: TCH004 false positive (dynamic attribute)
     )
 
 from .addressing import (
@@ -138,7 +129,6 @@ __all__ = [
     "BoltDriver",
     "Bookmark",
     "Bookmarks",
-    "Config",  # noqa: F822 dynamic attribute
     "Driver",
     "EagerResult",
     "ExperimentalWarning",
@@ -154,7 +144,6 @@ __all__ = [
     "NotificationDisabledClassification",
     "NotificationMinimumSeverity",
     "NotificationSeverity",
-    "PoolConfig",  # noqa: F822 dynamic attribute
     "PreviewWarning",
     "Query",
     "Record",
@@ -163,53 +152,26 @@ __all__ = [
     "RoutingControl",
     "ServerInfo",
     "Session",
-    "SessionConfig",  # noqa: F822 dynamic attribute
     "SummaryCounters",
     "SummaryInputPosition",
     "SummaryNotification",
-    "SummaryNotificationPosition",
     "Transaction",
     "TrustAll",
     "TrustCustomCAs",
     "TrustSystemCAs",
     "Version",
-    "WorkspaceConfig",  # noqa: F822 dynamic attribute
     "__version__",
     "basic_auth",
     "bearer_auth",
     "custom_auth",
     "get_user_agent",
     "kerberos_auth",
-    "log",  # noqa: F822 dynamic attribute
     "unit_of_work",
 ]
 
 
-_log = _getLogger("neo4j")
-
-
 def __getattr__(name) -> _t.Any:
     # TODO: 6.0 - remove this
-    if name in {
-        "log",
-        "Config",
-        "PoolConfig",
-        "SessionConfig",
-        "WorkspaceConfig",
-    }:
-        _deprecation_warn(
-            f"Importing {name} from neo4j is deprecated without replacement. "
-            "It's internal and will be removed in a future version.",
-            stack_level=2,
-        )
-        return globals()[f"_{name}"]
-    if name == "SummaryNotificationPosition":
-        _deprecation_warn(
-            "SummaryNotificationPosition is deprecated. "
-            "Use SummaryInputPosition instead.",
-            stack_level=2,
-        )
-        return SummaryInputPosition
     if name in {
         "NotificationClassification",
         "GqlStatusObject",
