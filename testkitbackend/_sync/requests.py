@@ -981,9 +981,15 @@ def forced_routing_table_update(backend, data):
     driver = backend.drivers[driver_id]
     database = data["database"]
     bookmarks = data["bookmarks"]
+    acquisition_timeout = (
+        driver._default_workspace_config.connection_acquisition_timeout
+    )
     with driver._pool.refresh_lock:
         driver._pool.update_routing_table(
-            database=database, imp_user=None, bookmarks=bookmarks
+            database=database,
+            imp_user=None,
+            bookmarks=bookmarks,
+            acquisition_timeout=acquisition_timeout,
         )
     backend.send_response("Driver", {"id": driver_id})
 
