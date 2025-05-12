@@ -22,7 +22,7 @@ import typing as t
 from dataclasses import dataclass
 
 from .api import Auth
-from .exceptions import AuthError
+from .exceptions import ConfigurationError
 
 
 if t.TYPE_CHECKING:
@@ -321,7 +321,6 @@ def to_auth_dict(auth: _TAuth) -> dict[str, t.Any]:
         try:
             return vars(auth)
         except (KeyError, TypeError) as e:
-            # TODO: 6.0 - change this to be a DriverError (or subclass)
-            raise AuthError(
+            raise ConfigurationError(
                 f"Cannot determine auth details from {auth!r}"
             ) from e

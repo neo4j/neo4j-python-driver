@@ -46,8 +46,8 @@ from ..._deadline import (
 from ..._exceptions import BoltError
 from ..._routing import RoutingTable
 from ...api import (
+    check_access_mode,
     READ_ACCESS,
-    WRITE_ACCESS,
 )
 from ...exceptions import (
     ClientError,
@@ -667,6 +667,7 @@ class BoltPool(IOPool):
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
+        access_mode = check_access_mode(access_mode)
         _check_acquisition_timeout(timeout)
         log.debug(
             "[#0000]  _: <POOL> acquire direct connection, "
@@ -849,6 +850,8 @@ class Neo4jPool(IOPool):
                 "[#0000]  _: <POOL> failed to fetch routing info from %r",
                 address,
             )
+            # TODO: 7.0 - when Python 3.11+ is the minimum,
+            #       use exception groups instead of swallowing discovery errors
             return None
         else:
             servers = new_routing_info[0]["servers"]
@@ -1063,8 +1066,6 @@ class Neo4jPool(IOPool):
 
         :returns: `True` if an update was required, `False` otherwise.
         """
-        from ...api import READ_ACCESS
-
         with self.refresh_lock:
             for database_ in list(self.routing_tables.keys()):
                 # Remove unused databases in the routing table
@@ -1111,8 +1112,6 @@ class Neo4jPool(IOPool):
 
     def _select_address(self, *, access_mode, database):
         """Select the address with the fewest in-use connections."""
-        from ...api import READ_ACCESS
-
         with self.refresh_lock:
             routing_table = self.routing_tables.get(database)
             if routing_table:
@@ -1149,14 +1148,8 @@ class Neo4jPool(IOPool):
         unprepared=False,
         database_callback=None,
     ):
-        if access_mode not in {WRITE_ACCESS, READ_ACCESS}:
-            # TODO: 6.0 - change this to be a ValueError
-            raise ClientError(f"Non valid 'access_mode'; {access_mode}")
-        _check_acquisition_timeout(timeout)
-
-        from ...api import check_access_mode
-
         access_mode = check_access_mode(access_mode)
+        _check_acquisition_timeout(timeout)
 
         target_database = database.name
 

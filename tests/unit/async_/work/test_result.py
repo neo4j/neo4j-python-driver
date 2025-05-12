@@ -37,7 +37,6 @@ from neo4j import (
     ServerInfo,
     SummaryCounters,
     time as neo4j_time,
-    Version,
 )
 from neo4j._async_compat.util import AsyncUtil
 from neo4j._codec.hydration.v1 import HydrationHandler
@@ -230,9 +229,7 @@ class AsyncConnectionStub:
             AsyncConnectionStub.Message("PULL", *args, **kwargs)
         )
 
-    server_info = ServerInfo(
-        Address(("bolt://localhost", 7687)), Version(4, 3)
-    )
+    server_info = ServerInfo(Address(("bolt://localhost", 7687)), (4, 3))
 
     def defunct(self):
         return False
@@ -557,7 +554,7 @@ async def test_consume(records, consume_one, summary_meta, consume_times):
             assert summary.database is None
         server_info = summary.server
         assert isinstance(server_info, ServerInfo)
-        assert server_info.protocol_version == Version(4, 3)
+        assert server_info.protocol_version == (4, 3)
         assert isinstance(summary.counters, SummaryCounters)
 
 

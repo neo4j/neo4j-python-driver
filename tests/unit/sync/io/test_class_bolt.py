@@ -19,9 +19,9 @@ import asyncio
 import pytest
 
 import neo4j.auth_management
-from neo4j._exceptions import BoltHandshakeError
 from neo4j._sync.io import Bolt
 from neo4j._sync.io._bolt_socket import BoltSocket
+from neo4j.exceptions import UnsupportedServerProduct
 
 from ...._async_compat import (
     mark_sync_test,
@@ -101,7 +101,7 @@ def test_cancel_hello_in_open(mocker, none_auth):
     socket_cls_mock = mocker.patch(
         "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
-    socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
+    socket_cls_mock.connect.return_value = (socket_mock, (5, 0))
     socket_mock.getpeername.return_value = address
     bolt_cls_mock = mocker.patch(
         "neo4j._sync.io._bolt5.Bolt5x0", autospec=True
@@ -152,12 +152,7 @@ def test_version_negotiation(
     socket_cls_mock = mocker.patch(
         "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
-    socket_cls_mock.connect.return_value = (
-        socket_mock,
-        bolt_version,
-        None,
-        None,
-    )
+    socket_cls_mock.connect.return_value = (socket_mock, bolt_version)
     socket_mock.getpeername.return_value = address
     bolt_cls_mock = mocker.patch(bolt_cls_path, autospec=True)
     bolt_cls_mock.return_value.local_port = 1234
@@ -201,15 +196,10 @@ def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     socket_cls_mock = mocker.patch(
         "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
-    socket_cls_mock.connect.return_value = (
-        socket_mock,
-        bolt_version,
-        None,
-        None,
-    )
+    socket_cls_mock.connect.return_value = (socket_mock, bolt_version)
     socket_mock.getpeername.return_value = address
 
-    with pytest.raises(BoltHandshakeError) as exc:
+    with pytest.raises(UnsupportedServerProduct) as exc:
         Bolt.open(address, auth_manager=none_auth)
 
     assert exc.match(supported_protocols)
@@ -223,7 +213,7 @@ def test_cancel_manager_in_open(mocker):
     socket_cls_mock = mocker.patch(
         "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
-    socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
+    socket_cls_mock.connect.return_value = (socket_mock, (5, 0))
     socket_mock.getpeername.return_value = address
 
     auth_manager = mocker.MagicMock(
@@ -245,7 +235,7 @@ def test_fail_manager_in_open(mocker):
     socket_cls_mock = mocker.patch(
         "neo4j._sync.io._bolt.BoltSocket", autospec=True
     )
-    socket_cls_mock.connect.return_value = (socket_mock, (5, 0), None, None)
+    socket_cls_mock.connect.return_value = (socket_mock, (5, 0))
     socket_mock.getpeername.return_value = address
 
     auth_manager = mocker.MagicMock(

@@ -22,10 +22,8 @@ from logging import getLogger
 from ssl import SSLSocket
 
 from ..._exceptions import BoltProtocolError
-from ...api import (
-    READ_ACCESS,
-    Version,
-)
+from ..._io import BoltProtocolVersion
+from ...api import READ_ACCESS
 from ...exceptions import (
     ConfigurationError,
     DatabaseUnavailable,
@@ -146,7 +144,7 @@ class Bolt3(Bolt):
     This is supported by Neo4j versions 3.5, 4.0, 4.1, 4.2, 4.3, and 4.4.
     """
 
-    PROTOCOL_VERSION = Version(3, 0)
+    PROTOCOL_VERSION = BoltProtocolVersion(3, 0)
 
     ssr_enabled = False
 
@@ -270,14 +268,14 @@ class Bolt3(Bolt):
         if database is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
-                f"supported in Bolt Protocol {self.PROTOCOL_VERSION!r}. "
+                f"supported in Bolt Protocol {self.PROTOCOL_VERSION}. "
                 f"Database name {database!r}. "
                 f"Server Agent {self.server_info.agent!r}"
             )
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol "
-                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{self.PROTOCOL_VERSION}. Trying to impersonate "
                 f"{imp_user!r}."
             )
         dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
@@ -332,13 +330,13 @@ class Bolt3(Bolt):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
-                f"supported in Bolt Protocol {self.PROTOCOL_VERSION!r}. "
+                f"supported in Bolt Protocol {self.PROTOCOL_VERSION}. "
                 f"Database name {db!r}."
             )
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol "
-                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{self.PROTOCOL_VERSION}. Trying to impersonate "
                 f"{imp_user!r}."
             )
         if (
@@ -439,13 +437,13 @@ class Bolt3(Bolt):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
-                f"supported in Bolt Protocol {self.PROTOCOL_VERSION!r}. "
+                f"supported in Bolt Protocol {self.PROTOCOL_VERSION}. "
                 f"Database name {db!r}."
             )
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol "
-                f"{self.PROTOCOL_VERSION!r}. Trying to impersonate "
+                f"{self.PROTOCOL_VERSION}. Trying to impersonate "
                 f"{imp_user!r}."
             )
         if (

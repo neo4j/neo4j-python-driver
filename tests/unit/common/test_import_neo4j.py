@@ -45,7 +45,6 @@ NEO4J_ATTRIBUTES = (
     ("BoltDriver", None),
     ("Bookmark", None),
     ("Bookmarks", None),
-    ("Config", DeprecationWarning),
     ("custom_auth", None),
     ("DEFAULT_DATABASE", None),
     ("Driver", None),
@@ -57,7 +56,6 @@ NEO4J_ATTRIBUTES = (
     ("IPv4Address", None),
     ("IPv6Address", None),
     ("kerberos_auth", None),
-    ("log", DeprecationWarning),
     ("ManagedTransaction", None),
     ("Neo4jDriver", None),
     ("NotificationCategory", None),
@@ -66,7 +64,6 @@ NEO4J_ATTRIBUTES = (
     ("NotificationDisabledClassification", PreviewWarning),
     ("NotificationMinimumSeverity", None),
     ("NotificationSeverity", None),
-    ("PoolConfig", DeprecationWarning),
     ("PreviewWarning", None),
     ("Query", None),
     ("READ_ACCESS", None),
@@ -76,11 +73,9 @@ NEO4J_ATTRIBUTES = (
     ("RoutingControl", None),
     ("ServerInfo", None),
     ("Session", None),
-    ("SessionConfig", DeprecationWarning),
     ("SummaryCounters", None),
     ("SummaryInputPosition", None),
     ("SummaryNotification", None),
-    ("SummaryNotificationPosition", DeprecationWarning),
     ("SYSTEM_DATABASE", None),
     ("Transaction", None),
     ("TRUST_ALL_CERTIFICATES", None),
@@ -89,8 +84,6 @@ NEO4J_ATTRIBUTES = (
     ("TrustCustomCAs", None),
     ("TrustSystemCAs", None),
     ("unit_of_work", None),
-    ("Version", None),
-    ("WorkspaceConfig", DeprecationWarning),
     ("WRITE_ACCESS", None),
 )
 
@@ -129,28 +122,7 @@ def test_dir():
 def test_import_star():
     with pytest.warns() as warnings:
         importlib.__import__("neo4j", fromlist=("*",))
-    assert len(warnings) == 9
-    assert all(
-        issubclass(w.category, (DeprecationWarning, PreviewWarning))
-        for w in warnings
-    )
-
-    for name in (
-        "log",
-        "Config",
-        "PoolConfig",
-        "SessionConfig",
-        "WorkspaceConfig",
-        "SummaryNotificationPosition",
-    ):
-        assert (
-            sum(
-                bool(re.match(rf".*\b{name}\b.*", str(w.message)))
-                for w in warnings
-                if issubclass(w.category, DeprecationWarning)
-            )
-            == 1
-        )
+    assert len(warnings) == 3
 
     for name in (
         "NotificationClassification",
@@ -171,13 +143,8 @@ NEO4J_MODULES = (
     ("addressing", None),
     ("api", None),
     ("auth_management", None),
-    ("conf", DeprecationWarning),
-    ("data", DeprecationWarning),
     ("debug", None),
     ("exceptions", None),
-    ("meta", DeprecationWarning),
-    ("packstream", DeprecationWarning),
-    ("routing", DeprecationWarning),
     ("warnings", None),
 )
 

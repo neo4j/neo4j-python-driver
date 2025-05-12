@@ -276,84 +276,9 @@ def test_bookmarks_combination(values1, values2) -> None:
     assert bookmarks3.raw_values == frozenset(values1) | frozenset(values2)
 
 
-@pytest.mark.parametrize(
-    ("test_input", "expected_str", "expected_repr"),
-    [
-        ((), "", "Version()"),
-        ((None,), "None", "Version(None,)"),
-        (("3",), "3", "Version('3',)"),
-        (("3", "0"), "3.0", "Version('3', '0')"),
-        ((3,), "3", "Version(3,)"),
-        ((3, 0), "3.0", "Version(3, 0)"),
-        ((3, 0, 0), "3.0.0", "Version(3, 0, 0)"),
-        ((3, 0, 0, 0), "3.0.0.0", "Version(3, 0, 0, 0)"),
-    ],
-)
-def test_version_initialization(
-    test_input, expected_str, expected_repr
-) -> None:
-    version = neo4j.Version(*test_input)
-    assert str(version) == expected_str
-    assert repr(version) == expected_repr
-
-
-@pytest.mark.parametrize(
-    ("test_input", "expected_str", "expected_repr"),
-    [
-        (bytearray([0, 0, 0, 0]), "0.0", "Version(0, 0)"),
-        (bytearray([0, 0, 0, 1]), "1.0", "Version(1, 0)"),
-        (bytearray([0, 0, 1, 0]), "0.1", "Version(0, 1)"),
-        (bytearray([0, 0, 1, 1]), "1.1", "Version(1, 1)"),
-        (bytearray([0, 0, 254, 254]), "254.254", "Version(254, 254)"),
-    ],
-)
-def test_version_from_bytes_with_valid_bolt_version_handshake(
-    test_input, expected_str, expected_repr
-) -> None:
-    version = neo4j.Version.from_bytes(test_input)
-    assert str(version) == expected_str
-    assert repr(version) == expected_repr
-
-
-@pytest.mark.parametrize(
-    ("test_input", "expected"),
-    [
-        (bytearray([0, 0, 0]), ValueError),
-        (bytearray([0, 0, 0, 0, 0]), ValueError),
-        (bytearray([1, 0, 0, 0]), ValueError),
-        (bytearray([0, 1, 0, 0]), ValueError),
-        (bytearray([1, 1, 0, 0]), ValueError),
-    ],
-)
-def test_version_from_bytes_with_not_valid_bolt_version_handshake(
-    test_input, expected
-) -> None:
-    with pytest.raises(expected):
-        _ = neo4j.Version.from_bytes(test_input)
-
-
-@pytest.mark.parametrize(
-    ("test_input", "expected"),
-    [
-        ((), bytearray([0, 0, 0, 0])),
-        ((0,), bytearray([0, 0, 0, 0])),
-        ((1,), bytearray([0, 0, 0, 1])),
-        ((0, 0), bytearray([0, 0, 0, 0])),
-        ((1, 0), bytearray([0, 0, 0, 1])),
-        ((1, 2), bytearray([0, 0, 2, 1])),
-        ((255, 255), bytearray([0, 0, 255, 255])),
-    ],
-)
-def test_version_to_bytes_with_valid_bolt_version(
-    test_input, expected
-) -> None:
-    version = neo4j.Version(*test_input)
-    assert version.to_bytes() == expected
-
-
 def test_serverinfo_initialization() -> None:
     address = Address(("bolt://localhost", 7687))
-    version = neo4j.Version(3, 0)
+    version = (3, 0)
 
     server_info = neo4j.ServerInfo(address, version)
     assert server_info.address is address
@@ -375,14 +300,13 @@ def test_serverinfo_with_metadata(
     test_input, expected_agent, protocol_version
 ) -> None:
     address = Address(("bolt://localhost", 7687))
-    version = neo4j.Version(*protocol_version)
 
-    server_info = neo4j.ServerInfo(address, version)
+    server_info = neo4j.ServerInfo(address, protocol_version)
 
     server_info.update(test_input)
 
     assert server_info.agent == expected_agent
-    assert server_info.protocol_version == version
+    assert server_info.protocol_version == protocol_version
 
 
 @pytest.mark.parametrize(

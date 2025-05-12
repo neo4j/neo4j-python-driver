@@ -35,6 +35,7 @@ from socket import (
 from ssl import (
     CertificateError,
     HAS_SNI,
+    SSLContext,
     SSLError,
     SSLSocket,
 )
@@ -53,7 +54,12 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
     from ..._async.io import AsyncBolt
+    from ..._io import BoltProtocolVersion
     from ..._sync.io import Bolt
+    from ...addressing import (
+        Address,
+        ResolvedAddress,
+    )
 
 
 log = logging.getLogger("neo4j.io")
@@ -266,20 +272,24 @@ class AsyncBoltSocketBase(abc.ABC):
             raise
 
     @abc.abstractmethod
-    async def _handshake(self, resolved_address, deadline): ...
+    async def _handshake(
+        self,
+        resolved_address: ResolvedAddress,
+        deadline: Deadline,
+    ) -> BoltProtocolVersion: ...
 
     @classmethod
     @abc.abstractmethod
     async def connect(
         cls,
-        address,
+        address: Address,
         *,
-        tcp_timeout,
-        deadline,
-        custom_resolver,
-        ssl_context,
-        keep_alive,
-    ): ...
+        tcp_timeout: float | None,
+        deadline: Deadline,
+        custom_resolver: t.Callable | None,
+        ssl_context: SSLContext | None,
+        keep_alive: bool,
+    ) -> tuple[te.Self, BoltProtocolVersion]: ...
 
     @classmethod
     async def close_socket(cls, socket_):
@@ -453,20 +463,24 @@ class BoltSocketBase:
         return cls(s)
 
     @abc.abstractmethod
-    def _handshake(self, resolved_address, deadline): ...
+    def _handshake(
+        self,
+        resolved_address: ResolvedAddress,
+        deadline: Deadline,
+    ) -> BoltProtocolVersion: ...
 
     @classmethod
     @abc.abstractmethod
     def connect(
         cls,
-        address,
+        address: Address,
         *,
-        tcp_timeout,
-        deadline,
-        custom_resolver,
-        ssl_context,
-        keep_alive,
-    ): ...
+        tcp_timeout: float | None,
+        deadline: Deadline,
+        custom_resolver: t.Callable | None,
+        ssl_context: SSLContext | None,
+        keep_alive: bool,
+    ) -> tuple[te.Self, BoltProtocolVersion]: ...
 
     @classmethod
     def close_socket(cls, socket_):

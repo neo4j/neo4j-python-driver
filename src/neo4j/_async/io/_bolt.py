@@ -35,19 +35,18 @@ from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
 )
+from ..._io import BoltProtocolVersion
 from ..._meta import USER_AGENT
 from ..._sync.config import PoolConfig
 from ...addressing import ResolvedAddress
-from ...api import (
-    ServerInfo,
-    Version,
-)
+from ...api import ServerInfo
 from ...exceptions import (
     ConfigurationError,
     DriverError,
     IncompleteCommit,
     ServiceUnavailable,
     SessionExpired,
+    UnsupportedServerProduct,
 )
 from ..config import AsyncPoolConfig
 from ._bolt_socket import AsyncBoltSocket
@@ -109,7 +108,7 @@ class AsyncBolt:
 
     MAGIC_PREAMBLE = b"\x60\x60\xb0\x17"
 
-    PROTOCOL_VERSION: Version = None  # type: ignore[assignment]
+    PROTOCOL_VERSION: BoltProtocolVersion = None  # type: ignore[assignment]
 
     # flag if connection needs RESET to go back to READY state
     is_reset = False
@@ -159,7 +158,7 @@ class AsyncBolt:
             ResolvedAddress(
                 sock.getpeername(), host_name=unresolved_address.host
             ),
-            self.PROTOCOL_VERSION,
+            self.PROTOCOL_VERSION.version,
         )
         self.connection_hints = {}
         self.patch = {}
@@ -244,7 +243,7 @@ class AsyncBolt:
         if not self.supports_re_auth:
             raise ConfigurationError(
                 "User switching is not supported for Bolt "
-                f"Protocol {self.PROTOCOL_VERSION!r}. Server Agent "
+                f"Protocol {self.PROTOCOL_VERSION}. Server Agent "
                 f"{self.server_info.agent!r}"
             )
 
@@ -257,11 +256,13 @@ class AsyncBolt:
         if not self.supports_notification_filtering:
             raise ConfigurationError(
                 "Notification filtering is not supported for the Bolt "
-                f"Protocol {self.PROTOCOL_VERSION!r}. Server Agent "
+                f"Protocol {self.PROTOCOL_VERSION}. Server Agent "
                 f"{self.server_info.agent!r}"
             )
 
-    protocol_handlers: t.ClassVar[dict[Version, type[AsyncBolt]]] = {}
+    protocol_handlers: t.ClassVar[
+        dict[BoltProtocolVersion, type[AsyncBolt]]
+    ] = {}
 
     def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
         if cls.SKIP_REGISTRATION:
@@ -272,14 +273,10 @@ class AsyncBolt:
             raise ValueError(
                 "AsyncBolt subclasses must define PROTOCOL_VERSION"
             )
-        if not (
-            isinstance(protocol_version, Version)
-            and len(protocol_version) == 2
-            and all(isinstance(i, int) for i in protocol_version)
-        ):
+        if not isinstance(protocol_version, BoltProtocolVersion):
             raise TypeError(
-                "PROTOCOL_VERSION must be a 2-tuple of integers, not "
-                f"{protocol_version!r}"
+                "PROTOCOL_VERSION must be a BoltProtocolVersion, found "
+                f"{type(protocol_version)} for {cls.__name__}"
             )
         if protocol_version in AsyncBolt.protocol_handlers:
             cls_conflict = AsyncBolt.protocol_handlers[protocol_version]
@@ -336,16 +333,15 @@ class AsyncBolt:
             await AsyncBoltSocket.close_socket(s)
             return protocol_version
 
-    @classmethod
+    @staticmethod
     async def open(
-        cls,
         address,
         *,
         auth_manager=None,
         deadline=None,
         routing_context=None,
         pool_config=None,
-    ):
+    ) -> AsyncBolt:
         """
         Open a new Bolt connection to a given server address.
 
@@ -366,7 +362,7 @@ class AsyncBolt:
         if deadline is None:
             deadline = Deadline(None)
 
-        s, protocol_version, handshake, data = await AsyncBoltSocket.connect(
+        s, protocol_version = await AsyncBoltSocket.connect(
             address,
             tcp_timeout=pool_config.connection_timeout,
             deadline=deadline,
@@ -381,15 +377,10 @@ class AsyncBolt:
         if bolt_cls is None:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             await AsyncBoltSocket.close_socket(s)
-
-            # TODO: 6.0 - raise public DriverError subclass instead
-            raise BoltHandshakeError(
+            raise UnsupportedServerProduct(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
-                f"{tuple(map(str, AsyncBolt.protocol_handlers.keys()))}.",
-                address=address,
-                request_data=handshake,
-                response_data=data,
+                f"{tuple(map(str, AsyncBolt.protocol_handlers))}.",
             )
 
         try:

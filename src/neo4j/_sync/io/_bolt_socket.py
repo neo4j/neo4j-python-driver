@@ -32,6 +32,7 @@ from ..._exceptions import (
     BoltError,
     BoltProtocolError,
 )
+from ..._io import BoltProtocolVersion
 from ...exceptions import (
     DriverError,
     ServiceUnavailable,
@@ -75,7 +76,7 @@ class BoltSocket(BoltSocketBase):
         self,
         ctx: HandshakeCtx,
         response: bytes,
-    ) -> tuple[int, int]:
+    ) -> BoltProtocolVersion:
         agreed_version = response[-1], response[-2]
         log.debug(
             "[#%04X]  S: <HANDSHAKE> 0x%06X%02X",
@@ -83,13 +84,13 @@ class BoltSocket(BoltSocketBase):
             agreed_version[1],
             agreed_version[0],
         )
-        return agreed_version
+        return BoltProtocolVersion(*agreed_version)
 
     def _parse_handshake_response_v2(
         self,
         ctx: HandshakeCtx,
         response: bytes,
-    ) -> tuple[int, int]:
+    ) -> BoltProtocolVersion:
         ctx.ctx = "handshake v2 offerings count"
         num_offerings = self._read_varint(ctx)
         offerings = []
@@ -114,7 +115,7 @@ class BoltSocket(BoltSocketBase):
             )
 
         supported_versions = sorted(self.Bolt.protocol_handlers.keys())
-        chosen_version = 0, 0
+        chosen_version = BoltProtocolVersion(0, 0)
         for v in supported_versions:
             for offer_major, offer_minor, offer_range in offerings:
                 offer_max = (offer_major, offer_minor)
@@ -125,7 +126,7 @@ class BoltSocket(BoltSocketBase):
 
         ctx.ctx = "handshake v2 chosen version"
         self._handshake_send(
-            ctx, bytes((0, 0, chosen_version[1], chosen_version[0]))
+            ctx, bytes((0, 0, chosen_version.minor, chosen_version.major))
         )
         chosen_capabilities = 0
         capabilities = self._encode_varint(chosen_capabilities)
@@ -133,8 +134,8 @@ class BoltSocket(BoltSocketBase):
         log.debug(
             "[#%04X]  C: <HANDSHAKE> 0x%06X%02X %s",
             ctx.local_port,
-            chosen_version[1],
-            chosen_version[0],
+            chosen_version.minor,
+            chosen_version.major,
             BytesPrinter(capabilities),
         )
         self._handshake_send(ctx, b"\x00")
@@ -213,7 +214,7 @@ class BoltSocket(BoltSocketBase):
         self,
         resolved_address: ResolvedAddress,
         deadline: Deadline,
-    ) -> tuple[tuple[int, int], bytes, bytes]:
+    ) -> BoltProtocolVersion:
         """
         Perform BOLT handshake.
 
@@ -288,7 +289,7 @@ class BoltSocket(BoltSocketBase):
                 response,
             )
 
-        return agreed_version, handshake, response
+        return agreed_version
 
     @classmethod
     def connect(
@@ -300,7 +301,7 @@ class BoltSocket(BoltSocketBase):
         custom_resolver: t.Callable | None,
         ssl_context: SSLContext | None,
         keep_alive: bool,
-    ) -> tuple[te.Self, tuple[int, int], bytes, bytes]:
+    ) -> tuple[te.Self, BoltProtocolVersion]:
         """
         Connect and perform a handshake.
 
@@ -328,10 +329,8 @@ class BoltSocket(BoltSocketBase):
                 s = cls._connect_secure(
                     resolved_address, tcp_timeout, keep_alive, ssl_context
                 )
-                agreed_version, handshake, response = s._handshake(
-                    resolved_address, deadline
-                )
-                return s, agreed_version, handshake, response
+                agreed_version = s._handshake(resolved_address, deadline)
+                return s, agreed_version
             except (BoltError, DriverError, OSError) as error:
                 local_port = 0
                 if isinstance(s, cls):
@@ -367,6 +366,7 @@ class BoltSocket(BoltSocketBase):
                     cls.close_socket(s)
                 raise
         address_strs = tuple(map(str, failed_addresses))
+        # TODO: 7.0 - when Python 3.11+ is the minimum, use exception groups
         if not errors:
             raise ServiceUnavailable(
                 f"Couldn't connect to {address} (resolved to {address_strs})"
