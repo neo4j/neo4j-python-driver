@@ -1248,20 +1248,14 @@ class AsyncNeo4jPool(AsyncIOPool):
 
 
 def _check_acquisition_timeout(timeout: object) -> None:
-    if isinstance(timeout, int):
-        if timeout <= 0:
-            raise ValueError(
-                f"Connection acquisition timeout must be > 0, got {timeout}"
-            )
-    elif isinstance(timeout, float):
-        if math.isnan(timeout):
-            raise ValueError("Connection acquisition timeout must not be NaN")
-        if timeout <= 0:
-            raise ValueError(
-                f"Connection acquisition timeout must be > 0, got {timeout}"
-            )
-    else:
+    if not isinstance(timeout, (int, float)):
         raise TypeError(
             "Connection acquisition timeout must be a number, "
             f"got {type(timeout)}"
         )
+    if timeout <= 0:
+        raise ValueError(
+            f"Connection acquisition timeout must be > 0, got {timeout}"
+        )
+    if math.isnan(timeout):
+        raise ValueError("Connection acquisition timeout must not be NaN")
