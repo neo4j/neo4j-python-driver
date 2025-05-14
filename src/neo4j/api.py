@@ -29,7 +29,7 @@ from urllib.parse import (
 if t.TYPE_CHECKING:
     from typing_extensions import deprecated
 else:
-    from ._meta import deprecated
+    from ._warnings import deprecated
 
 from .exceptions import ConfigurationError
 

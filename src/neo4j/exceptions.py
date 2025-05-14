@@ -64,10 +64,13 @@ import typing as t
 from copy import deepcopy as _deepcopy
 from enum import Enum as _Enum
 
-from ._meta import (
-    deprecated,
-    preview as _preview,
-)
+from ._warnings import preview as _preview
+
+
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated as _deprecated
+else:
+    from ._warnings import deprecated as _deprecated
 
 
 __all__ = [
@@ -557,7 +560,7 @@ class Neo4jError(GqlError):
 
     # TODO: 6.0 - Remove this alias
     @classmethod
-    @deprecated(
+    @_deprecated(
         "Neo4jError.hydrate is deprecated and will be removed in a future "
         "version. It is an internal method and not meant for external use."
     )
@@ -686,7 +689,7 @@ class Neo4jError(GqlError):
         return self._message
 
     @message.setter
-    @deprecated("Altering the message of a Neo4jError is deprecated.")
+    @_deprecated("Altering the message of a Neo4jError is deprecated.")
     def message(self, value: str) -> None:
         self._message = value
 
@@ -702,7 +705,7 @@ class Neo4jError(GqlError):
 
     # TODO: 6.0 - Remove this and all other deprecated setters
     @code.setter
-    @deprecated("Altering the code of a Neo4jError is deprecated.")
+    @_deprecated("Altering the code of a Neo4jError is deprecated.")
     def code(self, value: str) -> None:
         self._neo4j_code = value
 
@@ -712,7 +715,7 @@ class Neo4jError(GqlError):
         return self._classification
 
     @classification.setter
-    @deprecated("Altering the classification of Neo4jError is deprecated.")
+    @_deprecated("Altering the classification of Neo4jError is deprecated.")
     def classification(self, value: str) -> None:
         self._classification = value
 
@@ -722,7 +725,7 @@ class Neo4jError(GqlError):
         return self._category
 
     @category.setter
-    @deprecated("Altering the category of Neo4jError is deprecated.")
+    @_deprecated("Altering the category of Neo4jError is deprecated.")
     def category(self, value: str) -> None:
         self._category = value
 
@@ -732,7 +735,7 @@ class Neo4jError(GqlError):
         return self._title
 
     @title.setter
-    @deprecated("Altering the title of Neo4jError is deprecated.")
+    @_deprecated("Altering the title of Neo4jError is deprecated.")
     def title(self, value: str) -> None:
         self._title = value
 
@@ -742,12 +745,12 @@ class Neo4jError(GqlError):
         return self._metadata
 
     @metadata.setter
-    @deprecated("Altering the metadata of Neo4jError is deprecated.")
+    @_deprecated("Altering the metadata of Neo4jError is deprecated.")
     def metadata(self, value: dict[str, t.Any]) -> None:
         self._metadata = value
 
     # TODO: 6.0 - Remove this alias
-    @deprecated(
+    @_deprecated(
         "Neo4jError.is_retriable is deprecated and will be removed in a "
         "future version. Please use Neo4jError.is_retryable instead."
     )
@@ -787,7 +790,7 @@ class Neo4jError(GqlError):
         )
 
     # TODO: 6.0 - Remove this alias
-    invalidates_all_connections = deprecated(
+    invalidates_all_connections = _deprecated(
         "Neo4jError.invalidates_all_connections is deprecated and will be "
         "removed in a future version. It is an internal method and not meant "
         "for external use."
@@ -819,7 +822,7 @@ class Neo4jError(GqlError):
         return self._neo4j_code.startswith("Neo.ClientError.Security.")
 
     # TODO: 6.0 - Remove this alias
-    is_fatal_during_discovery = deprecated(
+    is_fatal_during_discovery = _deprecated(
         "Neo4jError.is_fatal_during_discovery is deprecated and will be "
         "removed in a future version. It is an internal method and not meant "
         "for external use."

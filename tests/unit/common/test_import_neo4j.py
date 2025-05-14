@@ -19,7 +19,7 @@ import re
 
 import pytest
 
-from neo4j import PreviewWarning
+from neo4j.warnings import PreviewWarning
 
 
 def test_import_neo4j():
@@ -49,7 +49,6 @@ NEO4J_ATTRIBUTES = (
     ("DEFAULT_DATABASE", None),
     ("Driver", None),
     ("EagerResult", None),
-    ("ExperimentalWarning", None),
     ("get_user_agent", None),
     ("GqlStatusObject", PreviewWarning),
     ("GraphDatabase", None),
@@ -64,7 +63,7 @@ NEO4J_ATTRIBUTES = (
     ("NotificationDisabledClassification", PreviewWarning),
     ("NotificationMinimumSeverity", None),
     ("NotificationSeverity", None),
-    ("PreviewWarning", None),
+    ("PreviewWarning", DeprecationWarning),
     ("Query", None),
     ("READ_ACCESS", None),
     ("Record", None),
@@ -122,7 +121,7 @@ def test_dir():
 def test_import_star():
     with pytest.warns() as warnings:
         importlib.__import__("neo4j", fromlist=("*",))
-    assert len(warnings) == 3
+    assert len(warnings) == 4
 
     for name in (
         "NotificationClassification",
@@ -134,6 +133,16 @@ def test_import_star():
                 bool(re.match(rf".*\b{name}\b.*", str(w.message)))
                 for w in warnings
                 if issubclass(w.category, PreviewWarning)
+            )
+            == 1
+        )
+
+    for name in ("PreviewWarning",):
+        assert (
+            sum(
+                bool(re.match(rf".*\b{name}\b.*", str(w.message)))
+                for w in warnings
+                if issubclass(w.category, DeprecationWarning)
             )
             == 1
         )

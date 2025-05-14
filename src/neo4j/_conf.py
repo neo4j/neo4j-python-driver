@@ -19,9 +19,9 @@ from __future__ import annotations
 from abc import ABCMeta
 from collections.abc import Mapping
 
-from ._meta import (
+from ._warnings import (
     deprecation_warn,
-    experimental_warn,
+    preview_warn,
 )
 from .api import (
     DEFAULT_DATABASE,
@@ -146,8 +146,8 @@ class DeprecatedOption:
         self.value = value
 
 
-class ExperimentalOption:
-    """Used for experimental config options."""
+class PreviewOption:
+    """Used for config options in preview."""
 
     def __init__(self, value):
         self.value = value
@@ -159,7 +159,7 @@ class ConfigType(ABCMeta):
         deprecated_aliases = {}
         deprecated_alternatives = {}
         deprecated_options = {}
-        experimental_options = {}
+        preview_options = {}
 
         for base in bases:
             if type(base) is mcs:
@@ -167,7 +167,7 @@ class ConfigType(ABCMeta):
                 deprecated_aliases.update(base._deprecated_aliases())
                 deprecated_alternatives.update(base._deprecated_alternatives())
                 deprecated_options.update(base._deprecated_options())
-                experimental_options.update(base._experimental_options())
+                preview_options.update(base._preview_options())
 
         for k, v in attributes.items():
             if (
@@ -187,8 +187,8 @@ class ConfigType(ABCMeta):
                 deprecated_options[k] = v.value
                 attributes[k] = v.value
                 continue
-            if isinstance(v, ExperimentalOption):
-                experimental_options[k] = v.value
+            if isinstance(v, PreviewOption):
+                preview_options[k] = v.value
                 attributes[k] = v.value
                 continue
 
@@ -214,8 +214,8 @@ class ConfigType(ABCMeta):
         def _deprecated_options(_):
             return deprecated_options
 
-        def _experimental_options(_):
-            return experimental_options
+        def _preview_options(_):
+            return preview_options
 
         for func in (
             keys,
@@ -224,7 +224,7 @@ class ConfigType(ABCMeta):
             _deprecated_aliases,
             _deprecated_alternatives,
             _deprecated_options,
-            _experimental_options,
+            _preview_options,
         ):
             attributes.setdefault(func.__name__, classmethod(func))
 
@@ -281,9 +281,9 @@ class Config(Mapping, metaclass=ConfigType):
             if k in self.keys():
                 if warn and k in self._deprecated_options():
                     deprecation_warn(f"The '{k}' config key is deprecated.")
-                if warn and k in self._experimental_options():
-                    experimental_warn(
-                        f"The '{k}' config key is experimental. "
+                if warn and k in self._preview_options():
+                    preview_warn(
+                        f"The '{k}' config key is in preview. "
                         "It might be changed or removed any time even without "
                         "prior notice."
                     )

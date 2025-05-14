@@ -2217,9 +2217,9 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 .. _development mode: https://docs.python.org/3/library/devmode.html#devmode
 
 
-.. autoclass:: neo4j.PreviewWarning
-
-.. autoclass:: neo4j.ExperimentalWarning
+.. autoclass:: neo4j.warnings.PreviewWarning
+    :show-inheritance:
+    :members:
 
 .. autoclass:: neo4j.warnings.Neo4jWarning
     :show-inheritance:
@@ -2235,12 +2235,12 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 Filtering Warnings
 ==================
 
-This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
+This example shows how to suppress the :class:`neo4j.warnings.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
 
 .. code-block:: python
 
     import warnings
-    from neo4j import PreviewWarning
+    from neo4j.warnings import PreviewWarning
 
     ...
 
@@ -2250,7 +2250,7 @@ This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :
 
     ...
 
-This will only mute the :class:`neo4j.PreviewWarning` for everything inside
+This will only mute the :class:`neo4j.warnings.PreviewWarning` for everything inside
 the ``with``-block. This is the preferred way to mute warnings, as warnings
 triggerd by new code will still be visible.
 
@@ -2263,7 +2263,7 @@ following code:
 .. code-block:: python
 
     import warnings
-    from neo4j import PreviewWarning
+    from neo4j.warnings import PreviewWarning
 
     warnings.filterwarnings("ignore", category=PreviewWarning)
 

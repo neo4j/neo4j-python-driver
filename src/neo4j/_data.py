@@ -36,7 +36,7 @@ from ._conf import iter_items
 if t.TYPE_CHECKING:
     from typing_extensions import deprecated
 else:
-    from ._meta import deprecated
+    from ._warnings import deprecated
 
 from ._spatial import Point
 from .exceptions import BrokenRecordError

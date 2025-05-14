@@ -27,7 +27,7 @@ from .._api import (
     NotificationSeverity,
 )
 from .._exceptions import BoltProtocolError
-from .._meta import preview
+from .._warnings import preview
 
 
 if t.TYPE_CHECKING:

@@ -31,7 +31,7 @@ from ..._conf import SessionConfig
 if t.TYPE_CHECKING:
     from typing_extensions import deprecated
 else:
-    from ..._meta import deprecated
+    from ..._warnings import deprecated
 
 from ..._util import ContextBool
 from ..._work import Query

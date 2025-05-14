@@ -40,6 +40,10 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+- Rework `PreviewWarning`.
+  - Remove `ExperimentalWarning` and turn the few left instances of it into `PreviewWarning`.
+  - Deprecate importing `PreviewWarning` from `neo4j`.  
+    Import it from `neo4j.warnings` instead.
 
 
 ## Version 5.28

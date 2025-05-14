@@ -12,23 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-import typing as t
-
-import pytest
-
-from neo4j.warnings import PreviewWarning
-
-
-if t.TYPE_CHECKING:
-    from neo4j import NotificationDisabledClassification
-
-
-with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-    from neo4j import NotificationDisabledClassification
-
-
-__all__ = [
-    "NotificationDisabledClassification",
-]

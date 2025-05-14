@@ -17,8 +17,8 @@
 from __future__ import annotations
 
 import math
+import typing as t
 
-import neo4j
 from neo4j.exceptions import (
     GqlError,
     Neo4jError,
@@ -39,9 +39,14 @@ from neo4j.time import (
     Duration,
     Time,
 )
+from neo4j.warnings import PreviewWarning
 
 from ._warning_check import warning_check
 from .exceptions import MarkdAsDriverError
+
+
+if t.TYPE_CHECKING:
+    import neo4j
 
 
 def record(rec):
@@ -101,7 +106,7 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         return res
 
     def serialize_gql_status_objects() -> list[dict]:
-        with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+        with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
             return [
                 serialize_gql_status_object(o)
                 for o in summary_.gql_status_objects
@@ -317,15 +322,15 @@ def driver_exc(exc, id_=None):
         if isinstance(exc, Neo4jError):
             payload["code"] = exc.code
         if isinstance(exc, GqlError):
-            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["gqlStatus"] = exc.gql_status
-            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["statusDescription"] = exc.gql_status_description
-            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["rawClassification"] = exc.gql_raw_classification
-            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["classification"] = exc.gql_classification
-            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 payload["diagnosticRecord"] = {
                     k: field(v) for k, v in exc.diagnostic_record.items()
                 }
@@ -345,7 +350,7 @@ def _exc_msg(exc, max_depth=10):
         if isinstance(exc, Neo4jError):
             res = str(exc.message) if exc.message is not None else str(exc)
         else:
-            with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
                 msg = exc.message
             res = f"{msg} - {exc!s}" if exc.args else msg
     else:
@@ -380,17 +385,17 @@ def driver_exc_cause(exc, max_depth=10):
             getattr(exc, "__cause__", None), max_depth=max_depth - 1
         )
     payload = {"msg": _exc_msg(exc)}
-    with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["gqlStatus"] = exc.gql_status
-    with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["statusDescription"] = exc.gql_status_description
-    with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["diagnosticRecord"] = {
             k: field(v) for k, v in exc.diagnostic_record.items()
         }
-    with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["classification"] = exc.gql_classification
-    with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
         payload["rawClassification"] = exc.gql_raw_classification
     cause = getattr(exc, "__cause__", None)
     if cause is not None:
