@@ -40,6 +40,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+- Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
+  If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 
 
 ## Version 5.28
