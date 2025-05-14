@@ -40,6 +40,9 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+- Remove deprecated driver configuration option `trust`.  
+  Use `trusted_certificates` instead.
+  - Remove the associated constants `neo4j.TRUST_ALL_CERTIFICATES` and `neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES`.
 
 
 ## Version 5.28

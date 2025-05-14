@@ -101,8 +101,6 @@ from .api import (
     READ_ACCESS,
     ServerInfo,
     SYSTEM_DATABASE,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     WRITE_ACCESS,
 )
 
@@ -111,8 +109,6 @@ __all__ = [
     "DEFAULT_DATABASE",
     "READ_ACCESS",
     "SYSTEM_DATABASE",
-    "TRUST_ALL_CERTIFICATES",
-    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
     "WRITE_ACCESS",
     "Address",
     "AsyncBoltDriver",
