@@ -40,6 +40,12 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+  - `TransactionError` (subclass of `DriverError`) instead of `ClientError` (subclass of `Neo4jError`) when calling
+    `session.run()` while an explicit transaction is active on that session.
+    - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side
+      errors.
+    - It is now the same error raised as when trying to start an explicit transaction while another explicit transaction
+      is already active.
 
 
 ## Version 5.28
