@@ -340,41 +340,6 @@ class AsyncSession(AsyncWorkspace):
 
         return self._auto_result
 
-    @deprecated(
-        "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
-        "This method can lead to unexpected behaviour."
-    )
-    @AsyncNonConcurrentMethodChecker._non_concurrent_method
-    async def last_bookmark(self) -> str | None:
-        """
-        Get the bookmark received following the last completed transaction.
-
-        Note: For auto-commit transactions (:meth:`Session.run`), this will
-        trigger :meth:`Result.consume` for the current result.
-
-        .. warning::
-            This method can lead to unexpected behaviour if the session has not
-            yet successfully completed a transaction.
-
-        :returns: last bookmark
-
-        .. deprecated:: 5.0
-            :meth:`last_bookmark` will be removed in version 6.0.
-            Use :meth:`last_bookmarks` instead.
-        """
-        # The set of bookmarks to be passed into the next transaction.
-
-        if self._auto_result:
-            await self._auto_result.consume()
-
-        if self._transaction and self._transaction._closed():
-            await self._update_bookmark(self._transaction._bookmark)
-            self._transaction = None
-
-        if self._bookmarks:
-            return self._bookmarks[-1]
-        return None
-
     @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def last_bookmarks(self) -> Bookmarks:
         """

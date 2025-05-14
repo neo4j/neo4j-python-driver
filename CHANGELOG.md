@@ -40,6 +40,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+- Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
+- Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
 
 
 ## Version 5.28

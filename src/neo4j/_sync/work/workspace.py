@@ -124,21 +124,13 @@ class Workspace(NonConcurrentMethodChecker):
         self._config.database = database
 
     def _initialize_bookmarks(self, bookmarks):
-        if isinstance(bookmarks, Bookmarks):
-            prepared_bookmarks = tuple(bookmarks.raw_values)
-        elif hasattr(bookmarks, "__iter__"):
-            deprecation_warn(
-                "Passing an iterable as `bookmarks` to `Session` is "
-                "deprecated. Please use a `Bookmarks` instance.",
-                stack_level=5,
-            )
-            prepared_bookmarks = tuple(bookmarks)
-        elif not bookmarks:
+        if bookmarks is None:
             prepared_bookmarks = ()
+        elif isinstance(bookmarks, Bookmarks):
+            prepared_bookmarks = tuple(bookmarks.raw_values)
         else:
             raise TypeError(
-                "Bookmarks must be an instance of Bookmarks or an "
-                "iterable of raw bookmarks (deprecated)."
+                "Bookmarks must be an instance of Bookmarks or None."
             )
         self._initial_bookmarks = self._bookmarks = prepared_bookmarks
 
