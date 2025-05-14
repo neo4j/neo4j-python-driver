@@ -25,32 +25,27 @@ from urllib.parse import (
     urlparse,
 )
 
-
-if t.TYPE_CHECKING:
-    from typing_extensions import deprecated
-else:
-    from ._meta import deprecated
-
+from . import _api
 from .exceptions import ConfigurationError
 
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
-    from typing_extensions import Protocol as _Protocol
+    from typing_extensions import (
+        deprecated,
+        Protocol as _Protocol,
+    )
 
     from .addressing import Address
 else:
+    from ._meta import deprecated
+
     _Protocol = object
 
 
 __all__ = [
     "DEFAULT_DATABASE",
-    "DRIVER_BOLT",
-    "DRIVER_NEO4J",
     "READ_ACCESS",
-    "SECURITY_TYPE_NOT_SECURE",
-    "SECURITY_TYPE_SECURE",
-    "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE",
     "SYSTEM_DATABASE",
     "TRUST_ALL_CERTIFICATES",
     "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
@@ -81,17 +76,6 @@ __all__ = [
 
 READ_ACCESS: te.Final[str] = "READ"
 WRITE_ACCESS: te.Final[str] = "WRITE"
-
-# TODO: 6.0 - make these 2 constants private
-DRIVER_BOLT: te.Final[str] = "DRIVER_BOLT"
-DRIVER_NEO4J: te.Final[str] = "DRIVER_NEO4J"
-
-# TODO: 6.0 - make these 3 constants private
-SECURITY_TYPE_NOT_SECURE: te.Final[str] = "SECURITY_TYPE_NOT_SECURE"
-SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: te.Final[str] = (
-    "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
-)
-SECURITY_TYPE_SECURE: te.Final[str] = "SECURITY_TYPE_SECURE"
 
 URI_SCHEME_BOLT: te.Final[str] = "bolt"
 URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE: te.Final[str] = "bolt+ssc"
@@ -523,23 +507,23 @@ def parse_neo4j_uri(uri):
             f"Use {URI_SCHEME_NEO4J!r}"
         )
     elif parsed.scheme == URI_SCHEME_BOLT:
-        driver_type = DRIVER_BOLT
-        security_type = SECURITY_TYPE_NOT_SECURE
+        driver_type = _api.DRIVER_BOLT
+        security_type = _api.SECURITY_TYPE_NOT_SECURE
     elif parsed.scheme == URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
-        driver_type = DRIVER_BOLT
-        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+        driver_type = _api.DRIVER_BOLT
+        security_type = _api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
     elif parsed.scheme == URI_SCHEME_BOLT_SECURE:
-        driver_type = DRIVER_BOLT
-        security_type = SECURITY_TYPE_SECURE
+        driver_type = _api.DRIVER_BOLT
+        security_type = _api.SECURITY_TYPE_SECURE
     elif parsed.scheme == URI_SCHEME_NEO4J:
-        driver_type = DRIVER_NEO4J
-        security_type = SECURITY_TYPE_NOT_SECURE
+        driver_type = _api.DRIVER_NEO4J
+        security_type = _api.SECURITY_TYPE_NOT_SECURE
     elif parsed.scheme == URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
-        driver_type = DRIVER_NEO4J
-        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+        driver_type = _api.DRIVER_NEO4J
+        security_type = _api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
     elif parsed.scheme == URI_SCHEME_NEO4J_SECURE:
-        driver_type = DRIVER_NEO4J
-        security_type = SECURITY_TYPE_SECURE
+        driver_type = _api.DRIVER_NEO4J
+        security_type = _api.SECURITY_TYPE_SECURE
     else:
         supported_schemes = [
             URI_SCHEME_BOLT,

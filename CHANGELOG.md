@@ -40,6 +40,20 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+- Make undocumented internal constants private:
+  - `neo4j.api`
+    - `DRIVER_BOLT`
+    - `DRIVER_NEO4J`
+    - `SECURITY_TYPE_NOT_SECURE`
+    - `SECURITY_TYPE_SECURE`
+    - `SECURITY_TYPE_SELF_SIGNED_CERTIFICATE`
+  - `neo4j.exceptions`
+    - `CLASSIFICATION_CLIENT`
+    - `CLASSIFICATION_DATABASE`
+    - `CLASSIFICATION_TRANSIENT`
+    - `ERROR_REWRITE_MAP`
+    - `client_errors`
+    - `transient_errors`
 
 
 ## Version 5.28

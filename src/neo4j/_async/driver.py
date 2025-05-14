@@ -30,8 +30,12 @@ if t.TYPE_CHECKING:
     )
 
 from .._api import (
+    DRIVER_BOLT,
+    DRIVER_NEO4J,
     NotificationMinimumSeverity,
     RoutingControl,
+    SECURITY_TYPE_SECURE,
+    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     TelemetryAPI,
 )
 from .._async_compat.util import AsyncUtil
@@ -61,13 +65,9 @@ from ..api import (
     Auth,
     BookmarkManager,
     Bookmarks,
-    DRIVER_BOLT,
-    DRIVER_NEO4J,
     parse_neo4j_uri,
     parse_routing_context,
     READ_ACCESS,
-    SECURITY_TYPE_SECURE,
-    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     ServerInfo,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,

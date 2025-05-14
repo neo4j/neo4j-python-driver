@@ -70,6 +70,35 @@ from ._meta import (
 )
 
 
+if t.TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    import typing_extensions as te
+
+    from ._async.work import (
+        AsyncManagedTransaction,
+        AsyncResult,
+        AsyncSession,
+        AsyncTransaction,
+    )
+    from ._sync.work import (
+        ManagedTransaction,
+        Result,
+        Session,
+        Transaction,
+    )
+
+    _TTransaction: t.TypeAlias = (
+        AsyncManagedTransaction
+        | AsyncTransaction
+        | ManagedTransaction
+        | Transaction
+    )
+    _TResult: t.TypeAlias = AsyncResult | Result
+    _TSession: t.TypeAlias = AsyncSession | Session
+    _T = t.TypeVar("_T")
+
+
 __all__ = [
     "AuthConfigurationError",
     "AuthError",
@@ -108,99 +137,30 @@ __all__ = [
 ]
 
 
-if t.TYPE_CHECKING:
-    from collections.abc import Mapping
-
-    import typing_extensions as te
-
-    from ._async.work import (
-        AsyncManagedTransaction,
-        AsyncResult,
-        AsyncSession,
-        AsyncTransaction,
-    )
-    from ._sync.work import (
-        ManagedTransaction,
-        Result,
-        Session,
-        Transaction,
-    )
-
-    _TTransaction: t.TypeAlias = (
-        AsyncManagedTransaction
-        | AsyncTransaction
-        | ManagedTransaction
-        | Transaction
-    )
-    _TResult: t.TypeAlias = AsyncResult | Result
-    _TSession: t.TypeAlias = AsyncSession | Session
-    _T = t.TypeVar("_T")
+_CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
+_CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
+_CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"
 
 
-__all__ = [
-    "CLASSIFICATION_CLIENT",  # TODO: 6.0 - make constant private
-    "CLASSIFICATION_DATABASE",  # TODO: 6.0 - make constant private
-    "CLASSIFICATION_TRANSIENT",  # TODO: 6.0 - make constant private
-    "ERROR_REWRITE_MAP",  # TODO: 6.0 - make constant private
-    "AuthConfigurationError",
-    "AuthError",
-    "BrokenRecordError",
-    "CertificateConfigurationError",
-    "ClientError",
-    "ConfigurationError",
-    "ConstraintError",
-    "CypherSyntaxError",
-    "CypherTypeError",
-    "DatabaseError",
-    "DatabaseUnavailable",
-    "DriverError",
-    "Forbidden",
-    "ForbiddenOnReadOnlyDatabase",
-    "IncompleteCommit",
-    "Neo4jError",
-    "NotALeader",
-    "ReadServiceUnavailable",
-    "ResultConsumedError",
-    "ResultError",
-    "ResultFailedError",
-    "ResultNotSingleError",
-    "RoutingServiceUnavailable",
-    "ServiceUnavailable",
-    "SessionError",
-    "SessionExpired",
-    "TokenExpired",
-    "TransactionError",
-    "TransactionNestingError",
-    "TransientError",
-    "UnsupportedServerProduct",
-    "WriteServiceUnavailable",
-]
-
-
-CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
-CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
-CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"
-
-
-ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
+_ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
     # This error can be retried ed. The driver just needs to re-authenticate
     # with the same credentials.
     "Neo.ClientError.Security.AuthorizationExpired": (
-        CLASSIFICATION_TRANSIENT,
+        _CLASSIFICATION_TRANSIENT,
         None,
     ),
     # In 5.0, this error has been re-classified as ClientError.
     # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
     # the driver, too.
     "Neo.TransientError.Transaction.Terminated": (
-        CLASSIFICATION_CLIENT,
+        _CLASSIFICATION_CLIENT,
         "Neo.ClientError.Transaction.Terminated",
     ),
     # In 5.0, this error has been re-classified as ClientError.
     # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
     # the driver, too.
     "Neo.TransientError.Transaction.LockClientStopped": (
-        CLASSIFICATION_CLIENT,
+        _CLASSIFICATION_CLIENT,
         "Neo.ClientError.Transaction.LockClientStopped",
     ),
 }
@@ -631,11 +591,11 @@ class Neo4jError(GqlError):
         try:
             _, classification, category, title = neo4j_code.split(".")
         except ValueError:
-            classification = CLASSIFICATION_DATABASE
+            classification = _CLASSIFICATION_DATABASE
             category = "General"
             title = "UnknownError"
         else:
-            classification_override, code_override = ERROR_REWRITE_MAP.get(
+            classification_override, code_override = _ERROR_REWRITE_MAP.get(
                 neo4j_code, (None, None)
             )
             if classification_override is not None:
@@ -658,19 +618,19 @@ class Neo4jError(GqlError):
 
     @classmethod
     def _extract_error_class(cls, classification, code) -> type[Neo4jError]:
-        if classification == CLASSIFICATION_CLIENT:
+        if classification == _CLASSIFICATION_CLIENT:
             try:
-                return client_errors[code]
+                return _client_errors[code]
             except KeyError:
                 return ClientError
 
-        elif classification == CLASSIFICATION_TRANSIENT:
+        elif classification == _CLASSIFICATION_TRANSIENT:
             try:
-                return transient_errors[code]
+                return _transient_errors[code]
             except KeyError:
                 return TransientError
 
-        elif classification == CLASSIFICATION_DATABASE:
+        elif classification == _CLASSIFICATION_DATABASE:
             return DatabaseError
 
         else:
@@ -951,8 +911,7 @@ class ForbiddenOnReadOnlyDatabase(TransientError):
     pass
 
 
-# TODO: 6.0 - Make map private
-client_errors: dict[str, type[Neo4jError]] = {
+_client_errors: dict[str, type[Neo4jError]] = {
     # ConstraintError
     "Neo.ClientError.Schema.ConstraintValidationFailed": ConstraintError,
     "Neo.ClientError.Schema.ConstraintViolation": ConstraintError,
@@ -981,8 +940,7 @@ client_errors: dict[str, type[Neo4jError]] = {
     "Neo.ClientError.Cluster.NotALeader": NotALeader,
 }
 
-# TODO: 6.0 - Make map private
-transient_errors: dict[str, type[Neo4jError]] = {
+_transient_errors: dict[str, type[Neo4jError]] = {
     # DatabaseUnavailableError
     "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailable
 }
