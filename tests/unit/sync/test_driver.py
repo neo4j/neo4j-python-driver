@@ -100,12 +100,12 @@ def test_direct_driver_constructor(
 ):
     uri = protocol + host + port + params
     if params:
-        with pytest.warns(DeprecationWarning, match="routing context"):
-            driver = GraphDatabase.driver(uri, auth=auth_token)
+        with pytest.raises(ConfigurationError, match="Routing context"):
+            GraphDatabase.driver(uri, auth=auth_token)
     else:
         driver = GraphDatabase.driver(uri, auth=auth_token)
-    assert isinstance(driver, BoltDriver)
-    driver.close()
+        driver.close()
+        assert isinstance(driver, BoltDriver)
 
 
 @pytest.mark.parametrize(

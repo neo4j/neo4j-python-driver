@@ -40,6 +40,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+- Raise `ConfigurationError` instead of ignoring the routing context (URI query parameters) when creating a direct
+  driver ("bolt[+s[sc]]://" scheme).
 
 
 ## Version 5.28

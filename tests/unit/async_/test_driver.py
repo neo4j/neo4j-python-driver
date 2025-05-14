@@ -101,12 +101,12 @@ async def test_direct_driver_constructor(
 ):
     uri = protocol + host + port + params
     if params:
-        with pytest.warns(DeprecationWarning, match="routing context"):
-            driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
+        with pytest.raises(ConfigurationError, match="Routing context"):
+            AsyncGraphDatabase.driver(uri, auth=auth_token)
     else:
         driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
-    assert isinstance(driver, AsyncBoltDriver)
-    await driver.close()
+        await driver.close()
+        assert isinstance(driver, AsyncBoltDriver)
 
 
 @pytest.mark.parametrize(

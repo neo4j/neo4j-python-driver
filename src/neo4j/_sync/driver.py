@@ -299,18 +299,11 @@ class GraphDatabase:
             assert driver_type in {DRIVER_BOLT, DRIVER_NEO4J}
             if driver_type == DRIVER_BOLT:
                 if parse_routing_context(parsed.query):
-                    deprecation_warn(
-                        'Creating a direct driver ("bolt://" scheme) with '
-                        "routing context (URI parameters) is deprecated. They "
-                        "will be ignored. This will raise an error in a "
-                        f'future release. Given URI "{uri}"',
-                        stack_level=2,
+                    raise ConfigurationError(
+                        "Routing context (URI query parameters) are not "
+                        "supported by direct drivers "
+                        f'("bolt[+s[sc]]://" scheme). Given URI: {uri!r}.'
                     )
-                    # TODO: 6.0 - raise instead of warning
-                    # raise ValueError(
-                    #     'Routing parameters are not supported with scheme '
-                    #     '"bolt". Given URI "{}".'.format(uri)
-                    # )
                 return cls.bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
