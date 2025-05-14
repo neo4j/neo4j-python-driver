@@ -22,6 +22,7 @@ from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
+from neo4j._addressing import ResolvedAddress
 from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io import (
     AcquisitionDatabase,
@@ -34,7 +35,6 @@ from neo4j._conf import (
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
-from neo4j.addressing import ResolvedAddress
 from neo4j.auth_management import AsyncAuthManagers
 from neo4j.exceptions import (
     Neo4jError,

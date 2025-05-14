@@ -81,7 +81,7 @@ if _t.TYPE_CHECKING:
         NotificationClassification,  # noqa: TCH004 false positive (dynamic attribute)
     )
 
-from .addressing import (
+from ._addressing import (
     Address,
     IPv4Address,
     IPv6Address,

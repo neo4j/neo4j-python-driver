@@ -19,7 +19,7 @@ from contextlib import suppress
 from logging import getLogger
 from time import monotonic
 
-from .addressing import Address
+from ._addressing import Address
 
 
 log = getLogger("neo4j.pool")

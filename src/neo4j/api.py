@@ -38,7 +38,7 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
     from typing_extensions import Protocol as _Protocol
 
-    from .addressing import Address
+    from ._addressing import Address
 else:
     _Protocol = object
 
