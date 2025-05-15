@@ -412,7 +412,6 @@ class AsyncIOPool(abc.ABC):
                     or not await self.cond.wait(timeout)
                 ):
                     log.debug("[#0000]  _: <POOL> acquisition timed out")
-                    # TODO: 6.0 - change this to be a DriverError (or subclass)
                     raise ConnectionAcquisitionTimeoutError(
                         "failed to obtain a connection from the pool within "
                         f"{deadline.original_timeout!r}s (timeout)"
