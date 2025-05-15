@@ -27,7 +27,7 @@ from neo4j._conf import (
 from neo4j._deadline import Deadline
 from neo4j.auth_management import AsyncAuthManagers
 from neo4j.exceptions import (
-    ClientError,
+    ConnectionAcquisitionTimeoutError,
     ServiceUnavailable,
 )
 
@@ -206,7 +206,7 @@ async def test_pool_max_conn_pool_size(async_fake_connection_generator):
         address = neo4j.Address(("127.0.0.1", 7687))
         await pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
-        with pytest.raises(ClientError):
+        with pytest.raises(ConnectionAcquisitionTimeoutError):
             await pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
 
