@@ -56,6 +56,8 @@ Driver API Errors
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
+  + ConnectionPoolError
+    + ConnectionAcquisitionTimeoutError
 """
 
 from __future__ import annotations
@@ -77,6 +79,8 @@ __all__ = [
     "CertificateConfigurationError",
     "ClientError",
     "ConfigurationError",
+    "ConnectionAcquisitionTimeoutError",
+    "ConnectionPoolError",
     "ConstraintError",
     "CypherSyntaxError",
     "CypherTypeError",
@@ -1190,3 +1194,18 @@ class AuthConfigurationError(ConfigurationError):
 # DriverError > ConfigurationError > CertificateConfigurationError
 class CertificateConfigurationError(ConfigurationError):
     """Raised when there is an error with the certificate configuration."""
+
+
+# DriverError > ConnectionPoolError
+class ConnectionPoolError(DriverError):
+    """Raised when the connection pool encounters an error."""
+
+
+# DriverError > ConnectionPoolError > ConnectionAcquisitionTimeoutError
+class ConnectionAcquisitionTimeoutError(ConnectionPoolError):
+    """
+    Raised when no connection became available in time.
+
+    The amount of time is determined by the connection acquisition timeout
+    configuration option.
+    """

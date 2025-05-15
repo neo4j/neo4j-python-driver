@@ -2119,6 +2119,10 @@ Client-side errors
 
     * :class:`neo4j.exceptions.CertificateConfigurationError`
 
+  * :class:`neo4j.exceptions.ConnectionPoolError`
+
+    * :class:`neo4j.exceptions.ConnectionAcquisitionTimeoutError`
+
 
 .. autoexception:: neo4j.exceptions.DriverError()
     :show-inheritance:
