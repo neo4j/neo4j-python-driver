@@ -41,7 +41,6 @@ from ...api import (
     WRITE_ACCESS,
 )
 from ...exceptions import (
-    ClientError,
     DriverError,
     Neo4jError,
     ServiceUnavailable,
@@ -293,6 +292,7 @@ class AsyncSession(AsyncWorkspace):
 
         :returns: a new :class:`neo4j.AsyncResult` object
 
+        :raises TransactionError: if a transaction is already open.
         :raises SessionError: if the session has been closed.
         """
         self._check_state()
@@ -302,9 +302,8 @@ class AsyncSession(AsyncWorkspace):
             raise TypeError("query must be a string or a Query instance")
 
         if self._transaction:
-            # TODO: 6.0 - change this to be a TransactionError
-            raise ClientError(
-                "Explicit Transaction must be handled explicitly"
+            raise TransactionError(
+                self._transaction, "Explicit transaction already open"
             )
 
         if self._auto_result:
