@@ -18,6 +18,13 @@ from __future__ import annotations
 
 import typing as t
 from enum import Enum
+from urllib.parse import (
+    parse_qs,
+    urlparse,
+)
+
+from . import api
+from .exceptions import ConfigurationError
 
 
 if t.TYPE_CHECKING:
@@ -38,6 +45,9 @@ __all__ = [
     "NotificationSeverity",
     "RoutingControl",
     "TelemetryAPI",
+    "check_access_mode",
+    "parse_neo4j_uri",
+    "parse_routing_context",
 ]
 
 
@@ -49,6 +59,96 @@ SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: te.Final[str] = (
     "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
 )
 SECURITY_TYPE_SECURE: te.Final[str] = "SECURITY_TYPE_SECURE"
+
+
+def parse_neo4j_uri(uri):
+    parsed = urlparse(uri)
+
+    if parsed.username:
+        raise ConfigurationError("Username is not supported in the URI")
+
+    if parsed.password:
+        raise ConfigurationError("Password is not supported in the URI")
+
+    if parsed.scheme == api.URI_SCHEME_BOLT_ROUTING:
+        raise ConfigurationError(
+            f"Uri scheme {parsed.scheme!r} has been renamed. "
+            f"Use {api.URI_SCHEME_NEO4J!r}"
+        )
+    elif parsed.scheme == api.URI_SCHEME_BOLT:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == api.URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+    elif parsed.scheme == api.URI_SCHEME_BOLT_SECURE:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_SECURE
+    elif parsed.scheme == api.URI_SCHEME_NEO4J:
+        driver_type = DRIVER_NEO4J
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == api.URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
+        driver_type = DRIVER_NEO4J
+        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+    elif parsed.scheme == api.URI_SCHEME_NEO4J_SECURE:
+        driver_type = DRIVER_NEO4J
+        security_type = SECURITY_TYPE_SECURE
+    else:
+        supported_schemes = [
+            api.URI_SCHEME_BOLT,
+            api.URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+            api.URI_SCHEME_BOLT_SECURE,
+            api.URI_SCHEME_NEO4J,
+            api.URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+            api.URI_SCHEME_NEO4J_SECURE,
+        ]
+        raise ConfigurationError(
+            f"URI scheme {parsed.scheme!r} is not supported. "
+            f"Supported URI schemes are {supported_schemes}. "
+            "Examples: bolt://host[:port] or "
+            "neo4j://host[:port][?routing_context]"
+        )
+
+    return driver_type, security_type, parsed
+
+
+def check_access_mode(access_mode):
+    if access_mode not in {api.READ_ACCESS, api.WRITE_ACCESS}:
+        raise ValueError(
+            f"Unsupported access mode {access_mode}, must be one of "
+            f"'{api.READ_ACCESS}' or '{api.WRITE_ACCESS}'."
+        )
+
+    return access_mode
+
+
+def parse_routing_context(query):
+    """
+    Parse the query portion of a URI.
+
+    Generates a routing context dictionary.
+    """
+    if not query:
+        return {}
+
+    context = {}
+    parameters = parse_qs(query, True)
+    for key in parameters:
+        value_list = parameters[key]
+        if len(value_list) != 1:
+            raise ConfigurationError(
+                f"Duplicated query parameters with key '{key}', value "
+                f"'{value_list}' found in query string '{query}'"
+            )
+        value = value_list[0]
+        if not value:
+            raise ConfigurationError(
+                f"Invalid parameters:'{key}={value}' in query string "
+                f"'{query}'."
+            )
+        context[key] = value
+
+    return context
 
 
 class NotificationMinimumSeverity(str, Enum):

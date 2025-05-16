@@ -61,13 +61,16 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - Remove `ExperimentalWarning` and turn the few left instances of it into `PreviewWarning`.
   - Deprecate importing `PreviewWarning` from `neo4j`.  
     Import it from `neo4j.warnings` instead.
-- Make undocumented internal constants private:
+- Make undocumented internal constants and helper functions private:
   - `neo4j.api`
     - `DRIVER_BOLT`
     - `DRIVER_NEO4J`
     - `SECURITY_TYPE_NOT_SECURE`
     - `SECURITY_TYPE_SECURE`
     - `SECURITY_TYPE_SELF_SIGNED_CERTIFICATE`
+    - `check_access_mode`
+    - `parse_neo4j_uri`
+    - `parse_routing_context`
   - `neo4j.exceptions`
     - `CLASSIFICATION_CLIENT`
     - `CLASSIFICATION_DATABASE`
