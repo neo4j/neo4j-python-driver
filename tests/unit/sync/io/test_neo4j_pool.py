@@ -22,6 +22,7 @@ from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
+from neo4j._addressing import ResolvedAddress
 from neo4j._async_compat.util import Util
 from neo4j._conf import (
     RoutingConfig,
@@ -34,7 +35,6 @@ from neo4j._sync.io import (
     Bolt,
     Neo4jPool,
 )
-from neo4j.addressing import ResolvedAddress
 from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
     Neo4jError,

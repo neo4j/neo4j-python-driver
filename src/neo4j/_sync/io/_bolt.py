@@ -23,6 +23,7 @@ from collections import deque
 from logging import getLogger
 from time import monotonic
 
+from ..._addressing import ResolvedAddress
 from ..._async_compat.util import Util
 from ..._auth_management import to_auth_dict
 from ..._codec.hydration import (
@@ -38,7 +39,6 @@ from ..._exceptions import (
 from ..._io import BoltProtocolVersion
 from ..._meta import USER_AGENT
 from ..._sync.config import PoolConfig
-from ...addressing import ResolvedAddress
 from ...api import ServerInfo
 from ...exceptions import (
     ConfigurationError,

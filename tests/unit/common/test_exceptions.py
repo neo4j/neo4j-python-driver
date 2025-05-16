@@ -23,7 +23,6 @@ import traceback
 import pytest
 
 import neo4j.exceptions
-from neo4j import PreviewWarning
 from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
@@ -41,6 +40,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
+from neo4j.warnings import PreviewWarning
 
 
 def test_bolt_error():

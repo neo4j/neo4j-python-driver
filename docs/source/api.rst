@@ -936,8 +936,6 @@ Session
 
     .. automethod:: last_bookmarks
 
-    .. automethod:: last_bookmark
-
     .. automethod:: begin_transaction
 
     .. automethod:: read_transaction
@@ -984,12 +982,17 @@ Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
 See :meth:`.Session.last_bookmarks` or :meth:`.AsyncSession.last_bookmarks` for
 more information.
 
+:Type: ``None``, ``neo4j.Bookmarks``
+
 :Default: :data:`None`
 
 .. deprecated:: 5.0
     Alternatively, an iterable of strings can be passed. This usage is
     deprecated and will be removed in a future release. Please use a
     :class:`neo4j.Bookmarks` object instead.
+
+.. versionchanged:: 6.0
+    Only accepts :class:`neo4j.Bookmarks` objects or :data:`None`.
 
 
 .. _database-ref:
@@ -1940,9 +1943,6 @@ Bookmarks
     :members:
     :special-members: __bool__, __add__, __iter__
 
-.. autoclass:: neo4j.Bookmark
-    :members:
-
 
 BookmarkManager
 ===============
@@ -2119,6 +2119,10 @@ Client-side errors
 
     * :class:`neo4j.exceptions.CertificateConfigurationError`
 
+  * :class:`neo4j.exceptions.ConnectionPoolError`
+
+    * :class:`neo4j.exceptions.ConnectionAcquisitionTimeoutError`
+
 
 .. autoexception:: neo4j.exceptions.DriverError()
     :show-inheritance:
@@ -2217,9 +2221,9 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 .. _development mode: https://docs.python.org/3/library/devmode.html#devmode
 
 
-.. autoclass:: neo4j.PreviewWarning
-
-.. autoclass:: neo4j.ExperimentalWarning
+.. autoclass:: neo4j.warnings.PreviewWarning
+    :show-inheritance:
+    :members:
 
 .. autoclass:: neo4j.warnings.Neo4jWarning
     :show-inheritance:
@@ -2235,12 +2239,12 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 Filtering Warnings
 ==================
 
-This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
+This example shows how to suppress the :class:`neo4j.warnings.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
 
 .. code-block:: python
 
     import warnings
-    from neo4j import PreviewWarning
+    from neo4j.warnings import PreviewWarning
 
     ...
 
@@ -2250,7 +2254,7 @@ This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :
 
     ...
 
-This will only mute the :class:`neo4j.PreviewWarning` for everything inside
+This will only mute the :class:`neo4j.warnings.PreviewWarning` for everything inside
 the ``with``-block. This is the preferred way to mute warnings, as warnings
 triggerd by new code will still be visible.
 
@@ -2263,7 +2267,7 @@ following code:
 .. code-block:: python
 
     import warnings
-    from neo4j import PreviewWarning
+    from neo4j.warnings import PreviewWarning
 
     warnings.filterwarnings("ignore", category=PreviewWarning)
 

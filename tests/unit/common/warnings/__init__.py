@@ -12,19 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from __future__ import annotations
-
-from ._addressing import (
-    Address,
-    IPv4Address,
-    IPv6Address,
-)
-
-
-__all__ = [
-    "Address",
-    "IPv4Address",
-    "IPv6Address",
-]

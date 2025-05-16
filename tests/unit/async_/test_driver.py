@@ -33,10 +33,8 @@ from neo4j import (
     AsyncGraphDatabase,
     AsyncNeo4jDriver,
     AsyncResult,
-    ExperimentalWarning,
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
-    PreviewWarning,
     Query,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -64,6 +62,7 @@ from neo4j.auth_management import (
     ClientCertificate,
 )
 from neo4j.exceptions import ConfigurationError
+from neo4j.warnings import PreviewWarning
 
 from ..._async_compat import (
     AsyncTestDecorators,
@@ -340,7 +339,7 @@ async def test_verify_connectivity_parameters_are_deprecated(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             await driver.verify_connectivity(**kwargs)
     finally:
         await driver.close()
@@ -369,7 +368,7 @@ async def test_get_server_info_parameters_are_experimental(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             await driver.get_server_info(**kwargs)
     finally:
         await driver.close()

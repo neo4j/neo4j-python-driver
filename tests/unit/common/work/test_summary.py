@@ -32,13 +32,13 @@ from neo4j import (
     Address,
     NotificationCategory,
     NotificationSeverity,
-    PreviewWarning,
     ResultSummary,
     ServerInfo,
     SummaryCounters,
     SummaryInputPosition,
     SummaryNotification,
 )
+from neo4j.warnings import PreviewWarning
 
 
 with warnings.catch_warnings():

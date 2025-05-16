@@ -27,13 +27,13 @@ from .._api import (
     NotificationSeverity,
 )
 from .._exceptions import BoltProtocolError
-from .._meta import preview
+from .._warnings import preview
 
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
-    from ..addressing import Address
+    from .._addressing import Address
     from ..api import ServerInfo
 
     _T = t.TypeVar("_T")

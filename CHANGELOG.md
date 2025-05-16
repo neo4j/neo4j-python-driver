@@ -30,7 +30,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `Version`'s additional methods were undocumented and shouldn't have been used
 - Changed errors raised under certain circumstances
   - `ConfigurationError` if the passed `auth` parameters is not valid (instead of `AuthError`)
-    - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side errors.
+    - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side
+      errors.
   - `access_mode` configuration option
     - `ValueError` on invalid value (instead of `ClientError`)
     - Consistently check the value (also for non-routing drivers)
@@ -40,6 +41,26 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `connection_acquisition_timeout` configuration option
     - `ValueError` on invalid values (instead of `ClientError`)
     - Consistently restrict the value to be strictly positive
+    - New `ConnectionAcquisitionTimeoutError` (subclass of `DriverError`) instead of `ClientError`
+      (subclass of `Neo4jError`) the timeout is exceeded.
+      - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side
+        errors.
+  - `TypeError` instead of `ValueError` when passing a `Query` object to `Transaction.run`.
+  - `TransactionError` (subclass of `DriverError`) instead of `ClientError` (subclass of `Neo4jError`) when calling
+    `session.run()` while an explicit transaction is active on that session.
+    - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side
+      errors.
+    - It is now the same error raised as when trying to start an explicit transaction while another explicit transaction
+      is already active.
+- Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
+  If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
+- Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
+- Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+- Make undocumented classes `ResolvedAddress`, `ResolvedIPv4Address`, and `ResolvedIPv6Address` private.
+- Rework `PreviewWarning`.
+  - Remove `ExperimentalWarning` and turn the few left instances of it into `PreviewWarning`.
+  - Deprecate importing `PreviewWarning` from `neo4j`.  
+    Import it from `neo4j.warnings` instead.
 - Make undocumented internal constants private:
   - `neo4j.api`
     - `DRIVER_BOLT`

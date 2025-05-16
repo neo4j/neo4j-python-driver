@@ -30,12 +30,10 @@ if t.TYPE_CHECKING:
 import neo4j
 from neo4j import (
     BoltDriver,
-    ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
-    PreviewWarning,
     Query,
     Result,
     TRUST_ALL_CERTIFICATES,
@@ -63,6 +61,7 @@ from neo4j.auth_management import (
     ClientCertificateProvider,
 )
 from neo4j.exceptions import ConfigurationError
+from neo4j.warnings import PreviewWarning
 
 from ..._async_compat import (
     mark_sync_test,
@@ -339,7 +338,7 @@ def test_verify_connectivity_parameters_are_deprecated(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             driver.verify_connectivity(**kwargs)
     finally:
         driver.close()
@@ -368,7 +367,7 @@ def test_get_server_info_parameters_are_experimental(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             driver.get_server_info(**kwargs)
     finally:
         driver.close()
