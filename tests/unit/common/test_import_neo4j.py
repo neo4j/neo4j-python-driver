@@ -43,7 +43,6 @@ NEO4J_ATTRIBUTES = (
     ("basic_auth", None),
     ("bearer_auth", None),
     ("BoltDriver", None),
-    ("Bookmark", None),
     ("Bookmarks", None),
     ("custom_auth", None),
     ("DEFAULT_DATABASE", None),

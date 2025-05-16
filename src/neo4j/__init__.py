@@ -84,7 +84,7 @@ if _t.TYPE_CHECKING:
     )
     from ._warnings import PreviewWarning  # noqa: TCH004 false positive (dynamic attribute)
 
-from .addressing import (
+from ._addressing import (
     Address,
     IPv4Address,
     IPv6Address,
@@ -96,7 +96,6 @@ from .api import (
     AuthToken,
     basic_auth,
     bearer_auth,
-    Bookmark,
     Bookmarks,
     custom_auth,
     DEFAULT_DATABASE,
@@ -129,7 +128,6 @@ __all__ = [
     "Auth",
     "AuthToken",
     "BoltDriver",
-    "Bookmark",
     "Bookmarks",
     "Driver",
     "EagerResult",

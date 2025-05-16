@@ -66,7 +66,7 @@ from ..io import ConnectionErrorHandler
 if t.TYPE_CHECKING:
     import pandas  # type: ignore[import]
 
-    from ...addressing import Address
+    from ..._addressing import Address
     from ...graph import Graph
 
 

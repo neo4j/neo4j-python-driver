@@ -635,8 +635,6 @@ AsyncSession
 
     .. automethod:: last_bookmarks
 
-    .. automethod:: last_bookmark
-
     .. automethod:: begin_transaction
 
     .. automethod:: read_transaction

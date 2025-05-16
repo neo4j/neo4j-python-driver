@@ -29,6 +29,7 @@ if t.TYPE_CHECKING:
         T_NotificationMinimumSeverity,
     )
 
+from .._addressing import Address
 from .._api import (
     NotificationMinimumSeverity,
     RoutingControl,
@@ -54,7 +55,6 @@ from .._work import (
     Query,
     unit_of_work,
 )
-from ..addressing import Address
 from ..api import (
     AsyncBookmarkManager,
     Auth,
