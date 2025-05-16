@@ -57,6 +57,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
 - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
 - Make undocumented classes `ResolvedAddress`, `ResolvedIPv4Address`, and `ResolvedIPv6Address` private.
+- Remove deprecated `session.read_transaction` and `session.write_transaction`.
+  Instead, use `session.execute_read` and  `session.execute_write` respectively.
 
 
 ## Version 5.28

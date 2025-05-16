@@ -637,11 +637,7 @@ AsyncSession
 
     .. automethod:: begin_transaction
 
-    .. automethod:: read_transaction
-
     .. automethod:: execute_read
-
-    .. automethod:: write_transaction
 
     .. automethod:: execute_write
 
