@@ -311,10 +311,10 @@ class GraphDatabase:
                     #     'Routing parameters are not supported with scheme '
                     #     '"bolt". Given URI "{}".'.format(uri)
                     # )
-                return cls.bolt_driver(parsed.netloc, **config)
+                return cls._bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
-            return cls.neo4j_driver(
+            return cls._neo4j_driver(
                 parsed.netloc, routing_context=routing_context, **config
             )
 
@@ -403,7 +403,7 @@ class GraphDatabase:
         )
 
     @classmethod
-    def bolt_driver(cls, target, **config):
+    def _bolt_driver(cls, target, **config):
         """
         Create a direct driver.
 
@@ -416,36 +416,28 @@ class GraphDatabase:
         )
 
         try:
-            return BoltDriver.open(target, **config)
+            return BoltDriver._open(target, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
 
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
-    def neo4j_driver(cls, *targets, routing_context=None, **config):
+    def _neo4j_driver(cls, target, routing_context=None, **config):
         """
         Create a routing driver.
 
         Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
-        # TODO: 6.0 - adjust signature to only take one target
-        if len(targets) > 1:
-            deprecation_warn(
-                "Creating a routing driver with multiple targets is "
-                "deprecated. The driver only uses the first target anyway. "
-                "The method signature will change in a future release.",
-            )
-
         from .._exceptions import (
             BoltHandshakeError,
             BoltSecurityError,
         )
 
         try:
-            return Neo4jDriver.open(
-                *targets, routing_context=routing_context, **config
+            return Neo4jDriver._open(
+                target, routing_context=routing_context, **config
             )
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
@@ -454,10 +446,9 @@ class GraphDatabase:
 
 
 class _Direct:
-    # TODO: 6.0 - those attributes should be private
-    default_host = "localhost"
-    default_port = 7687
-    default_target = ":"
+    _default_host = "localhost"
+    _default_port = 7687
+    _default_target = ":"
 
     def __init__(self, address):
         self._address = address
@@ -467,22 +458,21 @@ class _Direct:
         return self._address
 
     @classmethod
-    def parse_target(cls, target):
+    def _parse_target(cls, target):
         """Parse a target string to produce an address."""
         if not target:
-            target = cls.default_target
+            target = cls._default_target
         return Address.parse(
             target,
-            default_host=cls.default_host,
-            default_port=cls.default_port,
+            default_host=cls._default_host,
+            default_port=cls._default_port,
         )
 
 
 class _Routing:
-    # TODO: 6.0 - those attributes should be private
-    default_host = "localhost"
-    default_port = 7687
-    default_targets = ": :17601 :17687"
+    _default_host = "localhost"
+    _default_port = 7687
+    _default_targets = ": :17601 :17687"
 
     def __init__(self, initial_addresses):
         self._initial_addresses = initial_addresses
@@ -492,15 +482,15 @@ class _Routing:
         return self._initial_addresses
 
     @classmethod
-    def parse_targets(cls, *targets):
+    def _parse_targets(cls, *targets):
         """Parse a sequence of target strings to produce an address list."""
         targets = " ".join(targets)
         if not targets:
-            targets = cls.default_targets
+            targets = cls._default_targets
         return Address.parse_list(
             targets,
-            default_host=cls.default_host,
-            default_port=cls.default_port,
+            default_host=cls._default_host,
+            default_port=cls._default_port,
         )
 
 
@@ -1330,10 +1320,10 @@ class BoltDriver(_Direct, Driver):
     """
 
     @classmethod
-    def open(cls, target, **config):
+    def _open(cls, target, **config):
         from .io import BoltPool
 
-        address = cls.parse_target(target)
+        address = cls._parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(
             config, PoolConfig, WorkspaceConfig
         )
@@ -1364,10 +1354,10 @@ class Neo4jDriver(_Routing, Driver):
     """
 
     @classmethod
-    def open(cls, *targets, routing_context=None, **config):
+    def _open(cls, *targets, routing_context=None, **config):
         from .io import Neo4jPool
 
-        addresses = cls.parse_targets(*targets)
+        addresses = cls._parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(
             config, PoolConfig, WorkspaceConfig
         )

@@ -22,7 +22,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - Remove deprecated exports from `neo4j`:
   - `log`, `Config`, `PoolConfig`, `SessionConfig`, `WorkspaceConfig` (internal - no replacement)
   - `SummaryNotificationPosition` (use `SummaryInputPosition` instead)
-- `api.Version` has been removed as it's unused now.  
+- `api.Version` has been removed as it's unusedparse_target now.  
   `ServerInfo.protocol_version` now is a `tuple[int, int]` insteadof a `api.Version`.
   This should be drop-in replacement is most cases:
   - `Version` was a sup-type of `tuple[int, int]`
@@ -56,6 +56,16 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
 - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+- Remove undocumented internals
+  - `GraphDatabase`
+    - `.bolt_driver`
+    - `.neo4j_driver`
+  - `BoltDriver` and `Neo4jDriver`
+    - `.open`
+    - `.parse_target`
+    - `.default_host`
+    - `.default_port`
+    - `.default_target`
 
 
 ## Version 5.28
