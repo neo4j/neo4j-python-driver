@@ -21,10 +21,11 @@ from __future__ import annotations
 import typing as t
 from collections.abc import Mapping
 
-from .._warnings import (
-    deprecated,
-    deprecation_warn,
-)
+
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated
+else:
+    from .._warnings import deprecated
 
 
 __all__ = [
@@ -50,15 +51,10 @@ class Graph:
 
     def __init__(self) -> None:
         self._nodes: dict[str, Node] = {}
-        self._legacy_nodes: dict[int, Node] = {}  # TODO: 6.0 - remove
         self._relationships: dict[str, Relationship] = {}
-        # TODO: 6.0 - remove
-        self._legacy_relationships: dict[int, Relationship] = {}
         self._relationship_types: dict[str, type[Relationship]] = {}
-        self._node_set_view = EntitySetView(self._nodes, self._legacy_nodes)
-        self._relationship_set_view = EntitySetView(
-            self._relationships, self._legacy_relationships
-        )
+        self._node_set_view = EntitySetView(self._nodes)
+        self._relationship_set_view = EntitySetView(self._relationships)
 
     @property
     def nodes(self) -> EntitySetView[Node]:
@@ -209,19 +205,10 @@ class EntitySetView(Mapping, t.Generic[_T]):
     def __init__(
         self,
         entity_dict: dict[str, _T],
-        legacy_entity_dict: dict[int, _T],
     ) -> None:
         self._entity_dict = entity_dict
-        self._legacy_entity_dict = legacy_entity_dict  # TODO: 6.0 - remove
 
-    def __getitem__(self, e_id: int | str) -> _T:
-        # TODO: 6.0 - remove this compatibility shim
-        if isinstance(e_id, (int, float, complex)):
-            deprecation_warn(
-                "Accessing entities by an integer id is deprecated, "
-                "use the new style element_id (str) instead"
-            )
-            return self._legacy_entity_dict[e_id]
+    def __getitem__(self, e_id: str) -> _T:
         return self._entity_dict[e_id]
 
     def __len__(self) -> int:

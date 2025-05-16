@@ -75,6 +75,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ERROR_REWRITE_MAP`
     - `client_errors`
     - `transient_errors`
+- Graph type sets (`neo4j.graph.EntitySetView`) can no longer by indexed by legacy `id` (`int`, e.g., `graph.nodes[0]`).  
+  Use the `element_id` instead (`str`, e.g., `graph.nodes["..."]`).
 
 
 ## Version 5.28

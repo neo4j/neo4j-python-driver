@@ -54,11 +54,7 @@ class GraphBuilder:
         start_node_element_id = f"e{start_node_id}"
         end_node_element_id = f"e{end_node_id}"
         self._relationship_counter += 1
-        with pytest.warns(DeprecationWarning):
-            assert start_node_id in self._hydrator.graph.nodes
         assert start_node_element_id in self._hydrator.graph.nodes
-        with pytest.warns(DeprecationWarning):
-            assert end_node_id in self._hydrator.graph.nodes
         assert end_node_element_id in self._hydrator.graph.nodes
 
         self._hydrator.hydrate_relationship(
@@ -363,3 +359,25 @@ def test_copy_path():
     graph1 = path1.graph
     graph2 = path2.graph
     assert graph1 is graph2
+
+
+def test_node_id_access() -> None:
+    assert 0 not in GRAPH.nodes
+    with pytest.raises(KeyError):
+        _ = GRAPH.nodes[0]  # type: ignore # expected to fail
+
+
+def test_node_element_id_access() -> None:
+    assert "e0" in GRAPH.nodes
+    _ = GRAPH.nodes["e0"]
+
+
+def test_relationship_id_access() -> None:
+    assert 0 not in GRAPH.relationships
+    with pytest.raises(KeyError):
+        _ = GRAPH.relationships[0]  # type: ignore # expected to fail
+
+
+def test_relationship_element_id_access() -> None:
+    assert "e0" in GRAPH.relationships
+    _ = GRAPH.relationships["e0"]
