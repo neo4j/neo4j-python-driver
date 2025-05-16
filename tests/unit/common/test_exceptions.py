@@ -334,18 +334,6 @@ def _expected_error_str(
     gql_status: str,
     gql_status_description: str,
 ) -> str:
-    # if not neo4j_code and mode == "gql":
-    #     neo4j_code = "Neo.DatabaseError.General.UnknownError"
-    # if gql_status is None:
-    #     gql_status = "50N42"
-    # if gql_status_description is None:
-    #     desc = "error: general processing exception - unexpected error"
-    #     if mode == "neo4j":
-    #         gql_status_description = f"{desc}. {message}"
-    #     elif mode == "gql":
-    #         gql_status_description = desc
-    #     else:
-    #         raise ValueError(f"Invalid mode {mode!r}")
     return (
         f"{{neo4j_code: {neo4j_code}}} "
         f"{{message: {message}}} "
