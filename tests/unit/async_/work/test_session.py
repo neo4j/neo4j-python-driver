@@ -221,43 +221,6 @@ async def test_session_returns_bookmarks_directly(
 
 
 @pytest.mark.parametrize(
-    "bookmarks", (None, [], ["abc"], ["foo", "bar"], ("1", "two"))
-)
-@mark_async_test
-async def test_session_last_bookmark_is_deprecated(async_fake_pool, bookmarks):
-    if bookmarks is not None:
-        with pytest.warns(DeprecationWarning):
-            session = AsyncSession(
-                async_fake_pool, SessionConfig(bookmarks=bookmarks)
-            )
-    else:
-        session = AsyncSession(
-            async_fake_pool, SessionConfig(bookmarks=bookmarks)
-        )
-    async with session:
-        with pytest.warns(DeprecationWarning):
-            if bookmarks:
-                assert (await session.last_bookmark()) == bookmarks[-1]
-            else:
-                assert (await session.last_bookmark()) is None
-
-
-@pytest.mark.parametrize(
-    "bookmarks", (("foo",), ("foo", "bar"), (), ["foo", "bar"], {"a", "b"})
-)
-@mark_async_test
-async def test_session_bookmarks_as_iterable_is_deprecated(
-    async_fake_pool, bookmarks
-):
-    with pytest.warns(DeprecationWarning):
-        async with AsyncSession(
-            async_fake_pool, SessionConfig(bookmarks=bookmarks)
-        ) as session:
-            ret_bookmarks = (await session.last_bookmarks()).raw_values
-            assert ret_bookmarks == frozenset(bookmarks)
-
-
-@pytest.mark.parametrize(
     ("query", "error_type"),
     (
         (None, ValueError),

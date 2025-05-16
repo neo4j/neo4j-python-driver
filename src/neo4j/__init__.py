@@ -43,10 +43,7 @@ from ._conf import (
 )
 from ._data import Record
 from ._meta import (
-    ExperimentalWarning,
     get_user_agent,
-    preview_warn as _preview_warn,
-    PreviewWarning,
     version as __version__,
 )
 from ._sync.driver import (
@@ -60,6 +57,11 @@ from ._sync.work import (
     Result,
     Session,
     Transaction,
+)
+from ._warnings import (
+    deprecation_warn as _deprecation_warn,
+    preview_warn as _preview_warn,
+    PreviewWarning as _PreviewWarning,
 )
 from ._work import (  # noqa: F401 dynamic attribute
     EagerResult,
@@ -80,8 +82,9 @@ if _t.TYPE_CHECKING:
         GqlStatusObject,  # noqa: TCH004 false positive (dynamic attribute)
         NotificationClassification,  # noqa: TCH004 false positive (dynamic attribute)
     )
+    from ._warnings import PreviewWarning  # noqa: TCH004 false positive (dynamic attribute)
 
-from .addressing import (
+from ._addressing import (
     Address,
     IPv4Address,
     IPv6Address,
@@ -93,7 +96,6 @@ from .api import (
     AuthToken,
     basic_auth,
     bearer_auth,
-    Bookmark,
     Bookmarks,
     custom_auth,
     DEFAULT_DATABASE,
@@ -122,11 +124,9 @@ __all__ = [
     "Auth",
     "AuthToken",
     "BoltDriver",
-    "Bookmark",
     "Bookmarks",
     "Driver",
     "EagerResult",
-    "ExperimentalWarning",
     "GqlStatusObject",
     "GraphDatabase",
     "IPv4Address",
@@ -177,6 +177,14 @@ def __getattr__(name) -> _t.Any:
             stack_level=2,
         )
         return globals()[f"_{name}"]
+    # TODO: 7.0 - remove this
+    if name == "PreviewWarning":
+        _deprecation_warn(
+            f"Importing {name} from `neo4j` is deprecated and will be removed"
+            f"in a future version. Import it from `neo4j.warnings` instead.",
+            stack_level=2,
+        )
+        return _PreviewWarning
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 

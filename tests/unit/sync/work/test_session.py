@@ -221,43 +221,6 @@ def test_session_returns_bookmarks_directly(
 
 
 @pytest.mark.parametrize(
-    "bookmarks", (None, [], ["abc"], ["foo", "bar"], ("1", "two"))
-)
-@mark_sync_test
-def test_session_last_bookmark_is_deprecated(fake_pool, bookmarks):
-    if bookmarks is not None:
-        with pytest.warns(DeprecationWarning):
-            session = Session(
-                fake_pool, SessionConfig(bookmarks=bookmarks)
-            )
-    else:
-        session = Session(
-            fake_pool, SessionConfig(bookmarks=bookmarks)
-        )
-    with session:
-        with pytest.warns(DeprecationWarning):
-            if bookmarks:
-                assert (session.last_bookmark()) == bookmarks[-1]
-            else:
-                assert (session.last_bookmark()) is None
-
-
-@pytest.mark.parametrize(
-    "bookmarks", (("foo",), ("foo", "bar"), (), ["foo", "bar"], {"a", "b"})
-)
-@mark_sync_test
-def test_session_bookmarks_as_iterable_is_deprecated(
-    fake_pool, bookmarks
-):
-    with pytest.warns(DeprecationWarning):
-        with Session(
-            fake_pool, SessionConfig(bookmarks=bookmarks)
-        ) as session:
-            ret_bookmarks = (session.last_bookmarks()).raw_values
-            assert ret_bookmarks == frozenset(bookmarks)
-
-
-@pytest.mark.parametrize(
     ("query", "error_type"),
     (
         (None, ValueError),

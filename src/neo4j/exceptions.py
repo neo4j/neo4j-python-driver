@@ -56,6 +56,8 @@ Driver API Errors
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
+  + ConnectionPoolError
+    + ConnectionAcquisitionTimeoutError
 """
 
 from __future__ import annotations
@@ -64,48 +66,13 @@ import typing as t
 from copy import deepcopy as _deepcopy
 from enum import Enum as _Enum
 
-from ._meta import (
-    deprecated,
-    preview as _preview,
-)
+from ._warnings import preview as _preview
 
 
-__all__ = [
-    "AuthConfigurationError",
-    "AuthError",
-    "BrokenRecordError",
-    "CertificateConfigurationError",
-    "ClientError",
-    "ConfigurationError",
-    "ConstraintError",
-    "CypherSyntaxError",
-    "CypherTypeError",
-    "DatabaseError",
-    "DatabaseUnavailable",
-    "DriverError",
-    "Forbidden",
-    "ForbiddenOnReadOnlyDatabase",
-    "GqlError",
-    "GqlErrorClassification",
-    "IncompleteCommit",
-    "Neo4jError",
-    "NotALeader",
-    "ReadServiceUnavailable",
-    "ResultConsumedError",
-    "ResultError",
-    "ResultFailedError",
-    "ResultNotSingleError",
-    "RoutingServiceUnavailable",
-    "ServiceUnavailable",
-    "SessionError",
-    "SessionExpired",
-    "TokenExpired",
-    "TransactionError",
-    "TransactionNestingError",
-    "TransientError",
-    "UnsupportedServerProduct",
-    "WriteServiceUnavailable",
-]
+if t.TYPE_CHECKING:
+    from typing_extensions import deprecated as _deprecated
+else:
+    from ._warnings import deprecated as _deprecated
 
 
 if t.TYPE_CHECKING:
@@ -138,16 +105,14 @@ if t.TYPE_CHECKING:
 
 
 __all__ = [
-    "CLASSIFICATION_CLIENT",  # TODO: 6.0 - make constant private
-    "CLASSIFICATION_DATABASE",  # TODO: 6.0 - make constant private
-    "CLASSIFICATION_TRANSIENT",  # TODO: 6.0 - make constant private
-    "ERROR_REWRITE_MAP",  # TODO: 6.0 - make constant private
     "AuthConfigurationError",
     "AuthError",
     "BrokenRecordError",
     "CertificateConfigurationError",
     "ClientError",
     "ConfigurationError",
+    "ConnectionAcquisitionTimeoutError",
+    "ConnectionPoolError",
     "ConstraintError",
     "CypherSyntaxError",
     "CypherTypeError",
@@ -156,6 +121,8 @@ __all__ = [
     "DriverError",
     "Forbidden",
     "ForbiddenOnReadOnlyDatabase",
+    "GqlError",
+    "GqlErrorClassification",
     "IncompleteCommit",
     "Neo4jError",
     "NotALeader",
@@ -177,30 +144,30 @@ __all__ = [
 ]
 
 
-CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
-CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
-CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"
+_CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
+_CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
+_CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"
 
 
-ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
+_ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
     # This error can be retried ed. The driver just needs to re-authenticate
     # with the same credentials.
     "Neo.ClientError.Security.AuthorizationExpired": (
-        CLASSIFICATION_TRANSIENT,
+        _CLASSIFICATION_TRANSIENT,
         None,
     ),
     # In 5.0, this error has been re-classified as ClientError.
     # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
     # the driver, too.
     "Neo.TransientError.Transaction.Terminated": (
-        CLASSIFICATION_CLIENT,
+        _CLASSIFICATION_CLIENT,
         "Neo.ClientError.Transaction.Terminated",
     ),
     # In 5.0, this error has been re-classified as ClientError.
     # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
     # the driver, too.
     "Neo.TransientError.Transaction.LockClientStopped": (
-        CLASSIFICATION_CLIENT,
+        _CLASSIFICATION_CLIENT,
         "Neo.ClientError.Transaction.LockClientStopped",
     ),
 }
@@ -557,7 +524,7 @@ class Neo4jError(GqlError):
 
     # TODO: 6.0 - Remove this alias
     @classmethod
-    @deprecated(
+    @_deprecated(
         "Neo4jError.hydrate is deprecated and will be removed in a future "
         "version. It is an internal method and not meant for external use."
     )
@@ -631,11 +598,11 @@ class Neo4jError(GqlError):
         try:
             _, classification, category, title = neo4j_code.split(".")
         except ValueError:
-            classification = CLASSIFICATION_DATABASE
+            classification = _CLASSIFICATION_DATABASE
             category = "General"
             title = "UnknownError"
         else:
-            classification_override, code_override = ERROR_REWRITE_MAP.get(
+            classification_override, code_override = _ERROR_REWRITE_MAP.get(
                 neo4j_code, (None, None)
             )
             if classification_override is not None:
@@ -658,19 +625,19 @@ class Neo4jError(GqlError):
 
     @classmethod
     def _extract_error_class(cls, classification, code) -> type[Neo4jError]:
-        if classification == CLASSIFICATION_CLIENT:
+        if classification == _CLASSIFICATION_CLIENT:
             try:
-                return client_errors[code]
+                return _client_errors[code]
             except KeyError:
                 return ClientError
 
-        elif classification == CLASSIFICATION_TRANSIENT:
+        elif classification == _CLASSIFICATION_TRANSIENT:
             try:
-                return transient_errors[code]
+                return _transient_errors[code]
             except KeyError:
                 return TransientError
 
-        elif classification == CLASSIFICATION_DATABASE:
+        elif classification == _CLASSIFICATION_DATABASE:
             return DatabaseError
 
         else:
@@ -686,7 +653,7 @@ class Neo4jError(GqlError):
         return self._message
 
     @message.setter
-    @deprecated("Altering the message of a Neo4jError is deprecated.")
+    @_deprecated("Altering the message of a Neo4jError is deprecated.")
     def message(self, value: str) -> None:
         self._message = value
 
@@ -702,7 +669,7 @@ class Neo4jError(GqlError):
 
     # TODO: 6.0 - Remove this and all other deprecated setters
     @code.setter
-    @deprecated("Altering the code of a Neo4jError is deprecated.")
+    @_deprecated("Altering the code of a Neo4jError is deprecated.")
     def code(self, value: str) -> None:
         self._neo4j_code = value
 
@@ -712,7 +679,7 @@ class Neo4jError(GqlError):
         return self._classification
 
     @classification.setter
-    @deprecated("Altering the classification of Neo4jError is deprecated.")
+    @_deprecated("Altering the classification of Neo4jError is deprecated.")
     def classification(self, value: str) -> None:
         self._classification = value
 
@@ -722,7 +689,7 @@ class Neo4jError(GqlError):
         return self._category
 
     @category.setter
-    @deprecated("Altering the category of Neo4jError is deprecated.")
+    @_deprecated("Altering the category of Neo4jError is deprecated.")
     def category(self, value: str) -> None:
         self._category = value
 
@@ -732,7 +699,7 @@ class Neo4jError(GqlError):
         return self._title
 
     @title.setter
-    @deprecated("Altering the title of Neo4jError is deprecated.")
+    @_deprecated("Altering the title of Neo4jError is deprecated.")
     def title(self, value: str) -> None:
         self._title = value
 
@@ -742,12 +709,12 @@ class Neo4jError(GqlError):
         return self._metadata
 
     @metadata.setter
-    @deprecated("Altering the metadata of Neo4jError is deprecated.")
+    @_deprecated("Altering the metadata of Neo4jError is deprecated.")
     def metadata(self, value: dict[str, t.Any]) -> None:
         self._metadata = value
 
     # TODO: 6.0 - Remove this alias
-    @deprecated(
+    @_deprecated(
         "Neo4jError.is_retriable is deprecated and will be removed in a "
         "future version. Please use Neo4jError.is_retryable instead."
     )
@@ -787,7 +754,7 @@ class Neo4jError(GqlError):
         )
 
     # TODO: 6.0 - Remove this alias
-    invalidates_all_connections = deprecated(
+    invalidates_all_connections = _deprecated(
         "Neo4jError.invalidates_all_connections is deprecated and will be "
         "removed in a future version. It is an internal method and not meant "
         "for external use."
@@ -819,7 +786,7 @@ class Neo4jError(GqlError):
         return self._neo4j_code.startswith("Neo.ClientError.Security.")
 
     # TODO: 6.0 - Remove this alias
-    is_fatal_during_discovery = deprecated(
+    is_fatal_during_discovery = _deprecated(
         "Neo4jError.is_fatal_during_discovery is deprecated and will be "
         "removed in a future version. It is an internal method and not meant "
         "for external use."
@@ -951,8 +918,7 @@ class ForbiddenOnReadOnlyDatabase(TransientError):
     pass
 
 
-# TODO: 6.0 - Make map private
-client_errors: dict[str, type[Neo4jError]] = {
+_client_errors: dict[str, type[Neo4jError]] = {
     # ConstraintError
     "Neo.ClientError.Schema.ConstraintValidationFailed": ConstraintError,
     "Neo.ClientError.Schema.ConstraintViolation": ConstraintError,
@@ -981,8 +947,7 @@ client_errors: dict[str, type[Neo4jError]] = {
     "Neo.ClientError.Cluster.NotALeader": NotALeader,
 }
 
-# TODO: 6.0 - Make map private
-transient_errors: dict[str, type[Neo4jError]] = {
+_transient_errors: dict[str, type[Neo4jError]] = {
     # DatabaseUnavailableError
     "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailable
 }
@@ -1190,3 +1155,18 @@ class AuthConfigurationError(ConfigurationError):
 # DriverError > ConfigurationError > CertificateConfigurationError
 class CertificateConfigurationError(ConfigurationError):
     """Raised when there is an error with the certificate configuration."""
+
+
+# DriverError > ConnectionPoolError
+class ConnectionPoolError(DriverError):
+    """Raised when the connection pool encounters an error."""
+
+
+# DriverError > ConnectionPoolError > ConnectionAcquisitionTimeoutError
+class ConnectionAcquisitionTimeoutError(ConnectionPoolError):
+    """
+    Raised when no connection became available in time.
+
+    The amount of time is determined by the connection acquisition timeout
+    configuration option.
+    """

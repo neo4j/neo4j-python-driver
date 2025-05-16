@@ -29,9 +29,14 @@ if t.TYPE_CHECKING:
         T_NotificationMinimumSeverity,
     )
 
+from .._addressing import Address
 from .._api import (
+    DRIVER_BOLT,
+    DRIVER_NEO4J,
     NotificationMinimumSeverity,
     RoutingControl,
+    SECURITY_TYPE_SECURE,
+    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     TelemetryAPI,
 )
 from .._async_compat.util import AsyncUtil
@@ -44,9 +49,8 @@ from .._conf import (
     WorkspaceConfig,
 )
 from .._debug import ENABLED as DEBUG_ENABLED
-from .._meta import (
+from .._warnings import (
     deprecation_warn,
-    experimental_warn,
     preview_warn,
     unclosed_resource_warn,
 )
@@ -55,19 +59,14 @@ from .._work import (
     Query,
     unit_of_work,
 )
-from ..addressing import Address
 from ..api import (
     AsyncBookmarkManager,
     Auth,
     BookmarkManager,
     Bookmarks,
-    DRIVER_BOLT,
-    DRIVER_NEO4J,
     parse_neo4j_uri,
     parse_routing_context,
     READ_ACCESS,
-    SECURITY_TYPE_SECURE,
-    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     ServerInfo,
     URI_SCHEME_BOLT,
     URI_SCHEME_BOLT_SECURE,
@@ -1044,8 +1043,8 @@ class AsyncDriver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments are experimental.
-                    They might be changed or removed in any future version
+                    Passing key-word arguments is a preview feature.
+                    It might be changed or removed in any future version
                     without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
@@ -1059,11 +1058,9 @@ class AsyncDriver:
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments to "
-                    "verify_connectivity() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments to verify_connectivity() is a "
+                    "preview feature."
                 )
             session_config = self._read_session_config(config)
             await self._get_server_info(session_config)
@@ -1123,9 +1120,9 @@ class AsyncDriver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments are experimental.
-                    They might be changed or removed in any future version
-                    without prior notice.
+                    Passing key-word arguments is a preview feature.
+                    It might be changed or removed in any future
+                    version without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
@@ -1135,11 +1132,9 @@ class AsyncDriver:
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments to "
-                    "get_server_info() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments to get_server_info() is a "
+                    "preview feature."
                 )
             session_config = self._read_session_config(config)
             return await self._get_server_info(session_config)
@@ -1217,9 +1212,9 @@ class AsyncDriver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments (except ``auth``) are
-                    experimental. They might be changed or removed in any
-                    future version without prior notice.
+                    Passing key-word arguments (except ``auth``) is a preview
+                    feature. It might be changed or removed in any future
+                    version without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
@@ -1231,11 +1226,9 @@ class AsyncDriver:
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments but auth to "
-                    "verify_authentication() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments except 'auth' to "
+                    "verify_authentication() is a preview feature."
                 )
             if "database" not in config:
                 config["database"] = "system"
