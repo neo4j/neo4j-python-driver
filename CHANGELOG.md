@@ -56,6 +56,9 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
 - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+- Change behavior of closed drivers:
+  - Raise `DriverError` on using the closed driver.
+  - Calling `driver.close()` again is now a no-op.
 
 
 ## Version 5.28

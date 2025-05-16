@@ -370,6 +370,8 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer_``
         :rtype: T
 
+        :raises DriverError: if the driver has been closed.
+
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
@@ -383,6 +385,9 @@ Closing a driver will immediately shut down all connections in the pool.
         .. versionchanged:: 5.15
             The ``query_`` parameter now also accepts a :class:`.Query` object
             instead of only :class:`str`.
+
+        .. versionchanged:: 6.0
+            Raise :exc:`DriverError` if the driver has been closed.
 
 
 .. _driver-configuration-ref:
