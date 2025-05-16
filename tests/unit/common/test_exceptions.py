@@ -23,7 +23,6 @@ import traceback
 import pytest
 
 import neo4j.exceptions
-from neo4j import PreviewWarning
 from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
@@ -31,9 +30,9 @@ from neo4j._exceptions import (
 )
 from neo4j._sync.io import Bolt
 from neo4j.exceptions import (
-    CLASSIFICATION_CLIENT,
-    CLASSIFICATION_DATABASE,
-    CLASSIFICATION_TRANSIENT,
+    _CLASSIFICATION_CLIENT,
+    _CLASSIFICATION_DATABASE,
+    _CLASSIFICATION_TRANSIENT,
     ClientError,
     DatabaseError,
     GqlError,
@@ -41,6 +40,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
+from neo4j.warnings import PreviewWarning
 
 
 def test_bolt_error():
@@ -191,7 +191,7 @@ def test_neo4jerror_hydrate_with_no_args():
     error = Neo4jError._hydrate_neo4j()
 
     assert isinstance(error, DatabaseError)
-    assert error.classification == CLASSIFICATION_DATABASE
+    assert error.classification == _CLASSIFICATION_DATABASE
     assert error.category == "General"
     assert error.title == "UnknownError"
     assert error.metadata == {}
@@ -206,7 +206,7 @@ def test_neo4jerror_hydrate_with_message_and_code_rubbish():
     )
 
     assert isinstance(error, DatabaseError)
-    assert error.classification == CLASSIFICATION_DATABASE
+    assert error.classification == _CLASSIFICATION_DATABASE
     assert error.category == "General"
     assert error.title == "UnknownError"
     assert error.metadata == {}
@@ -222,7 +222,7 @@ def test_neo4jerror_hydrate_with_message_and_code_database():
     )
 
     assert isinstance(error, DatabaseError)
-    assert error.classification == CLASSIFICATION_DATABASE
+    assert error.classification == _CLASSIFICATION_DATABASE
     assert error.category == "General"
     assert error.title == "UnknownError"
     assert error.metadata == {}
@@ -238,28 +238,28 @@ def test_neo4jerror_hydrate_with_message_and_code_transient():
     )
 
     assert isinstance(error, TransientError)
-    assert error.classification == CLASSIFICATION_TRANSIENT
+    assert error.classification == _CLASSIFICATION_TRANSIENT
     assert error.category == "General"
     assert error.title == "TestError"
     assert error.metadata == {}
     assert error.message == "Test error message"
-    assert error.code == f"Neo.{CLASSIFICATION_TRANSIENT}.General.TestError"
+    assert error.code == f"Neo.{_CLASSIFICATION_TRANSIENT}.General.TestError"
     _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 
 def test_neo4jerror_hydrate_with_message_and_code_client():
     error = Neo4jError._hydrate_neo4j(
         message="Test error message",
-        code=f"Neo.{CLASSIFICATION_CLIENT}.General.TestError",
+        code=f"Neo.{_CLASSIFICATION_CLIENT}.General.TestError",
     )
 
     assert isinstance(error, ClientError)
-    assert error.classification == CLASSIFICATION_CLIENT
+    assert error.classification == _CLASSIFICATION_CLIENT
     assert error.category == "General"
     assert error.title == "TestError"
     assert error.metadata == {}
     assert error.message == "Test error message"
-    assert error.code == f"Neo.{CLASSIFICATION_CLIENT}.General.TestError"
+    assert error.code == f"Neo.{_CLASSIFICATION_CLIENT}.General.TestError"
     _assert_default_gql_error_attrs_from_neo4j_error(error)
 
 

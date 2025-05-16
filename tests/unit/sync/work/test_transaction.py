@@ -141,7 +141,7 @@ def test_transaction_run_takes_no_query_object(fake_connection):
     tx = Transaction(
         fake_connection, 2, None, on_closed, on_error, on_cancel, None
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         tx.run(Query("RETURN 1"))
 
 
