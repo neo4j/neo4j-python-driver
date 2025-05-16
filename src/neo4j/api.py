@@ -65,7 +65,6 @@ __all__ = [
     "AsyncBookmarkManager",
     "Auth",
     "AuthToken",
-    "Bookmark",
     "BookmarkManager",
     "Bookmarks",
     "ServerInfo",
@@ -232,51 +231,6 @@ def custom_auth(
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
-
-
-# TODO: 6.0 - remove this class
-@deprecated("Use the `Bookmarks` class instead.")
-class Bookmark:
-    """
-    A Bookmark object contains an immutable list of bookmark string values.
-
-    :param values: ASCII string values
-
-    .. deprecated:: 5.0
-        `Bookmark` will be removed in version 6.0.
-        Use :class:`Bookmarks` instead.
-    """
-
-    def __init__(self, *values: str) -> None:
-        if values:
-            bookmarks = []
-            for ix in values:
-                try:
-                    if ix:
-                        ix.encode("ascii")
-                        bookmarks.append(ix)
-                except UnicodeEncodeError as e:
-                    raise ValueError(f"The value {ix} is not ASCII") from e
-            self._values = frozenset(bookmarks)
-        else:
-            self._values = frozenset()
-
-    def __repr__(self) -> str:
-        """
-        Represent the container as str.
-
-        :returns: repr string with sorted values
-        """
-        values = ", ".join([f"'{ix}'" for ix in sorted(self._values)])
-        return f"<Bookmark values={{{values}}}>"
-
-    def __bool__(self) -> bool:
-        return bool(self._values)
-
-    @property
-    def values(self) -> frozenset:
-        """:returns: immutable list of bookmark string values"""
-        return self._values
 
 
 class Bookmarks:

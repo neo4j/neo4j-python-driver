@@ -31,13 +31,6 @@ from operator import xor as xor_operator
 
 from ._codec.hydration import BrokenHydrationObject
 from ._conf import iter_items
-
-
-if t.TYPE_CHECKING:
-    from typing_extensions import deprecated
-else:
-    from ._meta import deprecated
-
 from ._spatial import Point
 from .exceptions import BrokenRecordError
 from .graph import (
@@ -149,14 +142,6 @@ class Record(tuple, Mapping):
             return None
         else:
             return self._super_getitem_single(index)
-
-    # TODO: 6.0 - remove
-    @deprecated("This method is deprecated and will be removed in the future.")
-    def __getslice__(self, start, stop):  # noqa: PLW3201 will be removed
-        key = slice(start, stop)
-        keys = self.__keys[key]
-        values = tuple(self)[key]
-        return self.__class__(zip(keys, values, strict=True))
 
     def get(self, key: str, default: object = None) -> t.Any:
         """

@@ -173,8 +173,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         :returns: a new :class:`neo4j.AsyncResult` object
         """
         if isinstance(query, Query):
-            # TODO: 6.0 - make this a TypeError and remove lint exception
-            raise ValueError("Query object is only supported for session.run")  # noqa: TRY004
+            raise TypeError("Query object is only supported for session.run")
 
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")

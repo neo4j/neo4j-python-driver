@@ -936,8 +936,6 @@ Session
 
     .. automethod:: last_bookmarks
 
-    .. automethod:: last_bookmark
-
     .. automethod:: begin_transaction
 
     .. automethod:: read_transaction
@@ -984,12 +982,17 @@ Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
 See :meth:`.Session.last_bookmarks` or :meth:`.AsyncSession.last_bookmarks` for
 more information.
 
+:Type: ``None``, ``neo4j.Bookmarks``
+
 :Default: :data:`None`
 
 .. deprecated:: 5.0
     Alternatively, an iterable of strings can be passed. This usage is
     deprecated and will be removed in a future release. Please use a
     :class:`neo4j.Bookmarks` object instead.
+
+.. versionchanged:: 6.0
+    Only accepts :class:`neo4j.Bookmarks` objects or :data:`None`.
 
 
 .. _database-ref:
@@ -1940,9 +1943,6 @@ Bookmarks
     :members:
     :special-members: __bool__, __add__, __iter__
 
-.. autoclass:: neo4j.Bookmark
-    :members:
-
 
 BookmarkManager
 ===============
@@ -2118,6 +2118,10 @@ Client-side errors
     * :class:`neo4j.exceptions.AuthConfigurationError`
 
     * :class:`neo4j.exceptions.CertificateConfigurationError`
+
+  * :class:`neo4j.exceptions.ConnectionPoolError`
+
+    * :class:`neo4j.exceptions.ConnectionAcquisitionTimeoutError`
 
 
 .. autoexception:: neo4j.exceptions.DriverError()

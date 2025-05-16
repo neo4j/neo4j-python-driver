@@ -27,7 +27,7 @@ from neo4j._sync.io import Bolt
 from neo4j._sync.io._pool import IOPool
 from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
-    ClientError,
+    ConnectionAcquisitionTimeoutError,
     ServiceUnavailable,
 )
 
@@ -206,7 +206,7 @@ def test_pool_max_conn_pool_size(fake_connection_generator):
         address = neo4j.Address(("127.0.0.1", 7687))
         pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
-        with pytest.raises(ClientError):
+        with pytest.raises(ConnectionAcquisitionTimeoutError):
             pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
 
