@@ -35,7 +35,6 @@ from .._api import (
     RoutingControl,
     TelemetryAPI,
 )
-from .._async_compat.util import Util
 from .._conf import (
     Config,
     ConfigurationError,
@@ -535,23 +534,9 @@ class Driver:
     def __del__(
         self,
         _unclosed_resource_warn=unclosed_resource_warn,
-        _is_async_code=Util.is_async_code,
-        _deprecation_warn=deprecation_warn,
     ):
         if not self._closed:
             _unclosed_resource_warn(self)
-        # TODO: 6.0 - remove this
-        if _is_async_code:
-            return
-        if not self._closed:
-            _deprecation_warn(
-                "Relying on Driver's destructor to close the session "
-                "is deprecated. Please make sure to close the session. "
-                "Use it as a context (`with` statement) or make sure to "
-                "call `.close()` explicitly. Future versions of the "
-                "driver will not close drivers automatically."
-            )
-            self.close()
 
     def _check_state(self):
         if self._closed:
