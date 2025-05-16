@@ -75,6 +75,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ERROR_REWRITE_MAP`
     - `client_errors`
     - `transient_errors`
+- Make `Summary.summary_notifications` a `tuple` instead of a `list` and type it with `Sequence` to signify that it
+  should be treated as immutable.
 
 
 ## Version 5.28
