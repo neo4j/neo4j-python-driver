@@ -28,7 +28,23 @@ if t.TYPE_CHECKING:
 __all__ = [
     "Neo4jDeprecationWarning",
     "Neo4jWarning",
+    "PreviewWarning",
 ]
+
+
+class PreviewWarning(Warning):
+    """
+    A driver feature in preview has been used.
+
+    It might be changed without following the deprecation policy.
+    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. versionadded:: 5.8
+
+    .. versionchanged:: 6.0
+        Moved from ``neo4j.PreviewWarning`` to
+        ``neo4j.warnings.PreviewWarning``.
+    """
 
 
 class Neo4jWarning(Warning):
@@ -38,8 +54,11 @@ class Neo4jWarning(Warning):
     Which notifications trigger a warning can be controlled by a
     configuration option: :ref:`driver-warn-notification-severity-ref`
 
-    **This is experimental** (see :ref:`filter-warnings-ref`).
-    It might be changed or removed any time even without prior notice.
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     :param notification: The notification that triggered the warning.
     :param query: The query for which the notification was sent.
@@ -72,8 +91,11 @@ class Neo4jDeprecationWarning(Neo4jWarning, DeprecationWarning):
         This warning is a subclass of :class:`DeprecationWarning`.
         This means that Python will not show this warning by default.
 
-    **This is experimental** (see :ref:`filter-warnings-ref`).
-    It might be changed or removed any time even without prior notice.
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     :param notification: The notification that triggered the warning.
 

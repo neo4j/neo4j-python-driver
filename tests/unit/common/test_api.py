@@ -20,6 +20,7 @@ import itertools
 
 import pytest
 
+import neo4j._api
 import neo4j.api
 from neo4j.addressing import Address
 from neo4j.exceptions import ConfigurationError
@@ -27,145 +28,6 @@ from neo4j.exceptions import ConfigurationError
 
 standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
-
-
-def test_bookmark_is_deprecated() -> None:
-    with pytest.deprecated_call():
-        neo4j.Bookmark()
-
-
-def test_bookmark_initialization_with_no_values() -> None:
-    with pytest.deprecated_call():
-        bookmark = neo4j.Bookmark()
-    assert bookmark.values == frozenset()
-    assert bool(bookmark) is False
-    assert repr(bookmark) == "<Bookmark values={}>"
-
-
-@pytest.mark.parametrize(
-    ("test_input", "expected_values", "expected_bool", "expected_repr"),
-    [
-        (
-            (None,),
-            frozenset(),
-            False,
-            "<Bookmark values={}>",
-        ),
-        (
-            (None, None),
-            frozenset(),
-            False,
-            "<Bookmark values={}>",
-        ),
-        (
-            ("bookmark1", None),
-            frozenset({"bookmark1"}),
-            True,
-            "<Bookmark values={'bookmark1'}>",
-        ),
-        (
-            ("bookmark1", None, "bookmark2", None),
-            frozenset({"bookmark1", "bookmark2"}),
-            True,
-            "<Bookmark values={'bookmark1', 'bookmark2'}>",
-        ),
-        (
-            (None, "bookmark1", None, "bookmark2", None, None, "bookmark3"),
-            frozenset({"bookmark1", "bookmark2", "bookmark3"}),
-            True,
-            "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>",
-        ),
-    ],
-)
-def test_bookmark_initialization_with_values_none(
-    test_input, expected_values, expected_bool, expected_repr
-) -> None:
-    with pytest.deprecated_call():
-        bookmark = neo4j.Bookmark(*test_input)
-    assert bookmark.values == expected_values
-    assert bool(bookmark) is expected_bool
-    assert repr(bookmark) == expected_repr
-
-
-@pytest.mark.parametrize(
-    ("test_input", "expected_values", "expected_bool", "expected_repr"),
-    [
-        (
-            ("",),
-            frozenset(),
-            False,
-            "<Bookmark values={}>",
-        ),
-        (
-            ("", ""),
-            frozenset(),
-            False,
-            "<Bookmark values={}>",
-        ),
-        (
-            ("bookmark1", ""),
-            frozenset({"bookmark1"}),
-            True,
-            "<Bookmark values={'bookmark1'}>",
-        ),
-        (
-            ("bookmark1", "", "bookmark2", ""),
-            frozenset({"bookmark1", "bookmark2"}),
-            True,
-            "<Bookmark values={'bookmark1', 'bookmark2'}>",
-        ),
-        (
-            ("", "bookmark1", "", "bookmark2", "", "", "bookmark3"),
-            frozenset({"bookmark1", "bookmark2", "bookmark3"}),
-            True,
-            "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>",
-        ),
-    ],
-)
-def test_bookmark_initialization_with_values_empty_string(
-    test_input, expected_values, expected_bool, expected_repr
-) -> None:
-    with pytest.deprecated_call():
-        bookmark = neo4j.Bookmark(*test_input)
-    assert bookmark.values == expected_values
-    assert bool(bookmark) is expected_bool
-    assert repr(bookmark) == expected_repr
-
-
-@pytest.mark.parametrize(
-    ("test_input", "expected_values", "expected_bool", "expected_repr"),
-    [
-        (
-            ("bookmark1",),
-            frozenset({"bookmark1"}),
-            True,
-            "<Bookmark values={'bookmark1'}>",
-        ),
-        (
-            ("bookmark1", "bookmark2", "bookmark3"),
-            frozenset({"bookmark1", "bookmark2", "bookmark3"}),
-            True,
-            "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>",
-        ),
-        (
-            standard_ascii,
-            frozenset(standard_ascii),
-            True,
-            "<Bookmark values={{'{values}'}}>".format(
-                values="', '".join(standard_ascii)
-            ),
-        ),
-    ],
-)
-def test_bookmark_initialization_with_valid_strings(
-    test_input, expected_values, expected_bool, expected_repr
-) -> None:
-    with pytest.deprecated_call():
-        bookmark = neo4j.Bookmark(*test_input)
-    assert bookmark.values == expected_values
-    assert bool(bookmark) is expected_bool
-    assert repr(bookmark) == expected_repr
-
 
 _bm_input_mark = pytest.mark.parametrize(
     ("test_input", "expected"),
@@ -175,14 +37,6 @@ _bm_input_mark = pytest.mark.parametrize(
         (("bookmark1", chr(129)), ValueError),
     ],
 )
-
-
-@_bm_input_mark
-def test_bookmark_initialization_with_invalid_strings(
-    test_input: tuple[str], expected
-) -> None:
-    with pytest.raises(expected), pytest.warns(DeprecationWarning):
-        neo4j.Bookmark(*test_input)
 
 
 @_bm_input_mark
@@ -319,38 +173,38 @@ def test_serverinfo_with_metadata(
     [
         (
             "bolt://localhost:7676",
-            neo4j.api.DRIVER_BOLT,
-            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            neo4j._api.DRIVER_BOLT,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
             None,
         ),
         (
             "bolt+ssc://localhost:7676",
-            neo4j.api.DRIVER_BOLT,
-            neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            neo4j._api.DRIVER_BOLT,
+            neo4j._api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
             None,
         ),
         (
             "bolt+s://localhost:7676",
-            neo4j.api.DRIVER_BOLT,
-            neo4j.api.SECURITY_TYPE_SECURE,
+            neo4j._api.DRIVER_BOLT,
+            neo4j._api.SECURITY_TYPE_SECURE,
             None,
         ),
         (
             "neo4j://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
             None,
         ),
         (
             "neo4j+ssc://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
             None,
         ),
         (
             "neo4j+s://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_SECURE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_SECURE,
             None,
         ),
         ("undefined://localhost:7676", None, None, ConfigurationError),
@@ -358,8 +212,8 @@ def test_serverinfo_with_metadata(
         ("://localhost:7676", None, None, ConfigurationError),
         (
             "bolt+routing://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
             ConfigurationError,
         ),
         ("bolt://username@localhost:7676", None, None, ConfigurationError),
