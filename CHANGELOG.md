@@ -64,7 +64,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - Remove `ExperimentalWarning` and turn the few left instances of it into `PreviewWarning`.
   - Deprecate importing `PreviewWarning` from `neo4j`.  
     Import it from `neo4j.warnings` instead.
-- Make undocumented internal constants private:
+- Make undocumented internal constants and helper functions private:
   - `neo4j.api`
     - `DRIVER_BOLT`
     - `DRIVER_NEO4J`
@@ -78,6 +78,10 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ERROR_REWRITE_MAP`
     - `client_errors`
     - `transient_errors`
+  - `neo4j.spatial`
+    - `hydrate_point`
+    - `dehydrate_point`
+    - `point_type`
 - Raise `ConfigurationError` instead of ignoring the routing context (URI query parameters) when creating a direct
   driver ("bolt[+s[sc]]://" scheme).
 

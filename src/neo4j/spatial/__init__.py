@@ -16,75 +16,129 @@
 
 """Spatial data types for interchange with the DBMS."""
 
-from __future__ import annotations
+from __future__ import annotations as _
+
+import typing as _t
+from threading import Lock as _Lock
 
 
 __all__ = [
     "CartesianPoint",
     "Point",
     "WGS84Point",
-    "dehydrate_point",
-    "hydrate_point",
-    "point_type",
 ]
 
-import typing as t
-from functools import wraps
 
-from .._codec.hydration.v1 import spatial as _hydration
+# SRID to subclass mappings
+_srid_table: dict[int, tuple[type[Point], int]] = {}
+_srid_table_lock = _Lock()
 
 
-if t.TYPE_CHECKING:
-    from typing_extensions import deprecated
+class Point(tuple[float, ...]):
+    """
+    Base-class for spatial data.
+
+    A point within a geometric space. This type is generally used via its
+    subclasses and should not be instantiated directly unless there is no
+    subclass defined for the required SRID.
+
+    :param iterable:
+        An iterable of coordinates.
+        All items will be converted to :class:`float`.
+    :type iterable: Iterable[float]
+    """
+
+    #: The SRID (spatial reference identifier) of the spatial data.
+    #: A number that identifies the coordinate system the spatial type is to
+    #: be interpreted in.
+    srid: int | None
+
+    if _t.TYPE_CHECKING:
+
+        @property
+        def x(self) -> float: ...
+
+        @property
+        def y(self) -> float: ...
+
+        @property
+        def z(self) -> float: ...
+
+    def __new__(cls, iterable: _t.Iterable[float]) -> Point:
+        return tuple.__new__(cls, map(float, iterable))
+
+    def __repr__(self) -> str:
+        return f"POINT({' '.join(map(str, self))})"
+
+    def __eq__(self, other: object) -> bool:
+        try:
+            return type(self) is type(other) and tuple(self) == tuple(
+                _t.cast(Point, other)
+            )
+        except (AttributeError, TypeError):
+            return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(tuple(self))
+
+
+def _point_type(
+    name: str, fields: tuple[str, str, str], srid_map: dict[int, int]
+) -> type[Point]:
+    """Dynamically create a Point subclass."""
+
+    def srid(self):
+        try:
+            return srid_map[len(self)]
+        except KeyError:
+            return None
+
+    attributes = {"srid": property(srid)}
+
+    for index, subclass_field in enumerate(fields):
+
+        def accessor(self, i=index, f=subclass_field):
+            try:
+                return self[i]
+            except IndexError:
+                raise AttributeError(f) from None
+
+        for field_alias in (subclass_field, "xyz"[index]):
+            attributes[field_alias] = property(accessor)
+
+    cls = _t.cast(type[Point], type(name, (Point,), attributes))
+
+    with _srid_table_lock:
+        for dim, srid_ in srid_map.items():
+            _srid_table[srid_] = (cls, dim)
+
+    return cls
+
+
+# Point subclass definitions
+if _t.TYPE_CHECKING:
+
+    class CartesianPoint(Point): ...
 else:
-    from .._warnings import deprecated
+    CartesianPoint = _point_type(
+        "CartesianPoint", ("x", "y", "z"), {2: 7203, 3: 9157}
+    )
 
-from .._spatial import (
-    CartesianPoint,
-    Point,
-    point_type as _point_type,
-    WGS84Point,
-)
+if _t.TYPE_CHECKING:
 
+    class WGS84Point(Point):
+        @property
+        def longitude(self) -> float: ...
 
-# TODO: 6.0 - remove
-@deprecated(
-    "hydrate_point is considered an internal function and will be removed in "
-    "a future version"
-)
-def hydrate_point(srid, *coordinates):
-    """
-    Create a new instance of a Point subclass from a raw set of fields.
+        @property
+        def latitude(self) -> float: ...
 
-    The subclass chosen is determined by the
-    given SRID; a ValueError will be raised if no such
-    subclass can be found.
-    """
-    return _hydration.hydrate_point(srid, *coordinates)
-
-
-# TODO: 6.0 - remove
-@deprecated(
-    "hydrate_point is considered an internal function and will be removed in "
-    "a future version"
-)
-@wraps(_hydration.dehydrate_point)
-def dehydrate_point(value):
-    """
-    Dehydrator for Point data.
-
-    :param value:
-    :type value: Point
-    :returns:
-    """
-    return _hydration.dehydrate_point(value)
-
-
-# TODO: 6.0 - remove
-@deprecated(
-    "point_type is considered an internal function and will be removed in "
-    "a future version"
-)
-@wraps(_point_type)
-def point_type(name, fields, srid_map):
-    return _point_type(name, fields, srid_map)
+        @property
+        def height(self) -> float: ...
+else:
+    WGS84Point = _point_type(
+        "WGS84Point", ("longitude", "latitude", "height"), {2: 4326, 3: 4979}
+    )

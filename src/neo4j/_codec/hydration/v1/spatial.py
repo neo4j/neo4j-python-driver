@@ -14,9 +14,9 @@
 # limitations under the License.
 
 
-from ...._spatial import (
+from ....spatial import (
+    _srid_table,
     Point,
-    srid_table,
 )
 from ...packstream import Structure
 
@@ -29,7 +29,7 @@ def hydrate_point(srid, *coordinates):
     raised if no such subclass can be found.
     """
     try:
-        point_class, dim = srid_table[srid]
+        point_class, dim = _srid_table[srid]
     except KeyError:
         point = Point(coordinates)
         point.srid = srid

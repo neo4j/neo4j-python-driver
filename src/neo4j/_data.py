@@ -31,13 +31,13 @@ from operator import xor as xor_operator
 
 from ._codec.hydration import BrokenHydrationObject
 from ._conf import iter_items
-from ._spatial import Point
 from .exceptions import BrokenRecordError
 from .graph import (
     Node,
     Path,
     Relationship,
 )
+from .spatial import Point
 from .time import (
     Date,
     DateTime,
