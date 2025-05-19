@@ -25,6 +25,11 @@ if t.TYPE_CHECKING:
 
 
 __all__ = [
+    "DRIVER_BOLT",
+    "DRIVER_NEO4J",
+    "SECURITY_TYPE_NOT_SECURE",
+    "SECURITY_TYPE_SECURE",
+    "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE",
     "NotificationCategory",
     "NotificationClassification",
     "NotificationDisabledCategory",
@@ -34,6 +39,16 @@ __all__ = [
     "RoutingControl",
     "TelemetryAPI",
 ]
+
+
+DRIVER_BOLT: te.Final[str] = "DRIVER_BOLT"
+DRIVER_NEO4J: te.Final[str] = "DRIVER_NEO4J"
+
+SECURITY_TYPE_NOT_SECURE: te.Final[str] = "SECURITY_TYPE_NOT_SECURE"
+SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: te.Final[str] = (
+    "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
+)
+SECURITY_TYPE_SECURE: te.Final[str] = "SECURITY_TYPE_SECURE"
 
 
 class NotificationMinimumSeverity(str, Enum):

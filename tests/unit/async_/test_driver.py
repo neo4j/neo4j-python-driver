@@ -33,13 +33,9 @@ from neo4j import (
     AsyncGraphDatabase,
     AsyncNeo4jDriver,
     AsyncResult,
-    ExperimentalWarning,
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
-    PreviewWarning,
     Query,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
@@ -68,6 +64,7 @@ from neo4j.exceptions import (
     ConfigurationError,
     DriverError,
 )
+from neo4j.warnings import PreviewWarning
 
 from ..._async_compat import (
     AsyncTestDecorators,
@@ -105,12 +102,12 @@ async def test_direct_driver_constructor(
 ):
     uri = protocol + host + port + params
     if params:
-        with pytest.warns(DeprecationWarning, match="routing context"):
-            driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
+        with pytest.raises(ConfigurationError, match="Routing context"):
+            AsyncGraphDatabase.driver(uri, auth=auth_token)
     else:
         driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
-    assert isinstance(driver, AsyncBoltDriver)
-    await driver.close()
+        await driver.close()
+        assert isinstance(driver, AsyncBoltDriver)
 
 
 @pytest.mark.parametrize(
@@ -149,17 +146,6 @@ async def test_routing_driver_constructor(
         ({"encrypted": False}, ConfigurationError, '"encrypted"'),
         ({"encrypted": True}, ConfigurationError, '"encrypted"'),
         (
-            {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
-            ConfigurationError,
-            '"encrypted"',
-        ),
-        ({"trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, '"trust"'),
-        (
-            {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
-            ConfigurationError,
-            '"trust"',
-        ),
-        (
             {"encrypted": True, "trusted_certificates": TrustAll()},
             ConfigurationError,
             '"encrypted"',
@@ -191,20 +177,13 @@ async def test_routing_driver_constructor(
 async def test_driver_config_error_uri_conflict(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
-    def driver_builder(expect_failure=False):
-        if "trust" in test_config and not expect_failure:
-            with pytest.warns(DeprecationWarning, match="trust"):
-                return AsyncGraphDatabase.driver(test_uri, **test_config)
-        else:
-            return AsyncGraphDatabase.driver(test_uri, **test_config)
-
     if "+" in test_uri:
         # `+s` and `+ssc` are shorthand syntax for not having to configure the
         # encryption behavior of the driver. Specifying both is invalid.
         with pytest.raises(expected_failure, match=expected_failure_message):
-            driver_builder(expect_failure=True)
+            AsyncGraphDatabase.driver(test_uri, **test_config)
     else:
-        driver = driver_builder()
+        driver = AsyncGraphDatabase.driver(test_uri, **test_config)
         await driver.close()
 
 
@@ -219,21 +198,6 @@ async def test_driver_config_error_uri_conflict(
 def test_invalid_protocol(test_uri):
     with pytest.raises(ConfigurationError, match="scheme"):
         AsyncGraphDatabase.driver(test_uri)
-
-
-@pytest.mark.parametrize(
-    ("test_config", "expected_failure", "expected_failure_message"),
-    (
-        ({"trust": 1}, ConfigurationError, "The config setting `trust`"),
-        ({"trust": True}, ConfigurationError, "The config setting `trust`"),
-        ({"trust": None}, ConfigurationError, "The config setting `trust`"),
-    ),
-)
-def test_driver_trust_config_error(
-    test_config, expected_failure, expected_failure_message
-):
-    with pytest.raises(expected_failure, match=expected_failure_message):
-        AsyncGraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
 
 
 @pytest.mark.parametrize(
@@ -344,7 +308,7 @@ async def test_verify_connectivity_parameters_are_deprecated(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             await driver.verify_connectivity(**kwargs)
     finally:
         await driver.close()
@@ -373,7 +337,7 @@ async def test_get_server_info_parameters_are_experimental(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             await driver.get_server_info(**kwargs)
     finally:
         await driver.close()

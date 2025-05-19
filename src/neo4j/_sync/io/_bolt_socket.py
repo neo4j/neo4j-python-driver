@@ -23,7 +23,7 @@ import struct
 import typing as t
 from contextlib import suppress
 
-from ... import addressing
+from ..._addressing import Address
 from ..._async_compat.network import (
     BoltSocketBase,
     NetworkUtil,
@@ -44,11 +44,8 @@ if t.TYPE_CHECKING:
 
     import typing_extensions as te
 
+    from ..._addressing import ResolvedAddress
     from ..._deadline import Deadline
-    from ...addressing import (
-        Address,
-        ResolvedAddress,
-    )
 
 
 log = logging.getLogger("neo4j.io")
@@ -59,7 +56,7 @@ class HandshakeCtx:
     ctx: str
     deadline: Deadline
     local_port: int
-    resolved_address: addressing.ResolvedAddress
+    resolved_address: ResolvedAddress
     full_response: bytearray = dataclasses.field(default_factory=bytearray)
 
 
@@ -315,7 +312,7 @@ class BoltSocket(BoltSocketBase):
         # https://docs.python.org/2/library/errno.html
 
         resolved_addresses = NetworkUtil.resolve_address(
-            addressing.Address(address), resolver=custom_resolver
+            Address(address), resolver=custom_resolver
         )
         for resolved_address in resolved_addresses:
             deadline_timeout = deadline.to_timeout()

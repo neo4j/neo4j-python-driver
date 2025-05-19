@@ -29,9 +29,14 @@ if t.TYPE_CHECKING:
         T_NotificationMinimumSeverity,
     )
 
+from .._addressing import Address
 from .._api import (
+    DRIVER_BOLT,
+    DRIVER_NEO4J,
     NotificationMinimumSeverity,
     RoutingControl,
+    SECURITY_TYPE_SECURE,
+    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     TelemetryAPI,
 )
 from .._async_compat.util import Util
@@ -44,9 +49,8 @@ from .._conf import (
     WorkspaceConfig,
 )
 from .._debug import ENABLED as DEBUG_ENABLED
-from .._meta import (
+from .._warnings import (
     deprecation_warn,
-    experimental_warn,
     preview_warn,
     unclosed_resource_warn,
 )
@@ -55,21 +59,14 @@ from .._work import (
     Query,
     unit_of_work,
 )
-from ..addressing import Address
 from ..api import (
     Auth,
     BookmarkManager,
     Bookmarks,
-    DRIVER_BOLT,
-    DRIVER_NEO4J,
     parse_neo4j_uri,
     parse_routing_context,
     READ_ACCESS,
-    SECURITY_TYPE_SECURE,
-    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     ServerInfo,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     URI_SCHEME_BOLT,
     URI_SCHEME_BOLT_SECURE,
     URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
@@ -137,10 +134,6 @@ class GraphDatabase:
             liveness_check_timeout: float | None = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
-            trust: (
-                te.Literal["TRUST_ALL_CERTIFICATES"]
-                | te.Literal["TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"]
-            ) = ...,
             resolver: (
                 t.Callable[[Address], t.Iterable[Address]]
                 | t.Callable[[Address], t.Union[t.Iterable[Address]]]
@@ -216,20 +209,6 @@ class GraphDatabase:
                     _StaticClientCertificateProvider(client_certificate)
                 )
 
-            # TODO: 6.0 - remove "trust" config option
-            if "trust" in config and config["trust"] not in {
-                TRUST_ALL_CERTIFICATES,
-                TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-            }:
-                raise ConfigurationError(
-                    "The config setting `trust` values are {!r}".format(
-                        [
-                            TRUST_ALL_CERTIFICATES,
-                            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-                        ]
-                    )
-                )
-
             if "trusted_certificates" in config and not isinstance(
                 config["trusted_certificates"], TrustStore
             ):
@@ -246,16 +225,14 @@ class GraphDatabase:
                 SECURITY_TYPE_SECURE,
             } and (
                 "encrypted" in config
-                or "trust" in config
                 or "trusted_certificates" in config
                 or "ssl_context" in config
             ):
-                # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(
-                    'The config settings "encrypted", "trust", '
-                    '"trusted_certificates", and "ssl_context" can only be '
-                    "used with the URI schemes {!r}. Use the other URI "
-                    "schemes {!r} for setting encryption settings.".format(
+                    'The config settings "encrypted", "trusted_certificates", '
+                    'and "ssl_context" can only be used with the URI schemes '
+                    "{!r}. Use the other URI schemes {!r} for setting "
+                    "encryption settings.".format(
                         [
                             URI_SCHEME_BOLT,
                             URI_SCHEME_NEO4J,
@@ -302,18 +279,11 @@ class GraphDatabase:
             assert driver_type in {DRIVER_BOLT, DRIVER_NEO4J}
             if driver_type == DRIVER_BOLT:
                 if parse_routing_context(parsed.query):
-                    deprecation_warn(
-                        'Creating a direct driver ("bolt://" scheme) with '
-                        "routing context (URI parameters) is deprecated. They "
-                        "will be ignored. This will raise an error in a "
-                        f'future release. Given URI "{uri}"',
-                        stack_level=2,
+                    raise ConfigurationError(
+                        "Routing context (URI query parameters) are not "
+                        "supported by direct drivers "
+                        f'("bolt[+s[sc]]://" scheme). Given URI: {uri!r}.'
                     )
-                    # TODO: 6.0 - raise instead of warning
-                    # raise ValueError(
-                    #     'Routing parameters are not supported with scheme '
-                    #     '"bolt". Given URI "{}".'.format(uri)
-                    # )
                 return cls.bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
@@ -1071,8 +1041,8 @@ class Driver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments are experimental.
-                    They might be changed or removed in any future version
+                    Passing key-word arguments is a preview feature.
+                    It might be changed or removed in any future version
                     without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
@@ -1090,11 +1060,9 @@ class Driver:
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments to "
-                    "verify_connectivity() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments to verify_connectivity() is a "
+                    "preview feature."
                 )
             session_config = self._read_session_config(config)
             self._get_server_info(session_config)
@@ -1154,9 +1122,9 @@ class Driver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments are experimental.
-                    They might be changed or removed in any future version
-                    without prior notice.
+                    Passing key-word arguments is a preview feature.
+                    It might be changed or removed in any future
+                    version without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
@@ -1170,11 +1138,9 @@ class Driver:
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments to "
-                    "get_server_info() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments to get_server_info() is a "
+                    "preview feature."
                 )
             session_config = self._read_session_config(config)
             return self._get_server_info(session_config)
@@ -1257,9 +1223,9 @@ class Driver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments (except ``auth``) are
-                    experimental. They might be changed or removed in any
-                    future version without prior notice.
+                    Passing key-word arguments (except ``auth``) is a preview
+                    feature. It might be changed or removed in any future
+                    version without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
@@ -1275,11 +1241,9 @@ class Driver:
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments but auth to "
-                    "verify_authentication() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments except 'auth' to "
+                    "verify_authentication() is a preview feature."
                 )
             if "database" not in config:
                 config["database"] = "system"

@@ -18,14 +18,14 @@ import typing as t
 
 import pytest
 
-import neo4j
+from neo4j.warnings import PreviewWarning
 
 
 if t.TYPE_CHECKING:
     from neo4j import NotificationDisabledClassification
 
 
-with pytest.warns(neo4j.PreviewWarning, match="GQLSTATUS"):
+with pytest.warns(PreviewWarning, match="GQLSTATUS"):
     from neo4j import NotificationDisabledClassification
 
 

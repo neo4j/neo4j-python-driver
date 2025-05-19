@@ -21,7 +21,7 @@ from __future__ import annotations
 import typing as t
 from collections.abc import Mapping
 
-from .._meta import (
+from .._warnings import (
     deprecated,
     deprecation_warn,
 )

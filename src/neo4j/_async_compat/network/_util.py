@@ -18,7 +18,10 @@ import asyncio
 import logging
 import socket
 
-from ... import addressing
+from ..._addressing import (
+    Address,
+    ResolvedAddress,
+)
 from ..util import AsyncUtil
 
 
@@ -34,7 +37,7 @@ def _resolved_addresses_from_info(info, host_name):
             continue
         if addr not in resolved:
             resolved.append(addr)
-            yield addressing.ResolvedAddress(addr, host_name=host_name)
+            yield ResolvedAddress(addr, host_name=host_name)
 
 
 class AsyncNetworkUtil:
@@ -89,14 +92,14 @@ class AsyncNetworkUtil:
         :param resolver: optional customer resolver function to be
                          called before regular DNS resolution
         """
-        if isinstance(address, addressing.ResolvedAddress):
+        if isinstance(address, ResolvedAddress):
             yield address
             return
 
         log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
             addresses_resolved = map(
-                addressing.Address,
+                Address,
                 await AsyncUtil.callback(resolver, address),
             )
             for address_resolved in addresses_resolved:
@@ -171,13 +174,13 @@ class NetworkUtil:
         :param resolver: optional customer resolver function to be
                          called before regular DNS resolution
         """
-        if isinstance(address, addressing.ResolvedAddress):
+        if isinstance(address, ResolvedAddress):
             yield address
             return
 
         log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
-            addresses_resolved = map(addressing.Address, resolver(address))
+            addresses_resolved = map(Address, resolver(address))
             for address_resolved in addresses_resolved:
                 log.debug(
                     "[#0000]  _: <RESOLVE> custom resolver out: %s",
