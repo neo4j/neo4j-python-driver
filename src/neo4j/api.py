@@ -47,8 +47,6 @@ __all__ = [
     "DEFAULT_DATABASE",
     "READ_ACCESS",
     "SYSTEM_DATABASE",
-    "TRUST_ALL_CERTIFICATES",
-    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
     "URI_SCHEME_BOLT",
     "URI_SCHEME_BOLT_ROUTING",
     "URI_SCHEME_BOLT_SECURE",
@@ -85,12 +83,6 @@ URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: te.Final[str] = "neo4j+ssc"
 URI_SCHEME_NEO4J_SECURE: te.Final[str] = "neo4j+s"
 
 URI_SCHEME_BOLT_ROUTING: te.Final[str] = "bolt+routing"
-
-# TODO: 6.0 - remove TRUST constants
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES: te.Final[str] = (
-    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
-)
-TRUST_ALL_CERTIFICATES: te.Final[str] = "TRUST_ALL_CERTIFICATES"
 
 SYSTEM_DATABASE: te.Final[str] = "system"
 DEFAULT_DATABASE: te.Final[None] = None  # Must be a non string hashable value

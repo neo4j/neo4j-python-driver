@@ -17,8 +17,8 @@
 from __future__ import annotations
 
 import contextlib
-import re
 import traceback
+import typing as t
 
 import pytest
 
@@ -318,100 +318,237 @@ def test_error_rewrite(code, expected_cls, expected_code, mode):
     assert error.code == expected_code
     assert error.message == message
     assert error.is_retryable() is expected_retryable
-    with pytest.warns(DeprecationWarning, match=".*is_retryable.*"):
-        assert error.is_retriable() is expected_retryable
+
+
+UNKNOWN_NEO4J_CODE: t.Final[str] = "Neo.DatabaseError.General.UnknownError"
+UNKNOWN_MESSAGE: t.Final[str] = "An unknown error occurred"
+UNKNOWN_GQL_STATUS: t.Final[str] = "50N42"
+UNKNOWN_GQL_DESCRIPTION: t.Final[str] = (
+    "error: general processing exception - unexpected error"
+)
+
+
+def _expected_error_str(
+    neo4j_code: str,
+    message: str,
+    gql_status: str,
+    gql_status_description: str,
+) -> str:
+    return (
+        f"{{neo4j_code: {neo4j_code}}} "
+        f"{{message: {message}}} "
+        f"{{gql_status: {gql_status}}} "
+        f"{{gql_status_description: {gql_status_description}}}"
+    )
 
 
 @pytest.mark.parametrize(
-    ("code", "message", "expected_cls", "expected_str", "mode"),
+    ("code", "message", "expected_cls", "expected_str"),
     (
-        # values that behave the same in both modes
-        *(
-            (
-                *x,
-                mode,
-            )
-            for mode in ("neo4j", "gql")
-            for x in (
-                (
-                    "Neo.ClientError.General.UnknownError",
-                    "Test error message",
-                    ClientError,
-                    (
-                        "{code: Neo.ClientError.General.UnknownError} "
-                        "{message: Test error message}"
-                    ),
-                ),
-                (
-                    None,
-                    "Test error message",
-                    DatabaseError,
-                    (
-                        "{code: Neo.DatabaseError.General.UnknownError} "
-                        "{message: Test error message}"
-                    ),
-                ),
-                (
-                    "Neo.ClientError.General.UnknownError",
-                    None,
-                    ClientError,
-                    (
-                        "{code: Neo.ClientError.General.UnknownError} "
-                        "{message: An unknown error occurred}"
-                    ),
-                ),
-            )
-        ),
-        # neo4j error specific behavior
         (
-            "",
+            "Neo.ClientError.General.UnknownError",
             "Test error message",
-            DatabaseError,
-            (
-                "{code: Neo.DatabaseError.General.UnknownError} "
-                "{message: Test error message}"
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                "Test error message",
+                UNKNOWN_GQL_STATUS,
+                f"{UNKNOWN_GQL_DESCRIPTION}. Test error message",
             ),
-            "neo4j",
         ),
-        (
-            "Neo.ClientError.General.UnknownError",
-            "",
-            ClientError,
-            "{code: Neo.ClientError.General.UnknownError} "
-            "{message: An unknown error occurred}",
-            "neo4j",
-        ),
-        # gql error specific behavior
         (
             "",
             "Test error message",
             DatabaseError,
-            "{code: } {message: Test error message}",
-            "gql",
+            _expected_error_str(
+                "Neo.DatabaseError.General.UnknownError",
+                "Test error message",
+                UNKNOWN_GQL_STATUS,
+                f"{UNKNOWN_GQL_DESCRIPTION}. Test error message",
+            ),
+        ),
+        (
+            None,
+            "Test error message",
+            DatabaseError,
+            _expected_error_str(
+                "Neo.DatabaseError.General.UnknownError",
+                "Test error message",
+                UNKNOWN_GQL_STATUS,
+                f"{UNKNOWN_GQL_DESCRIPTION}. Test error message",
+            ),
         ),
         (
             "Neo.ClientError.General.UnknownError",
             "",
             ClientError,
-            "{code: Neo.ClientError.General.UnknownError} {message: }",
-            "gql",
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                UNKNOWN_MESSAGE,
+                UNKNOWN_GQL_STATUS,
+                f"{UNKNOWN_GQL_DESCRIPTION}. An unknown error occurred",
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            None,
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                UNKNOWN_MESSAGE,
+                UNKNOWN_GQL_STATUS,
+                f"{UNKNOWN_GQL_DESCRIPTION}. An unknown error occurred",
+            ),
         ),
     ),
 )
 def test_neo4j_error_from_server_as_str(
-    code, message, expected_cls, expected_str, mode
-):
-    if mode == "neo4j":
-        error = Neo4jError._hydrate_neo4j(code=code, message=message)
-    elif mode == "gql":
-        error = Neo4jError._hydrate_gql(
-            gql_status="12345",
-            description="error: things - they hit the fan",
-            neo4j_code=code,
-            message=message,
-        )
-    else:
-        raise ValueError(f"Invalid mode {mode!r}")
+    code, message, expected_cls, expected_str
+) -> None:
+    error = Neo4jError._hydrate_neo4j(code=code, message=message)
+
+    assert type(error) is expected_cls
+    assert str(error) == expected_str
+
+
+@pytest.mark.parametrize(
+    (
+        "code",
+        "message",
+        "gql_status",
+        "gql_description",
+        "expected_cls",
+        "expected_str",
+    ),
+    (
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            "12345",
+            "status description",
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                "Test error message",
+                "12345",
+                "status description",
+            ),
+        ),
+        (
+            None,
+            "Test error message",
+            "12345",
+            "status description",
+            DatabaseError,
+            _expected_error_str(
+                "Neo.DatabaseError.General.UnknownError",
+                "Test error message",
+                "12345",
+                "status description",
+            ),
+        ),
+        (
+            "",
+            "Test error message",
+            "12345",
+            "status description",
+            DatabaseError,
+            _expected_error_str(
+                "",
+                "Test error message",
+                "12345",
+                "status description",
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            None,
+            "12345",
+            "status description",
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                UNKNOWN_MESSAGE,
+                UNKNOWN_GQL_STATUS,
+                UNKNOWN_GQL_DESCRIPTION,
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "",
+            "12345",
+            "status description",
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                "",
+                "12345",
+                "status description",
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            None,
+            "status description",
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                UNKNOWN_MESSAGE,
+                UNKNOWN_GQL_STATUS,
+                UNKNOWN_GQL_DESCRIPTION,
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            "",
+            "status description",
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                "Test error message",
+                "",
+                "status description",
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            "12345",
+            None,
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                UNKNOWN_MESSAGE,
+                UNKNOWN_GQL_STATUS,
+                UNKNOWN_GQL_DESCRIPTION,
+            ),
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            "12345",
+            "",
+            ClientError,
+            _expected_error_str(
+                "Neo.ClientError.General.UnknownError",
+                "Test error message",
+                "12345",
+                "",
+            ),
+        ),
+    ),
+)
+def test_gql_error_from_server_as_str(
+    code, message, gql_status, gql_description, expected_cls, expected_str
+) -> None:
+    error = Neo4jError._hydrate_gql(
+        gql_status=gql_status,
+        description=gql_description,
+        neo4j_code=code,
+        message=message,
+    )
 
     assert type(error) is expected_cls
     assert str(error) == expected_str
@@ -419,10 +556,10 @@ def test_neo4j_error_from_server_as_str(
 
 @pytest.mark.parametrize("cls", (Neo4jError, ClientError))
 def test_neo4j_error_from_code_as_str(cls):
-    error = cls("Generated somewhere in the driver")
+    error = cls("Instantiated by the user")
 
     assert type(error) is cls
-    assert str(error) == "Generated somewhere in the driver"
+    assert str(error) == "Instantiated by the user"
 
 
 def _make_test_gql_error(
@@ -506,9 +643,17 @@ def test_cause_chain_extension_only_gql_cause() -> None:
     _assert_error_chain(root, [root, root_cause, None])
 
 
+def _make_client_error(msg: str) -> ClientError:
+    error = Neo4jError._hydrate_neo4j(
+        code="Neo.ClientError.Testing.YouMessedUp", message=msg
+    )
+    assert isinstance(error, ClientError)
+    return error
+
+
 @pytest.mark.parametrize("local_cause_method", ("raise", "set"))
 def test_cause_chain_extension_only_local_cause(local_cause_method) -> None:
-    root_cause = ClientError("rootCause")
+    root_cause = _make_client_error("rootCause")
     root = _make_test_gql_error("root")
     _set_error_cause(root, root_cause, local_cause_method)
 
@@ -520,7 +665,7 @@ def test_cause_chain_extension_multiple_causes(local_cause_method) -> None:
     root4_cause2 = _make_test_gql_error("r4c2")
     root4_cause1 = _make_test_gql_error("r4c1", cause=root4_cause2)
     root4 = _make_test_gql_error("root4", cause=root4_cause1)
-    root3 = ClientError("root3")
+    root3 = _make_client_error("root3")
     _set_error_cause(root3, root4, local_cause_method)
     root2_cause3 = _make_test_gql_error("r2c3")
     root2_cause2 = _make_test_gql_error("r2c2", cause=root2_cause3)
@@ -547,17 +692,17 @@ def test_cause_chain_extension_multiple_causes(local_cause_method) -> None:
 def test_cause_chain_extension_circular_local_causes(
     local_cause_method,
 ) -> None:
-    root6 = ClientError("root6")
+    root6 = _make_client_error("root6")
     root5 = _make_test_gql_error("root5")
     _set_error_cause(root5, root6, local_cause_method)
     root4_cause = _make_test_gql_error("r4c")
     root4 = _make_test_gql_error("root4", cause=root4_cause)
     _set_error_cause(root4, root5, local_cause_method)
-    root3 = ClientError("root3")
+    root3 = _make_client_error("root3")
     _set_error_cause(root3, root4, local_cause_method)
     root2 = _make_test_gql_error("root2")
     _set_error_cause(root2, root3, local_cause_method)
-    root1 = ClientError("root1")
+    root1 = _make_client_error("root1")
     _set_error_cause(root1, root2, local_cause_method)
     _set_error_cause(root6, root1, local_cause_method)
 
@@ -736,15 +881,9 @@ def test_gql_hydration(metadata, attributes):
 )
 def test_deprecated_setter(attr):
     obj = object()
-    error = Neo4jError()
+    error = Neo4jError._hydrate_neo4j()
 
-    with pytest.warns(
-        DeprecationWarning,
-        match=re.compile(
-            rf".*\baltering\b.*\b{attr}\b.*",
-            flags=re.IGNORECASE,
-        ),
-    ):
+    with pytest.raises(AttributeError):
         setattr(error, attr, obj)
 
-    assert getattr(error, attr) is obj
+    assert getattr(error, attr) is not obj

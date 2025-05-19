@@ -22,15 +22,11 @@ import typing as t
 from ..._async_compat.util import AsyncUtil
 from ..._auth_management import to_auth_dict
 from ..._conf import WorkspaceConfig
-from ..._warnings import (
-    deprecation_warn,
-    unclosed_resource_warn,
-)
+from ..._warnings import unclosed_resource_warn
 from ...api import Bookmarks
 from ...exceptions import (
     ServiceUnavailable,
     SessionError,
-    SessionExpired,
 )
 from .._debug import AsyncNonConcurrentMethodChecker
 from ..io import (
@@ -74,29 +70,15 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         self._closed = False
         super().__init__()
 
+    # Copy globals as function locals to make sure that they are available
+    # during Python shutdown when the Session is destroyed.
     def __del__(
         self,
         _unclosed_resource_warn=unclosed_resource_warn,
-        _is_async_code=AsyncUtil.is_async_code,
-        _deprecation_warn=deprecation_warn,
     ):
         if self._closed:
             return
         _unclosed_resource_warn(self)
-        # TODO: 6.0 - remove this
-        if _is_async_code:
-            return
-        try:
-            _deprecation_warn(
-                "Relying on AsyncSession's destructor to close the session "
-                "is deprecated. Please make sure to close the session. Use it "
-                "as a context (`with` statement) or make sure to call "
-                "`.close()` explicitly. Future versions of the driver will "
-                "not close sessions automatically."
-            )
-            self.close()
-        except (OSError, ServiceUnavailable, SessionExpired):
-            pass
 
     async def __aenter__(self) -> AsyncWorkspace:
         return self

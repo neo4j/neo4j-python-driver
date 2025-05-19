@@ -25,8 +25,6 @@ from ._warnings import (
 )
 from .api import (
     DEFAULT_DATABASE,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     WRITE_ACCESS,
 )
 from .exceptions import ConfigurationError
@@ -342,13 +340,6 @@ class Config(Mapping, metaclass=ConfigType):
 
     def __iter__(self):
         return iter(self.keys())
-
-
-def _trust_to_trusted_certificates(pool_config, trust):
-    if trust == TRUST_SYSTEM_CA_SIGNED_CERTIFICATES:
-        pool_config.trusted_certificates = TrustSystemCAs()
-    elif trust == TRUST_ALL_CERTIFICATES:
-        pool_config.trusted_certificates = TrustAll()
 
 
 class WorkspaceConfig(Config):
