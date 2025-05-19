@@ -22,7 +22,7 @@ import typing as t
 from ..._async_compat.util import AsyncUtil
 from ..._auth_management import to_auth_dict
 from ..._conf import WorkspaceConfig
-from ..._meta import unclosed_resource_warn
+from ..._warnings import unclosed_resource_warn
 from ...api import Bookmarks
 from ...exceptions import (
     ServiceUnavailable,

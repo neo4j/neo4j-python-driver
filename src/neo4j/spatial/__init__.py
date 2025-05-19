@@ -37,7 +37,7 @@ from .._codec.hydration.v1 import spatial as _hydration
 if t.TYPE_CHECKING:
     from typing_extensions import deprecated
 else:
-    from .._meta import deprecated
+    from .._warnings import deprecated
 
 from .._spatial import (
     CartesianPoint,

@@ -14,12 +14,12 @@
 # limitations under the License.
 
 
-import neo4j
+from neo4j.warnings import PreviewWarning
 
 from ._warning_check import warning_check
 
 
-with warning_check(neo4j.PreviewWarning, r".*\bGQLSTATUS\b.*"):
+with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
     from neo4j import NotificationDisabledClassification
 
 
