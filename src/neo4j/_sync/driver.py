@@ -31,11 +31,14 @@ if t.TYPE_CHECKING:
 
 from .._addressing import Address
 from .._api import (
+    DRIVER_BOLT,
+    DRIVER_NEO4J,
     NotificationMinimumSeverity,
     RoutingControl,
+    SECURITY_TYPE_SECURE,
+    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     TelemetryAPI,
 )
-from .._async_compat.util import Util
 from .._conf import (
     Config,
     ConfigurationError,
@@ -45,9 +48,8 @@ from .._conf import (
     WorkspaceConfig,
 )
 from .._debug import ENABLED as DEBUG_ENABLED
-from .._meta import (
+from .._warnings import (
     deprecation_warn,
-    experimental_warn,
     preview_warn,
     unclosed_resource_warn,
 )
@@ -60,16 +62,10 @@ from ..api import (
     Auth,
     BookmarkManager,
     Bookmarks,
-    DRIVER_BOLT,
-    DRIVER_NEO4J,
     parse_neo4j_uri,
     parse_routing_context,
     READ_ACCESS,
-    SECURITY_TYPE_SECURE,
-    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     ServerInfo,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     URI_SCHEME_BOLT,
     URI_SCHEME_BOLT_SECURE,
     URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
@@ -84,7 +80,10 @@ from ..auth_management import (
     ClientCertificate,
     ClientCertificateProvider,
 )
-from ..exceptions import Neo4jError
+from ..exceptions import (
+    DriverError,
+    Neo4jError,
+)
 from .auth_management import _StaticClientCertificateProvider
 from .bookmark_manager import (
     Neo4jBookmarkManager,
@@ -134,10 +133,6 @@ class GraphDatabase:
             liveness_check_timeout: float | None = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
-            trust: (
-                te.Literal["TRUST_ALL_CERTIFICATES"]
-                | te.Literal["TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"]
-            ) = ...,
             resolver: (
                 t.Callable[[Address], t.Iterable[Address]]
                 | t.Callable[[Address], t.Union[t.Iterable[Address]]]
@@ -213,20 +208,6 @@ class GraphDatabase:
                     _StaticClientCertificateProvider(client_certificate)
                 )
 
-            # TODO: 6.0 - remove "trust" config option
-            if "trust" in config and config["trust"] not in {
-                TRUST_ALL_CERTIFICATES,
-                TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-            }:
-                raise ConfigurationError(
-                    "The config setting `trust` values are {!r}".format(
-                        [
-                            TRUST_ALL_CERTIFICATES,
-                            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-                        ]
-                    )
-                )
-
             if "trusted_certificates" in config and not isinstance(
                 config["trusted_certificates"], TrustStore
             ):
@@ -243,16 +224,14 @@ class GraphDatabase:
                 SECURITY_TYPE_SECURE,
             } and (
                 "encrypted" in config
-                or "trust" in config
                 or "trusted_certificates" in config
                 or "ssl_context" in config
             ):
-                # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(
-                    'The config settings "encrypted", "trust", '
-                    '"trusted_certificates", and "ssl_context" can only be '
-                    "used with the URI schemes {!r}. Use the other URI "
-                    "schemes {!r} for setting encryption settings.".format(
+                    'The config settings "encrypted", "trusted_certificates", '
+                    'and "ssl_context" can only be used with the URI schemes '
+                    "{!r}. Use the other URI schemes {!r} for setting "
+                    "encryption settings.".format(
                         [
                             URI_SCHEME_BOLT,
                             URI_SCHEME_NEO4J,
@@ -299,18 +278,11 @@ class GraphDatabase:
             assert driver_type in {DRIVER_BOLT, DRIVER_NEO4J}
             if driver_type == DRIVER_BOLT:
                 if parse_routing_context(parsed.query):
-                    deprecation_warn(
-                        'Creating a direct driver ("bolt://" scheme) with '
-                        "routing context (URI parameters) is deprecated. They "
-                        "will be ignored. This will raise an error in a "
-                        f'future release. Given URI "{uri}"',
-                        stack_level=2,
+                    raise ConfigurationError(
+                        "Routing context (URI query parameters) are not "
+                        "supported by direct drivers "
+                        f'("bolt[+s[sc]]://" scheme). Given URI: {uri!r}.'
                     )
-                    # TODO: 6.0 - raise instead of warning
-                    # raise ValueError(
-                    #     'Routing parameters are not supported with scheme '
-                    #     '"bolt". Given URI "{}".'.format(uri)
-                    # )
                 return cls.bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
@@ -535,33 +507,13 @@ class Driver:
     def __del__(
         self,
         _unclosed_resource_warn=unclosed_resource_warn,
-        _is_async_code=Util.is_async_code,
-        _deprecation_warn=deprecation_warn,
     ):
         if not self._closed:
             _unclosed_resource_warn(self)
-        # TODO: 6.0 - remove this
-        if _is_async_code:
-            return
-        if not self._closed:
-            _deprecation_warn(
-                "Relying on Driver's destructor to close the session "
-                "is deprecated. Please make sure to close the session. "
-                "Use it as a context (`with` statement) or make sure to "
-                "call `.close()` explicitly. Future versions of the "
-                "driver will not close drivers automatically."
-            )
-            self.close()
 
     def _check_state(self):
         if self._closed:
-            # TODO: 6.0 - raise the error
-            # raise DriverError("Driver closed")
-            deprecation_warn(
-                "Using a driver after it has been closed is deprecated. "
-                "Future versions of the driver will raise an error.",
-                stack_level=3,
-            )
+            raise DriverError("Driver closed")
 
     @property
     def encrypted(self) -> bool:
@@ -613,6 +565,11 @@ class Driver:
                 key-word arguments.
 
             :returns: new :class:`neo4j.Session` object
+
+            :raises DriverError: if the driver has been closed.
+
+            .. versionchanged:: 6.0
+                Raise :exc:`DriverError` if the driver has been closed.
             """
             if "warn_notification_severity" in config:
                 # Would work just fine, but we don't want to introduce yet
@@ -650,9 +607,8 @@ class Driver:
             spawned from it (such as sessions or transactions) while calling
             this method. Failing to do so results in unspecified behavior.
         """
-        # TODO: 6.0 - NOOP if already closed
-        # if self._closed:
-        #     return
+        if self._closed:
+            return
         try:
             self._pool.close()
         except asyncio.CancelledError:
@@ -916,6 +872,8 @@ class Driver:
         :returns: the result of the ``result_transformer_``
         :rtype: T
 
+        :raises DriverError: if the driver has been closed.
+
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
@@ -929,6 +887,9 @@ class Driver:
         .. versionchanged:: 5.15
             The ``query_`` parameter now also accepts a :class:`.Query` object
             instead of only :class:`str`.
+
+        .. versionchanged:: 6.0
+            Raise :exc:`DriverError` if the driver has been closed.
         '''  # noqa: E501 example code isn't too long
         self._check_state()
         invalid_kwargs = [
@@ -1065,26 +1026,28 @@ class Driver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments are experimental.
-                    They might be changed or removed in any future version
+                    Passing key-word arguments is a preview feature.
+                    It might be changed or removed in any future version
                     without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
+            :raises DriverError: if the driver has been closed.
 
             .. versionchanged:: 5.0
                 The undocumented return value has been removed.
                 If you need information about the remote server, use
                 :meth:`get_server_info` instead.
+
+            .. versionchanged:: 6.0
+                Raise :exc:`DriverError` if the driver has been closed.
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments to "
-                    "verify_connectivity() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments to verify_connectivity() is a "
+                    "preview feature."
                 )
             session_config = self._read_session_config(config)
             self._get_server_info(session_config)
@@ -1144,23 +1107,25 @@ class Driver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments are experimental.
-                    They might be changed or removed in any future version
-                    without prior notice.
+                    Passing key-word arguments is a preview feature.
+                    It might be changed or removed in any future
+                    version without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
+            :raises DriverError: if the driver has been closed.
 
             .. versionadded:: 5.0
+
+            .. versionchanged:: 6.0
+                Raise :exc:`DriverError` if the driver has been closed.
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments to "
-                    "get_server_info() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments to get_server_info() is a "
+                    "preview feature."
                 )
             session_config = self._read_session_config(config)
             return self._get_server_info(session_config)
@@ -1169,15 +1134,20 @@ class Driver:
         """
         Check if the server or cluster supports multi-databases.
 
-        :returns: Returns true if the server or cluster the driver connects to
-            supports multi-databases, otherwise false.
-
         .. note::
             Feature support query based solely on the Bolt protocol version.
             The feature might still be disabled on the server side even if this
             function return :data:`True`. It just guarantees that the driver
             won't throw a :exc:`.ConfigurationError` when trying to use this
             driver feature.
+
+        :returns: Returns true if the server or cluster the driver connects to
+            supports multi-databases, otherwise false.
+
+        :raises DriverError: if the driver has been closed.
+
+        .. versionchanged:: 6.0
+            Raise :exc:`DriverError` if the driver has been closed.
         """
         self._check_state()
         session_config = self._read_session_config({})
@@ -1238,25 +1208,27 @@ class Driver:
                 :meth:`session`.
 
                 .. warning::
-                    All configuration key-word arguments (except ``auth``) are
-                    experimental. They might be changed or removed in any
-                    future version without prior notice.
+                    Passing key-word arguments (except ``auth``) is a preview
+                    feature. It might be changed or removed in any future
+                    version without prior notice.
 
             :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
+            :raises DriverError: if the driver has been closed.
 
             .. versionadded:: 5.8
 
             .. versionchanged:: 5.14 Stabilized from experimental.
+
+            .. versionchanged:: 6.0
+                Raise :exc:`DriverError` if the driver has been closed.
             """
             self._check_state()
             if config:
-                experimental_warn(
-                    "All configuration key-word arguments but auth to "
-                    "verify_authentication() are experimental. They might be "
-                    "changed or removed in any future version without prior "
-                    "notice."
+                preview_warn(
+                    "Passing key-word arguments except 'auth' to "
+                    "verify_authentication() is a preview feature."
                 )
             if "database" not in config:
                 config["database"] = "system"
@@ -1280,10 +1252,6 @@ class Driver:
         """
         Check if the remote supports connection re-authentication.
 
-        :returns: Returns true if the server or cluster the driver connects to
-            supports re-authentication of existing connections, otherwise
-            false.
-
         .. note::
             Feature support query based solely on the Bolt protocol version.
             The feature might still be disabled on the server side even if this
@@ -1291,7 +1259,16 @@ class Driver:
             won't throw a :exc:`.ConfigurationError` when trying to use this
             driver feature.
 
+        :returns: Returns true if the server or cluster the driver connects to
+            supports re-authentication of existing connections, otherwise
+            false.
+
+        :raises DriverError: if the driver has been closed.
+
         .. versionadded:: 5.8
+
+        .. versionchanged:: 6.0
+            Raise :exc:`DriverError` if the driver has been closed.
         """
         self._check_state()
         session_config = self._read_session_config({})

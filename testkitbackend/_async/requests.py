@@ -37,6 +37,7 @@ from neo4j.auth_management import (
     AsyncClientCertificateProvider,
     ExpiringAuth,
 )
+from neo4j.warnings import PreviewWarning
 
 from .. import (
     fromtestkit,
@@ -222,7 +223,7 @@ async def new_driver(backend, data):
 
     expected_warnings.append(
         (
-            neo4j.PreviewWarning,
+            PreviewWarning,
             r"notification warnings are a preview feature\.",
         )
     )

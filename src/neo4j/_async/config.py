@@ -20,9 +20,7 @@ import typing as t
 
 from .._async_compat.concurrency import AsyncLock
 from .._conf import (
-    _trust_to_trusted_certificates,
     Config,
-    DeprecatedAlternative,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
@@ -56,13 +54,6 @@ class AsyncPoolConfig(Config):
     connection_timeout = 30.0  # seconds
     # The maximum amount of time to wait for a TCP connection to be
     # established.
-
-    #: Trust
-    trust = DeprecatedAlternative(
-        "trusted_certificates", _trust_to_trusted_certificates
-    )
-    # Specify how to determine the authenticity of encryption certificates
-    # provided by the Neo4j instance on connection.
 
     #: Custom Resolver
     resolver = None
