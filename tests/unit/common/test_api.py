@@ -20,6 +20,7 @@ import itertools
 
 import pytest
 
+import neo4j._api
 import neo4j.api
 from neo4j.addressing import Address
 from neo4j.exceptions import ConfigurationError
@@ -172,38 +173,38 @@ def test_serverinfo_with_metadata(
     [
         (
             "bolt://localhost:7676",
-            neo4j.api.DRIVER_BOLT,
-            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            neo4j._api.DRIVER_BOLT,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
             None,
         ),
         (
             "bolt+ssc://localhost:7676",
-            neo4j.api.DRIVER_BOLT,
-            neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            neo4j._api.DRIVER_BOLT,
+            neo4j._api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
             None,
         ),
         (
             "bolt+s://localhost:7676",
-            neo4j.api.DRIVER_BOLT,
-            neo4j.api.SECURITY_TYPE_SECURE,
+            neo4j._api.DRIVER_BOLT,
+            neo4j._api.SECURITY_TYPE_SECURE,
             None,
         ),
         (
             "neo4j://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
             None,
         ),
         (
             "neo4j+ssc://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
             None,
         ),
         (
             "neo4j+s://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_SECURE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_SECURE,
             None,
         ),
         ("undefined://localhost:7676", None, None, ConfigurationError),
@@ -211,8 +212,8 @@ def test_serverinfo_with_metadata(
         ("://localhost:7676", None, None, ConfigurationError),
         (
             "bolt+routing://localhost:7676",
-            neo4j.api.DRIVER_NEO4J,
-            neo4j.api.SECURITY_TYPE_NOT_SECURE,
+            neo4j._api.DRIVER_NEO4J,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
             ConfigurationError,
         ),
         ("bolt://username@localhost:7676", None, None, ConfigurationError),
@@ -229,9 +230,9 @@ def test_uri_scheme(
 ) -> None:
     if expected_error:
         with pytest.raises(expected_error):
-            neo4j.api.parse_neo4j_uri(test_input)
+            neo4j._api.parse_neo4j_uri(test_input)
     else:
-        driver_type, security_type, _parsed = neo4j.api.parse_neo4j_uri(
+        driver_type, security_type, _parsed = neo4j._api.parse_neo4j_uri(
             test_input
         )
         assert driver_type == expected_driver_type
@@ -239,15 +240,15 @@ def test_uri_scheme(
 
 
 def test_parse_routing_context() -> None:
-    context = neo4j.api.parse_routing_context(query="name=molly&color=white")
+    context = neo4j._api.parse_routing_context(query="name=molly&color=white")
     assert context == {"name": "molly", "color": "white"}
 
 
 def test_parse_routing_context_should_error_when_value_missing() -> None:
     with pytest.raises(ConfigurationError):
-        neo4j.api.parse_routing_context("name=&color=white")
+        neo4j._api.parse_routing_context("name=&color=white")
 
 
 def test_parse_routing_context_should_error_when_key_duplicate() -> None:
     with pytest.raises(ConfigurationError):
-        neo4j.api.parse_routing_context("name=molly&name=white")
+        neo4j._api.parse_routing_context("name=molly&name=white")

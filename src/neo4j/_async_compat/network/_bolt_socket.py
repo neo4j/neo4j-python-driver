@@ -53,13 +53,13 @@ from ..shims import wait_for
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
-    from ..._async.io import AsyncBolt
-    from ..._io import BoltProtocolVersion
-    from ..._sync.io import Bolt
-    from ...addressing import (
+    from ..._addressing import (
         Address,
         ResolvedAddress,
     )
+    from ..._async.io import AsyncBolt
+    from ..._io import BoltProtocolVersion
+    from ..._sync.io import Bolt
 
 
 log = logging.getLogger("neo4j.io")

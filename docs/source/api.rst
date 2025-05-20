@@ -370,6 +370,8 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer_``
         :rtype: T
 
+        :raises DriverError: if the driver has been closed.
+
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
@@ -383,6 +385,9 @@ Closing a driver will immediately shut down all connections in the pool.
         .. versionchanged:: 5.15
             The ``query_`` parameter now also accepts a :class:`.Query` object
             instead of only :class:`str`.
+
+        .. versionchanged:: 6.0
+            Raise :exc:`DriverError` if the driver has been closed.
 
 
 .. _driver-configuration-ref:
@@ -401,7 +406,6 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`max-connection-pool-size-ref`
 + :ref:`max-transaction-retry-time-ref`
 + :ref:`resolver-ref`
-+ :ref:`trust-ref`
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`client-certificate-ref`
@@ -566,39 +570,6 @@ For example:
 
 :Type: ``Callable`` or  :data:`None`
 :Default: :data:`None`
-
-
-.. _trust-ref:
-
-``trust``
----------
-Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
-
-This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
-
-This setting does not have any effect if ``encrypted`` is set to ``False`` or a
-custom ``ssl_context`` is configured.
-
-:Type: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``, ``neo4j.TRUST_ALL_CERTIFICATES``
-
-.. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
-
-   Trust any server certificate (default). This ensures that communication
-   is encrypted but does not verify the server certificate against a
-   certificate authority. This option is primarily intended for use with
-   the default auto-generated server certificate.
-
-.. py:attribute:: neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-
-   Trust server certificates that can be verified against the system
-   certificate authority. This option is primarily intended for use with
-   full certificates.
-
-:Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
-
-.. deprecated:: 5.0
-    This configuration option is deprecated and will be removed in a future
-    release. Please use :ref:`trusted-certificates-ref` instead.
 
 
 .. _ssl-context-ref:
@@ -938,11 +909,7 @@ Session
 
     .. automethod:: begin_transaction
 
-    .. automethod:: read_transaction
-
     .. automethod:: execute_read
-
-    .. automethod:: write_transaction
 
     .. automethod:: execute_write
 
@@ -2221,9 +2188,9 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 .. _development mode: https://docs.python.org/3/library/devmode.html#devmode
 
 
-.. autoclass:: neo4j.PreviewWarning
-
-.. autoclass:: neo4j.ExperimentalWarning
+.. autoclass:: neo4j.warnings.PreviewWarning
+    :show-inheritance:
+    :members:
 
 .. autoclass:: neo4j.warnings.Neo4jWarning
     :show-inheritance:
@@ -2239,12 +2206,12 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 Filtering Warnings
 ==================
 
-This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
+This example shows how to suppress the :class:`neo4j.warnings.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
 
 .. code-block:: python
 
     import warnings
-    from neo4j import PreviewWarning
+    from neo4j.warnings import PreviewWarning
 
     ...
 
@@ -2254,7 +2221,7 @@ This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :
 
     ...
 
-This will only mute the :class:`neo4j.PreviewWarning` for everything inside
+This will only mute the :class:`neo4j.warnings.PreviewWarning` for everything inside
 the ``with``-block. This is the preferred way to mute warnings, as warnings
 triggerd by new code will still be visible.
 
@@ -2267,7 +2234,7 @@ following code:
 .. code-block:: python
 
     import warnings
-    from neo4j import PreviewWarning
+    from neo4j.warnings import PreviewWarning
 
     warnings.filterwarnings("ignore", category=PreviewWarning)
 

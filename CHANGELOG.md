@@ -52,20 +52,65 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
       errors.
     - It is now the same error raised as when trying to start an explicit transaction while another explicit transaction
       is already active.
+- Slightly change `Neo4jError` and `ClientError`:
+    - Properties `message` and `code` are always a `str` (instead of `str | None`).
+    - Remove possibility to override/set `message` and `code` properties.
+    - Remove undocumented, internal methods `Neo4jError.hydrate`, `Neo4jError.invalidates_all_connections`,
+      and `Neo4jError.is_fatal_during_discovery`.
+    - Remove deprecated method `Neo4jError.is_retriable`.
+      Use `Neo4jError.is_retryable` instead.
+    - Change string representation of `Neo4jError` to include GQL error information.
 - Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
 - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
-- Remove undocumented internals
+- Remove deprecated driver configuration option `trust`.  
+  Use `trusted_certificates` instead.
+  - Remove the associated constants `neo4j.TRUST_ALL_CERTIFICATES` and `neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES`.
+- Remove deprecated `session.read_transaction` and `session.write_transaction`.
+  Instead, use `session.execute_read` and  `session.execute_write` respectively.
+- Make undocumented classes `ResolvedAddress`, `ResolvedIPv4Address`, and `ResolvedIPv6Address` private.
+- Rework `PreviewWarning`.
+  - Remove `ExperimentalWarning` and turn the few left instances of it into `PreviewWarning`.
+  - Deprecate importing `PreviewWarning` from `neo4j`.  
+    Import it from `neo4j.warnings` instead.
+- Make undocumented internal constants and helper functions private:
+  - `neo4j.api`
+    - `DRIVER_BOLT`
+    - `DRIVER_NEO4J`
+    - `SECURITY_TYPE_NOT_SECURE`
+    - `SECURITY_TYPE_SECURE`
+    - `SECURITY_TYPE_SELF_SIGNED_CERTIFICATE`
+    - `check_access_mode`
+    - `parse_neo4j_uri`
+    - `parse_routing_context`
+  - `neo4j.exceptions`
+    - `CLASSIFICATION_CLIENT`
+    - `CLASSIFICATION_DATABASE`
+    - `CLASSIFICATION_TRANSIENT`
+    - `ERROR_REWRITE_MAP`
+    - `client_errors`
+    - `transient_errors`
   - `GraphDatabase`
-    - `.bolt_driver`
-    - `.neo4j_driver`
+      - `.bolt_driver`
+      - `.neo4j_driver`
   - `BoltDriver` and `Neo4jDriver`
-    - `.open`
-    - `.parse_target`
-    - `.default_host`
-    - `.default_port`
-    - `.default_target`
+      - `.open`
+      - `.parse_target`
+      - `.default_host`
+      - `.default_port`
+      - `.default_target`
+- Raise `ConfigurationError` instead of ignoring the routing context (URI query parameters) when creating a direct
+  driver ("bolt[+s[sc]]://" scheme).
+- Change behavior of closed drivers:
+    - Raise `DriverError` on using the closed driver.
+    - Calling `driver.close()` again is now a no-op.
+- No longer implicitly closing drivers and sessions in `__del__()` (finalizer/destructor).
+  Make sure to call `.close()` on them explicitly or use them in a `with` statement.
+- Make `Summary.summary_notifications` a `tuple` instead of a `list` and type it with `Sequence` to signify that it
+  should be treated as immutable.
+- Graph type sets (`neo4j.graph.EntitySetView`) can no longer by indexed by legacy `id` (`int`, e.g., `graph.nodes[0]`).  
+  Use the `element_id` instead (`str`, e.g., `graph.nodes["..."]`).
 
 
 ## Version 5.28

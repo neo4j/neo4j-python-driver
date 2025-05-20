@@ -30,21 +30,18 @@ if t.TYPE_CHECKING:
 import neo4j
 from neo4j import (
     BoltDriver,
-    ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
-    PreviewWarning,
     Query,
     Result,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
 )
 from neo4j._api import TelemetryAPI
+from neo4j._async_compat.util import Util
 from neo4j._debug import ENABLED as DEBUG_ENABLED
 from neo4j._sync.auth_management import _StaticClientCertificateProvider
 from neo4j._sync.config import PoolConfig
@@ -62,7 +59,11 @@ from neo4j.auth_management import (
     ClientCertificate,
     ClientCertificateProvider,
 )
-from neo4j.exceptions import ConfigurationError
+from neo4j.exceptions import (
+    ConfigurationError,
+    DriverError,
+)
+from neo4j.warnings import PreviewWarning
 
 from ..._async_compat import (
     mark_sync_test,
@@ -100,12 +101,12 @@ def test_direct_driver_constructor(
 ):
     uri = protocol + host + port + params
     if params:
-        with pytest.warns(DeprecationWarning, match="routing context"):
-            driver = GraphDatabase.driver(uri, auth=auth_token)
+        with pytest.raises(ConfigurationError, match="Routing context"):
+            GraphDatabase.driver(uri, auth=auth_token)
     else:
         driver = GraphDatabase.driver(uri, auth=auth_token)
-    assert isinstance(driver, BoltDriver)
-    driver.close()
+        driver.close()
+        assert isinstance(driver, BoltDriver)
 
 
 @pytest.mark.parametrize(
@@ -144,17 +145,6 @@ def test_routing_driver_constructor(
         ({"encrypted": False}, ConfigurationError, '"encrypted"'),
         ({"encrypted": True}, ConfigurationError, '"encrypted"'),
         (
-            {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
-            ConfigurationError,
-            '"encrypted"',
-        ),
-        ({"trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, '"trust"'),
-        (
-            {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
-            ConfigurationError,
-            '"trust"',
-        ),
-        (
             {"encrypted": True, "trusted_certificates": TrustAll()},
             ConfigurationError,
             '"encrypted"',
@@ -186,20 +176,13 @@ def test_routing_driver_constructor(
 def test_driver_config_error_uri_conflict(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
-    def driver_builder(expect_failure=False):
-        if "trust" in test_config and not expect_failure:
-            with pytest.warns(DeprecationWarning, match="trust"):
-                return GraphDatabase.driver(test_uri, **test_config)
-        else:
-            return GraphDatabase.driver(test_uri, **test_config)
-
     if "+" in test_uri:
         # `+s` and `+ssc` are shorthand syntax for not having to configure the
         # encryption behavior of the driver. Specifying both is invalid.
         with pytest.raises(expected_failure, match=expected_failure_message):
-            driver_builder(expect_failure=True)
+            GraphDatabase.driver(test_uri, **test_config)
     else:
-        driver = driver_builder()
+        driver = GraphDatabase.driver(test_uri, **test_config)
         driver.close()
 
 
@@ -214,21 +197,6 @@ def test_driver_config_error_uri_conflict(
 def test_invalid_protocol(test_uri):
     with pytest.raises(ConfigurationError, match="scheme"):
         GraphDatabase.driver(test_uri)
-
-
-@pytest.mark.parametrize(
-    ("test_config", "expected_failure", "expected_failure_message"),
-    (
-        ({"trust": 1}, ConfigurationError, "The config setting `trust`"),
-        ({"trust": True}, ConfigurationError, "The config setting `trust`"),
-        ({"trust": None}, ConfigurationError, "The config setting `trust`"),
-    ),
-)
-def test_driver_trust_config_error(
-    test_config, expected_failure, expected_failure_message
-):
-    with pytest.raises(expected_failure, match=expected_failure_message):
-        GraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
 
 
 @pytest.mark.parametrize(
@@ -339,7 +307,7 @@ def test_verify_connectivity_parameters_are_deprecated(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             driver.verify_connectivity(**kwargs)
     finally:
         driver.close()
@@ -368,7 +336,7 @@ def test_get_server_info_parameters_are_experimental(
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(ExperimentalWarning, match="configuration"):
+        with pytest.warns(PreviewWarning, match="key-word arguments"):
             driver.get_server_info(**kwargs)
     finally:
         driver.close()
@@ -1323,28 +1291,22 @@ def test_supports_session_auth(session_cls_mock) -> None:
     ),
 )
 @mark_sync_test
-def test_using_closed_driver_where_deprecated(
+def test_using_closed_driver_where_forbidden(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     driver.close()
 
     method = getattr(driver, method_name)
-    with pytest.warns(
-        DeprecationWarning,
-        match="Using a driver after it has been closed is deprecated.",
-    ):
-        if inspect.iscoroutinefunction(method):
-            method(*args, **kwargs)
-        else:
-            method(*args, **kwargs)
+    with pytest.raises(DriverError, match="closed"):
+        Util.callback(method, *args, **kwargs)
 
 
 @pytest.mark.parametrize(
     ("method_name", "args", "kwargs"), (("close", (), {}),)
 )
 @mark_sync_test
-def test_using_closed_driver_where_not_deprecated(
+def test_using_closed_driver_where_no_op(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
@@ -1353,7 +1315,4 @@ def test_using_closed_driver_where_not_deprecated(
     method = getattr(driver, method_name)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        if inspect.iscoroutinefunction(method):
-            method(*args, **kwargs)
-        else:
-            method(*args, **kwargs)
+        Util.callback(method, *args, **kwargs)
