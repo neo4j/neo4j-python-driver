@@ -76,8 +76,6 @@ NEO4J_ATTRIBUTES = (
     ("SummaryNotification", None),
     ("SYSTEM_DATABASE", None),
     ("Transaction", None),
-    ("TRUST_ALL_CERTIFICATES", None),
-    ("TRUST_SYSTEM_CA_SIGNED_CERTIFICATES", None),
     ("TrustAll", None),
     ("TrustCustomCAs", None),
     ("TrustSystemCAs", None),
