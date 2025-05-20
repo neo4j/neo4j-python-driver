@@ -24,15 +24,10 @@ import typing as t
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
-    from typing_extensions import (
-        deprecated,
-        Protocol as _Protocol,
-    )
+    from typing_extensions import Protocol as _Protocol
 
     from ._addressing import Address
 else:
-    from ._warnings import deprecated
-
     _Protocol = object
 
 
@@ -310,15 +305,6 @@ class ServerInfo:
     def agent(self) -> str:
         """Server agent string by which the remote server identifies itself."""
         return str(self._metadata.get("server"))
-
-    @property  # type: ignore
-    @deprecated(
-        "The connection id is considered internal information "
-        "and will no longer be exposed in future versions."
-    )
-    def connection_id(self):
-        """Unique identifier for the remote server connection."""
-        return self._metadata.get("connection_id")
 
     def update(self, metadata: dict) -> None:
         """

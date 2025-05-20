@@ -64,6 +64,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
 - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+- Remove deprecated `ServerInfo.connection_id`.
+  There is no replacement as this is considered internal information.
 - Remove deprecated driver configuration option `trust`.  
   Use `trusted_certificates` instead.
   - Remove the associated constants `neo4j.TRUST_ALL_CERTIFICATES` and `neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES`.
