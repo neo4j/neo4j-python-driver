@@ -81,6 +81,15 @@ class Inbox:
                 self._unpacker.unpack(hydration_hooks) for _ in range(size)
             ]
             return tag, fields
+        except Exception as error:
+            log.debug(
+                "[#%04X]  _: Failed to unpack response: %r",
+                self._local_port,
+                error,
+            )
+            self._broken = True
+            Util.callback(self.on_error, error)
+            raise
         finally:
             # Reset for new message
             self._unpacker.reset()

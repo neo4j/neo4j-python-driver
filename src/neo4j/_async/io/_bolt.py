@@ -35,6 +35,7 @@ from ..._deadline import Deadline
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
+    SocketDeadlineExceededError,
 )
 from ..._io import BoltProtocolVersion
 from ..._meta import USER_AGENT
@@ -889,6 +890,15 @@ class AsyncBolt:
     async def _set_defunct(self, message, error=None, silent=False):
         direct_driver = getattr(self.pool, "is_direct_pool", False)
         user_cancelled = isinstance(error, asyncio.CancelledError)
+        connection_failed = isinstance(
+            error,
+            (
+                ServiceUnavailable,
+                SessionExpired,
+                OSError,
+                SocketDeadlineExceededError,
+            ),
+        )
 
         if not (user_cancelled or self._closing):
             log_call = log.error
@@ -915,6 +925,12 @@ class AsyncBolt:
         if user_cancelled:
             self.kill()
             raise error  # cancellation error should not be re-written
+        if not connection_failed:
+            # Something else but the connection failed
+            # => we're not sure which state we're in
+            # => ditch the connection and raise the error for user-awareness
+            await self.close()
+            raise error
         if not self._closing:
             # If we fail while closing the connection, there is no need to
             # remove the connection from the pool, nor to try to close the

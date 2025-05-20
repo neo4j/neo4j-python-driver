@@ -26,10 +26,6 @@ from warnings import (
     warn_explicit,
 )
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
 from ..._api import (
     NotificationCategory,
     NotificationMinimumSeverity,
@@ -65,6 +61,7 @@ from ..io import ConnectionErrorHandler
 
 if t.TYPE_CHECKING:
     import pandas  # type: ignore[import]
+    import typing_extensions as te
 
     from ..._addressing import Address
     from ...graph import Graph
