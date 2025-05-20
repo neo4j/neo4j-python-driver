@@ -25,12 +25,12 @@ from ...._optional_deps import (
     pd,
 )
 from ....time import (
+    _NANO_SECONDS,
     Date,
     DateTime,
     Duration,
     MAX_YEAR,
     MIN_YEAR,
-    NANO_SECONDS,
     Time,
 )
 from ...packstream import Structure
@@ -170,8 +170,8 @@ def dehydrate_datetime(value):
         if isinstance(dt, datetime):
             dt = DateTime.from_native(dt)
         zone_epoch = DateTime(1970, 1, 1, tzinfo=dt.tzinfo)
-        dt_clock_time = dt.to_clock_time()
-        zone_epoch_clock_time = zone_epoch.to_clock_time()
+        dt_clock_time = dt._to_clock_time()
+        zone_epoch_clock_time = zone_epoch._to_clock_time()
         t = dt_clock_time - zone_epoch_clock_time
         return t.seconds, t.nanoseconds
 
@@ -226,7 +226,8 @@ if np is not None:
             )
         seconds = value.astype(np.dtype("datetime64[s]")).astype(int)
         nanoseconds = (
-            value.astype(np.dtype("datetime64[ns]")).astype(int) % NANO_SECONDS
+            value.astype(np.dtype("datetime64[ns]")).astype(int)
+            % _NANO_SECONDS
         )
         return Structure(b"d", seconds, nanoseconds)
 

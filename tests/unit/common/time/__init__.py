@@ -15,15 +15,15 @@
 
 
 from neo4j.time import (
-    Clock,
-    ClockTime,
+    _Clock,
+    _ClockTime,
 )
 
 
 # The existence of this class will make the driver's custom date time
 # implementation use it instead of a real clock since its precision it higher
 # than all the other clocks (only up to nanoseconds).
-class FixedClock(Clock):
+class FixedClock(_Clock):
     @classmethod
     def available(cls):
         return True
@@ -34,7 +34,7 @@ class FixedClock(Clock):
 
     @classmethod
     def local_offset(cls):
-        return ClockTime()
+        return _ClockTime()
 
     def utc_time(self):
-        return ClockTime(45296, 789000001)
+        return _ClockTime(45296, 789000001)

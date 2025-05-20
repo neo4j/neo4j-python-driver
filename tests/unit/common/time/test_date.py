@@ -229,12 +229,13 @@ class TestDate:
         assert d2 == Date(2017, 4, 30)
 
     def test_from_clock_time(self) -> None:
-        d = Date.from_clock_time((0, 0), epoch=UnixEpoch)
+        with pytest.warns(DeprecationWarning, match="ClockTime"):
+            d = Date.from_clock_time((0, 0), epoch=UnixEpoch)
         assert d == Date(1970, 1, 1)
 
     def test_bad_from_clock_time(self) -> None:
         with pytest.raises(ValueError):
-            _ = Date.from_clock_time(object(), None)  # type: ignore[arg-type]
+            _ = Date._from_clock_time(object(), None)  # type: ignore[arg-type]
 
     def test_is_leap_year(self) -> None:
         assert Date.is_leap_year(2000)
@@ -497,10 +498,12 @@ class TestDate:
 
     def test_to_clock_time(self) -> None:
         d = Date(2018, 4, 30)
-        assert d.to_clock_time(UnixEpoch) == (1525046400, 0)
-        assert d.to_clock_time(d) == (0, 0)
+        with pytest.warns(DeprecationWarning, match="ClockTime"):
+            assert d.to_clock_time(UnixEpoch) == (1525046400, 0)
+        with pytest.warns(DeprecationWarning, match="ClockTime"):
+            assert d.to_clock_time(d) == (0, 0)
         with pytest.raises(TypeError):
-            _ = d.to_clock_time(object())  # type: ignore[arg-type]
+            _ = d._to_clock_time(object())  # type: ignore[arg-type]
 
     def test_weekday(self) -> None:
         d = Date(2018, 4, 30)

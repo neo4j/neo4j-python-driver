@@ -124,12 +124,13 @@ todo_include_todos = True
 autodoc_typehints = "description"
 
 autodoc_type_aliases = {
-    # The code-base uses `import typing_extensions as te`.
+    # The code-base uses `import typing_extensions as te` / `as _te`.
     # Re-write these to use `typing` instead, as Sphinx always resolves against
     # the latest version of the `typing` module.
     # This is a work-around to make Sphinx resolve type hints correctly, even
     # though we're using `from __future__ import annotations`.
     "te": typing,
+    "_te": typing,
     # Type alias that's only defined and imported if `typing.TYPE_CHECKING`
     # is `True`.
     "_TAuth": "typing.Tuple[typing.Any, typing.Any] | Auth | None",
