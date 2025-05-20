@@ -22,7 +22,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - Remove deprecated exports from `neo4j`:
   - `log`, `Config`, `PoolConfig`, `SessionConfig`, `WorkspaceConfig` (internal - no replacement)
   - `SummaryNotificationPosition` (use `SummaryInputPosition` instead)
-- `api.Version` has been removed as it's unusedparse_target now.  
+- `api.Version` has been removed as it's unused now.  
   `ServerInfo.protocol_version` now is a `tuple[int, int]` insteadof a `api.Version`.
   This should be drop-in replacement is most cases:
   - `Version` was a sup-type of `tuple[int, int]`
