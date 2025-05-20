@@ -41,6 +41,7 @@ from neo4j import (
     TrustSystemCAs,
 )
 from neo4j._api import TelemetryAPI
+from neo4j._async_compat.util import Util
 from neo4j._debug import ENABLED as DEBUG_ENABLED
 from neo4j._sync.auth_management import _StaticClientCertificateProvider
 from neo4j._sync.config import PoolConfig
@@ -58,7 +59,10 @@ from neo4j.auth_management import (
     ClientCertificate,
     ClientCertificateProvider,
 )
-from neo4j.exceptions import ConfigurationError
+from neo4j.exceptions import (
+    ConfigurationError,
+    DriverError,
+)
 from neo4j.warnings import PreviewWarning
 
 from ..._async_compat import (
@@ -1287,28 +1291,22 @@ def test_supports_session_auth(session_cls_mock) -> None:
     ),
 )
 @mark_sync_test
-def test_using_closed_driver_where_deprecated(
+def test_using_closed_driver_where_forbidden(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
     driver.close()
 
     method = getattr(driver, method_name)
-    with pytest.warns(
-        DeprecationWarning,
-        match="Using a driver after it has been closed is deprecated.",
-    ):
-        if inspect.iscoroutinefunction(method):
-            method(*args, **kwargs)
-        else:
-            method(*args, **kwargs)
+    with pytest.raises(DriverError, match="closed"):
+        Util.callback(method, *args, **kwargs)
 
 
 @pytest.mark.parametrize(
     ("method_name", "args", "kwargs"), (("close", (), {}),)
 )
 @mark_sync_test
-def test_using_closed_driver_where_not_deprecated(
+def test_using_closed_driver_where_no_op(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
@@ -1317,7 +1315,4 @@ def test_using_closed_driver_where_not_deprecated(
     method = getattr(driver, method_name)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        if inspect.iscoroutinefunction(method):
-            method(*args, **kwargs)
-        else:
-            method(*args, **kwargs)
+        Util.callback(method, *args, **kwargs)

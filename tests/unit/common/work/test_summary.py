@@ -21,6 +21,8 @@ import warnings
 
 
 if t.TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import typing_extensions as te
 
     _T = t.TypeVar("_T")
@@ -759,11 +761,11 @@ def test_summary_summary_notifications(
         kwargs["metadata"]["notifications"] = summary_in
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: list[SummaryNotification] = summary.summary_notifications
+    summary_out: Sequence[SummaryNotification] = summary.summary_notifications
 
-    assert isinstance(summary_out, list)
+    assert isinstance(summary_out, tuple)
     if summary_in is None:
-        assert summary_out == []
+        assert summary_out == ()
         return
 
     assert summary_in is not None
@@ -1469,12 +1471,12 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
 
     summary = ResultSummary(*args, **kwargs)
     notifications: list[dict] | None = summary.notifications
-    summary_notifications: list[SummaryNotification] = (
+    summary_notifications: Sequence[SummaryNotification] = (
         summary.summary_notifications
     )
 
     assert notifications is None
-    assert summary_notifications == []
+    assert summary_notifications == ()
 
 
 @pytest.mark.parametrize(
@@ -1745,7 +1747,7 @@ def test_no_notification_from_wrong_type_status(
     summary_notifications = summary.summary_notifications
 
     assert notifications is None
-    assert summary_notifications == []
+    assert summary_notifications == ()
 
 
 def _get_from_dict(
@@ -1939,7 +1941,7 @@ def test_no_notification_from_status_without_neo4j_code(
     summary_notifications = summary.summary_notifications
 
     assert notifications is None
-    assert summary_notifications == []
+    assert summary_notifications == ()
 
 
 @pytest.mark.parametrize(
@@ -1977,9 +1979,9 @@ def test_notification_from_incomplete_status(
 
     assert notifications == [raw_notification]
 
-    assert summary_notifications == [
-        SummaryNotification._from_metadata(raw_notification)
-    ]
+    assert summary_notifications == (
+        SummaryNotification._from_metadata(raw_notification),
+    )
 
 
 @pytest.mark.parametrize(
@@ -2027,9 +2029,9 @@ def test_notification_from_unexpected_status(
 
     assert notifications == [raw_notification]
 
-    assert summary_notifications == [
-        SummaryNotification._from_metadata(raw_notification)
-    ]
+    assert summary_notifications == (
+        SummaryNotification._from_metadata(raw_notification),
+    )
 
 
 def _test_status():

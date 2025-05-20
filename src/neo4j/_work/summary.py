@@ -31,6 +31,8 @@ from .._warnings import preview
 
 
 if t.TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import typing_extensions as te
 
     from .._addressing import Address
@@ -93,7 +95,7 @@ class ResultSummary:
     _notifications_set: bool = False
 
     # cache for property `summary_notifications`
-    _summary_notifications: list[SummaryNotification]
+    _summary_notifications: tuple[SummaryNotification, ...]
 
     # cache for property `summary_notifications`
     _gql_status_objects: tuple[GqlStatusObject, ...]
@@ -202,9 +204,8 @@ class ResultSummary:
 
         self.notifications = None
 
-    # TODO: 6.0 - return a tuple for immutability (annotate with Sequence)
     @property
-    def summary_notifications(self) -> list[SummaryNotification]:
+    def summary_notifications(self) -> Sequence[SummaryNotification]:
         """
         The same as ``notifications`` but in a parsed, structured form.
 
@@ -220,11 +221,11 @@ class ResultSummary:
 
         raw_notifications = self.notifications
         if not isinstance(raw_notifications, list):
-            self._summary_notifications = []
+            self._summary_notifications = ()
             return self._summary_notifications
-        self._summary_notifications = [
+        self._summary_notifications = tuple(
             SummaryNotification._from_metadata(n) for n in raw_notifications
-        ]
+        )
         return self._summary_notifications
 
     @property

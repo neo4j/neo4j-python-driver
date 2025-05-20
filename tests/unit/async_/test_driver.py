@@ -48,6 +48,7 @@ from neo4j._async.io import (
     AsyncBoltPool,
     AsyncNeo4jPool,
 )
+from neo4j._async_compat.util import AsyncUtil
 from neo4j._debug import ENABLED as DEBUG_ENABLED
 from neo4j.api import (
     AsyncBookmarkManager,
@@ -59,7 +60,10 @@ from neo4j.auth_management import (
     AsyncClientCertificateProvider,
     ClientCertificate,
 )
-from neo4j.exceptions import ConfigurationError
+from neo4j.exceptions import (
+    ConfigurationError,
+    DriverError,
+)
 from neo4j.warnings import PreviewWarning
 
 from ..._async_compat import (
@@ -1288,28 +1292,22 @@ async def test_supports_session_auth(session_cls_mock) -> None:
     ),
 )
 @mark_async_test
-async def test_using_closed_driver_where_deprecated(
+async def test_using_closed_driver_where_forbidden(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = AsyncGraphDatabase.driver("bolt://localhost")
     await driver.close()
 
     method = getattr(driver, method_name)
-    with pytest.warns(
-        DeprecationWarning,
-        match="Using a driver after it has been closed is deprecated.",
-    ):
-        if inspect.iscoroutinefunction(method):
-            await method(*args, **kwargs)
-        else:
-            method(*args, **kwargs)
+    with pytest.raises(DriverError, match="closed"):
+        await AsyncUtil.callback(method, *args, **kwargs)
 
 
 @pytest.mark.parametrize(
     ("method_name", "args", "kwargs"), (("close", (), {}),)
 )
 @mark_async_test
-async def test_using_closed_driver_where_not_deprecated(
+async def test_using_closed_driver_where_no_op(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = AsyncGraphDatabase.driver("bolt://localhost")
@@ -1318,7 +1316,4 @@ async def test_using_closed_driver_where_not_deprecated(
     method = getattr(driver, method_name)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        if inspect.iscoroutinefunction(method):
-            await method(*args, **kwargs)
-        else:
-            method(*args, **kwargs)
+        await AsyncUtil.callback(method, *args, **kwargs)
