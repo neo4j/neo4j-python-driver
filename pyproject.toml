@@ -276,6 +276,9 @@ select = [
     # allow async functions without await to enable type checking, pretending to be async, matching type signatures
     "RUF029",
 ]
+"tests/**" = [
+    "B011",  # allow `assert False` in tests, they won't be run with -O anyway
+]
 "bin/**" = [
     "T20",  # print statements are ok in our helper scripts
 ]
