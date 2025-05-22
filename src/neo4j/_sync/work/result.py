@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import inspect
-import typing as t
 from collections import deque
 from logging import getLogger
 from pathlib import Path
@@ -26,10 +25,7 @@ from warnings import (
     warn_explicit,
 )
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
+from ... import _typing as t
 from ..._api import (
     NotificationCategory,
     NotificationMinimumSeverity,
@@ -105,7 +101,7 @@ class Result(NonConcurrentMethodChecker):
     """
 
     _creation_stack: list[inspect.FrameInfo] | None
-    _creation_frame_cache: None | te.Literal[False] | inspect.FrameInfo
+    _creation_frame_cache: None | t.Literal[False] | inspect.FrameInfo
 
     def __init__(
         self,
@@ -362,7 +358,7 @@ class Result(NonConcurrentMethodChecker):
                 )
 
     @property
-    def _creation_frame(self) -> te.Literal[False] | inspect.FrameInfo:
+    def _creation_frame(self) -> t.Literal[False] | inspect.FrameInfo:
         if self._creation_frame_cache is not None:
             return self._creation_frame_cache
 
@@ -565,11 +561,11 @@ class Result(NonConcurrentMethodChecker):
 
     @t.overload
     def single(
-        self, strict: te.Literal[False] = False
+        self, strict: t.Literal[False] = False
     ) -> Record | None: ...
 
     @t.overload
-    def single(self, strict: te.Literal[True]) -> Record: ...
+    def single(self, strict: t.Literal[True]) -> Record: ...
 
     @NonConcurrentMethodChecker._non_concurrent_method
     def single(self, strict: bool = False) -> Record | None:

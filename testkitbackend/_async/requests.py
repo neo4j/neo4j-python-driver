@@ -49,12 +49,10 @@ from ..exceptions import MarkdAsDriverError
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     from neo4j._auth_management import ClientCertificate
 
     T = t.TypeVar("T")
-    P = te.ParamSpec("P")
+    P = t.ParamSpec("P")
 
 
 def snake_case_to_pascal_case(name: str) -> str:

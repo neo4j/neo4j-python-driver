@@ -17,18 +17,8 @@
 from __future__ import annotations
 
 import asyncio
-import typing as t
 
-
-if t.TYPE_CHECKING:
-    import ssl
-    import typing_extensions as te
-
-    from .._api import (
-        T_NotificationDisabledCategory,
-        T_NotificationMinimumSeverity,
-    )
-
+from .. import _typing as t
 from .._addressing import Address
 from .._api import (
     DRIVER_BOLT,
@@ -60,6 +50,7 @@ from .._work import (
     unit_of_work,
 )
 from ..api import (
+    _TAuth,
     Auth,
     BookmarkManager,
     Bookmarks,
@@ -101,10 +92,11 @@ if t.TYPE_CHECKING:
     import ssl
     from enum import Enum
 
-    import typing_extensions as te
-
-    from .._api import T_RoutingControl
-    from ..api import _TAuth
+    from .._api import (
+        T_NotificationDisabledCategory,
+        T_NotificationMinimumSeverity,
+        T_RoutingControl,
+    )
 
     class _DefaultEnum(Enum):
         default = "default"
@@ -609,7 +601,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: te.LiteralString | Query,
+        query_: t.LiteralString | Query,
         parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: str | None = None,
@@ -627,7 +619,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: te.LiteralString | Query,
+        query_: t.LiteralString | Query,
         parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: str | None = None,
@@ -642,7 +634,7 @@ class Driver:
 
     def execute_query(
         self,
-        query_: te.LiteralString | Query,
+        query_: t.LiteralString | Query,
         parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: str | None = None,
@@ -651,7 +643,7 @@ class Driver:
             BookmarkManager
             | BookmarkManager
             | None
-            | te.Literal[_DefaultEnum.default]
+            | t.Literal[_DefaultEnum.default]
         ) = _default,
         auth_: _TAuth = None,
         result_transformer_: t.Callable[
@@ -1273,7 +1265,7 @@ class Driver:
 
 def _work(
     tx: ManagedTransaction,
-    query: te.LiteralString,
+    query: t.LiteralString,
     parameters: dict[str, t.Any],
     transformer: t.Callable[[Result], t.Union[_T]],
 ) -> _T:

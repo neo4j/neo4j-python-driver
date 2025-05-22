@@ -20,9 +20,9 @@ import asyncio
 import dataclasses
 import logging
 import struct
-import typing as t
 from contextlib import suppress
 
+from ... import _typing as t
 from ..._addressing import Address
 from ..._async_compat.network import (
     BoltSocketBase,
@@ -41,8 +41,6 @@ from ...exceptions import (
 
 if t.TYPE_CHECKING:
     from ssl import SSLContext
-
-    import typing_extensions as te
 
     from ..._addressing import ResolvedAddress
     from ..._deadline import Deadline
@@ -298,7 +296,7 @@ class BoltSocket(BoltSocketBase):
         custom_resolver: t.Callable | None,
         ssl_context: SSLContext | None,
         keep_alive: bool,
-    ) -> tuple[te.Self, BoltProtocolVersion]:
+    ) -> tuple[t.Self, BoltProtocolVersion]:
         """
         Connect and perform a handshake.
 

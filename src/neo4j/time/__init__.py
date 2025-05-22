@@ -24,7 +24,6 @@ as a number of utility functions.
 from __future__ import annotations
 
 import re
-import typing as t
 from datetime import (
     date,
     datetime,
@@ -41,10 +40,7 @@ from time import (
     struct_time,
 )
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
+from .. import _typing as _t
 from ._arithmetic import (
     round_half_to_even,
     symmetric_divmod,
@@ -79,12 +75,12 @@ MAX_INT64 = (2**63) - 1
 #: The smallest year number allowed in a :class:`.Date` or :class:`.DateTime`
 #: object to be compatible with :class:`datetime.date` and
 #: :class:`datetime.datetime`.
-MIN_YEAR: te.Final[int] = 1
+MIN_YEAR: _t.Final[int] = 1
 
 #: The largest year number allowed in a :class:`.Date` or :class:`.DateTime`
 #: object to be compatible with :class:`datetime.date` and
 #: :class:`datetime.datetime`.
-MAX_YEAR: te.Final[int] = 9999
+MAX_YEAR: _t.Final[int] = 9999
 
 DATE_ISO_PATTERN = re_compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIME_ISO_PATTERN = re_compile(
@@ -373,7 +369,7 @@ class Clock:
         raise NotImplementedError("No clock implementation selected")
 
 
-if t.TYPE_CHECKING:
+if _t.TYPE_CHECKING:
     # make typechecker believe that Duration subclasses datetime.timedelta
     # https://github.com/python/typeshed/issues/8409#issuecomment-1197704527
     duration_base_class = timedelta
@@ -429,10 +425,10 @@ class Duration(  # type: ignore[misc]
 
     # i64: i64:i64: i32
 
-    min: te.Final[Duration] = None  # type: ignore
+    min: _t.Final[Duration] = None  # type: ignore
     """The lowest duration value possible."""
 
-    max: te.Final[Duration] = None  # type: ignore
+    max: _t.Final[Duration] = None  # type: ignore
     """The highest duration value possible."""
 
     def __new__(
@@ -791,7 +787,7 @@ Duration.max = Duration(  # type: ignore
 )
 
 
-if t.TYPE_CHECKING:
+if _t.TYPE_CHECKING:
     # make typechecker believe that Date subclasses datetime.date
     # https://github.com/python/typeshed/issues/8409#issuecomment-1197704527
     date_base_class = date
@@ -1060,7 +1056,7 @@ class Date(date_base_class, metaclass=DateType):
 
     # CLASS METHOD ALIASES #
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         @classmethod
         def fromisoformat(cls, s: str) -> Date: ...
@@ -1078,13 +1074,13 @@ class Date(date_base_class, metaclass=DateType):
 
     # CLASS ATTRIBUTES #
 
-    min: te.Final[Date] = None  # type: ignore
+    min: _t.Final[Date] = None  # type: ignore
     """The earliest date value possible."""
 
-    max: te.Final[Date] = None  # type: ignore
+    max: _t.Final[Date] = None  # type: ignore
     """The latest date value possible."""
 
-    resolution: te.Final[Duration] = None  # type: ignore
+    resolution: _t.Final[Duration] = None  # type: ignore
     """The minimum resolution supported."""
 
     # INSTANCE ATTRIBUTES #
@@ -1287,10 +1283,10 @@ class Date(date_base_class, metaclass=DateType):
             return new_date
         return NotImplemented
 
-    @t.overload  # type: ignore[override]
+    @_t.overload  # type: ignore[override]
     def __sub__(self, other: Date | date) -> Duration: ...
 
-    @t.overload
+    @_t.overload
     def __sub__(self, other: Duration) -> Date: ...
 
     def __sub__(self, other):
@@ -1325,13 +1321,13 @@ class Date(date_base_class, metaclass=DateType):
 
     # INSTANCE METHODS #
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         def replace(
             self,
-            year: te.SupportsIndex = ...,
-            month: te.SupportsIndex = ...,
-            day: te.SupportsIndex = ...,
+            year: _t.SupportsIndex = ...,
+            month: _t.SupportsIndex = ...,
+            day: _t.SupportsIndex = ...,
             **kwargs: object,
         ) -> Date: ...
 
@@ -1452,7 +1448,7 @@ class Date(date_base_class, metaclass=DateType):
         except KeyError:
             raise AttributeError(f"Date has no attribute {name!r}") from None
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         def iso_calendar(self) -> tuple[int, int, int]: ...
 
@@ -1472,7 +1468,7 @@ Date.resolution = Duration(days=1)  # type: ignore
 ZeroDate = object.__new__(Date)
 
 
-if t.TYPE_CHECKING:
+if _t.TYPE_CHECKING:
     # make typechecker believe that Time subclasses datetime.time
     # https://github.com/python/typeshed/issues/8409#issuecomment-1197704527
     time_base_class = time
@@ -1770,7 +1766,7 @@ class Time(time_base_class, metaclass=TimeType):
 
     # CLASS METHOD ALIASES #
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         @classmethod
         def from_iso_format(cls, s: str) -> Time: ...
@@ -1780,13 +1776,13 @@ class Time(time_base_class, metaclass=TimeType):
 
     # CLASS ATTRIBUTES #
 
-    min: te.Final[Time] = None  # type: ignore
+    min: _t.Final[Time] = None  # type: ignore
     """The earliest time value possible."""
 
-    max: te.Final[Time] = None  # type: ignore
+    max: _t.Final[Time] = None  # type: ignore
     """The latest time value possible."""
 
-    resolution: te.Final[Duration] = None  # type: ignore
+    resolution: _t.Final[Duration] = None  # type: ignore
     """The minimum resolution supported."""
 
     # INSTANCE ATTRIBUTES #
@@ -1940,14 +1936,14 @@ class Time(time_base_class, metaclass=TimeType):
 
     # INSTANCE METHODS #
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         def replace(  # type: ignore[override]
             self,
-            hour: te.SupportsIndex = ...,
-            minute: te.SupportsIndex = ...,
-            second: te.SupportsIndex = ...,
-            nanosecond: te.SupportsIndex = ...,
+            hour: _t.SupportsIndex = ...,
+            minute: _t.SupportsIndex = ...,
+            second: _t.SupportsIndex = ...,
+            nanosecond: _t.SupportsIndex = ...,
             tzinfo: _tzinfo | None = ...,
             **kwargs: object,
         ) -> Time: ...
@@ -2106,7 +2102,7 @@ class Time(time_base_class, metaclass=TimeType):
         except KeyError:
             raise AttributeError(f"Date has no attribute {name!r}") from None
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         def isoformat(self) -> str:  # type: ignore[override]
             ...
@@ -2126,14 +2122,14 @@ Time.resolution = Duration(  # type: ignore
 
 #: A :class:`.Time` instance set to `00:00:00`.
 #: This has a :attr:`.ticks` value of `0`.
-Midnight: te.Final[Time] = Time.min
+Midnight: _t.Final[Time] = Time.min
 
 #: A :class:`.Time` instance set to `12:00:00`.
 #: This has a :attr:`.ticks` value of `43200000000000`.
-Midday: te.Final[Time] = Time(hour=12)
+Midday: _t.Final[Time] = Time(hour=12)
 
 
-if t.TYPE_CHECKING:
+if _t.TYPE_CHECKING:
     # make typechecker believe that DateTime subclasses datetime.datetime
     # https://github.com/python/typeshed/issues/8409#issuecomment-1197704527
     date_time_base_class = datetime
@@ -2360,7 +2356,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     # CLASS METHOD ALIASES #
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         @classmethod
         def fromisoformat(cls, s) -> DateTime: ...
@@ -2389,13 +2385,13 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     # CLASS ATTRIBUTES #
 
-    min: te.Final[DateTime] = None  # type: ignore
+    min: _t.Final[DateTime] = None  # type: ignore
     """The earliest date time value possible."""
 
-    max: te.Final[DateTime] = None  # type: ignore
+    max: _t.Final[DateTime] = None  # type: ignore
     """The latest date time value possible."""
 
-    resolution: te.Final[Duration] = None  # type: ignore
+    resolution: _t.Final[Duration] = None  # type: ignore
     """The minimum resolution supported."""
 
     # INSTANCE ATTRIBUTES #
@@ -2672,13 +2668,13 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         return NotImplemented
 
-    @t.overload  # type: ignore[override]
+    @_t.overload  # type: ignore[override]
     def __sub__(self, other: DateTime) -> Duration: ...
 
-    @t.overload
+    @_t.overload
     def __sub__(self, other: datetime) -> timedelta: ...
 
-    @t.overload
+    @_t.overload
     def __sub__(self, other: Duration | timedelta) -> DateTime: ...
 
     def __sub__(self, other):
@@ -2747,17 +2743,17 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         """Get the time with timezone info."""
         return self.__time
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         def replace(  # type: ignore[override]
             self,
-            year: te.SupportsIndex = ...,
-            month: te.SupportsIndex = ...,
-            day: te.SupportsIndex = ...,
-            hour: te.SupportsIndex = ...,
-            minute: te.SupportsIndex = ...,
-            second: te.SupportsIndex = ...,
-            nanosecond: te.SupportsIndex = ...,
+            year: _t.SupportsIndex = ...,
+            month: _t.SupportsIndex = ...,
+            day: _t.SupportsIndex = ...,
+            hour: _t.SupportsIndex = ...,
+            minute: _t.SupportsIndex = ...,
+            second: _t.SupportsIndex = ...,
+            nanosecond: _t.SupportsIndex = ...,
             tzinfo: _tzinfo | None = ...,
             **kwargs: object,
         ) -> DateTime: ...
@@ -2787,7 +2783,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         """
         if self.tzinfo is None:
             return self
-        offset = t.cast(timedelta, self.utcoffset())
+        offset = _t.cast(timedelta, self.utcoffset())
         utc = (self - offset).replace(tzinfo=tz)
         try:
             return tz.fromutc(utc)  # type: ignore
@@ -2953,7 +2949,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
                 f"DateTime has no attribute {name!r}"
             ) from None
 
-    if t.TYPE_CHECKING:
+    if _t.TYPE_CHECKING:
 
         def astimezone(  # type: ignore[override]
             self, tz: _tzinfo

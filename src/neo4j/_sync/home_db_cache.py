@@ -19,9 +19,9 @@
 from __future__ import annotations
 
 import math
-import typing as t
 from time import monotonic
 
+from .. import _typing as t
 from .._async_compat.concurrency import CooperativeLock
 
 

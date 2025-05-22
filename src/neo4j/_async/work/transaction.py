@@ -17,18 +17,14 @@
 from __future__ import annotations
 
 import asyncio
-import typing as t
 
+from ... import _typing as t  # noqa: TCH001
 from ..._async_compat.util import AsyncUtil
 from ..._work import Query
 from ...exceptions import TransactionError
 from .._debug import AsyncNonConcurrentMethodChecker
 from ..io import ConnectionErrorHandler
 from .result import AsyncResult
-
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
 
 
 __all__ = (
@@ -66,7 +62,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         self._on_database = on_database
         super().__init__()
 
-    async def _enter(self) -> te.Self:
+    async def _enter(self) -> t.Self:
         return self
 
     @AsyncNonConcurrentMethodChecker._non_concurrent_method
@@ -137,7 +133,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
     @AsyncNonConcurrentMethodChecker._non_concurrent_method
     async def run(
         self,
-        query: te.LiteralString,
+        query: t.LiteralString,
         parameters: dict[str, t.Any] | None = None,
         **kwparameters: t.Any,
     ) -> AsyncResult:

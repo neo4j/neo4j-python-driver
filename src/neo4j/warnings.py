@@ -16,12 +16,11 @@
 
 from __future__ import annotations
 
-import typing as t
-
+from . import _typing as _t
 from ._debug import NotificationPrinter
 
 
-if t.TYPE_CHECKING:
+if _t.TYPE_CHECKING:
     from ._work.summary import SummaryNotification
 
 

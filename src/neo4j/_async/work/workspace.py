@@ -17,8 +17,8 @@
 from __future__ import annotations
 
 import logging
-import typing as t
 
+from ... import _typing as t
 from ..._async_compat.util import AsyncUtil
 from ..._auth_management import to_auth_dict
 from ..._conf import WorkspaceConfig

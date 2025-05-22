@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import inspect
 import traceback
-import typing as t
 from copy import deepcopy
 from functools import wraps
 
+from ... import _typing as t
 from ..._async_compat.concurrency import (
     Lock,
     RLock,

@@ -16,40 +16,37 @@
 
 from __future__ import annotations
 
-import typing as t
-
 import pytest
 
+from neo4j import (
+    _typing as t,
+    SummaryNotification,
+)
+
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
 
-from neo4j import SummaryNotification
+    class Position(t.TypedDict):
+        offset: t.NotRequired[int | None]
+        line: t.NotRequired[int | None]
+        column: t.NotRequired[int | None]
 
+    class TNotificationData(t.TypedDict):
+        code: t.NotRequired[str | None]
+        severity: t.NotRequired[str | None]
+        title: t.NotRequired[str | None]
+        description: t.NotRequired[str | None]
+        category: t.NotRequired[str | None]
+        position: t.NotRequired[Position | None]
 
-if t.TYPE_CHECKING:
-
-    class Position(te.TypedDict):
-        offset: te.NotRequired[int | None]
-        line: te.NotRequired[int | None]
-        column: te.NotRequired[int | None]
-
-    class TNotificationData(te.TypedDict):
-        code: te.NotRequired[str | None]
-        severity: te.NotRequired[str | None]
-        title: te.NotRequired[str | None]
-        description: te.NotRequired[str | None]
-        category: te.NotRequired[str | None]
-        position: te.NotRequired[Position | None]
-
-    class TNotificationFactory(te.Protocol):
+    class TNotificationFactory(t.Protocol):
         def __call__(
             self,
             data: TNotificationData | None = None,
             data_overwrite: TNotificationData | None = None,
         ) -> SummaryNotification: ...
 
-    class TRawNotificationFactory(te.Protocol):
+    class TRawNotificationFactory(t.Protocol):
         def __call__(
             self,
             data: TNotificationData | None = None,

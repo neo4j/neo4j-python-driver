@@ -19,15 +19,14 @@ from __future__ import annotations
 import asyncio
 import inspect
 import traceback
-import typing as t
 from functools import wraps
+
+from .. import _typing as t
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     _T = t.TypeVar("_T")
-    _P = te.ParamSpec("_P")
+    _P = t.ParamSpec("_P")
 
 
 __all__ = [

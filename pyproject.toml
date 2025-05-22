@@ -139,6 +139,7 @@ extend-exclude = [
 
 [tool.ruff.lint]
 preview = true  # to get CPY lints
+typing-modules = ["neo4j._typing"]
 extend-ignore = [
     "RUF002",  # allow ’ (RIGHT SINGLE QUOTATION MARK) to be used as an apostrophe (e.g. "it’s")
 
