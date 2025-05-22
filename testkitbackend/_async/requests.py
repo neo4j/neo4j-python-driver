@@ -624,7 +624,11 @@ async def new_bookmark_manager(backend, data):
 
     bmm_kwargs = {}
     data.mark_item_as_read("initialBookmarks", recursive=True)
-    bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
+    initial_bookmarks = data.get("initialBookmarks")
+    if initial_bookmarks is not None:
+        bmm_kwargs["initial_bookmarks"] = neo4j.Bookmarks.from_raw_values(
+            initial_bookmarks
+        )
     if data.get("bookmarksSupplierRegistered"):
         bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
             backend, bookmark_manager_id

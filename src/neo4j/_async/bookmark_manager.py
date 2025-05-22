@@ -30,18 +30,10 @@ TBmSupplier = t.Callable[[], Bookmarks | t.Awaitable[Bookmarks]]
 TBmConsumer = t.Callable[[Bookmarks], None | t.Awaitable[None]]
 
 
-def _bookmarks_to_set(
-    bookmarks: Bookmarks | t.Iterable[str],
-) -> set[str]:
-    if isinstance(bookmarks, Bookmarks):
-        return set(bookmarks.raw_values)
-    return set(map(str, bookmarks))
-
-
 class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
     def __init__(
         self,
-        initial_bookmarks: Bookmarks | t.Iterable[str] | None = None,
+        initial_bookmarks: Bookmarks | None = None,
         bookmarks_supplier: TBmSupplier | None = None,
         bookmarks_consumer: TBmConsumer | None = None,
     ) -> None:
@@ -51,13 +43,7 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         if not initial_bookmarks:
             self._bookmarks = set()
         else:
-            if not hasattr(initial_bookmarks, "raw_values"):
-                initial_bookmarks = Bookmarks.from_raw_values(
-                    t.cast(t.Iterable[str], initial_bookmarks)
-                )
-            self._bookmarks = set(
-                t.cast(Bookmarks, initial_bookmarks).raw_values
-            )
+            self._bookmarks = set(initial_bookmarks.raw_values)
         self._lock = AsyncCooperativeLock()
 
     async def update_bookmarks(
