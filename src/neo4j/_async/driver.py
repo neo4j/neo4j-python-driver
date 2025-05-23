@@ -339,7 +339,7 @@ class AsyncGraphDatabase:
             use this to initialize its internal bookmarks.
 
             .. deprecated:: 6.0
-                Passing raw strings bookmarks is deprecated.
+                Passing raw string bookmarks is deprecated.
                 Use a :class:`.Bookmarks` object instead.
 
         :param bookmarks_supplier:
