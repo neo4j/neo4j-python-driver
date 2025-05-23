@@ -30,13 +30,3 @@ def server_info(driver):
     with driver.session() as session:
         summary = session.run("RETURN 1").consume()
         yield summary.server
-
-
-# TODO: 6.0 -
-#       This test will stay as python is currently the only driver exposing
-#       the connection id. This will be removed in 6.0
-def test_server_connection_id(driver):
-    server_info = driver.get_server_info()
-    with pytest.warns(DeprecationWarning):
-        cid = server_info.connection_id
-    assert cid.startswith("bolt-") and cid[5:].isdigit()

@@ -57,7 +57,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - Remove possibility to override/set `message` and `code` properties.
     - Remove undocumented, internal methods `Neo4jError.hydrate`, `Neo4jError.invalidates_all_connections`,
       and `Neo4jError.is_fatal_during_discovery`.
-    - Remove deprecated method `Neo4jError.is_retriable`.
+    - Remove deprecated method `Neo4jError.is_retriable`.  
       Use `Neo4jError.is_retryable` instead.
     - Change string representation of `Neo4jError` to include GQL error information.
 - Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
@@ -69,10 +69,12 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     Use a `neo4j.Bookmarks` object instead.
   - `Driver.session()` no longer accepts raw string bookmarks as `bookmarks` argument.  
     Use a `neo4j.Bookmarks` object instead.
+- Remove deprecated `ServerInfo.connection_id`.  
+  There is no replacement as this is considered internal information.
 - Remove deprecated driver configuration option `trust`.  
   Use `trusted_certificates` instead.
   - Remove the associated constants `neo4j.TRUST_ALL_CERTIFICATES` and `neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES`.
-- Remove deprecated `session.read_transaction` and `session.write_transaction`.
+- Remove deprecated `session.read_transaction` and `session.write_transaction`.  
   Instead, use `session.execute_read` and  `session.execute_write` respectively.
 - Make undocumented classes `ResolvedAddress`, `ResolvedIPv4Address`, and `ResolvedIPv6Address` private.
 - Rework `PreviewWarning`.
@@ -112,9 +114,9 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - Raise `ConfigurationError` instead of ignoring the routing context (URI query parameters) when creating a direct
   driver ("bolt[+s[sc]]://" scheme).
 - Change behavior of closed drivers:
-    - Raise `DriverError` on using the closed driver.
-    - Calling `driver.close()` again is now a no-op.
-- No longer implicitly closing drivers and sessions in `__del__()` (finalizer/destructor).
+  - Raise `DriverError` on using the closed driver.
+  - Calling `driver.close()` again is now a no-op.
+- No longer implicitly closing drivers and sessions in `__del__()` (finalizer/destructor).  
   Make sure to call `.close()` on them explicitly or use them in a `with` statement.
 - Make `Summary.summary_notifications` a `tuple` instead of a `list` and type it with `Sequence` to signify that it
   should be treated as immutable.
