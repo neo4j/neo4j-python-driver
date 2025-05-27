@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import NoneType
 
 from .. import _typing as t
 from .._addressing import Address
@@ -41,6 +42,7 @@ from .._conf import (
 )
 from .._debug import ENABLED as DEBUG_ENABLED
 from .._warnings import (
+    deprecation_warn,
     preview_warn,
     unclosed_resource_warn,
 )
@@ -327,6 +329,11 @@ class AsyncGraphDatabase:
         :param initial_bookmarks:
             The initial set of bookmarks. The returned bookmark manager will
             use this to initialize its internal bookmarks.
+
+            .. deprecated:: 6.0
+                Passing raw string bookmarks is deprecated.
+                Use a :class:`.Bookmarks` object instead.
+
         :param bookmarks_supplier:
             Function which will be called every time the default bookmark
             manager's method :meth:`.AsyncBookmarkManager.get_bookmarks`
@@ -359,9 +366,27 @@ class AsyncGraphDatabase:
               an argument.
 
         .. versionchanged:: 5.8 Stabilized from experimental.
+
+        .. versionchanged:: 6.0
+            Deprecated passing raw string bookmarks as initial_bookmarks.
         """
+        cast_initial_bookmarks: Bookmarks | None
+        # TODO: 7.0 - remove raw bookmark support
+        if not isinstance(initial_bookmarks, (Bookmarks, NoneType)):
+            deprecation_warn(
+                (
+                    "Passing raw strings as initial_bookmarks is deprecated. "
+                    "Use a Bookmarks object instead."
+                ),
+                stack_level=2,
+            )
+            cast_initial_bookmarks = Bookmarks.from_raw_values(
+                t.cast(t.Iterable[str], initial_bookmarks)
+            )
+        else:
+            cast_initial_bookmarks = initial_bookmarks
         return AsyncNeo4jBookmarkManager(
-            initial_bookmarks=initial_bookmarks,
+            initial_bookmarks=cast_initial_bookmarks,
             bookmarks_supplier=bookmarks_supplier,
             bookmarks_consumer=bookmarks_consumer,
         )
@@ -512,7 +537,7 @@ class AsyncDriver:
             database: str | None = ...,
             fetch_size: int = ...,
             impersonated_user: str | None = ...,
-            bookmarks: t.Iterable[str] | Bookmarks | None = ...,
+            bookmarks: Bookmarks | None = ...,
             default_access_mode: str = ...,
             bookmark_manager: (
                 AsyncBookmarkManager | BookmarkManager | None

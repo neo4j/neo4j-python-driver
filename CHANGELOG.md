@@ -62,8 +62,13 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - Change string representation of `Neo4jError` to include GQL error information.
 - Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
-- Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
-- Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+- Bookmarks
+  - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
+  - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+  - Deprecate passing raw sting bookmarks as `initial_bookmarks` to `GraphDatabase.bookmark_manager()`.  
+    Use a `neo4j.Bookmarks` object instead.
+  - `Driver.session()` no longer accepts raw string bookmarks as `bookmarks` argument.  
+    Use a `neo4j.Bookmarks` object instead.
 - Remove deprecated `ServerInfo.connection_id`.  
   There is no replacement as this is considered internal information.
 - Remove deprecated driver configuration option `trust`.  
@@ -234,17 +239,17 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   manager related methods:
   - `neo4j.BookmarkManger` and `neo4j.AsyncBookmarkManger` abstract base
     classes:
-    - ``update_bookmarks`` has no longer a ``database`` argument.
-    - ``get_bookmarks`` has no longer a ``database`` argument.
-    - The ``get_all_bookmarks`` method was removed.
-    - The ``forget`` method was removed.
+    - `update_bookmarks` has no longer a `database` argument.
+    - `get_bookmarks` has no longer a `database` argument.
+    - The `get_all_bookmarks` method was removed.
+    - The `forget` method was removed.
   - `neo4j.GraphDatabase.bookmark_manager` and
     `neo4j.AsyncGraphDatabase.bookmark_manager` factory methods:
-    - ``initial_bookmarks`` is no longer a mapping from database name
+    - `initial_bookmarks` is no longer a mapping from database name
       to bookmarks but plain bookmarks.
-    - ``bookmarks_supplier`` no longer receives the database name as
+    - `bookmarks_supplier` no longer receives the database name as
       an argument.
-    - ``bookmarks_consumer`` no longer receives the database name as
+    - `bookmarks_consumer` no longer receives the database name as
       an argument.  
 
 
