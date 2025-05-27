@@ -115,10 +115,7 @@ class Record(tuple, Mapping):
             other = t.cast(t.Mapping, other)
             return dict(self) == dict(other)
         else:
-            return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+            return NotImplemented
 
     def __hash__(self):
         return reduce(xor_operator, map(hash, self.items()))

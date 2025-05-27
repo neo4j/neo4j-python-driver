@@ -116,7 +116,6 @@ class Entity(t.Mapping[str, t.Any]):
         }
 
     def __eq__(self, other: t.Any) -> bool:
-        # TODO: 6.0 - return NotImplemented on type mismatch instead of False
         try:
             return (
                 type(self) is type(other)
@@ -124,10 +123,7 @@ class Entity(t.Mapping[str, t.Any]):
                 and self.element_id == other.element_id
             )
         except AttributeError:
-            return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+            return NotImplemented
 
     def __hash__(self):
         return hash(self._element_id)
@@ -324,17 +320,13 @@ class Path:
         )
 
     def __eq__(self, other: t.Any) -> bool:
-        # TODO: 6.0 - return NotImplemented on type mismatch instead of False
         try:
             return (
                 self.start_node == other.start_node
                 and self.relationships == other.relationships
             )
         except AttributeError:
-            return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+            return NotImplemented
 
     def __hash__(self):
         value = hash(self._nodes[0])

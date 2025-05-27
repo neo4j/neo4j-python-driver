@@ -61,28 +61,28 @@ class BoltProtocolVersion:
             return self.version != other
         return NotImplemented
 
-    def __lt__(self, other: object) -> bool:
+    def __lt__(self, other: BoltProtocolVersion | tuple) -> bool:
         if isinstance(other, BoltProtocolVersion):
             return self.version < other.version
         if isinstance(other, tuple):
             return self.version < other
         return NotImplemented
 
-    def __le__(self, other: object) -> bool:
+    def __le__(self, other: BoltProtocolVersion | tuple) -> bool:
         if isinstance(other, BoltProtocolVersion):
             return self.version <= other.version
         if isinstance(other, tuple):
             return self.version <= other
         return NotImplemented
 
-    def __gt__(self, other: object) -> bool:
+    def __gt__(self, other: BoltProtocolVersion | tuple) -> bool:
         if isinstance(other, BoltProtocolVersion):
             return self.version > other.version
         if isinstance(other, tuple):
             return self.version > other
         return NotImplemented
 
-    def __ge__(self, other: object) -> bool:
+    def __ge__(self, other: BoltProtocolVersion | tuple) -> bool:
         if isinstance(other, BoltProtocolVersion):
             return self.version >= other.version
         if isinstance(other, tuple):

@@ -122,6 +122,15 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   should be treated as immutable.
 - Graph type sets (`neo4j.graph.EntitySetView`) can no longer by indexed by legacy `id` (`int`, e.g., `graph.nodes[0]`).  
   Use the `element_id` instead (`str`, e.g., `graph.nodes["..."]`).
+- Make all comparator magic methods return `NotImplemented` instead of `False` (or raising `TypeError` in some
+  instances) if the other operand is not of a supported type.
+  This means that when comparing a driver type with another type is doesn't support, the other type get the chance to
+  handle the comparison.  
+  Affected types:
+  - `neo4j.Record`
+  - `neo4j.graph.Node`, `neo4j.graph.Relationship`, `neo4j.graph.Path`
+  - `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`
+  - `neo4j.spatial.Point` (and subclasses)
 
 
 ## Version 5.28
