@@ -20,7 +20,6 @@ import typing as t
 from contextlib import contextmanager
 from multiprocessing import Semaphore
 
-import typing_extensions as te
 from sanic import Sanic
 from sanic.exceptions import (
     BadRequest,
@@ -43,7 +42,7 @@ if t.TYPE_CHECKING:
     from .workloads import Workload
 
 
-T_App: te.TypeAlias = "Sanic[Config, BenchKitContext]"
+T_App: t.TypeAlias = "Sanic[Config, BenchKitContext]"
 
 
 def create_app() -> T_App:

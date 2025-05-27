@@ -20,12 +20,8 @@ import asyncio
 import collections
 import re
 import threading
-import typing as t
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
+from .. import _typing as t  # noqa: TCH001
 from .shims import wait_for
 
 
@@ -479,8 +475,8 @@ class AsyncCondition:
         self.notify(len(self._waiters))
 
 
-Condition: te.TypeAlias = threading.Condition
-CooperativeLock: te.TypeAlias = threading.Lock
-Lock: te.TypeAlias = threading.Lock
-CooperativeRLock: te.TypeAlias = threading.RLock
-RLock: te.TypeAlias = threading.RLock
+Condition: t.TypeAlias = threading.Condition
+CooperativeLock: t.TypeAlias = threading.Lock
+Lock: t.TypeAlias = threading.Lock
+CooperativeRLock: t.TypeAlias = threading.RLock
+RLock: t.TypeAlias = threading.RLock

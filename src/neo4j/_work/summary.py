@@ -18,6 +18,9 @@ from __future__ import annotations
 
 import itertools
 import typing as t
+
+# ignore TCH003 to make sphinx not completely drop the ball
+from collections.abc import Sequence  # noqa: TCH003
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -58,7 +61,7 @@ class ResultSummary:
     #: A string that describes the type of query
     # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-only,
     # ``'s'`` = schema.
-    query_type: te.Literal["r", "rw", "w", "s"] | None
+    query_type: t.Literal["r", "rw", "w", "s"] | None
 
     #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the
     #: query triggered.
@@ -93,7 +96,7 @@ class ResultSummary:
     _notifications_set: bool = False
 
     # cache for property `summary_notifications`
-    _summary_notifications: list[SummaryNotification]
+    _summary_notifications: tuple[SummaryNotification, ...]
 
     # cache for property `summary_notifications`
     _gql_status_objects: tuple[GqlStatusObject, ...]
@@ -202,9 +205,8 @@ class ResultSummary:
 
         self.notifications = None
 
-    # TODO: 6.0 - return a tuple for immutability (annotate with Sequence)
     @property
-    def summary_notifications(self) -> list[SummaryNotification]:
+    def summary_notifications(self) -> Sequence[SummaryNotification]:
         """
         The same as ``notifications`` but in a parsed, structured form.
 
@@ -220,11 +222,11 @@ class ResultSummary:
 
         raw_notifications = self.notifications
         if not isinstance(raw_notifications, list):
-            self._summary_notifications = []
+            self._summary_notifications = ()
             return self._summary_notifications
-        self._summary_notifications = [
+        self._summary_notifications = tuple(
             SummaryNotification._from_metadata(n) for n in raw_notifications
-        ]
+        )
         return self._summary_notifications
 
     @property
@@ -523,7 +525,7 @@ class SummaryNotification:
                 metadata.get("position")
             ),
         }
-        str_keys: tuple[te.Literal["title", "code", "description"], ...] = (
+        str_keys: tuple[t.Literal["title", "code", "description"], ...] = (
             "title",
             "code",
             "description",

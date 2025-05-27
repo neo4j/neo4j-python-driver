@@ -18,19 +18,21 @@ from __future__ import annotations
 
 import copy
 import pickle
-import typing as t
 from itertools import zip_longest
 
 import pytest
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-    from neo4j.graph import Graph, Node, Relationship
-
+from neo4j import _typing as t
 from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
 from neo4j.graph import Path
+
+
+if t.TYPE_CHECKING:
+    from neo4j.graph import (
+        Graph,
+        Node,
+        Relationship,
+    )
 
 
 class GraphBuilder:
@@ -39,7 +41,7 @@ class GraphBuilder:
         self._node_counter = 0
         self._relationship_counter = 0
 
-    def with_node(self, *labels, **properties) -> te.Self:
+    def with_node(self, *labels, **properties) -> t.Self:
         id_ = self._node_counter
         element_id = f"e{id_}"
         self._node_counter += 1
@@ -48,17 +50,13 @@ class GraphBuilder:
 
     def with_relationship(
         self, start_node_id, end_node_id, type_, **properties
-    ) -> te.Self:
+    ) -> t.Self:
         id_ = self._relationship_counter
         element_id = f"e{id_}"
         start_node_element_id = f"e{start_node_id}"
         end_node_element_id = f"e{end_node_id}"
         self._relationship_counter += 1
-        with pytest.warns(DeprecationWarning):
-            assert start_node_id in self._hydrator.graph.nodes
         assert start_node_element_id in self._hydrator.graph.nodes
-        with pytest.warns(DeprecationWarning):
-            assert end_node_id in self._hydrator.graph.nodes
         assert end_node_element_id in self._hydrator.graph.nodes
 
         self._hydrator.hydrate_relationship(
@@ -363,3 +361,25 @@ def test_copy_path():
     graph1 = path1.graph
     graph2 = path2.graph
     assert graph1 is graph2
+
+
+def test_node_id_access() -> None:
+    assert 0 not in GRAPH.nodes
+    with pytest.raises(KeyError):
+        _ = GRAPH.nodes[0]  # type: ignore # expected to fail
+
+
+def test_node_element_id_access() -> None:
+    assert "e0" in GRAPH.nodes
+    _ = GRAPH.nodes["e0"]
+
+
+def test_relationship_id_access() -> None:
+    assert 0 not in GRAPH.relationships
+    with pytest.raises(KeyError):
+        _ = GRAPH.relationships[0]  # type: ignore # expected to fail
+
+
+def test_relationship_element_id_access() -> None:
+    assert "e0" in GRAPH.relationships
+    _ = GRAPH.relationships["e0"]

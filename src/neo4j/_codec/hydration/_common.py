@@ -14,10 +14,10 @@
 # limitations under the License.
 
 
-import typing as t
 from copy import copy
 from dataclasses import dataclass
 
+from ... import _typing as t
 from ...graph import Graph
 from ..packstream import Structure
 

@@ -137,8 +137,8 @@ def test_serverinfo_initialization() -> None:
     server_info = neo4j.ServerInfo(address, version)
     assert server_info.address is address
     assert server_info.protocol_version is version
-    with pytest.warns(DeprecationWarning):
-        assert server_info.connection_id is None
+    with pytest.raises(AttributeError):
+        _ = server_info.connection_id  # type: ignore  # expected to fail
 
 
 @pytest.mark.parametrize(
@@ -230,9 +230,9 @@ def test_uri_scheme(
 ) -> None:
     if expected_error:
         with pytest.raises(expected_error):
-            neo4j.api.parse_neo4j_uri(test_input)
+            neo4j._api.parse_neo4j_uri(test_input)
     else:
-        driver_type, security_type, _parsed = neo4j.api.parse_neo4j_uri(
+        driver_type, security_type, _parsed = neo4j._api.parse_neo4j_uri(
             test_input
         )
         assert driver_type == expected_driver_type
@@ -240,15 +240,15 @@ def test_uri_scheme(
 
 
 def test_parse_routing_context() -> None:
-    context = neo4j.api.parse_routing_context(query="name=molly&color=white")
+    context = neo4j._api.parse_routing_context(query="name=molly&color=white")
     assert context == {"name": "molly", "color": "white"}
 
 
 def test_parse_routing_context_should_error_when_value_missing() -> None:
     with pytest.raises(ConfigurationError):
-        neo4j.api.parse_routing_context("name=&color=white")
+        neo4j._api.parse_routing_context("name=&color=white")
 
 
 def test_parse_routing_context_should_error_when_key_duplicate() -> None:
     with pytest.raises(ConfigurationError):
-        neo4j.api.parse_routing_context("name=molly&name=white")
+        neo4j._api.parse_routing_context("name=molly&name=white")

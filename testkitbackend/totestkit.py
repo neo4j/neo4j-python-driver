@@ -61,7 +61,6 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
             "description": n.description,
             "severityLevel": n.severity_level.name,
             "category": n.category.name,
-            "severity": n.raw_severity_level,
             "rawCategory": n.raw_category,
             "rawSeverityLevel": n.raw_severity_level,
         }

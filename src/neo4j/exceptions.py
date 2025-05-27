@@ -62,18 +62,14 @@ Driver API Errors
 
 from __future__ import annotations
 
-import typing as t
 from copy import deepcopy as _deepcopy
 from enum import Enum as _Enum
 
+from . import _typing as _t
 from ._warnings import preview as _preview
 
 
-if t.TYPE_CHECKING:
-    from collections.abc import Mapping
-
-    import typing_extensions as te
-
+if _t.TYPE_CHECKING:
     from ._async.work import (
         AsyncManagedTransaction,
         AsyncResult,
@@ -87,15 +83,15 @@ if t.TYPE_CHECKING:
         Transaction,
     )
 
-    _TTransaction: t.TypeAlias = (
+    _TTransaction: _t.TypeAlias = (
         AsyncManagedTransaction
         | AsyncTransaction
         | ManagedTransaction
         | Transaction
     )
-    _TResult: t.TypeAlias = AsyncResult | Result
-    _TSession: t.TypeAlias = AsyncSession | Session
-    _T = t.TypeVar("_T")
+    _TResult: _t.TypeAlias = AsyncResult | Result
+    _TSession: _t.TypeAlias = AsyncSession | Session
+    _T = _t.TypeVar("_T")
 
 
 __all__ = [
@@ -138,9 +134,9 @@ __all__ = [
 ]
 
 
-_CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
-_CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
-_CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"
+_CLASSIFICATION_CLIENT: _t.Final[str] = "ClientError"
+_CLASSIFICATION_TRANSIENT: _t.Final[str] = "TransientError"
+_CLASSIFICATION_DATABASE: _t.Final[str] = "DatabaseError"
 
 
 _ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
@@ -167,18 +163,18 @@ _ERROR_REWRITE_MAP: dict[str, tuple[str, str | None]] = {
 }
 
 
-_UNKNOWN_NEO4J_CODE: te.Final[str] = "Neo.DatabaseError.General.UnknownError"
+_UNKNOWN_NEO4J_CODE: _t.Final[str] = "Neo.DatabaseError.General.UnknownError"
 # TODO: 7.0 - Make _UNKNOWN_GQL_MESSAGE the default message
-_UNKNOWN_MESSAGE: te.Final[str] = "An unknown error occurred"
-_UNKNOWN_GQL_STATUS: te.Final[str] = "50N42"
-_UNKNOWN_GQL_DESCRIPTION: te.Final[str] = (
+_UNKNOWN_MESSAGE: _t.Final[str] = "An unknown error occurred"
+_UNKNOWN_GQL_STATUS: _t.Final[str] = "50N42"
+_UNKNOWN_GQL_DESCRIPTION: _t.Final[str] = (
     "error: general processing exception - unexpected error"
 )
-_UNKNOWN_GQL_MESSAGE: te.Final[str] = (
+_UNKNOWN_GQL_MESSAGE: _t.Final[str] = (
     f"{_UNKNOWN_GQL_STATUS}: "
     "Unexpected error has occurred. See debug log for details."
 )
-_UNKNOWN_GQL_DIAGNOSTIC_RECORD: te.Final[tuple[tuple[str, t.Any], ...]] = (
+_UNKNOWN_GQL_DIAGNOSTIC_RECORD: _t.Final[tuple[tuple[str, _t.Any], ...]] = (
     ("OPERATION", ""),
     ("OPERATION_CODE", "0"),
     ("CURRENT_SCHEMA", "/"),
@@ -240,12 +236,12 @@ class GqlError(Exception):
     _gql_status_description: str
     _gql_raw_classification: str | None
     _gql_classification: GqlErrorClassification
-    _status_diagnostic_record: dict[str, t.Any]  # original, internal only
-    _diagnostic_record: dict[str, t.Any]  # copy to be used externally
+    _status_diagnostic_record: dict[str, _t.Any]  # original, internal only
+    _diagnostic_record: dict[str, _t.Any]  # copy to be used externally
     _gql_cause: GqlError | None
 
     @staticmethod
-    def _hydrate_cause(**metadata: t.Any) -> GqlError:
+    def _hydrate_cause(**metadata: _t.Any) -> GqlError:
         meta_extractor = _MetaExtractor(metadata)
         gql_status = meta_extractor.str_value("gql_status")
         description = meta_extractor.str_value("description")
@@ -276,7 +272,7 @@ class GqlError(Exception):
         gql_status: str,
         message: str,
         description: str,
-        diagnostic_record: dict[str, t.Any] | None = None,
+        diagnostic_record: dict[str, _t.Any] | None = None,
         cause: GqlError | None = None,
     ) -> None:
         self._gql_status = gql_status
@@ -438,7 +434,7 @@ class GqlError(Exception):
         if not (
             isinstance(classification, str)
             and classification
-            in t.cast(t.Iterable[str], iter(GqlErrorClassification))
+            in _t.cast(_t.Iterable[str], iter(GqlErrorClassification))
         ):
             self._gql_classification = GqlErrorClassification.UNKNOWN
         else:
@@ -450,7 +446,7 @@ class GqlError(Exception):
     def gql_classification(self) -> GqlErrorClassification:
         return self._gql_classification_no_preview
 
-    def _get_status_diagnostic_record(self) -> dict[str, t.Any]:
+    def _get_status_diagnostic_record(self) -> dict[str, _t.Any]:
         if hasattr(self, "_status_diagnostic_record"):
             return self._status_diagnostic_record
 
@@ -458,7 +454,7 @@ class GqlError(Exception):
         return self._status_diagnostic_record
 
     @property
-    def _diagnostic_record_no_preview(self) -> Mapping[str, t.Any]:
+    def _diagnostic_record_no_preview(self) -> _t.Mapping[str, _t.Any]:
         if hasattr(self, "_diagnostic_record"):
             return self._diagnostic_record
 
@@ -469,7 +465,7 @@ class GqlError(Exception):
 
     @property
     @_preview("GQLSTATUS support is a preview feature.")
-    def diagnostic_record(self) -> Mapping[str, t.Any]:
+    def diagnostic_record(self) -> _t.Mapping[str, _t.Any]:
         return self._diagnostic_record_no_preview
 
     def __str__(self):
@@ -493,7 +489,7 @@ class Neo4jError(GqlError):
     _category: str
     _title: str
     #: (dict) Any additional information returned by the server.
-    _metadata: dict[str, t.Any]
+    _metadata: dict[str, _t.Any]
     _from_server: bool
 
     _retryable = False
@@ -508,7 +504,7 @@ class Neo4jError(GqlError):
         )
 
     @staticmethod
-    def _hydrate_neo4j(**metadata: t.Any) -> Neo4jError:
+    def _hydrate_neo4j(**metadata: _t.Any) -> Neo4jError:
         meta_extractor = _MetaExtractor(metadata)
         code = meta_extractor.str_value("code") or _UNKNOWN_NEO4J_CODE
         message = meta_extractor.str_value("message") or _UNKNOWN_MESSAGE
@@ -525,7 +521,7 @@ class Neo4jError(GqlError):
         return inst
 
     @staticmethod
-    def _hydrate_gql(**metadata: t.Any) -> Neo4jError:
+    def _hydrate_gql(**metadata: _t.Any) -> Neo4jError:
         meta_extractor = _MetaExtractor(metadata)
         gql_status = meta_extractor.str_value("gql_status")
         status_description = meta_extractor.str_value("description")
@@ -643,7 +639,7 @@ class Neo4jError(GqlError):
         return self._title
 
     @property
-    def metadata(self) -> dict[str, t.Any]:
+    def metadata(self) -> dict[str, _t.Any]:
         # Undocumented, might be useful for debugging
         return self._metadata
 
@@ -709,16 +705,16 @@ class Neo4jError(GqlError):
 
 
 class _MetaExtractor:
-    def __init__(self, metadata: dict[str, t.Any]) -> None:
+    def __init__(self, metadata: dict[str, _t.Any]) -> None:
         self._metadata = metadata
 
-    def rest(self) -> dict[str, t.Any]:
+    def rest(self) -> dict[str, _t.Any]:
         return self._metadata
 
-    @t.overload
+    @_t.overload
     def str_value(self, key: str) -> str | None: ...
 
-    @t.overload
+    @_t.overload
     def str_value(self, key: str, default: _T) -> str | _T: ...
 
     def str_value(
@@ -729,15 +725,15 @@ class _MetaExtractor:
             res = default
         return res
 
-    @t.overload
-    def map_value(self, key: str) -> dict[str, t.Any] | None: ...
+    @_t.overload
+    def map_value(self, key: str) -> dict[str, _t.Any] | None: ...
 
-    @t.overload
-    def map_value(self, key: str, default: _T) -> dict[str, t.Any] | _T: ...
+    @_t.overload
+    def map_value(self, key: str, default: _T) -> dict[str, _t.Any] | _T: ...
 
     def map_value(
         self, key: str, default: _T | None = None
-    ) -> dict[str, t.Any] | _T | None:
+    ) -> dict[str, _t.Any] | _T | None:
         res = self._metadata.pop(key, default)
         if not (
             isinstance(res, dict) and all(isinstance(k, str) for k in res)

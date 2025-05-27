@@ -20,7 +20,6 @@ import abc
 import asyncio
 import logging
 import math
-import typing as t
 from collections import (
     defaultdict,
     deque,
@@ -31,6 +30,8 @@ from dataclasses import dataclass
 from logging import getLogger
 from random import choice
 
+from ... import _typing as t
+from ..._api import check_access_mode
 from ..._async_compat.concurrency import (
     AsyncCondition,
     AsyncCooperativeRLock,
@@ -45,10 +46,7 @@ from ..._deadline import (
 )
 from ..._exceptions import BoltError
 from ..._routing import RoutingTable
-from ...api import (
-    check_access_mode,
-    READ_ACCESS,
-)
+from ...api import READ_ACCESS
 from ...exceptions import (
     ConfigurationError,
     ConnectionAcquisitionTimeoutError,

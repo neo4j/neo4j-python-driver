@@ -21,10 +21,9 @@ This module contains the fundamental types used for temporal accounting as well
 as a number of utility functions.
 """
 
-from __future__ import annotations
+from __future__ import annotations as _
 
 import re as _re
-import typing as _t
 from datetime import (
     date as _date,
     datetime as _datetime,
@@ -41,6 +40,7 @@ from time import (
     struct_time as _struct_time,
 )
 
+from .. import _typing as _t
 from .._warnings import deprecation_warn as _deprecation_warn
 from ._arithmetic import (
     round_half_to_even as _round_half_to_even,
@@ -54,7 +54,6 @@ from ._metaclasses import (
 
 
 if _t.TYPE_CHECKING:
-    import typing_extensions as _te
     from typing_extensions import deprecated as _deprecated
 else:
     from .._warnings import deprecated as _deprecated
@@ -77,36 +76,36 @@ __all__ = [
 ]
 
 
-MIN_INT64: _te.Final[int] = -(2**63)
-MAX_INT64: _te.Final[int] = (2**63) - 1
+MIN_INT64: _t.Final[int] = -(2**63)
+MAX_INT64: _t.Final[int] = (2**63) - 1
 
 #: The smallest year number allowed in a :class:`.Date` or :class:`.DateTime`
 #: object to be compatible with :class:`datetime.date` and
 #: :class:`datetime.datetime`.
-MIN_YEAR: _te.Final[int] = 1
+MIN_YEAR: _t.Final[int] = 1
 
 #: The largest year number allowed in a :class:`.Date` or :class:`.DateTime`
 #: object to be compatible with :class:`datetime.date` and
 #: :class:`datetime.datetime`.
-MAX_YEAR: _te.Final[int] = 9999
+MAX_YEAR: _t.Final[int] = 9999
 
-_DATE_ISO_PATTERN: _te.Final[_re.Pattern] = _re_compile(
+_DATE_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
     r"^(\d{4})-(\d{2})-(\d{2})$"
 )
-_TIME_ISO_PATTERN: _te.Final[_re.Pattern] = _re_compile(
+_TIME_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
     r"^(\d{2})(:(\d{2})(:((\d{2})"
     r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$"
 )
-_DURATION_ISO_PATTERN: _te.Final[_re.Pattern] = _re_compile(
+_DURATION_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
     r"^P((\d+)Y)?((\d+)M)?((\d+)D)?"
     r"(T((\d+)H)?((\d+)M)?(((\d+)(\.\d+)?)?S)?)?$"
 )
 
-_NANO_SECONDS: _te.Final[int] = 1000000000
-_AVERAGE_SECONDS_IN_MONTH: _te.Final[int] = 2629746
-_AVERAGE_SECONDS_IN_DAY: _te.Final[int] = 86400
+_NANO_SECONDS: _t.Final[int] = 1000000000
+_AVERAGE_SECONDS_IN_MONTH: _t.Final[int] = 2629746
+_AVERAGE_SECONDS_IN_DAY: _t.Final[int] = 86400
 
-_FORMAT_F_REPLACE: _te.Final[_re.Pattern] = _re.compile(r"(?<!%)%f")
+_FORMAT_F_REPLACE: _t.Final[_re.Pattern] = _re.compile(r"(?<!%)%f")
 
 
 def _is_leap_year(year):
@@ -442,10 +441,10 @@ class Duration(  # type: ignore[misc]
 
     # i64: i64:i64: i32
 
-    min: _te.Final[Duration] = None  # type: ignore
+    min: _t.Final[Duration] = None  # type: ignore
     """The lowest duration value possible."""
 
-    max: _te.Final[Duration] = None  # type: ignore
+    max: _t.Final[Duration] = None  # type: ignore
     """The highest duration value possible."""
 
     def __new__(
@@ -852,13 +851,6 @@ class Date(_date_base_class, metaclass=_DateType):
     # CONSTRUCTOR #
 
     def __new__(cls, year: int, month: int, day: int) -> Date:
-        # TODO: 6.0 - remove the __new__ magic and ZeroDate being a singleton.
-        #             It's fine to remain as constant. Instead, simply use
-        #             __init__ and simplify pickle/copy (remove __reduce__).
-        #             N.B. this is a breaking change and must be treated as
-        #             such. Also consider introducing __slots__. Potentially
-        #             apply similar treatment to other temporal types as well
-        #             as spatial types.
         if year == month == day == 0:
             return ZeroDate
         year, month, day = _normalize_day(year, month, day)
@@ -1115,13 +1107,13 @@ class Date(_date_base_class, metaclass=_DateType):
 
     # CLASS ATTRIBUTES #
 
-    min: _te.Final[Date] = None  # type: ignore
+    min: _t.Final[Date] = None  # type: ignore
     """The earliest date value possible."""
 
-    max: _te.Final[Date] = None  # type: ignore
+    max: _t.Final[Date] = None  # type: ignore
     """The latest date value possible."""
 
-    resolution: _te.Final[Duration] = None  # type: ignore
+    resolution: _t.Final[Duration] = None  # type: ignore
     """The minimum resolution supported."""
 
     # INSTANCE ATTRIBUTES #
@@ -1366,9 +1358,9 @@ class Date(_date_base_class, metaclass=_DateType):
 
         def replace(
             self,
-            year: _te.SupportsIndex = ...,
-            month: _te.SupportsIndex = ...,
-            day: _te.SupportsIndex = ...,
+            year: _t.SupportsIndex = ...,
+            month: _t.SupportsIndex = ...,
+            day: _t.SupportsIndex = ...,
             **kwargs: object,
         ) -> Date: ...
 
@@ -1848,13 +1840,13 @@ class Time(_time_base_class, metaclass=_TimeType):
 
     # CLASS ATTRIBUTES #
 
-    min: _te.Final[Time] = None  # type: ignore
+    min: _t.Final[Time] = None  # type: ignore
     """The earliest time value possible."""
 
-    max: _te.Final[Time] = None  # type: ignore
+    max: _t.Final[Time] = None  # type: ignore
     """The latest time value possible."""
 
-    resolution: _te.Final[Duration] = None  # type: ignore
+    resolution: _t.Final[Duration] = None  # type: ignore
     """The minimum resolution supported."""
 
     # INSTANCE ATTRIBUTES #
@@ -2012,10 +2004,10 @@ class Time(_time_base_class, metaclass=_TimeType):
 
         def replace(  # type: ignore[override]
             self,
-            hour: _te.SupportsIndex = ...,
-            minute: _te.SupportsIndex = ...,
-            second: _te.SupportsIndex = ...,
-            nanosecond: _te.SupportsIndex = ...,
+            hour: _t.SupportsIndex = ...,
+            minute: _t.SupportsIndex = ...,
+            second: _t.SupportsIndex = ...,
+            nanosecond: _t.SupportsIndex = ...,
             tzinfo: _tzinfo | None = ...,
             **kwargs: object,
         ) -> Time: ...
@@ -2210,11 +2202,11 @@ Time.resolution = Duration(  # type: ignore
 
 #: A :class:`.Time` instance set to `00:00:00`.
 #: This has a :attr:`.ticks` value of `0`.
-Midnight: _te.Final[Time] = Time.min
+Midnight: _t.Final[Time] = Time.min
 
 #: A :class:`.Time` instance set to `12:00:00`.
 #: This has a :attr:`.ticks` value of `43200000000000`.
-Midday: _te.Final[Time] = Time(hour=12)
+Midday: _t.Final[Time] = Time(hour=12)
 
 
 if _t.TYPE_CHECKING:
@@ -2490,13 +2482,13 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
 
     # CLASS ATTRIBUTES #
 
-    min: _te.Final[DateTime] = None  # type: ignore
+    min: _t.Final[DateTime] = None  # type: ignore
     """The earliest date time value possible."""
 
-    max: _te.Final[DateTime] = None  # type: ignore
+    max: _t.Final[DateTime] = None  # type: ignore
     """The latest date time value possible."""
 
-    resolution: _te.Final[Duration] = None  # type: ignore
+    resolution: _t.Final[Duration] = None  # type: ignore
     """The minimum resolution supported."""
 
     # INSTANCE ATTRIBUTES #
@@ -2852,13 +2844,13 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
 
         def replace(  # type: ignore[override]
             self,
-            year: _te.SupportsIndex = ...,
-            month: _te.SupportsIndex = ...,
-            day: _te.SupportsIndex = ...,
-            hour: _te.SupportsIndex = ...,
-            minute: _te.SupportsIndex = ...,
-            second: _te.SupportsIndex = ...,
-            nanosecond: _te.SupportsIndex = ...,
+            year: _t.SupportsIndex = ...,
+            month: _t.SupportsIndex = ...,
+            day: _t.SupportsIndex = ...,
+            hour: _t.SupportsIndex = ...,
+            minute: _t.SupportsIndex = ...,
+            second: _t.SupportsIndex = ...,
+            nanosecond: _t.SupportsIndex = ...,
             tzinfo: _tzinfo | None = ...,
             **kwargs: object,
         ) -> DateTime: ...

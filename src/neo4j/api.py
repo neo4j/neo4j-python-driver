@@ -19,27 +19,14 @@
 from __future__ import annotations
 
 import abc
-import typing as t
-from urllib.parse import (
-    parse_qs,
-    urlparse,
-)
 
-from . import _api
-from .exceptions import ConfigurationError
+from . import _typing as _t
 
 
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-    from typing_extensions import (
-        deprecated,
-        Protocol as _Protocol,
-    )
-
+if _t.TYPE_CHECKING:
     from ._addressing import Address
+    from ._typing import Protocol as _Protocol
 else:
-    from ._warnings import deprecated
-
     _Protocol = object
 
 
@@ -63,29 +50,26 @@ __all__ = [
     "ServerInfo",
     "basic_auth",
     "bearer_auth",
-    "check_access_mode",
     "custom_auth",
     "kerberos_auth",
-    "parse_neo4j_uri",
-    "parse_routing_context",
 ]
 
 
-READ_ACCESS: te.Final[str] = "READ"
-WRITE_ACCESS: te.Final[str] = "WRITE"
+READ_ACCESS: _t.Final[str] = "READ"
+WRITE_ACCESS: _t.Final[str] = "WRITE"
 
-URI_SCHEME_BOLT: te.Final[str] = "bolt"
-URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE: te.Final[str] = "bolt+ssc"
-URI_SCHEME_BOLT_SECURE: te.Final[str] = "bolt+s"
+URI_SCHEME_BOLT: _t.Final[str] = "bolt"
+URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE: _t.Final[str] = "bolt+ssc"
+URI_SCHEME_BOLT_SECURE: _t.Final[str] = "bolt+s"
 
-URI_SCHEME_NEO4J: te.Final[str] = "neo4j"
-URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: te.Final[str] = "neo4j+ssc"
-URI_SCHEME_NEO4J_SECURE: te.Final[str] = "neo4j+s"
+URI_SCHEME_NEO4J: _t.Final[str] = "neo4j"
+URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: _t.Final[str] = "neo4j+ssc"
+URI_SCHEME_NEO4J_SECURE: _t.Final[str] = "neo4j+s"
 
-URI_SCHEME_BOLT_ROUTING: te.Final[str] = "bolt+routing"
+URI_SCHEME_BOLT_ROUTING: _t.Final[str] = "bolt+routing"
 
-SYSTEM_DATABASE: te.Final[str] = "system"
-DEFAULT_DATABASE: te.Final[None] = None  # Must be a non string hashable value
+SYSTEM_DATABASE: _t.Final[str] = "system"
+DEFAULT_DATABASE: _t.Final[None] = None  # Must be a non string hashable value
 
 
 # TODO: This class is not tested
@@ -113,7 +97,7 @@ class Auth:
         principal: str | None,
         credentials: str | None,
         realm: str | None = None,
-        **parameters: t.Any,
+        **parameters: _t.Any,
     ) -> None:
         self.scheme = scheme
         # Neo4j servers pre 4.4 require the principal field to always be
@@ -127,7 +111,7 @@ class Auth:
         if parameters:
             self.parameters = parameters
 
-    def __eq__(self, other: t.Any) -> bool:
+    def __eq__(self, other: _t.Any) -> bool:
         if not isinstance(other, Auth):
             return NotImplemented
         return vars(self) == vars(other)
@@ -136,8 +120,7 @@ class Auth:
 # For backwards compatibility
 AuthToken = Auth
 
-if t.TYPE_CHECKING:
-    _TAuth: t.TypeAlias = tuple[str, str] | Auth | None
+_TAuth: _t.TypeAlias = tuple[str, str] | Auth | None
 
 
 def basic_auth(user: str, password: str, realm: str | None = None) -> Auth:
@@ -191,7 +174,7 @@ def custom_auth(
     credentials: str | None,
     realm: str | None,
     scheme: str | None,
-    **parameters: t.Any,
+    **parameters: _t.Any,
 ) -> Auth:
     """
     Generate a custom auth token.
@@ -263,7 +246,7 @@ class Bookmarks:
         return self._raw_values
 
     @classmethod
-    def from_raw_values(cls, values: t.Iterable[str]) -> Bookmarks:
+    def from_raw_values(cls, values: _t.Iterable[str]) -> Bookmarks:
         """
         Create a Bookmarks object from a list of raw bookmark string values.
 
@@ -321,15 +304,6 @@ class ServerInfo:
         """Server agent string by which the remote server identifies itself."""
         return str(self._metadata.get("server"))
 
-    @property  # type: ignore
-    @deprecated(
-        "The connection id is considered internal information "
-        "and will no longer be exposed in future versions."
-    )
-    def connection_id(self):
-        """Unique identifier for the remote server connection."""
-        return self._metadata.get("connection_id")
-
     def update(self, metadata: dict) -> None:
         """
         Update server information with extra metadata.
@@ -384,8 +358,8 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def update_bookmarks(
         self,
-        previous_bookmarks: t.Collection[str],
-        new_bookmarks: t.Collection[str],
+        previous_bookmarks: _t.Collection[str],
+        new_bookmarks: _t.Collection[str],
     ) -> None:
         """
         Handle bookmark updates.
@@ -398,7 +372,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    def get_bookmarks(self) -> t.Collection[str]:
+    def get_bookmarks(self) -> _t.Collection[str]:
         """
         Return the bookmarks stored in the bookmark manager.
 
@@ -425,106 +399,13 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def update_bookmarks(
         self,
-        previous_bookmarks: t.Collection[str],
-        new_bookmarks: t.Collection[str],
+        previous_bookmarks: _t.Collection[str],
+        new_bookmarks: _t.Collection[str],
     ) -> None: ...
 
     update_bookmarks.__doc__ = BookmarkManager.update_bookmarks.__doc__
 
     @abc.abstractmethod
-    async def get_bookmarks(self) -> t.Collection[str]: ...
+    async def get_bookmarks(self) -> _t.Collection[str]: ...
 
     get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__
-
-
-# TODO: 6.0 - make this function private
-def parse_neo4j_uri(uri):
-    parsed = urlparse(uri)
-
-    if parsed.username:
-        raise ConfigurationError("Username is not supported in the URI")
-
-    if parsed.password:
-        raise ConfigurationError("Password is not supported in the URI")
-
-    if parsed.scheme == URI_SCHEME_BOLT_ROUTING:
-        raise ConfigurationError(
-            f"Uri scheme {parsed.scheme!r} has been renamed. "
-            f"Use {URI_SCHEME_NEO4J!r}"
-        )
-    elif parsed.scheme == URI_SCHEME_BOLT:
-        driver_type = _api.DRIVER_BOLT
-        security_type = _api.SECURITY_TYPE_NOT_SECURE
-    elif parsed.scheme == URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
-        driver_type = _api.DRIVER_BOLT
-        security_type = _api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
-    elif parsed.scheme == URI_SCHEME_BOLT_SECURE:
-        driver_type = _api.DRIVER_BOLT
-        security_type = _api.SECURITY_TYPE_SECURE
-    elif parsed.scheme == URI_SCHEME_NEO4J:
-        driver_type = _api.DRIVER_NEO4J
-        security_type = _api.SECURITY_TYPE_NOT_SECURE
-    elif parsed.scheme == URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
-        driver_type = _api.DRIVER_NEO4J
-        security_type = _api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
-    elif parsed.scheme == URI_SCHEME_NEO4J_SECURE:
-        driver_type = _api.DRIVER_NEO4J
-        security_type = _api.SECURITY_TYPE_SECURE
-    else:
-        supported_schemes = [
-            URI_SCHEME_BOLT,
-            URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
-            URI_SCHEME_BOLT_SECURE,
-            URI_SCHEME_NEO4J,
-            URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
-            URI_SCHEME_NEO4J_SECURE,
-        ]
-        raise ConfigurationError(
-            f"URI scheme {parsed.scheme!r} is not supported. "
-            f"Supported URI schemes are {supported_schemes}. "
-            "Examples: bolt://host[:port] or "
-            "neo4j://host[:port][?routing_context]"
-        )
-
-    return driver_type, security_type, parsed
-
-
-# TODO: 6.0 - make this function private
-def check_access_mode(access_mode):
-    if access_mode not in {READ_ACCESS, WRITE_ACCESS}:
-        raise ValueError(
-            f"Unsupported access mode {access_mode}, must be one of "
-            f"'{READ_ACCESS}' or '{WRITE_ACCESS}'."
-        )
-
-    return access_mode
-
-
-# TODO: 6.0 - make this function private
-def parse_routing_context(query):
-    """
-    Parse the query portion of a URI.
-
-    Generates a routing context dictionary.
-    """
-    if not query:
-        return {}
-
-    context = {}
-    parameters = parse_qs(query, True)
-    for key in parameters:
-        value_list = parameters[key]
-        if len(value_list) != 1:
-            raise ConfigurationError(
-                f"Duplicated query parameters with key '{key}', value "
-                f"'{value_list}' found in query string '{query}'"
-            )
-        value = value_list[0]
-        if not value:
-            raise ConfigurationError(
-                f"Invalid parameters:'{key}={value}' in query string "
-                f"'{query}'."
-            )
-        context[key] = value
-
-    return context

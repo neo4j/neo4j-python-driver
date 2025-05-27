@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import abc
 import asyncio
-import typing as t
 from collections import deque
 from logging import getLogger
 from time import monotonic
 
+from ... import _typing as t
 from ..._addressing import ResolvedAddress
 from ..._async_compat.util import AsyncUtil
 from ..._auth_management import to_auth_dict
@@ -58,8 +58,6 @@ from ._common import (
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     from ..._api import TelemetryAPI
 
 
@@ -264,7 +262,7 @@ class AsyncBolt:
         dict[BoltProtocolVersion, type[AsyncBolt]]
     ] = {}
 
-    def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
+    def __init_subclass__(cls: type[t.Self], **kwargs: t.Any) -> None:
         if cls.SKIP_REGISTRATION:
             super().__init_subclass__(**kwargs)
             return
