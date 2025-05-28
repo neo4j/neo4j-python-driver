@@ -88,7 +88,7 @@ class AsyncNetworkUtil:
 
         :param address: the Address to resolve
         :param family: optional address family to filter resolved
-                       addresses by (e.g. `socket.AF_INET6`)
+                       addresses by (e.g. ``socket.AF_INET6``)
         :param resolver: optional customer resolver function to be
                          called before regular DNS resolution
         """
@@ -170,7 +170,7 @@ class NetworkUtil:
 
         :param address: the Address to resolve
         :param family: optional address family to filter resolved
-                       addresses by (e.g. `socket.AF_INET6`)
+                       addresses by (e.g. ``socket.AF_INET6``)
         :param resolver: optional customer resolver function to be
                          called before regular DNS resolution
         """

@@ -837,7 +837,7 @@ Example:
 .. _async-managed-transactions-ref:
 
 
-Managed Transactions (`transaction functions`)
+Managed Transactions (*transaction functions*)
 ==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 

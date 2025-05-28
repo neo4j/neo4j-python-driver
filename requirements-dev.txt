@@ -10,7 +10,7 @@ unasync==0.5.0
 pre-commit>=4.2.0
 isort>=6.0.1
 mypy>=1.15.0
-typing-extensions>=4.13.2
+#typing-extensions>=4.13.2
 types-pytz>=2025.2.0.20250326
 ruff>=0.11.6
 

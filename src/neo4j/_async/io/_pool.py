@@ -965,7 +965,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         :param acquisition_timeout: connection acquisition timeout
         :param database_callback: A callback function that will be called with
             the database name as only argument when a new routing table has
-            been acquired. This database name might different from `database`
+            been acquired. This database name might different from ``database``
             if that was None and the underlying protocol supports reporting
             back the actual database.
 
@@ -1064,7 +1064,8 @@ class AsyncNeo4jPool(AsyncIOPool):
 
         This method is thread-safe.
 
-        :returns: `True` if an update was required, `False` otherwise.
+        :returns:
+            :data:`True` if an update was required, :data:`False` otherwise.
         """
         async with self.refresh_lock:
             for database_ in list(self.routing_tables.keys()):

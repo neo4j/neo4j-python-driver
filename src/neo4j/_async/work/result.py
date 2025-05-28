@@ -428,7 +428,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
     async def _buffer(self, n=None):
         """
-        Try to fill `self._record_buffer` with n records.
+        Try to fill ``self._record_buffer`` with n records.
 
         Might end up with more records in the buffer if the fetch size makes it
         overshoot.
@@ -582,9 +582,10 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         emit a warning and return the first record.
 
         :param strict:
-            If :data:`True`, raise a :exc:`.ResultNotSingleError` instead of
-            returning :data:`None` if there is more than one record or warning
-            if there is more than 1 record.
+            If :data:`False`, return :data:`None` if there is no record and
+            emit a warning if there is more than 1 record.
+            If :data:`True`, raise a :exc:`.ResultNotSingleError` if there is
+            not exactly one record.
             :data:`False` by default.
         :type strict: bool
 
@@ -810,7 +811,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         r"""
         Convert (the rest of) the result to a pandas DataFrame.
 
-        This method is only available if the `pandas` library is installed.
+        This method is only available if the ``pandas`` library is installed.
 
         ::
 
@@ -890,7 +891,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             If :data:`False`, columns of the above types will be left as driver
             types (dtype ``object``).
 
-        :raises ImportError: if `pandas` library is not available.
+        :raises ImportError: if the ``pandas`` library is not available.
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.

@@ -206,15 +206,15 @@ def _normalize_day(year, month, day):
 # TODO: 7.0 - make private
 class ClockTime(tuple):
     """
-    A count of `seconds` and `nanoseconds`.
+    A count of ``seconds`` and ``nanoseconds``.
 
     This class can be used to mark a particular point in time, relative to an
     externally-specified epoch.
 
-    The `seconds` and `nanoseconds` values provided to the constructor can
+    The ``seconds`` and ``nanoseconds`` values provided to the constructor can
     can have any sign but will be normalized internally into a positive or
-    negative `seconds` value along with a positive `nanoseconds` value
-    between `0` and `999,999,999`. Therefore, ``ClockTime(-1, -1)`` is
+    negative ``seconds`` value along with a positive ``nanoseconds`` value
+    between ``0`` and ``999,999,999``. Therefore, ``ClockTime(-1, -1)`` is
     normalized to ``ClockTime(-2, 999999999)``.
 
     Note that the structure of a :class:`.ClockTime` object is similar to
@@ -328,7 +328,7 @@ class _Clock:
 
         The precision of this clock implementation, represented as a
         number of decimal places. Therefore, for a nanosecond precision
-        clock, this function returns `9`.
+        clock, this function returns ``9``.
         """
         raise NotImplementedError("No clock implementation selected")
 
@@ -357,8 +357,8 @@ class _Clock:
         :raises OverflowError:
         """
         # Adding and subtracting two days to avoid passing a pre-epoch time to
-        # `mktime`, which can cause a `OverflowError` on some platforms (e.g.,
-        # Windows).
+        # ``mktime``, which can cause a ``OverflowError`` on some platforms
+        # (e.g., Windows).
         return _ClockTime(-int(_mktime(_gmtime(172800))) + 172800)
 
     def local_time(self):
@@ -399,11 +399,12 @@ class Duration(  # type: ignore[misc]
     r"""
     A difference between two points in time.
 
-    A :class:`.Duration` represents the difference between two points in time.
-    Duration objects store a composite value of `months`, `days`, `seconds`,
-    and `nanoseconds`. Unlike :class:`datetime.timedelta` however, days, and
-    seconds/nanoseconds are never interchanged. All values except seconds and
-    nanoseconds are applied separately in calculations (element-wise).
+    A :class:`.Duration` represents the difference between two points in
+    time. Duration objects store a composite value of ``months``, ``days``,
+    ``seconds``, and ``nanoseconds``. Unlike :class:`datetime.timedelta`
+    however, days, and seconds/nanoseconds are never interchanged. All values
+    except seconds and nanoseconds are applied separately in calculations
+    (element-wise).
 
     A :class:`.Duration` stores four primary instance attributes internally:
     ``months``, ``days``, ``seconds`` and ``nanoseconds``. These are maintained
@@ -425,16 +426,17 @@ class Duration(  # type: ignore[misc]
     This value must be between -(2\ :sup:`63`) and (2\ :sup:`63` - 1)
     inclusive.
 
-    :param years: will be added times 12 to `months`
-    :param months: will be truncated to :class:`int` (`int(months)`)
-    :param weeks: will be added times 7 to `days`
-    :param days: will be truncated to :class:`int` (`int(days)`)
-    :param hours: will be added times 3,600,000,000,000 to `nanoseconds`
-    :param minutes: will be added times 60,000,000,000 to `nanoseconds`
-    :param seconds: will be added times 1,000,000,000 to `nanoseconds``
-    :param milliseconds: will be added times 1,000,000 to `nanoseconds`
-    :param microseconds: will be added times 1,000 to `nanoseconds`
-    :param nanoseconds: will be truncated to :class:`int` (`int(nanoseconds)`)
+    :param years: will be added times 12 to ``months``
+    :param months: will be truncated to :class:`int` (``int(months)``)
+    :param weeks: will be added times 7 to ``days``
+    :param days: will be truncated to :class:`int` (``int(days)``)
+    :param hours: will be added times 3,600,000,000,000 to ``nanoseconds``
+    :param minutes: will be added times 60,000,000,000 to ``nanoseconds``
+    :param seconds: will be added times 1,000,000,000 to ``nanoseconds``
+    :param milliseconds: will be added times 1,000,000 to ``nanoseconds``
+    :param microseconds: will be added times 1,000 to ``nanoseconds``
+    :param nanoseconds:
+        will be truncated to :class:`int` (``int(nanoseconds)``)
 
     :raises ValueError: the components exceed the limits as described above.
     """
@@ -819,13 +821,13 @@ class Date(_date_base_class, metaclass=_DateType):
     `proleptic Gregorian Calendar
     <https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar>`_.
 
-    Years between `0001` and `9999` are supported, with additional support for
-    the "zero date" used in some contexts.
+    Years between ``0001`` and ``9999`` are supported, with additional
+    support for the "zero date" used in some contexts.
 
-    Each date is based on a proleptic Gregorian ordinal, which models
-    1 Jan 0001 as `day 1` and counts each subsequent day up to, and including,
-    31 Dec 9999. The standard `year`, `month` and `day` value of each date is
-    also available.
+    Each date is based on a proleptic Gregorian ordinal, which models 1 Jan
+    0001 as ``day 1`` and counts each subsequent day up to, and including,
+    31 Dec 9999. The standard ``year``, ``month`` and ``day`` value of eacch
+    date is also available.
 
     Internally, the day of the month is always stored as-is, except for the
     last three days of that month. These are always stored as -1, -2 and -3
@@ -915,7 +917,7 @@ class Date(_date_base_class, metaclass=_DateType):
         """
         Construct :class:`.Date` from a time stamp (seconds since unix epoch).
 
-        :returns: the `Date` as local date `Date` in UTC.
+        :returns: the :class:`Date` as local date :class:`Date` in UTC.
         """
         return cls._from_clock_time((timestamp, 0), UnixEpoch)
 
@@ -924,7 +926,7 @@ class Date(_date_base_class, metaclass=_DateType):
         """
         Construct :class:`.Date` from the proleptic Gregorian ordinal.
 
-        `0001-01-01` has ordinal 1 and `9999-12-31` has ordinal 3,652,059.
+        ``0001-01-01`` has ordinal 1 and ``9999-12-31`` has ordinal 3,652,059.
         Values outside of this range trigger a :exc:`ValueError`.
         The corresponding instance method for the reverse date-to-ordinal
         transformation is :meth:`.to_ordinal`.
@@ -987,7 +989,7 @@ class Date(_date_base_class, metaclass=_DateType):
     @classmethod
     def from_native(cls, d: _date) -> Date:
         """
-        Convert from a native Python `datetime.date` value.
+        Convert from a native Python :class:`datetime.date` value.
 
         :param d: the date to convert.
         """
@@ -1009,7 +1011,7 @@ class Date(_date_base_class, metaclass=_DateType):
 
         :param clock_time: the clock time as :class:`.ClockTime` or as tuple of
             (seconds, nanoseconds)
-        :param epoch: the epoch to which `clock_time` is relative
+        :param epoch: the epoch to which ``clock_time`` is relative
 
         .. deprecated:: 6.0
             :class:`ClockTime` is an implementation detail.
@@ -1036,11 +1038,11 @@ class Date(_date_base_class, metaclass=_DateType):
     @classmethod
     def is_leap_year(cls, year: int) -> bool:
         """
-        Indicate whether `year` is a leap year.
+        Indicate whether ``year`` is a leap year.
 
         :param year: the year to look up
 
-        :raises ValueError: if `year` is out of range:
+        :raises ValueError: if ``year`` is out of range:
             :attr:`MIN_YEAR` <= year <= :attr:`MAX_YEAR`
         """
         if year < MIN_YEAR or year > MAX_YEAR:
@@ -1050,11 +1052,11 @@ class Date(_date_base_class, metaclass=_DateType):
     @classmethod
     def days_in_year(cls, year: int) -> int:
         """
-        Return the number of days in `year`.
+        Return the number of days in ``year``.
 
         :param year: the year to look up
 
-        :raises ValueError: if `year` is out of range:
+        :raises ValueError: if ``year`` is out of range:
             :attr:`MIN_YEAR` <= year <= :attr:`MAX_YEAR`
         """
         if year < MIN_YEAR or year > MAX_YEAR:
@@ -1064,12 +1066,12 @@ class Date(_date_base_class, metaclass=_DateType):
     @classmethod
     def days_in_month(cls, year: int, month: int) -> int:
         """
-        Return the number of days in `month` of `year`.
+        Return the number of days in ``month`` of ``year``.
 
         :param year: the year to look up
         :param month: the month to look up
 
-        :raises ValueError: if `year` or `month` is out of range:
+        :raises ValueError: if ``year`` or ``month`` is out of range:
             :attr:`MIN_YEAR` <= year <= :attr:`MAX_YEAR`;
             1 <= year <= 12
         """
@@ -1167,7 +1169,7 @@ class Date(_date_base_class, metaclass=_DateType):
         """
         3-tuple of (year, week_of_year, day_of_week) describing the date.
 
-        `day_of_week` will be 1 for Monday and 7 for Sunday.
+        ``day_of_week`` will be 1 for Monday and 7 for Sunday.
         """
         ordinal = self.__ordinal
         year = self.__year
@@ -1202,7 +1204,7 @@ class Date(_date_base_class, metaclass=_DateType):
         2-tuple of (year, day_of_the_year) describing the date.
 
         This is the number of the day relative to the start of the year,
-        with `1 Jan` corresponding to `1`.
+        with ``1 Jan`` corresponding to ``1``.
         """
         return (
             self.__year,
@@ -1372,11 +1374,11 @@ class Date(_date_base_class, metaclass=_DateType):
 
             :Keyword Arguments:
                * **year** (:class:`typing.SupportsIndex`):
-                 overwrite the year - default: `self.year`
+                 overwrite the year - default: ``self.year``
                * **month** (:class:`typing.SupportsIndex`):
-                 overwrite the month - default: `self.month`
+                 overwrite the month - default: ``self.month``
                * **day** (:class:`typing.SupportsIndex`):
-                 overwrite the day - default: `self.day`
+                 overwrite the day - default: ``self.day``
             """
             return Date(
                 int(kwargs.get("year", self.__year)),
@@ -1418,7 +1420,7 @@ class Date(_date_base_class, metaclass=_DateType):
     )
     def to_clock_time(self, epoch: Date | DateTime) -> ClockTime:
         """
-        Convert the date to :class:`ClockTime` relative to `epoch`'s date.
+        Convert the date to :class:`ClockTime` relative to ``epoch``'s date.
 
         :param epoch: the epoch to which the date is relative
 
@@ -1510,8 +1512,8 @@ Date.min = Date.from_ordinal(1)  # type: ignore
 Date.max = Date.from_ordinal(3652059)  # type: ignore
 Date.resolution = Duration(days=1)  # type: ignore
 
-#: A :class:`neo4j.time.Date` instance set to `0000-00-00`.
-#: This has an ordinal value of `0`.
+#: A :class:`neo4j.time.Date` instance set to ``0000-00-00``.
+#: This has an ordinal value of ``0``.
 ZeroDate = object.__new__(Date)
 
 
@@ -1573,8 +1575,8 @@ class Time(_time_base_class, metaclass=_TimeType):
     :class:`neo4j.time.Time` objects introduce the concept of ``ticks``.
     This is simply a count of the number of nanoseconds since midnight,
     in many ways analogous to the :class:`neo4j.time.Date` ordinal.
-    `ticks` values are integers, with a minimum value of `0` and a maximum
-    of `86_399_999_999_999`.
+    ``ticks`` values are integers, with a minimum value of ``0`` and a maximum
+    of ``86_399_999_999_999``.
 
     Local times are represented by :class:`.Time` with no ``tzinfo``.
 
@@ -1778,7 +1780,7 @@ class Time(_time_base_class, metaclass=_TimeType):
 
         :param clock_time: the clock time as :class:`.ClockTime` or as tuple of
             (seconds, nanoseconds)
-        :param epoch: the epoch to which `clock_time` is relative
+        :param epoch: the epoch to which ``clock_time`` is relative
 
         .. deprecated:: 6.0
             :class:`ClockTime` is an implementation detail.
@@ -2020,15 +2022,15 @@ class Time(_time_base_class, metaclass=_TimeType):
 
             :Keyword Arguments:
                * **hour** (:class:`typing.SupportsIndex`):
-                 overwrite the hour - default: `self.hour`
+                 overwrite the hour - default: ``self.hour``
                * **minute** (:class:`typing.SupportsIndex`):
-                 overwrite the minute - default: `self.minute`
+                 overwrite the minute - default: ``self.minute``
                * **second** (:class:`typing.SupportsIndex`):
-                 overwrite the second - default: `int(self.second)`
+                 overwrite the second - default: ``int(self.second)``
                * **nanosecond** (:class:`typing.SupportsIndex`):
-                 overwrite the nanosecond - default: `self.nanosecond`
-               * **tzinfo** (:class:`datetime.tzinfo` or `None`):
-                 overwrite the timezone - default: `self.tzinfo`
+                 overwrite the nanosecond - default: ``self.nanosecond``
+               * **tzinfo** (:class:`datetime.tzinfo` or :data:`None`):
+                 overwrite the timezone - default: ``self.tzinfo``
             """
             return Time(
                 hour=int(kwargs.get("hour", self.__hour)),
@@ -2063,11 +2065,11 @@ class Time(_time_base_class, metaclass=_TimeType):
         Return the UTC offset of this time.
 
         :returns: None if this is a local time (:attr:`.tzinfo` is None), else
-            returns `self.tzinfo.utcoffset(self)`.
+            returns ``self.tzinfo.utcoffset(self)``.
 
-        :raises ValueError: if `self.tzinfo.utcoffset(self)` is not None and a
-            :class:`timedelta` with a magnitude greater equal 1 day or that is
-            not a whole number of minutes.
+        :raises ValueError: if ``self.tzinfo.utcoffset(self)`` is not None and
+            a :class:`timedelta` with a magnitude greater equal 1 day or that
+            is not a whole number of minutes.
         :raises TypeError: if `self.tzinfo.utcoffset(self)` does return
             anything but :data:`None` or a :class:`datetime.timedelta`.
         """
@@ -2078,13 +2080,13 @@ class Time(_time_base_class, metaclass=_TimeType):
         Get the daylight saving time adjustment (DST).
 
         :returns: None if this is a local time (:attr:`.tzinfo` is None), else
-            returns `self.tzinfo.dst(self)`.
+            returns ``self.tzinfo.dst(self)``.
 
-        :raises ValueError: if `self.tzinfo.dst(self)` is not None and a
+        :raises ValueError: if ``self.tzinfo.dst(self)`` is not None and a
             :class:`timedelta` with a magnitude greater equal 1 day or that is
             not a whole number of minutes.
-        :raises TypeError: if `self.tzinfo.dst(self)` does return anything but
-            None or a :class:`datetime.timedelta`.
+        :raises TypeError: if ``self.tzinfo.dst(self)`` does return anything
+            but None or a :class:`datetime.timedelta`.
         """
         return _dst(self.tzinfo, None)
 
@@ -2093,7 +2095,7 @@ class Time(_time_base_class, metaclass=_TimeType):
         Get the name of the :class:`.Time`'s timezone.
 
         :returns: None if the time is local (i.e., has no timezone), else
-            return `self.tzinfo.tzname(self)`
+            return ``self.tzinfo.tzname(self)``
         """
         return _tz_name(self.tzinfo, None)
 
@@ -2120,7 +2122,7 @@ class Time(_time_base_class, metaclass=_TimeType):
 
     def to_native(self) -> _time:
         """
-        Convert to a native Python `datetime.time` value.
+        Convert to a native Python :class:`datetime.time` value.
 
         This conversion is lossy as the native time implementation only
         supports a resolution of microseconds instead of nanoseconds.
@@ -2200,12 +2202,12 @@ Time.resolution = Duration(  # type: ignore
     nanoseconds=1
 )
 
-#: A :class:`.Time` instance set to `00:00:00`.
-#: This has a :attr:`.ticks` value of `0`.
+#: A :class:`.Time` instance set to ``00:00:00``.
+#: This has a :attr:`.ticks` value of ``0``.
 Midnight: _t.Final[Time] = Time.min
 
-#: A :class:`.Time` instance set to `12:00:00`.
-#: This has a :attr:`.ticks` value of `43200000000000`.
+#: A :class:`.Time` instance set to ``12:00:00``.
+#: This has a :attr:`.ticks` value of ``43200000000000``.
 Midday: _t.Final[Time] = Time(hour=12)
 
 
@@ -2230,17 +2232,18 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
 
     A :class:`.DateTime` object is fully compatible with the Python time zone
     library `pytz <https://pypi.org/project/pytz/>`_. Functions such as
-    `normalize` and `localize` can be used in the same way as they are with the
-    standard library classes.
+    ``normalize`` and ``localize`` can be used in the same way as they are with
+    the standard library classes.
 
     Regular construction of a :class:`.DateTime` object requires at
-    least the `year`, `month` and `day` arguments to be supplied. The
-    optional `hour`, `minute` and `second` arguments default to zero and
-    `tzinfo` defaults to :data:`None`.
+    least the ``year``, ``month`` and ``day`` arguments to be supplied. The
+    optional ``hour``, ``minute`` and ``second`` arguments default to zero and
+    ``tzinfo`` defaults to :data:`None`.
 
-    `year`, `month`, and `day` are passed to the constructor of :class:`.Date`.
-    `hour`, `minute`, `second`, `nanosecond`, and `tzinfo` are passed to the
-    constructor of :class:`.Time`. See their documentation for more details.
+    ``year``, ``month``, and ``day`` are passed to the constructor of
+    :class:`.Date`. ``hour``, ``minute``, ``second``, ``nanosecond``, and
+    ``tzinfo`` are passed to the constructor of :class:`.Time`. See their
+    documentation for more details.
 
         >>> dt = DateTime(2018, 4, 30, 12, 34, 56, 789123456); dt
         neo4j.time.DateTime(2018, 4, 30, 12, 34, 56, 789123456)
@@ -2355,7 +2358,7 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
         """
         :class:`.DateTime` from a time stamp (seconds since unix epoch).
 
-        Returns the `DateTime` as local date `DateTime` in UTC.
+        Returns the :class:`.DateTime` as local date :class:`.DateTime` in UTC.
         """
         return cls._from_clock_time((timestamp, 0), UnixEpoch)
 
@@ -2422,9 +2425,9 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
 
         :param clock_time: the clock time as :class:`.ClockTime` or as tuple of
             (seconds, nanoseconds)
-        :param epoch: the epoch to which `clock_time` is relative
+        :param epoch: the epoch to which ``clock_time`` is relative
 
-        :raises ValueError: if `clock_time` is invalid.
+        :raises ValueError: if ``clock_time`` is invalid.
 
         .. deprecated:: 6.0
             :class:`ClockTime` is an implementation detail.
@@ -2994,9 +2997,9 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
         """
         Return the :class:`.DateTime` as ISO formatted string.
 
-        This method joins `self.date().iso_format()` (see
-        :meth:`.Date.iso_format`) and `self.timetz().iso_format()` (see
-        :meth:`.Time.iso_format`) with `sep` in between.
+        This method joins ``self.date().iso_format()`` (see
+        :meth:`.Date.iso_format`) and ``self.timetz().iso_format()`` (see
+        :meth:`.Time.iso_format`) with ``sep`` in between.
 
         :param sep: the separator between the formatted date and time.
         """
@@ -3087,11 +3090,11 @@ DateTime.min = DateTime.combine(Date.min, Time.min)  # type: ignore
 DateTime.max = DateTime.combine(Date.max, Time.max)  # type: ignore
 DateTime.resolution = Time.resolution  # type: ignore
 
-#: A :class:`.DateTime` instance set to `0000-00-00T00:00:00`.
+#: A :class:`.DateTime` instance set to ``0000-00-00T00:00:00``.
 #: This has a :class:`.Date` component equal to :attr:`ZeroDate` and a
 Never = DateTime.combine(ZeroDate, Midnight)
 
-#: A :class:`.DateTime` instance set to `1970-01-01T00:00:00`.
+#: A :class:`.DateTime` instance set to ``1970-01-01T00:00:00``.
 UnixEpoch = DateTime(1970, 1, 1, 0, 0, 0)
 
 

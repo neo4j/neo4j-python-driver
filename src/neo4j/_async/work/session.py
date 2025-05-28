@@ -73,7 +73,7 @@ class AsyncSession(AsyncWorkspace):
     Therefore, a session should generally be short-lived, and must not
     span multiple threads/asynchronous Tasks.
 
-    In general, sessions will be created and destroyed within a `with`
+    In general, sessions will be created and destroyed within a ``with``
     context. For example::
 
         async with driver.session(database="neo4j") as session:
@@ -604,7 +604,7 @@ class AsyncSession(AsyncWorkspace):
         This transaction will automatically be committed when the function
         returns, unless an exception is thrown during query execution or by
         the user code. Note, that this function performs retries and that the
-        supplied `transaction_function` might get invoked more than once.
+        supplied ``transaction_function`` might get invoked more than once.
         Therefore, it needs to be idempotent (i.e., have the same effect,
         regardless if called once or many times).
 
@@ -644,12 +644,12 @@ class AsyncSession(AsyncWorkspace):
             :class:`.AsyncManagedTransaction`.
         :type transaction_function:
             typing.Callable[[AsyncManagedTransaction, P], typing.Awaitable[R]]
-        :param args: additional arguments for the `transaction_function`
+        :param args: additional arguments for the ``transaction_function``
         :type args: P
-        :param kwargs: key word arguments for the `transaction_function`
+        :param kwargs: key word arguments for the ``transaction_function``
         :type kwargs: P
 
-        :returns: whatever the given `transaction_function` returns
+        :returns: whatever the given ``transaction_function`` returns
         :rtype: R
 
         :raises SessionError: if the session has been closed.
@@ -683,7 +683,7 @@ class AsyncSession(AsyncWorkspace):
         This transaction will automatically be committed when the function
         returns unless, an exception is thrown during query execution or by
         the user code. Note, that this function performs retries and that the
-        supplied `transaction_function` might get invoked more than once.
+        supplied ``transaction_function`` might get invoked more than once.
         Therefore, it needs to be idempotent (i.e., have the same effect,
         regardless if called once or many times).
 
@@ -705,9 +705,9 @@ class AsyncSession(AsyncWorkspace):
             :class:`.AsyncManagedTransaction`.
         :type transaction_function:
             typing.Callable[[AsyncManagedTransaction, P], typing.Awaitable[R]]
-        :param args: additional arguments for the `transaction_function`
+        :param args: additional arguments for the ``transaction_function``
         :type args: P
-        :param kwargs: key word arguments for the `transaction_function`
+        :param kwargs: key word arguments for the ``transaction_function``
         :type kwargs: P
 
         :returns: a result as returned by the given unit of work

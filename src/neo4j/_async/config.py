@@ -67,9 +67,9 @@ class AsyncPoolConfig(Config):
     trusted_certificates = TrustSystemCAs()
     # Specify how to determine the authenticity of encryption certificates
     # provided by the Neo4j instance on connection.
-    # * `neo4j.TrustSystemCAs()`: Use system trust store. (default)
-    # * `neo4j.TrustAll()`: Trust any certificate.
-    # * `neo4j.TrustCustomCAs("<path>", ...)`:
+    # * ``neo4j.TrustSystemCAs()``: Use system trust store. (default)
+    # * ``neo4j.TrustAll()``: Trust any certificate.
+    # * ``neo4j.TrustCustomCAs("<path>", ...)``:
     #       Trust the specified certificate(s).
 
     #: Certificate to use for mTLS as 2nd authentication factor.
@@ -78,7 +78,7 @@ class AsyncPoolConfig(Config):
     #: Custom SSL context to use for wrapping sockets
     ssl_context = None
     # Use any custom SSL context to wrap sockets.
-    # Overwrites `trusted_certificates` and `encrypted`.
+    # Overwrites ``trusted_certificates`` and ``encrypted``.
     # The use of this option is strongly discouraged.
 
     #: User Agent (Python Driver Specific)
