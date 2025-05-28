@@ -17,7 +17,6 @@
 from __future__ import annotations as _
 
 import asyncio as _asyncio
-import typing as _t
 from contextlib import suppress as _suppress
 from logging import (
     CRITICAL as _CRITICAL,
@@ -31,6 +30,9 @@ from logging import (
     WARNING as _WARNING,
 )
 from sys import stderr as _stderr
+
+# ignore TCH001 to make sphinx not completely drop the ball
+from . import _typing as _t  # noqa: TCH001
 
 
 __all__ = [
@@ -211,7 +213,6 @@ def watch(
     :param logger_names: Names of loggers to watch.
     :param level: see ``default_level`` of :class:`.Watcher`.
     :param out: see ``default_out`` of :class:`.Watcher`.
-    :type out: stream or file-like object
     :param colour: see ``colour`` of :class:`.Watcher`.
     :param thread_info: see ``thread_info`` of :class:`.Watcher`.
     :param task_info: see ``task_info`` of :class:`.Watcher`.

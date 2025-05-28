@@ -14,8 +14,7 @@
 # limitations under the License.
 
 
-import typing as _t
-
+from . import _typing as _t
 from ._api import (  # noqa: F401 dynamic attributes
     NotificationCategory,
     NotificationDisabledCategory,

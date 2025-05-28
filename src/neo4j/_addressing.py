@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import typing as t
 from contextlib import suppress as _suppress
 from socket import (
     AddressFamily,
@@ -25,9 +24,7 @@ from socket import (
     getservbyname,
 )
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
+from . import _typing as t
 
 
 _T = t.TypeVar("_T")
@@ -35,7 +32,7 @@ _T = t.TypeVar("_T")
 
 if t.TYPE_CHECKING:
 
-    class _WithPeerName(te.Protocol):
+    class _WithPeerName(t.Protocol):
         def getpeername(self) -> tuple: ...
 
 

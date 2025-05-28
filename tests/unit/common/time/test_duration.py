@@ -454,14 +454,14 @@ class TestDuration:
     def test_minimal_value(self, with_day, with_month, only_ns) -> None:
         seconds = (
             time.MIN_INT64
-            + with_month * time.AVERAGE_SECONDS_IN_MONTH
-            + with_day * time.AVERAGE_SECONDS_IN_DAY
+            + with_month * time._AVERAGE_SECONDS_IN_MONTH
+            + with_day * time._AVERAGE_SECONDS_IN_DAY
         )
         Duration(
             months=-with_month,
             days=-with_day,
             seconds=0 if only_ns else seconds,
-            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0,
+            nanoseconds=(seconds * time._NANO_SECONDS) if only_ns else 0,
         )
 
     @pytest.mark.parametrize("with_day", (True, False))
@@ -481,8 +481,8 @@ class TestDuration:
     ) -> None:
         seconds = (
             time.MIN_INT64
-            + with_month * time.AVERAGE_SECONDS_IN_MONTH
-            + with_day * time.AVERAGE_SECONDS_IN_DAY
+            + with_month * time._AVERAGE_SECONDS_IN_MONTH
+            + with_day * time._AVERAGE_SECONDS_IN_DAY
         )
         kwargs = {
             "months": overflow[0],
@@ -493,7 +493,7 @@ class TestDuration:
         kwargs["months"] -= with_month
         kwargs["days"] -= with_day
         if only_ns:
-            kwargs["nanoseconds"] += seconds * time.NANO_SECONDS
+            kwargs["nanoseconds"] += seconds * time._NANO_SECONDS
         else:
             kwargs["seconds"] += seconds
 
@@ -503,8 +503,8 @@ class TestDuration:
     @pytest.mark.parametrize(
         ("field", "module"),
         (
-            ("days", time.AVERAGE_SECONDS_IN_DAY),
-            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+            ("days", time._AVERAGE_SECONDS_IN_DAY),
+            ("months", time._AVERAGE_SECONDS_IN_MONTH),
         ),
     )
     def test_minimal_value_only_secondary_field(self, field, module) -> None:
@@ -518,8 +518,8 @@ class TestDuration:
     @pytest.mark.parametrize(
         ("field", "module"),
         (
-            ("days", time.AVERAGE_SECONDS_IN_DAY),
-            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+            ("days", time._AVERAGE_SECONDS_IN_DAY),
+            ("months", time._AVERAGE_SECONDS_IN_MONTH),
         ),
     )
     def test_negative_overflow_value_only_secondary_field(
@@ -544,14 +544,14 @@ class TestDuration:
     def test_maximal_value(self, with_day, with_month, only_ns) -> None:
         seconds = (
             time.MAX_INT64
-            - with_month * time.AVERAGE_SECONDS_IN_MONTH
-            - with_day * time.AVERAGE_SECONDS_IN_DAY
+            - with_month * time._AVERAGE_SECONDS_IN_MONTH
+            - with_day * time._AVERAGE_SECONDS_IN_DAY
         )
         Duration(
             months=with_month,
             days=with_day,
             seconds=0 if only_ns else seconds,
-            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0,
+            nanoseconds=(seconds * time._NANO_SECONDS) if only_ns else 0,
         )
 
     @pytest.mark.parametrize("with_day", (True, False))
@@ -571,19 +571,19 @@ class TestDuration:
     ) -> None:
         seconds = (
             time.MAX_INT64
-            - with_month * time.AVERAGE_SECONDS_IN_MONTH
-            - with_day * time.AVERAGE_SECONDS_IN_DAY
+            - with_month * time._AVERAGE_SECONDS_IN_MONTH
+            - with_day * time._AVERAGE_SECONDS_IN_DAY
         )
         kwargs = {
             "months": overflow[0],
             "days": overflow[1],
             "seconds": overflow[2],
-            "nanoseconds": time.NANO_SECONDS - 1 + overflow[3],
+            "nanoseconds": time._NANO_SECONDS - 1 + overflow[3],
         }
         kwargs["months"] += with_month
         kwargs["days"] += with_day
         if only_ns:
-            kwargs["nanoseconds"] += seconds * time.NANO_SECONDS
+            kwargs["nanoseconds"] += seconds * time._NANO_SECONDS
         else:
             kwargs["seconds"] += seconds
 
@@ -593,8 +593,8 @@ class TestDuration:
     @pytest.mark.parametrize(
         ("field", "module"),
         (
-            ("days", time.AVERAGE_SECONDS_IN_DAY),
-            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+            ("days", time._AVERAGE_SECONDS_IN_DAY),
+            ("months", time._AVERAGE_SECONDS_IN_MONTH),
         ),
     )
     def test_maximal_value_only_secondary_field(self, field, module) -> None:
@@ -604,8 +604,8 @@ class TestDuration:
     @pytest.mark.parametrize(
         ("field", "module"),
         (
-            ("days", time.AVERAGE_SECONDS_IN_DAY),
-            ("months", time.AVERAGE_SECONDS_IN_MONTH),
+            ("days", time._AVERAGE_SECONDS_IN_DAY),
+            ("months", time._AVERAGE_SECONDS_IN_MONTH),
         ),
     )
     def test_positive_overflow_value_only_secondary_field(

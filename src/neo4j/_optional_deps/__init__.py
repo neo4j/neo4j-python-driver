@@ -14,8 +14,11 @@
 # limitations under the License.
 
 
-import typing as t
+from __future__ import annotations
+
 from contextlib import suppress
+
+from .. import _typing as t  # noqa: TCH001
 
 
 np: t.Any = None

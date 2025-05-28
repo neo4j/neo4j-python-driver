@@ -20,22 +20,20 @@ import asyncio
 import io
 import logging
 import sys
-import typing as t
 
 import pytest
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-from neo4j import debug as neo4j_debug
+from neo4j import (
+    _typing as t,
+    debug as neo4j_debug,
+)
 
 from ..._async_compat import mark_async_test
 
 
 if t.TYPE_CHECKING:
 
-    class _TSetupMockProtocol(te.Protocol):
+    class _TSetupMockProtocol(t.Protocol):
         def __call__(self, *args: str) -> t.Sequence[t.Any]: ...
 
 

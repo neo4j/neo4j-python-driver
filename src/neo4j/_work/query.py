@@ -16,12 +16,10 @@
 
 from __future__ import annotations
 
-import typing as t
+from .. import _typing as t
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     _T = t.TypeVar("_T")
 
 
@@ -68,7 +66,7 @@ class Query:
 
     def __init__(
         self,
-        text: te.LiteralString,
+        text: t.LiteralString,
         metadata: dict[str, t.Any] | None = None,
         timeout: float | None = None,
     ) -> None:
@@ -77,12 +75,12 @@ class Query:
         self.metadata = metadata
         self.timeout = timeout
 
-    def __str__(self) -> te.LiteralString:
+    def __str__(self) -> t.LiteralString:
         # we know that if Query is constructed with a LiteralString,
         # str(self.text) will be a LiteralString as well. The conversion isn't
         # necessary if the user adheres to the type hints. However, it was
         # here before, and we don't want to break backwards compatibility.
-        text: te.LiteralString = str(self.text)  # type: ignore[assignment]
+        text: t.LiteralString = str(self.text)  # type: ignore[assignment]
         return text
 
 

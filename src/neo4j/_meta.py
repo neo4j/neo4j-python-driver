@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import platform
 import sys
-import typing as t
 
+from . import _typing as t
 from ._codec.packstream import RUST_AVAILABLE
 
 

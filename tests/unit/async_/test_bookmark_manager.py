@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import typing as t
+from types import NoneType
 
 import pytest
 
@@ -34,6 +35,9 @@ consumer_async_options = supplier_async_options
 
 @copy_signature(neo4j.AsyncGraphDatabase.bookmark_manager)
 def bookmark_manager(*args, **kwargs):
+    if not isinstance(kwargs.get("initial_bookmarks"), (NoneType, Bookmarks)):
+        with pytest.warns(DeprecationWarning, match="initial_bookmarks"):
+            return neo4j.AsyncGraphDatabase.bookmark_manager(*args, **kwargs)
     return neo4j.AsyncGraphDatabase.bookmark_manager(*args, **kwargs)
 
 

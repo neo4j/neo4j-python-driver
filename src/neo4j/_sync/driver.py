@@ -17,18 +17,9 @@
 from __future__ import annotations
 
 import asyncio
-import typing as t
+from types import NoneType
 
-
-if t.TYPE_CHECKING:
-    import ssl
-    import typing_extensions as te
-
-    from .._api import (
-        T_NotificationDisabledCategory,
-        T_NotificationMinimumSeverity,
-    )
-
+from .. import _typing as t
 from .._addressing import Address
 from .._api import (
     DRIVER_BOLT,
@@ -51,6 +42,7 @@ from .._conf import (
 )
 from .._debug import ENABLED as DEBUG_ENABLED
 from .._warnings import (
+    deprecation_warn,
     preview_warn,
     unclosed_resource_warn,
 )
@@ -60,6 +52,7 @@ from .._work import (
     unit_of_work,
 )
 from ..api import (
+    _TAuth,
     Auth,
     BookmarkManager,
     Bookmarks,
@@ -101,10 +94,11 @@ if t.TYPE_CHECKING:
     import ssl
     from enum import Enum
 
-    import typing_extensions as te
-
-    from .._api import T_RoutingControl
-    from ..api import _TAuth
+    from .._api import (
+        T_NotificationDisabledCategory,
+        T_NotificationMinimumSeverity,
+        T_RoutingControl,
+    )
 
     class _DefaultEnum(Enum):
         default = "default"
@@ -334,6 +328,11 @@ class GraphDatabase:
         :param initial_bookmarks:
             The initial set of bookmarks. The returned bookmark manager will
             use this to initialize its internal bookmarks.
+
+            .. deprecated:: 6.0
+                Passing raw string bookmarks is deprecated.
+                Use a :class:`.Bookmarks` object instead.
+
         :param bookmarks_supplier:
             Function which will be called every time the default bookmark
             manager's method :meth:`.BookmarkManager.get_bookmarks`
@@ -366,9 +365,27 @@ class GraphDatabase:
               an argument.
 
         .. versionchanged:: 5.8 Stabilized from experimental.
+
+        .. versionchanged:: 6.0
+            Deprecated passing raw string bookmarks as initial_bookmarks.
         """
+        cast_initial_bookmarks: Bookmarks | None
+        # TODO: 7.0 - remove raw bookmark support
+        if not isinstance(initial_bookmarks, (Bookmarks, NoneType)):
+            deprecation_warn(
+                (
+                    "Passing raw strings as initial_bookmarks is deprecated. "
+                    "Use a Bookmarks object instead."
+                ),
+                stack_level=2,
+            )
+            cast_initial_bookmarks = Bookmarks.from_raw_values(
+                t.cast(t.Iterable[str], initial_bookmarks)
+            )
+        else:
+            cast_initial_bookmarks = initial_bookmarks
         return Neo4jBookmarkManager(
-            initial_bookmarks=initial_bookmarks,
+            initial_bookmarks=cast_initial_bookmarks,
             bookmarks_supplier=bookmarks_supplier,
             bookmarks_consumer=bookmarks_consumer,
         )
@@ -519,7 +536,7 @@ class Driver:
             database: str | None = ...,
             fetch_size: int = ...,
             impersonated_user: str | None = ...,
-            bookmarks: t.Iterable[str] | Bookmarks | None = ...,
+            bookmarks: Bookmarks | None = ...,
             default_access_mode: str = ...,
             bookmark_manager: (
                 BookmarkManager | BookmarkManager | None
@@ -609,7 +626,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: te.LiteralString | Query,
+        query_: t.LiteralString | Query,
         parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: str | None = None,
@@ -627,7 +644,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: te.LiteralString | Query,
+        query_: t.LiteralString | Query,
         parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: str | None = None,
@@ -642,7 +659,7 @@ class Driver:
 
     def execute_query(
         self,
-        query_: te.LiteralString | Query,
+        query_: t.LiteralString | Query,
         parameters_: dict[str, t.Any] | None = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: str | None = None,
@@ -651,7 +668,7 @@ class Driver:
             BookmarkManager
             | BookmarkManager
             | None
-            | te.Literal[_DefaultEnum.default]
+            | t.Literal[_DefaultEnum.default]
         ) = _default,
         auth_: _TAuth = None,
         result_transformer_: t.Callable[
@@ -1273,7 +1290,7 @@ class Driver:
 
 def _work(
     tx: ManagedTransaction,
-    query: te.LiteralString,
+    query: t.LiteralString,
     parameters: dict[str, t.Any],
     transformer: t.Callable[[Result], t.Union[_T]],
 ) -> _T:

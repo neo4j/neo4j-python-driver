@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from typing import TypeVar
+from .. import _typing as t
 
 
 __all__ = [
@@ -86,7 +86,7 @@ def nano_divmod(x, y):
     return int(q), number(r / 1000000000)
 
 
-_TDividend = TypeVar("_TDividend", int, float)
+_TDividend = t.TypeVar("_TDividend", int, float)
 
 
 def symmetric_divmod(

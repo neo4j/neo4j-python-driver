@@ -14,11 +14,11 @@
 # limitations under the License.
 
 
-import typing as t
 from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
+from ... import _typing as t
 from ..._api import TelemetryAPI
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v2 as hydration_v2

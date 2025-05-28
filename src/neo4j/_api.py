@@ -16,19 +16,17 @@
 
 from __future__ import annotations
 
-import typing as t
 from enum import Enum
 from urllib.parse import (
     parse_qs,
     urlparse,
 )
 
-from . import api
+from . import (
+    _typing as t,
+    api,
+)
 from .exceptions import ConfigurationError
-
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
 
 
 __all__ = [
@@ -51,14 +49,14 @@ __all__ = [
 ]
 
 
-DRIVER_BOLT: te.Final[str] = "DRIVER_BOLT"
-DRIVER_NEO4J: te.Final[str] = "DRIVER_NEO4J"
+DRIVER_BOLT: t.Final[str] = "DRIVER_BOLT"
+DRIVER_NEO4J: t.Final[str] = "DRIVER_NEO4J"
 
-SECURITY_TYPE_NOT_SECURE: te.Final[str] = "SECURITY_TYPE_NOT_SECURE"
-SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: te.Final[str] = (
+SECURITY_TYPE_NOT_SECURE: t.Final[str] = "SECURITY_TYPE_NOT_SECURE"
+SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: t.Final[str] = (
     "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
 )
-SECURITY_TYPE_SECURE: te.Final[str] = "SECURITY_TYPE_SECURE"
+SECURITY_TYPE_SECURE: t.Final[str] = "SECURITY_TYPE_SECURE"
 
 
 def parse_neo4j_uri(uri):
@@ -184,7 +182,7 @@ class NotificationMinimumSeverity(str, Enum):
 if t.TYPE_CHECKING:
     T_NotificationMinimumSeverity = (
         NotificationMinimumSeverity
-        | te.Literal[
+        | t.Literal[
             "OFF",
             "WARNING",
             "INFORMATION",
@@ -331,7 +329,7 @@ if t.TYPE_CHECKING:
     T_NotificationDisabledCategory = (
         NotificationDisabledCategory
         | NotificationDisabledClassification
-        | te.Literal[
+        | t.Literal[
             "HINT",
             "UNRECOGNIZED",
             "UNSUPPORTED",
@@ -458,5 +456,5 @@ class TelemetryAPI(int, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_RoutingControl = RoutingControl | te.Literal["r", "w"]
+    T_RoutingControl = RoutingControl | t.Literal["r", "w"]
     __all__.append("T_RoutingControl")

@@ -13,14 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from __future__ import annotations
 
 import asyncio
-import typing as t
 from functools import wraps
 from inspect import isclass
 from warnings import warn
 
+from . import _typing as t
 from .warnings import PreviewWarning
 
 

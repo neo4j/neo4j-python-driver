@@ -17,9 +17,9 @@
 from __future__ import annotations
 
 import abc
-import typing as t
 from logging import getLogger
 
+from .. import _typing as t
 from .._async_compat.concurrency import (
     CooperativeLock,
     Lock,
@@ -32,9 +32,11 @@ from .._auth_management import (
     ExpiringAuth,
 )
 
+# ignore TCH001 to make sphinx not completely drop the ball
+from ..api import _TAuth  # noqa: TCH001
+
 
 if t.TYPE_CHECKING:
-    from ..api import _TAuth
     from ..exceptions import Neo4jError
 
 

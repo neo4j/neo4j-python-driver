@@ -16,11 +16,11 @@
 
 from __future__ import annotations
 
-import typing as t
 from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
+from ... import _typing as t
 from ..._exceptions import BoltProtocolError
 from ..._io import BoltProtocolVersion
 from ...api import READ_ACCESS
