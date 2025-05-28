@@ -19,13 +19,16 @@ from __future__ import annotations
 import asyncio
 import enum
 import typing as t
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+)
 from dataclasses import dataclass
-
-import typing_extensions as te
 
 
 if t.TYPE_CHECKING:
-    from collections.abc import Iterator
+    import typing_extensions as te
 
     from neo4j import (
         AsyncDriver,
@@ -40,7 +43,7 @@ __all__ = [
 ]
 
 
-class Workloads(t.Mapping):
+class Workloads(Mapping):
     def __init__(self) -> None:
         self._workloads: dict[str, Workload] = {}
         self._current_id: int = 0
@@ -517,7 +520,7 @@ class _WorkloadQuery:
 
     @classmethod
     def parse_multiple(cls, queries: t.Any) -> list[te.Self]:
-        if not isinstance(queries, t.Iterable):
+        if not isinstance(queries, Iterable):
             raise TypeError("Workload queries must be a list")
         return [cls.parse(query) for query in queries]
 
@@ -544,7 +547,7 @@ class _WorkloadQuery:
 @dataclass
 class _WorkloadConfig:
     database: str | None
-    routing: te.Literal["r", "w"]
+    routing: t.Literal["r", "w"]
 
     @classmethod
     def parse(cls, data: t.Any) -> te.Self:
@@ -554,7 +557,7 @@ class _WorkloadConfig:
             if not isinstance(database, str):
                 raise TypeError("Workload database must be a string")
 
-        routing: te.Literal["r", "w"] = "w"
+        routing: t.Literal["r", "w"] = "w"
         if "routing" in data:
             raw_routing = data["routing"]
             if not isinstance(routing, str):

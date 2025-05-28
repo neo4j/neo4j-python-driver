@@ -24,13 +24,13 @@ import pytz
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j.time import (
-    AVERAGE_SECONDS_IN_DAY,
+    _AVERAGE_SECONDS_IN_DAY,
+    _NANO_SECONDS,
     Date,
     DateTime,
     Duration,
     MAX_INT64,
     MIN_INT64,
-    NANO_SECONDS,
     Time,
 )
 
@@ -226,8 +226,8 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             (np.timedelta64(1, "ms"), (0, 0, 0, 1000000)),
             (np.timedelta64(1, "us"), (0, 0, 0, 1000)),
             (np.timedelta64(1, "ns"), (0, 0, 0, 1)),
-            (np.timedelta64(NANO_SECONDS, "ns"), (0, 0, 1, 0)),
-            (np.timedelta64(NANO_SECONDS + 1, "ns"), (0, 0, 1, 1)),
+            (np.timedelta64(_NANO_SECONDS, "ns"), (0, 0, 1, 0)),
+            (np.timedelta64(_NANO_SECONDS + 1, "ns"), (0, 0, 1, 1)),
             (np.timedelta64(1000, "ps"), (0, 0, 0, 1)),
             (np.timedelta64(1, "ps"), (0, 0, 0, 0)),
             (np.timedelta64(1000000, "fs"), (0, 0, 0, 1)),
@@ -245,8 +245,8 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             (np.timedelta64(-1, "ms"), (0, 0, 0, -1000000)),
             (np.timedelta64(-1, "us"), (0, 0, 0, -1000)),
             (np.timedelta64(-1, "ns"), (0, 0, 0, -1)),
-            (np.timedelta64(-NANO_SECONDS, "ns"), (0, 0, -1, 0)),
-            (np.timedelta64(-NANO_SECONDS - 1, "ns"), (0, 0, -1, -1)),
+            (np.timedelta64(-_NANO_SECONDS, "ns"), (0, 0, -1, 0)),
+            (np.timedelta64(-_NANO_SECONDS - 1, "ns"), (0, 0, -1, -1)),
             (np.timedelta64(-1000, "ps"), (0, 0, 0, -1)),
             (np.timedelta64(-1, "ps"), (0, 0, 0, -1)),
             (np.timedelta64(-1000000, "fs"), (0, 0, 0, -1)),
@@ -278,13 +278,18 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         (
             (
                 pd.Timedelta(days=1, seconds=2, microseconds=3, nanoseconds=4),
-                (0, 0, AVERAGE_SECONDS_IN_DAY + 2, 3004),
+                (0, 0, _AVERAGE_SECONDS_IN_DAY + 2, 3004),
             ),
             (
                 pd.Timedelta(
                     days=-1, seconds=2, microseconds=3, nanoseconds=4
                 ),
-                (0, 0, -AVERAGE_SECONDS_IN_DAY + 2 + 1, -NANO_SECONDS + 3004),
+                (
+                    0,
+                    0,
+                    -_AVERAGE_SECONDS_IN_DAY + 2 + 1,
+                    -_NANO_SECONDS + 3004,
+                ),
             ),
         ),
     )

@@ -49,12 +49,10 @@ from ..exceptions import MarkdAsDriverError
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     from neo4j._auth_management import ClientCertificate
 
     T = t.TypeVar("T")
-    P = te.ParamSpec("P")
+    P = t.ParamSpec("P")
 
 
 def snake_case_to_pascal_case(name: str) -> str:
@@ -624,7 +622,11 @@ def new_bookmark_manager(backend, data):
 
     bmm_kwargs = {}
     data.mark_item_as_read("initialBookmarks", recursive=True)
-    bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
+    initial_bookmarks = data.get("initialBookmarks")
+    if initial_bookmarks is not None:
+        bmm_kwargs["initial_bookmarks"] = neo4j.Bookmarks.from_raw_values(
+            initial_bookmarks
+        )
     if data.get("bookmarksSupplierRegistered"):
         bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
             backend, bookmark_manager_id

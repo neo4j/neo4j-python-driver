@@ -137,8 +137,8 @@ def test_serverinfo_initialization() -> None:
     server_info = neo4j.ServerInfo(address, version)
     assert server_info.address is address
     assert server_info.protocol_version is version
-    with pytest.warns(DeprecationWarning):
-        assert server_info.connection_id is None
+    with pytest.raises(AttributeError):
+        _ = server_info.connection_id  # type: ignore  # expected to fail
 
 
 @pytest.mark.parametrize(

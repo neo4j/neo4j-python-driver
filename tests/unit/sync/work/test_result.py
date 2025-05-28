@@ -681,17 +681,9 @@ def test_result_graph(records):
         nodes = graph.nodes
 
         assert set(nodes._entity_dict) == {"0", "1"}
-        for key in (
-            "0",
-            0,
-            0.0,
-            # I pray to god that no-one actually accessed nodes with complex
-            # numbers, but theoretically it would have worked with the legacy
-            # number IDs
-            0 + 0j,
-        ):
+        for key in ("0", 0, 0.0, 0 + 0j):
             if not isinstance(key, str):
-                with pytest.warns(DeprecationWarning, match="element_id"):
+                with pytest.raises(KeyError):
                     alice = nodes[key]
             else:
                 alice = nodes[key]
@@ -703,7 +695,7 @@ def test_result_graph(records):
 
         for key in ("1", 1, 1.0, 1 + 0j):
             if not isinstance(key, str):
-                with pytest.warns(DeprecationWarning, match="element_id"):
+                with pytest.raises(KeyError):
                     bob = nodes[key]
             else:
                 bob = nodes[key]
@@ -720,7 +712,7 @@ def test_result_graph(records):
 
         for key in ("0", 0, 0.0, 0 + 0j):
             if not isinstance(key, str):
-                with pytest.warns(DeprecationWarning, match="element_id"):
+                with pytest.raises(KeyError):
                     rel = rels[key]
             else:
                 rel = rels[key]

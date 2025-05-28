@@ -22,9 +22,9 @@ import typing as t
 
 import pytest
 
-from neo4j._spatial import (
+from neo4j.spatial import (
+    _point_type,
     Point,
-    point_type,
 )
 
 
@@ -51,7 +51,7 @@ class TestPoint:
         assert tuple(p) == argument
 
     def test_immutable_coordinates(self) -> None:
-        MyPoint = point_type("MyPoint", ("x", "y", "z"), {2: 1234, 3: 5678})  # noqa: N806
+        MyPoint = _point_type("MyPoint", ("x", "y", "z"), {2: 1234, 3: 5678})  # noqa: N806
         coordinates = (0.1, 0)
         p = MyPoint(coordinates)
         with pytest.raises(AttributeError):

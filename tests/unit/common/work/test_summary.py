@@ -23,8 +23,6 @@ import warnings
 if t.TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import typing_extensions as te
-
     _T = t.TypeVar("_T")
     _TDict = t.TypeVar("_TDict", bound=dict)
 
@@ -134,7 +132,7 @@ def test_summary_query_type(summary_args_kwargs, summary_in) -> None:
         kwargs["metadata"]["type"] = summary_in
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: te.Literal["r", "w", "rw", "s"] | None
+    summary_out: t.Literal["r", "w", "rw", "s"] | None
     summary_out = summary.query_type
 
     assert summary_out is summary_in
@@ -307,7 +305,7 @@ class StatusOrderHelper:
     @staticmethod
     def make_raw_status(
         i: int,
-        type_: te.Literal[
+        type_: t.Literal[
             "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
         ],
     ) -> dict:
@@ -342,7 +340,7 @@ class StatusOrderHelper:
     def assert_notification_is_status(
         notification: dict,
         i: int,
-        type_: te.Literal[
+        type_: t.Literal[
             "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
         ],
     ) -> None:
@@ -352,7 +350,7 @@ class StatusOrderHelper:
     def assert_parsed_notification_is_status(
         notification: SummaryNotification,
         i: int,
-        type_: te.Literal[
+        type_: t.Literal[
             "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
         ],
     ) -> None:
@@ -362,7 +360,7 @@ class StatusOrderHelper:
     def assert_status_data_matches(
         status: GqlStatusObject,
         i: int,
-        type_: te.Literal[
+        type_: t.Literal[
             "WARNING", "INFORMATION", "SUCCESS", "OMITTED", "NODATA"
         ],
     ) -> None:
@@ -1349,7 +1347,7 @@ def test_status_from_notifications(
 
 def update_summary_kwargs_result_type(
     kwargs: dict,
-    result_type: te.Literal["success", "no data", "omitted result"],
+    result_type: t.Literal["success", "no data", "omitted result"],
 ) -> dict:
     if result_type == "success":
         kwargs["had_key"] = True

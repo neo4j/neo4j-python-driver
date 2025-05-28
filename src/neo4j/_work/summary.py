@@ -18,6 +18,9 @@ from __future__ import annotations
 
 import itertools
 import typing as t
+
+# ignore TCH003 to make sphinx not completely drop the ball
+from collections.abc import Sequence  # noqa: TCH003
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -31,8 +34,6 @@ from .._warnings import preview
 
 
 if t.TYPE_CHECKING:
-    from collections.abc import Sequence
-
     import typing_extensions as te
 
     from .._addressing import Address
@@ -60,7 +61,7 @@ class ResultSummary:
     #: A string that describes the type of query
     # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-only,
     # ``'s'`` = schema.
-    query_type: te.Literal["r", "rw", "w", "s"] | None
+    query_type: t.Literal["r", "rw", "w", "s"] | None
 
     #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the
     #: query triggered.
@@ -524,7 +525,7 @@ class SummaryNotification:
                 metadata.get("position")
             ),
         }
-        str_keys: tuple[te.Literal["title", "code", "description"], ...] = (
+        str_keys: tuple[t.Literal["title", "code", "description"], ...] = (
             "title",
             "code",
             "description",

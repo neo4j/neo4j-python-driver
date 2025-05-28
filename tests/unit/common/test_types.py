@@ -570,13 +570,13 @@ def test_graph_views_v1():
     g = hydration_scope.get_graph()
     assert len(g.nodes) == 3
     for id_, node in ((1, alice), (2, bob), (3, carol)):
-        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
+        with pytest.raises(KeyError):
             assert g.nodes[id_] == node
         assert g.nodes[str(id_)] == node
 
     assert len(g.relationships) == 2
     for id_, rel in ((1, alice_knows_bob), (2, carol_dislikes_bob)):
-        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
+        with pytest.raises(KeyError):
             assert g.relationships[id_] == rel
         assert g.relationships[str(id_)] == rel
 
@@ -668,24 +668,24 @@ def test_graph_views_v2_repr(example_graph_builder_v2, legacy_id):
         (2, g.bob.element_id, g.bob),
         (3, g.carol.element_id, g.carol),
     ):
-        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
-            assert g.graph.nodes[id_] == node
+        with pytest.raises(KeyError):
+            assert g.graph.nodes[id_] == node  # type: ignore # should fail
         assert g.graph.nodes[element_id] == node
         if not legacy_id:
             with pytest.raises(KeyError):
-                g.graph.nodes[str(id_)]
+                _ = g.graph.nodes[str(id_)]
 
     assert len(g.graph.relationships) == 2
     for id_, element_id, rel in (
         (1, g.alice_knows_bob.element_id, g.alice_knows_bob),
         (2, g.carol_dislikes_bob.element_id, g.carol_dislikes_bob),
     ):
-        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
-            assert g.graph.relationships[id_] == rel
+        with pytest.raises(KeyError):
+            assert g.graph.relationships[id_] == rel  # type: ignore
         assert g.graph.relationships[element_id] == rel
         if not legacy_id:
             with pytest.raises(KeyError):
-                g.graph.relationships[str(id_)]
+                _ = g.graph.relationships[str(id_)]
 
 
 @pytest.mark.parametrize("legacy_id", (True, False))

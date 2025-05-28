@@ -17,11 +17,11 @@
 from __future__ import annotations
 
 import asyncio
-import typing as t
 from logging import getLogger
 from random import random
 from time import monotonic
 
+from ... import _typing as t
 from ..._api import TelemetryAPI
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
@@ -51,12 +51,10 @@ from .workspace import Workspace
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     from ..io import Bolt
 
     _R = t.TypeVar("_R")
-    _P = te.ParamSpec("_P")
+    _P = t.ParamSpec("_P")
 
 
 log = getLogger("neo4j.pool")
@@ -256,7 +254,7 @@ class Session(Workspace):
     @NonConcurrentMethodChecker._non_concurrent_method
     def run(
         self,
-        query: te.LiteralString | Query,
+        query: t.LiteralString | Query,
         parameters: dict[str, t.Any] | None = None,
         **kwargs: t.Any,
     ) -> Result:
@@ -498,7 +496,7 @@ class Session(Workspace):
         access_mode: str,
         api: TelemetryAPI,
         transaction_function: t.Callable[
-            te.Concatenate[ManagedTransaction, _P], t.Union[_R]
+            t.Concatenate[ManagedTransaction, _P], t.Union[_R]
         ],
         # *args: _P.args, **kwargs: _P.kwargs
         # gives more type safety, but is less performant and makes for harder
@@ -591,7 +589,7 @@ class Session(Workspace):
     def execute_read(
         self,
         transaction_function: t.Callable[
-            te.Concatenate[ManagedTransaction, _P], t.Union[_R]
+            t.Concatenate[ManagedTransaction, _P], t.Union[_R]
         ],
         *args: _P.args,
         **kwargs: _P.kwargs,
@@ -670,7 +668,7 @@ class Session(Workspace):
     def execute_write(
         self,
         transaction_function: t.Callable[
-            te.Concatenate[ManagedTransaction, _P], t.Union[_R]
+            t.Concatenate[ManagedTransaction, _P], t.Union[_R]
         ],
         *args: _P.args,
         **kwargs: _P.kwargs,

@@ -17,8 +17,8 @@
 from __future__ import annotations
 
 from abc import ABCMeta
-from collections.abc import Mapping
 
+from . import _typing as t
 from ._warnings import (
     deprecation_warn,
     preview_warn,
@@ -238,7 +238,7 @@ class ConfigType(ABCMeta):
         )
 
 
-class Config(Mapping, metaclass=ConfigType):
+class Config(t.Mapping, metaclass=ConfigType):
     """Base class for all configuration containers."""
 
     @staticmethod
