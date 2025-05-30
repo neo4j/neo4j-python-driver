@@ -1888,11 +1888,19 @@ class Time(_time_base_class, metaclass=_TimeType):
 
     # OPERATIONS #
 
+    @_t.overload
     def _get_both_normalized_ticks(
-        self, other: object, strict: bool = True
+        self, other: Time | _time, strict: _t.Literal[True] = True
+    ) -> tuple[int, int]: ...
+
+    @_t.overload
+    def _get_both_normalized_ticks(
+        self, other: Time | _time, strict: _t.Literal[False]
+    ) -> tuple[int, int] | None: ...
+
+    def _get_both_normalized_ticks(
+        self, other: Time | _time, strict: bool = True
     ) -> tuple[int, int] | None:
-        if not isinstance(other, (Time, _time)):
-            return None
         if (self.utc_offset() is None) ^ (other.utcoffset() is None):
             if strict:
                 raise TypeError(
@@ -1942,40 +1950,28 @@ class Time(_time_base_class, metaclass=_TimeType):
         """`<` comparison with :class:`.Time` or :class:`datetime.time`."""
         if not isinstance(other, (Time, _time)):
             return NotImplemented
-        ticks = self._get_both_normalized_ticks(other)
-        if ticks is None:
-            return False
-        self_ticks, other_ticks = ticks
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks < other_ticks
 
     def __le__(self, other: Time | _time) -> bool:
         """`<=` comparison with :class:`.Time` or :class:`datetime.time`."""
         if not isinstance(other, (Time, _time)):
             return NotImplemented
-        ticks = self._get_both_normalized_ticks(other)
-        if ticks is None:
-            return False
-        self_ticks, other_ticks = ticks
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks <= other_ticks
 
     def __ge__(self, other: Time | _time) -> bool:
         """`>=` comparison with :class:`.Time` or :class:`datetime.time`."""
         if not isinstance(other, (Time, _time)):
             return NotImplemented
-        ticks = self._get_both_normalized_ticks(other)
-        if ticks is None:
-            return False
-        self_ticks, other_ticks = ticks
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks >= other_ticks
 
     def __gt__(self, other: Time | _time) -> bool:
         """`>` comparison with :class:`.Time` or :class:`datetime.time`."""
         if not isinstance(other, (Time, _time)):
             return NotImplemented
-        ticks = self._get_both_normalized_ticks(other)
-        if ticks is None:
-            return False
-        self_ticks, other_ticks = ticks
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks > other_ticks
 
     # INSTANCE METHODS #
@@ -2583,11 +2579,19 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
 
     # OPERATIONS #
 
+    @_t.overload
     def _get_both_normalized(
-        self, other: object, strict: bool = True
+        self, other: _datetime | DateTime, strict: _t.Literal[True] = True
+    ) -> tuple[DateTime, DateTime | _datetime]: ...
+
+    @_t.overload
+    def _get_both_normalized(
+        self, other: _datetime | DateTime, strict: _t.Literal[False]
+    ) -> tuple[DateTime, DateTime | _datetime] | None: ...
+
+    def _get_both_normalized(
+        self, other: _datetime | DateTime, strict: bool = True
     ) -> tuple[DateTime, DateTime | _datetime] | None:
-        if not isinstance(other, (_datetime, DateTime)):
-            return None
         if (self.utc_offset() is None) ^ (other.utcoffset() is None):
             if strict:
                 raise TypeError(
@@ -2646,9 +2650,7 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
             if self.date() == other.date():
                 return self.time() < other.time()
             return self.date() < other.date()
-        normalized = self._get_both_normalized(other)
-        assert normalized is not None, "checked for correct type above"
-        self_norm, other_norm = normalized
+        self_norm, other_norm = self._get_both_normalized(other)
         return (
             self_norm.date() < other_norm.date()
             or self_norm.time() < other_norm.time()
@@ -2668,9 +2670,7 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
             if self.date() == other.date():
                 return self.time() <= other.time()
             return self.date() <= other.date()
-        normalized = self._get_both_normalized(other)
-        assert normalized is not None, "checked for correct type above"
-        self_norm, other_norm = normalized
+        self_norm, other_norm = self._get_both_normalized(other)
         return self_norm <= other_norm
 
     def __ge__(  # type: ignore[override]
@@ -2687,9 +2687,7 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
             if self.date() == other.date():
                 return self.time() >= other.time()
             return self.date() >= other.date()
-        normalized = self._get_both_normalized(other)
-        assert normalized is not None, "checked for correct type above"
-        self_norm, other_norm = normalized
+        self_norm, other_norm = self._get_both_normalized(other)
         return self_norm >= other_norm
 
     def __gt__(  # type: ignore[override]
@@ -2706,9 +2704,7 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
             if self.date() == other.date():
                 return self.time() > other.time()
             return self.date() > other.date()
-        normalized = self._get_both_normalized(other)
-        assert normalized is not None, "checked for correct type above"
-        self_norm, other_norm = normalized
+        self_norm, other_norm = self._get_both_normalized(other)
         return (
             self_norm.date() > other_norm.date()
             or self_norm.time() > other_norm.time()
