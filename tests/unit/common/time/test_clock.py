@@ -16,53 +16,53 @@
 
 import pytest
 
-from neo4j.time._clock_implementations import (
-    Clock,
-    ClockTime,
+from neo4j.time import (
+    _Clock,
+    _ClockTime,
 )
 
 
 class TestClock:
     def test_no_clock_implementations(self):
         try:
-            Clock._Clock__implementations = []
+            _Clock._Clock__implementations = []
             with pytest.raises(RuntimeError):
-                _ = Clock()
+                _ = _Clock()
         finally:
-            Clock._Clock__implementations = None
+            _Clock._Clock__implementations = None
 
     def test_base_clock_precision(self):
-        clock = object.__new__(Clock)
+        clock = object.__new__(_Clock)
         with pytest.raises(NotImplementedError):
             _ = clock.precision()
 
     def test_base_clock_available(self):
-        clock = object.__new__(Clock)
+        clock = object.__new__(_Clock)
         with pytest.raises(NotImplementedError):
             _ = clock.available()
 
     def test_base_clock_utc_time(self):
-        clock = object.__new__(Clock)
+        clock = object.__new__(_Clock)
         with pytest.raises(NotImplementedError):
             _ = clock.utc_time()
 
     def test_local_offset(self):
-        clock = object.__new__(Clock)
+        clock = object.__new__(_Clock)
         offset = clock.local_offset()
-        assert isinstance(offset, ClockTime)
+        assert isinstance(offset, _ClockTime)
 
     def test_local_time(self):
-        _ = Clock()
-        for impl in Clock._Clock__implementations:
-            assert issubclass(impl, Clock)
+        _ = _Clock()
+        for impl in _Clock._Clock__implementations:
+            assert issubclass(impl, _Clock)
             clock = object.__new__(impl)
             time = clock.local_time()
-            assert isinstance(time, ClockTime)
+            assert isinstance(time, _ClockTime)
 
     def test_utc_time(self):
-        _ = Clock()
-        for impl in Clock._Clock__implementations:
-            assert issubclass(impl, Clock)
+        _ = _Clock()
+        for impl in _Clock._Clock__implementations:
+            assert issubclass(impl, _Clock)
             clock = object.__new__(impl)
             time = clock.utc_time()
-            assert isinstance(time, ClockTime)
+            assert isinstance(time, _ClockTime)

@@ -81,7 +81,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - Remove `ExperimentalWarning` and turn the few left instances of it into `PreviewWarning`.
   - Deprecate importing `PreviewWarning` from `neo4j`.  
     Import it from `neo4j.warnings` instead.
-- Make undocumented internal constants and helper functions private:
+- Make undocumented internal constants, helper functions, and other items private:
   - `neo4j.api`
     - `DRIVER_BOLT`
     - `DRIVER_NEO4J`
@@ -98,6 +98,24 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ERROR_REWRITE_MAP`
     - `client_errors`
     - `transient_errors`
+    - all other indirectly exposed items from imports (e.g. `typing` as `neo4j.exceptions.t`)
+  - `neo4j.time`
+    - `DATE_ISO_PATTERN`
+    - `TIME_ISO_PATTERN`
+    - `DURATION_ISO_PATTERN`
+    - `NANO_SECONDS`
+    - `AVERAGE_SECONDS_IN_MONTH`
+    - `AVERAGE_SECONDS_IN_DAY`
+    - `FORMAT_F_REPLACE`
+    - `IS_LEAP_YEAR`
+    - `DAYS_IN_YEAR`
+    - `DAYS_IN_MONTH`
+    - `round_half_to_even`
+    - `symmetric_divmod`
+    - `DateTimeType`
+    - `DateType`
+    - `TimeType`
+    - all other indirectly exposed items from imports (e.g. `re` as `neo4j.time.re`)
   - `neo4j.spatial`
     - `hydrate_point`
     - `dehydrate_point`
@@ -111,6 +129,22 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `.default_host`
     - `.default_port`
     - `.default_target`
+  - `neo4j.graph`, `neo4j.addressing`, `neo4j.api`
+    - indirectly exposed items from imports (e.g. `collections.abc.Mapping` as `neo4j.graph.Mapping`).
+  - `BoltDriver` and `Neo4jDriver`
+    - `.open`
+    - `.parse_target`
+    - `.default_host`
+    - `.default_port`
+    - `.default_target`
+  - `neo4j.debug`
+    - `ColourFormatter`
+    - `TaskIdFilter`
+    - all other indirectly exposed items from imports (e.g. `asyncio` as `neo4j.debug.asyncio`)
+- Deprecate ClockTime and its accessors
+  - For each `neo4j.time.Date`, `neo4j.time.DateTime`, `neo4j.time.Time`
+    - `from_clock_time` and `to_clock_time` methods
+  - `neo4j.time.ClockTime` itself
 - Raise `ConfigurationError` instead of ignoring the routing context (URI query parameters) when creating a direct
   driver ("bolt[+s[sc]]://" scheme).
 - Change behavior of closed drivers:

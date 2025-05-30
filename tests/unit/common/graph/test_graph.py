@@ -18,19 +18,21 @@ from __future__ import annotations
 
 import copy
 import pickle
-import typing as t
 from itertools import zip_longest
 
 import pytest
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-    from neo4j.graph import Graph, Node, Relationship
-
+from neo4j import _typing as t
 from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
 from neo4j.graph import Path
+
+
+if t.TYPE_CHECKING:
+    from neo4j.graph import (
+        Graph,
+        Node,
+        Relationship,
+    )
 
 
 class GraphBuilder:
@@ -39,7 +41,7 @@ class GraphBuilder:
         self._node_counter = 0
         self._relationship_counter = 0
 
-    def with_node(self, *labels, **properties) -> te.Self:
+    def with_node(self, *labels, **properties) -> t.Self:
         id_ = self._node_counter
         element_id = f"e{id_}"
         self._node_counter += 1
@@ -48,7 +50,7 @@ class GraphBuilder:
 
     def with_relationship(
         self, start_node_id, end_node_id, type_, **properties
-    ) -> te.Self:
+    ) -> t.Self:
         id_ = self._relationship_counter
         element_id = f"e{id_}"
         start_node_element_id = f"e{start_node_id}"

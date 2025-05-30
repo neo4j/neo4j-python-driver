@@ -16,16 +16,17 @@
 
 """Graph data types as returned by the DBMS."""
 
-from __future__ import annotations
+from __future__ import annotations as _
 
-import typing as t
-from collections.abc import Mapping
+from collections.abc import Mapping as _Mapping
+
+from .. import _typing as _t
 
 
-if t.TYPE_CHECKING:
-    from typing_extensions import deprecated
+if _t.TYPE_CHECKING:
+    from typing_extensions import deprecated as _deprecated
 else:
-    from .._warnings import deprecated
+    from .._warnings import deprecated as _deprecated
 
 
 __all__ = [
@@ -36,7 +37,7 @@ __all__ = [
 ]
 
 
-_T = t.TypeVar("_T")
+_T = _t.TypeVar("_T")
 
 
 class Graph:
@@ -71,7 +72,7 @@ class Graph:
         try:
             cls = self._relationship_types[name]
         except KeyError:
-            cls = self._relationship_types[name] = t.cast(
+            cls = self._relationship_types[name] = _t.cast(
                 type[Relationship], type(str(name), (Relationship,), {})
             )
         return cls
@@ -92,7 +93,7 @@ class Graph:
         return graph
 
 
-class Entity(t.Mapping[str, t.Any]):
+class Entity(_t.Mapping[str, _t.Any]):
     """
     Graph entity base.
 
@@ -106,7 +107,7 @@ class Entity(t.Mapping[str, t.Any]):
         graph: Graph,
         element_id: str,
         id_: int,
-        properties: dict[str, t.Any] | None,
+        properties: dict[str, _t.Any] | None,
     ) -> None:
         self._graph = graph
         self._element_id = element_id
@@ -115,7 +116,7 @@ class Entity(t.Mapping[str, t.Any]):
             k: v for k, v in (properties or {}).items() if v is not None
         }
 
-    def __eq__(self, other: t.Any) -> bool:
+    def __eq__(self, other: _t.Any) -> bool:
         try:
             return (
                 type(self) is type(other)
@@ -131,13 +132,13 @@ class Entity(t.Mapping[str, t.Any]):
     def __len__(self) -> int:
         return len(self._properties)
 
-    def __getitem__(self, name: str) -> t.Any:
+    def __getitem__(self, name: str) -> _t.Any:
         return self._properties.get(name)
 
     def __contains__(self, name: object) -> bool:
         return name in self._properties
 
-    def __iter__(self) -> t.Iterator[str]:
+    def __iter__(self) -> _t.Iterator[str]:
         return iter(self._properties)
 
     @property
@@ -146,7 +147,7 @@ class Entity(t.Mapping[str, t.Any]):
         return self._graph
 
     @property  # type: ignore
-    @deprecated("`id` is deprecated, use `element_id` instead")
+    @_deprecated("`id` is deprecated, use `element_id` instead")
     def id(self) -> int:
         """
         The legacy identity of this entity in its container :class:`.Graph`.
@@ -178,24 +179,24 @@ class Entity(t.Mapping[str, t.Any]):
         """
         return self._element_id
 
-    def get(self, name: str, default: object = None) -> t.Any:
+    def get(self, name: str, default: object = None) -> _t.Any:
         """Get a property value by name, optionally with a default."""
         return self._properties.get(name, default)
 
-    def keys(self) -> t.KeysView[str]:
+    def keys(self) -> _t.KeysView[str]:
         """Return an iterable of all property names."""
         return self._properties.keys()
 
-    def values(self) -> t.ValuesView[t.Any]:
+    def values(self) -> _t.ValuesView[_t.Any]:
         """Return an iterable of all property values."""
         return self._properties.values()
 
-    def items(self) -> t.ItemsView[str, t.Any]:
+    def items(self) -> _t.ItemsView[str, _t.Any]:
         """Return an iterable of all property name-value pairs."""
         return self._properties.items()
 
 
-class EntitySetView(Mapping, t.Generic[_T]):
+class EntitySetView(_Mapping, _t.Generic[_T]):
     """View of a set of :class:`.Entity` instances within a :class:`.Graph`."""
 
     def __init__(
@@ -210,7 +211,7 @@ class EntitySetView(Mapping, t.Generic[_T]):
     def __len__(self) -> int:
         return len(self._entity_dict)
 
-    def __iter__(self) -> t.Iterator[_T]:
+    def __iter__(self) -> _t.Iterator[_T]:
         return iter(self._entity_dict.values())
 
 
@@ -222,8 +223,8 @@ class Node(Entity):
         graph: Graph,
         element_id: str,
         id_: int,
-        n_labels: t.Iterable[str] | None = None,
-        properties: dict[str, t.Any] | None = None,
+        n_labels: _t.Iterable[str] | None = None,
+        properties: dict[str, _t.Any] | None = None,
     ) -> None:
         Entity.__init__(self, graph, element_id, id_, properties)
         self._labels = frozenset(n_labels or ())
@@ -248,7 +249,7 @@ class Relationship(Entity):
         graph: Graph,
         element_id: str,
         id_: int,
-        properties: dict[str, t.Any],
+        properties: dict[str, _t.Any],
     ) -> None:
         Entity.__init__(self, graph, element_id, id_, properties)
         self._start_node: Node | None = None
@@ -303,9 +304,9 @@ class Path:
         for i, relationship in enumerate(relationships, start=1):
             assert isinstance(relationship, Relationship)
             if relationship.start_node == nodes[-1]:
-                nodes.append(t.cast(Node, relationship.end_node))
+                nodes.append(_t.cast(Node, relationship.end_node))
             elif relationship.end_node == nodes[-1]:
-                nodes.append(t.cast(Node, relationship.start_node))
+                nodes.append(_t.cast(Node, relationship.start_node))
             else:
                 raise ValueError(
                     f"Relationship {i} does not connect to the last node"
@@ -319,7 +320,7 @@ class Path:
             f"size={len(self)}>"
         )
 
-    def __eq__(self, other: t.Any) -> bool:
+    def __eq__(self, other: _t.Any) -> bool:
         try:
             return (
                 self.start_node == other.start_node
@@ -337,7 +338,7 @@ class Path:
     def __len__(self) -> int:
         return len(self._relationships)
 
-    def __iter__(self) -> t.Iterator[Relationship]:
+    def __iter__(self) -> _t.Iterator[Relationship]:
         return iter(self._relationships)
 
     @property

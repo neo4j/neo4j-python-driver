@@ -16,8 +16,7 @@
 
 from __future__ import annotations
 
-import typing as t
-
+from .. import _typing as t
 from .._async_compat.concurrency import AsyncCooperativeLock
 from .._async_compat.util import AsyncUtil
 from ..api import (

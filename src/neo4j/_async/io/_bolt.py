@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import abc
 import asyncio
-import typing as t
 from collections import deque
 from logging import getLogger
 from time import monotonic
 
+from ... import _typing as t
 from ..._addressing import ResolvedAddress
 from ..._async_compat.util import AsyncUtil
 from ..._auth_management import to_auth_dict
@@ -35,6 +35,7 @@ from ..._deadline import Deadline
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
+    SocketDeadlineExceededError,
 )
 from ..._io import BoltProtocolVersion
 from ..._meta import USER_AGENT
@@ -58,8 +59,6 @@ from ._common import (
 
 
 if t.TYPE_CHECKING:
-    import typing_extensions as te
-
     from ..._api import TelemetryAPI
 
 
@@ -264,7 +263,7 @@ class AsyncBolt:
         dict[BoltProtocolVersion, type[AsyncBolt]]
     ] = {}
 
-    def __init_subclass__(cls: type[te.Self], **kwargs: t.Any) -> None:
+    def __init_subclass__(cls: type[t.Self], **kwargs: t.Any) -> None:
         if cls.SKIP_REGISTRATION:
             super().__init_subclass__(**kwargs)
             return
@@ -889,6 +888,15 @@ class AsyncBolt:
     async def _set_defunct(self, message, error=None, silent=False):
         direct_driver = getattr(self.pool, "is_direct_pool", False)
         user_cancelled = isinstance(error, asyncio.CancelledError)
+        connection_failed = isinstance(
+            error,
+            (
+                ServiceUnavailable,
+                SessionExpired,
+                OSError,
+                SocketDeadlineExceededError,
+            ),
+        )
 
         if not (user_cancelled or self._closing):
             log_call = log.error
@@ -915,6 +923,12 @@ class AsyncBolt:
         if user_cancelled:
             self.kill()
             raise error  # cancellation error should not be re-written
+        if not connection_failed:
+            # Something else but the connection failed
+            # => we're not sure which state we're in
+            # => ditch the connection and raise the error for user-awareness
+            await self.close()
+            raise error
         if not self._closing:
             # If we fail while closing the connection, there is no need to
             # remove the connection from the pool, nor to try to close the

@@ -36,6 +36,7 @@ from pytz import (
 )
 
 from neo4j.time import (
+    _ClockTime,
     DateTime,
     Duration,
     MAX_YEAR,
@@ -45,7 +46,6 @@ from neo4j.time._arithmetic import (
     nano_add,
     nano_div,
 )
-from neo4j.time._clock_implementations import ClockTime
 
 
 if t.TYPE_CHECKING:
@@ -255,8 +255,9 @@ class TestDateTime:
 
     def test_conversion_to_t(self) -> None:
         dt = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
-        t = dt.to_clock_time()
-        assert t == ClockTime(63660380417, 914390409)
+        with pytest.warns(DeprecationWarning, match="ClockTime"):
+            t = dt.to_clock_time()
+        assert t == _ClockTime(63660380417, 914390409)
 
     def test_add_timedelta(self) -> None:
         dt1 = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
@@ -511,7 +512,7 @@ class TestDateTime:
         (
             object(),
             1,
-            DateTime(2018, 4, 27, 23, 0, 17, 914391409).to_clock_time(),
+            DateTime(2018, 4, 27, 23, 0, 17, 914391409)._to_clock_time(),
             (
                 DateTime(2018, 4, 27, 23, 0, 17, 914391409)
                 - DateTime(1970, 1, 1)

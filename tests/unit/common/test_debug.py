@@ -20,22 +20,20 @@ import asyncio
 import io
 import logging
 import sys
-import typing as t
 
 import pytest
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-from neo4j import debug as neo4j_debug
+from neo4j import (
+    _typing as t,
+    debug as neo4j_debug,
+)
 
 from ..._async_compat import mark_async_test
 
 
 if t.TYPE_CHECKING:
 
-    class _TSetupMockProtocol(te.Protocol):
+    class _TSetupMockProtocol(t.Protocol):
         def __call__(self, *args: str) -> t.Sequence[t.Any]: ...
 
 
@@ -272,9 +270,9 @@ def test_watcher_colour(logger_mocker, colour, thread, task) -> None:
     assert isinstance(handler, logging.Handler)
     assert isinstance(handler.formatter, logging.Formatter)
     if colour:
-        assert isinstance(handler.formatter, neo4j_debug.ColourFormatter)
+        assert isinstance(handler.formatter, neo4j_debug._ColourFormatter)
     else:
-        assert not isinstance(handler.formatter, neo4j_debug.ColourFormatter)
+        assert not isinstance(handler.formatter, neo4j_debug._ColourFormatter)
 
 
 @pytest.mark.parametrize("colour", (True, False))
@@ -307,7 +305,9 @@ def test_watcher_format(logger_mocker, colour, thread, task) -> None:
 def _assert_task_injection(
     async_: bool, mocker, logger_mocker, colour: bool, thread: bool, task: bool
 ) -> None:
-    handler_cls_mock = mocker.patch("neo4j.debug.StreamHandler", autospec=True)
+    handler_cls_mock = mocker.patch(
+        "neo4j.debug._StreamHandler", autospec=True
+    )
     handler_mock = handler_cls_mock.return_value
     logger_name = "neo4j"
     logger_mocker(logger_name)[0]

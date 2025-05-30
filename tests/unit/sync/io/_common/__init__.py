@@ -12,29 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from neo4j.time import (
-    _Clock,
-    _ClockTime,
-)
-
-
-# The existence of this class will make the driver's custom date time
-# implementation use it instead of a real clock since its precision it higher
-# than all the other clocks (only up to nanoseconds).
-class FixedClock(_Clock):
-    @classmethod
-    def available(cls):
-        return True
-
-    @classmethod
-    def precision(cls):
-        return 12
-
-    @classmethod
-    def local_offset(cls):
-        return _ClockTime()
-
-    def utc_time(self):
-        return _ClockTime(45296, 789000001)

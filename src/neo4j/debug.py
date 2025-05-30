@@ -14,23 +14,25 @@
 # limitations under the License.
 
 
-from __future__ import annotations
+from __future__ import annotations as _
 
-import asyncio
-import typing as t
+import asyncio as _asyncio
 from contextlib import suppress as _suppress
 from logging import (
-    CRITICAL,
-    DEBUG,
-    ERROR,
-    Filter,
-    Formatter,
-    getLogger,
-    INFO,
-    StreamHandler,
-    WARNING,
+    CRITICAL as _CRITICAL,
+    DEBUG as _DEBUG,
+    ERROR as _ERROR,
+    Filter as _Filter,
+    Formatter as _Formatter,
+    getLogger as _getLogger,
+    INFO as _INFO,
+    StreamHandler as _StreamHandler,
+    WARNING as _WARNING,
 )
-from sys import stderr
+from sys import stderr as _stderr
+
+# ignore TCH001 to make sphinx not completely drop the ball
+from . import _typing as _t  # noqa: TCH001
 
 
 __all__ = [
@@ -39,31 +41,31 @@ __all__ = [
 ]
 
 
-class ColourFormatter(Formatter):
+class _ColourFormatter(_Formatter):
     """Colour formatter for pretty log output."""
 
     def format(self, record):
         s = super().format(record)
-        if record.levelno == CRITICAL:
+        if record.levelno == _CRITICAL:
             return f"\x1b[31;1m{s}\x1b[0m"  # bright red
-        elif record.levelno == ERROR:
+        elif record.levelno == _ERROR:
             return f"\x1b[33;1m{s}\x1b[0m"  # bright yellow
-        elif record.levelno == WARNING:
+        elif record.levelno == _WARNING:
             return f"\x1b[33m{s}\x1b[0m"  # yellow
-        elif record.levelno == INFO:
+        elif record.levelno == _INFO:
             return f"\x1b[37m{s}\x1b[0m"  # white
-        elif record.levelno == DEBUG:
+        elif record.levelno == _DEBUG:
             return f"\x1b[36m{s}\x1b[0m"  # cyan
         else:
             return s
 
 
-class TaskIdFilter(Filter):
+class _TaskIdFilter(_Filter):
     """Injecting async task id into log records."""
 
     def filter(self, record):
         try:
-            record.task = id(asyncio.current_task())
+            record.task = id(_asyncio.current_task())
         except RuntimeError:
             record.task = None
         return True
@@ -114,18 +116,18 @@ class Watcher:
     def __init__(
         self,
         *logger_names: str | None,
-        default_level: int = DEBUG,
-        default_out: t.TextIO = stderr,
+        default_level: int = _DEBUG,
+        default_out: _t.TextIO = _stderr,
         colour: bool = False,
         thread_info: bool = True,
         task_info: bool = True,
     ) -> None:
         super().__init__()
-        self.logger_names = logger_names
-        self._loggers = [getLogger(name) for name in self.logger_names]
-        self.default_level = default_level
-        self.default_out = default_out
-        self._handlers: dict[str, StreamHandler] = {}
+        self._logger_names = logger_names
+        self._loggers = [_getLogger(name) for name in self._logger_names]
+        self._default_level = default_level
+        self._default_out = default_out
+        self._handlers: dict[str, _StreamHandler] = {}
         self._task_info = task_info
 
         format_ = "%(asctime)s  %(message)s"
@@ -135,7 +137,7 @@ class Watcher:
             format_ = "[Thread %(thread)d] " + format_
         if not colour:
             format_ = "[%(levelname)-8s] " + format_
-        formatter_cls = ColourFormatter if colour else Formatter
+        formatter_cls = _ColourFormatter if colour else _Formatter
         self.formatter = formatter_cls(format_)
 
     def __enter__(self) -> Watcher:
@@ -148,7 +150,7 @@ class Watcher:
         self.stop()
 
     def watch(
-        self, level: int | None = None, out: t.TextIO | None = None
+        self, level: int | None = None, out: _t.TextIO | None = None
     ) -> None:
         """
         Enable logging for all loggers.
@@ -160,15 +162,15 @@ class Watcher:
         :type out: stream or file-like object
         """
         if level is None:
-            level = self.default_level
+            level = self._default_level
         if out is None:
-            out = self.default_out
+            out = self._default_out
         self.stop()
-        handler = StreamHandler(out)
+        handler = _StreamHandler(out)
         handler.setFormatter(self.formatter)
         handler.setLevel(level)
         if self._task_info:
-            handler.addFilter(TaskIdFilter())
+            handler.addFilter(_TaskIdFilter())
         for logger in self._loggers:
             self._handlers[logger.name] = handler
             logger.addHandler(handler)
@@ -184,8 +186,8 @@ class Watcher:
 
 def watch(
     *logger_names: str | None,
-    level: int = DEBUG,
-    out: t.TextIO = stderr,
+    level: int = _DEBUG,
+    out: _t.TextIO = _stderr,
     colour: bool = False,
     thread_info: bool = True,
     task_info: bool = True,
@@ -211,7 +213,6 @@ def watch(
     :param logger_names: Names of loggers to watch.
     :param level: see ``default_level`` of :class:`.Watcher`.
     :param out: see ``default_out`` of :class:`.Watcher`.
-    :type out: stream or file-like object
     :param colour: see ``colour`` of :class:`.Watcher`.
     :param thread_info: see ``thread_info`` of :class:`.Watcher`.
     :param task_info: see ``task_info`` of :class:`.Watcher`.

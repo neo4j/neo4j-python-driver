@@ -16,17 +16,18 @@
 
 """Base classes and helpers."""
 
-from __future__ import annotations
+from __future__ import annotations as _
 
-import abc
-import typing as t
+import abc as _abc
+
+from . import _typing as _t
+
+# ignore TCH001 to make sphinx not completely drop the ball
+from ._addressing import Address as _Address  # noqa: TCH001
 
 
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-    from typing_extensions import Protocol as _Protocol
-
-    from ._addressing import Address
+if _t.TYPE_CHECKING:
+    from ._typing import Protocol as _Protocol
 else:
     _Protocol = object
 
@@ -56,21 +57,21 @@ __all__ = [
 ]
 
 
-READ_ACCESS: te.Final[str] = "READ"
-WRITE_ACCESS: te.Final[str] = "WRITE"
+READ_ACCESS: _t.Final[str] = "READ"
+WRITE_ACCESS: _t.Final[str] = "WRITE"
 
-URI_SCHEME_BOLT: te.Final[str] = "bolt"
-URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE: te.Final[str] = "bolt+ssc"
-URI_SCHEME_BOLT_SECURE: te.Final[str] = "bolt+s"
+URI_SCHEME_BOLT: _t.Final[str] = "bolt"
+URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE: _t.Final[str] = "bolt+ssc"
+URI_SCHEME_BOLT_SECURE: _t.Final[str] = "bolt+s"
 
-URI_SCHEME_NEO4J: te.Final[str] = "neo4j"
-URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: te.Final[str] = "neo4j+ssc"
-URI_SCHEME_NEO4J_SECURE: te.Final[str] = "neo4j+s"
+URI_SCHEME_NEO4J: _t.Final[str] = "neo4j"
+URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: _t.Final[str] = "neo4j+ssc"
+URI_SCHEME_NEO4J_SECURE: _t.Final[str] = "neo4j+s"
 
-URI_SCHEME_BOLT_ROUTING: te.Final[str] = "bolt+routing"
+URI_SCHEME_BOLT_ROUTING: _t.Final[str] = "bolt+routing"
 
-SYSTEM_DATABASE: te.Final[str] = "system"
-DEFAULT_DATABASE: te.Final[None] = None  # Must be a non string hashable value
+SYSTEM_DATABASE: _t.Final[str] = "system"
+DEFAULT_DATABASE: _t.Final[None] = None  # Must be a non string hashable value
 
 
 # TODO: This class is not tested
@@ -98,7 +99,7 @@ class Auth:
         principal: str | None,
         credentials: str | None,
         realm: str | None = None,
-        **parameters: t.Any,
+        **parameters: _t.Any,
     ) -> None:
         self.scheme = scheme
         # Neo4j servers pre 4.4 require the principal field to always be
@@ -121,8 +122,7 @@ class Auth:
 # For backwards compatibility
 AuthToken = Auth
 
-if t.TYPE_CHECKING:
-    _TAuth: t.TypeAlias = tuple[str, str] | Auth | None
+_TAuth: _t.TypeAlias = tuple[str, str] | Auth | None
 
 
 def basic_auth(user: str, password: str, realm: str | None = None) -> Auth:
@@ -176,7 +176,7 @@ def custom_auth(
     credentials: str | None,
     realm: str | None,
     scheme: str | None,
-    **parameters: t.Any,
+    **parameters: _t.Any,
 ) -> Auth:
     """
     Generate a custom auth token.
@@ -248,7 +248,7 @@ class Bookmarks:
         return self._raw_values
 
     @classmethod
-    def from_raw_values(cls, values: t.Iterable[str]) -> Bookmarks:
+    def from_raw_values(cls, values: _t.Iterable[str]) -> Bookmarks:
         """
         Create a Bookmarks object from a list of raw bookmark string values.
 
@@ -281,13 +281,13 @@ class Bookmarks:
 class ServerInfo:
     """Represents a package of information relating to a Neo4j server."""
 
-    def __init__(self, address: Address, protocol_version: tuple[int, int]):
+    def __init__(self, address: _Address, protocol_version: tuple[int, int]):
         self._address = address
         self._protocol_version = protocol_version
         self._metadata: dict = {}
 
     @property
-    def address(self) -> Address:
+    def address(self) -> _Address:
         """Network address of the remote server."""
         return self._address
 
@@ -316,7 +316,7 @@ class ServerInfo:
         self._metadata.update(metadata)
 
 
-class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
+class BookmarkManager(_Protocol, metaclass=_abc.ABCMeta):
     """
     Class to manage bookmarks throughout the driver's lifetime.
 
@@ -357,11 +357,11 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. versionchanged:: 5.8 Stabilized from experimental.
     """
 
-    @abc.abstractmethod
+    @_abc.abstractmethod
     def update_bookmarks(
         self,
-        previous_bookmarks: t.Collection[str],
-        new_bookmarks: t.Collection[str],
+        previous_bookmarks: _t.Collection[str],
+        new_bookmarks: _t.Collection[str],
     ) -> None:
         """
         Handle bookmark updates.
@@ -373,8 +373,8 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         """
         ...
 
-    @abc.abstractmethod
-    def get_bookmarks(self) -> t.Collection[str]:
+    @_abc.abstractmethod
+    def get_bookmarks(self) -> _t.Collection[str]:
         """
         Return the bookmarks stored in the bookmark manager.
 
@@ -383,7 +383,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         ...
 
 
-class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
+class AsyncBookmarkManager(_Protocol, metaclass=_abc.ABCMeta):
     """
     Same as :class:`.BookmarkManager` but with async methods.
 
@@ -398,16 +398,16 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. versionchanged:: 5.8 Stabilized from experimental.
     """
 
-    @abc.abstractmethod
+    @_abc.abstractmethod
     async def update_bookmarks(
         self,
-        previous_bookmarks: t.Collection[str],
-        new_bookmarks: t.Collection[str],
+        previous_bookmarks: _t.Collection[str],
+        new_bookmarks: _t.Collection[str],
     ) -> None: ...
 
     update_bookmarks.__doc__ = BookmarkManager.update_bookmarks.__doc__
 
-    @abc.abstractmethod
-    async def get_bookmarks(self) -> t.Collection[str]: ...
+    @_abc.abstractmethod
+    async def get_bookmarks(self) -> _t.Collection[str]: ...
 
     get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__

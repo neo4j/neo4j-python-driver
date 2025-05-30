@@ -21,9 +21,9 @@ from datetime import (
 
 from ...._optional_deps import pd
 from ....time import (
+    _NANO_SECONDS,
     Date,
     DateTime,
-    NANO_SECONDS,
     Time,
 )
 from ...packstream import Structure
@@ -74,8 +74,8 @@ def dehydrate_datetime(value):  # type: ignore[no-redef]
             dt = DateTime.from_native(dt)
         dt = dt.astimezone(pytz.UTC)
         utc_epoch = DateTime(1970, 1, 1, tzinfo=pytz.UTC)
-        dt_clock_time = dt.to_clock_time()
-        utc_epoch_clock_time = utc_epoch.to_clock_time()
+        dt_clock_time = dt._to_clock_time()
+        utc_epoch_clock_time = utc_epoch._to_clock_time()
         t = dt_clock_time - utc_epoch_clock_time
         return t.seconds, t.nanoseconds
 
@@ -119,7 +119,7 @@ if pd is not None:
         :type value: pandas.Timestamp
         :returns:
         """
-        seconds, nanoseconds = divmod(value.value, NANO_SECONDS)
+        seconds, nanoseconds = divmod(value.value, _NANO_SECONDS)
 
         tz = value.tzinfo
         if tz is None:

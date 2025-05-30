@@ -25,8 +25,8 @@ from ctypes import (
 from platform import uname
 
 from . import (
-    Clock,
-    ClockTime,
+    _Clock,
+    _ClockTime,
 )
 from ._arithmetic import nano_divmod
 
@@ -38,7 +38,7 @@ __all__ = [
 ]
 
 
-class SafeClock(Clock):
+class SafeClock(_Clock):
     """
     Clock implementation that should work for any variant of Python.
 
@@ -55,10 +55,10 @@ class SafeClock(Clock):
 
     def utc_time(self):
         seconds, nanoseconds = nano_divmod(int(time.time() * 1000000), 1000000)
-        return ClockTime(seconds, nanoseconds * 1000)
+        return _ClockTime(seconds, nanoseconds * 1000)
 
 
-class PEP564Clock(Clock):
+class PEP564Clock(_Clock):
     """
     Clock implementation based on the PEP564 additions to Python 3.7.
 
@@ -76,10 +76,10 @@ class PEP564Clock(Clock):
     def utc_time(self):
         t = time.time_ns()
         seconds, nanoseconds = divmod(t, 1000000000)
-        return ClockTime(seconds, nanoseconds)
+        return _ClockTime(seconds, nanoseconds)
 
 
-class LibCClock(Clock):
+class LibCClock(_Clock):
     """
     Clock implementation backed by libc.
 
@@ -113,6 +113,6 @@ class LibCClock(Clock):
         ts = self._TimeSpec()
         status = libc.clock_gettime(0, byref(ts))
         if status == 0:
-            return ClockTime(ts.seconds, ts.nanoseconds)
+            return _ClockTime(ts.seconds, ts.nanoseconds)
         else:
             raise RuntimeError(f"clock_gettime failed with status {status}")

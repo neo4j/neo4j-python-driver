@@ -18,17 +18,13 @@ from __future__ import annotations
 
 import inspect
 import ssl
-import typing as t
 import warnings
 
 import pytest
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
 import neo4j
 from neo4j import (
+    _typing as t,
     BoltDriver,
     GraphDatabase,
     Neo4jDriver,
@@ -496,7 +492,7 @@ def test_with_custom_ducktype_client_certificate_provider(
 if t.TYPE_CHECKING:
     _T_NotificationMinimumSeverity: t.TypeAlias = (
         NotificationMinimumSeverity
-        | te.Literal[
+        | t.Literal[
             "OFF",
             "WARNING",
             "INFORMATION",
@@ -505,7 +501,7 @@ if t.TYPE_CHECKING:
 
     _T_NotificationDisabledCategory: t.TypeAlias = (
         NotificationDisabledCategory
-        | te.Literal[
+        | t.Literal[
             "HINT",
             "UNRECOGNIZED",
             "UNSUPPORTED",
@@ -517,7 +513,7 @@ if t.TYPE_CHECKING:
 
     _T_NotificationDisabledClassification: t.TypeAlias = (
         NotificationDisabledClassification
-        | te.Literal[
+        | t.Literal[
             "HINT",
             "UNRECOGNIZED",
             "UNSUPPORTED",
@@ -530,14 +526,14 @@ if t.TYPE_CHECKING:
 
 if t.TYPE_CHECKING:
 
-    class NotificationFilter(te.TypedDict):
-        notifications_min_severity: te.NotRequired[
+    class NotificationFilter(t.TypedDict):
+        notifications_min_severity: t.NotRequired[
             _T_NotificationMinimumSeverity | None
         ]
-        notifications_disabled_categories: te.NotRequired[
+        notifications_disabled_categories: t.NotRequired[
             t.Iterable[_T_NotificationDisabledCategory] | None
         ]
-        notifications_disabled_classifications: te.NotRequired[
+        notifications_disabled_classifications: t.NotRequired[
             t.Iterable[_T_NotificationDisabledClassification] | None
         ]
 
@@ -906,7 +902,7 @@ def test_execute_query_work(mocker) -> None:
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_query(
-    query: te.LiteralString | Query,
+    query: t.LiteralString | Query,
     positional: bool,
     session_cls_mock,
     unit_of_work_mock,
@@ -1122,7 +1118,7 @@ def test_execute_query_parameter_precedence(
 def test_execute_query_routing_control(
     mode: str,
     positional: bool,
-    routing_mode: neo4j.RoutingControl | te.Literal["r", "w"] | None,
+    routing_mode: neo4j.RoutingControl | t.Literal["r", "w"] | None,
     session_cls_mock,
     mocker,
 ) -> None:

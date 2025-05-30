@@ -18,8 +18,9 @@
 
 from __future__ import annotations as _
 
-import typing as _t
 from threading import Lock as _Lock
+
+from .. import _typing as _t
 
 
 __all__ = [
