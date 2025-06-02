@@ -109,7 +109,7 @@ def async_fake_connection_generator(session_mocker):
                             ("on_success", 1),
                             ("on_summary", 0),
                         ):
-                            cb = kwargs.get(cb_name, None)
+                            cb = kwargs.get(cb_name)
                             if callable(cb):
                                 # fails for example for built-in method as cb
                                 with suppress(ValueError):
@@ -202,7 +202,7 @@ def async_scripted_connection_generator(async_fake_connection_generator):
                             ("on_success", ({},)),
                             ("on_summary", ()),
                         ):
-                            cb = kwargs.get(cb_name, None)
+                            cb = kwargs.get(cb_name)
                             if (
                                 not callable(cb)
                                 or cb_name not in scripted_callbacks

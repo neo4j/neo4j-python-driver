@@ -26,7 +26,7 @@ from ..api import (
 
 
 TBmSupplier = t.Callable[[], Bookmarks | t.Awaitable[Bookmarks]]
-TBmConsumer = t.Callable[[Bookmarks], None | t.Awaitable[None]]
+TBmConsumer = t.Callable[[Bookmarks], t.Awaitable[None] | None]
 
 
 class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):

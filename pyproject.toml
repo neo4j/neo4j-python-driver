@@ -182,6 +182,10 @@ extend-ignore = [
     "RET507",
     "RET508",
 
+    # prefer to not use forward references in typing.cast calls
+    # (worse IDE support => worse DX)
+    "TC006",
+
     "PERF203",  # try-except within loop is fine. Especially in a retry scenario
 
     # too noisy and opinionated FURB lints
@@ -248,7 +252,7 @@ select = [
     # # check __slots__ usage
     # "SLOT",
     # check type-checking usage
-    "TCH",
+    "TC",
     # copyright notice
     "CPY",
     # check shebangs
@@ -268,6 +272,7 @@ select = [
 ]
 "tests/integration/examples/**" = [
     "T20",  # print statements are part of the examples
+    "LOG015",  # examples are simplified => they may use non-polished logging calls
 ]
 "tests/unit/**" = [
     "PLW1641",  # no need for production grade test code
@@ -295,3 +300,6 @@ notice-rgx = "# Copyright \\(c\\) \"Neo4j\""
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
+
+[tool.ruff.lint.flake8-pytest-style]
+warns-extend-require-match-for = ["neo4j.warning.PreviewWarning"]

@@ -76,7 +76,7 @@ def request_handler(
 def request_handler(x: t.Callable[P, T]) -> t.Callable[P, T]: ...
 
 
-def request_handler(x: str | None | t.Callable = None):
+def request_handler(x: str | t.Callable | None = None):
     def make_decorator(
         name: str | None = None,
     ) -> t.Callable[[t.Callable[P, T]], t.Callable[P, T]]:

@@ -62,9 +62,9 @@ BOLT_AGENT_DICT = _compute_bolt_agent()
 
 def _compute_user_agent() -> str:
     return (
-        f'{BOLT_AGENT_DICT["product"]} '
-        f'{BOLT_AGENT_DICT["language"]} '
-        f'({sys.platform})'
+        f"{BOLT_AGENT_DICT['product']} "
+        f"{BOLT_AGENT_DICT['language']} "
+        f"({sys.platform})"
     )
 
 

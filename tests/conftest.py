@@ -158,8 +158,7 @@ def mark_requires_edition(edition):
     return pytest.mark.skipif(
         edition != env.NEO4J_EDITION,
         reason=(
-            f"requires server edition '{edition}', "
-            f"found '{env.NEO4J_EDITION}'"
+            f"requires server edition '{edition}', found '{env.NEO4J_EDITION}'"
         ),
     )
 

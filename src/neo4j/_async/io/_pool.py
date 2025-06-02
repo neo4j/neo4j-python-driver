@@ -300,8 +300,7 @@ class AsyncIOPool(abc.ABC):
             )
         except Exception as exc:
             log.debug(
-                "[#%04X]  _: <POOL> check re_auth failed %r auth=%s "
-                "force=%s",
+                "[#%04X]  _: <POOL> check re_auth failed %r auth=%s force=%s",
                 connection.local_port,
                 exc,
                 log_auth,
@@ -881,8 +880,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         # No readers
         if num_readers == 0:
             log.debug(
-                "[#0000]  _: <POOL> no read servers returned from "
-                "server %s",
+                "[#0000]  _: <POOL> no read servers returned from server %s",
                 address,
             )
             return None

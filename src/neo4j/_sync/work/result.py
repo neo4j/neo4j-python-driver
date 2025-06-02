@@ -101,7 +101,7 @@ class Result(NonConcurrentMethodChecker):
     """
 
     _creation_stack: list[inspect.FrameInfo] | None
-    _creation_frame_cache: None | t.Literal[False] | inspect.FrameInfo
+    _creation_frame_cache: t.Literal[False] | inspect.FrameInfo | None
 
     def __init__(
         self,

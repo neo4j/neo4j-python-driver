@@ -1388,8 +1388,8 @@ def test_notification_warning(
             result._run("CYPHER", {}, None, None, "r", None, None, None)
             result.consume()
     else:
+        result._run("CYPHER", {}, None, None, "r", None, None, None)
         with pytest.warns(expected_warning) as recording:
-            result._run("CYPHER", {}, None, None, "r", None, None, None)
             result.consume()
         assert len(recording.list) == 1
         assert recording.list[0].category is expected_warning

@@ -20,8 +20,8 @@ import abc
 import time
 from dataclasses import dataclass
 
-# ignore TCH003 to make sphinx not completely drop the ball
-from os import PathLike  # noqa: TCH003
+# ignore TC003 to make sphinx not completely drop the ball
+from os import PathLike  # noqa: TC003
 
 from . import _typing as t
 from .api import (

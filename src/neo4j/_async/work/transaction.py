@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 
-from ... import _typing as t  # noqa: TCH001
+from ... import _typing as t  # noqa: TC001
 from ..._async_compat.util import AsyncUtil
 from ..._work import Query
 from ...exceptions import TransactionError

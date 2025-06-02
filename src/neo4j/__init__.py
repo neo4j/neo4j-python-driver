@@ -76,12 +76,12 @@ from ._work import (  # noqa: F401 dynamic attribute
 
 
 if _t.TYPE_CHECKING:
-    from ._api import NotificationDisabledClassification  # noqa: TCH004 false positive (dynamic attribute)
+    from ._api import NotificationDisabledClassification
     from ._work import (
-        GqlStatusObject,  # noqa: TCH004 false positive (dynamic attribute)
-        NotificationClassification,  # noqa: TCH004 false positive (dynamic attribute)
+        GqlStatusObject,
+        NotificationClassification,
     )
-    from ._warnings import PreviewWarning  # noqa: TCH004 false positive (dynamic attribute)
+    from ._warnings import PreviewWarning
 
 from ._addressing import (
     Address,
