@@ -165,6 +165,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `neo4j.graph.Node`, `neo4j.graph.Relationship`, `neo4j.graph.Path`
   - `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`
   - `neo4j.spatial.Point` (and subclasses)
+- Separate out log entries that are session-related (including transaction retries)
+  form sub-logger `neo4j.pool` to a new sub-logger `neo4j.session`.
 
 
 ## Version 5.28

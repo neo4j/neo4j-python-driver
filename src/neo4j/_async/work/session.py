@@ -57,7 +57,7 @@ if t.TYPE_CHECKING:
     _P = t.ParamSpec("_P")
 
 
-log = getLogger("neo4j.pool")
+log = getLogger("neo4j.session")
 
 
 class AsyncSession(AsyncWorkspace):
