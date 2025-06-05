@@ -44,7 +44,6 @@ from ._bolt3 import (
     ServerStateManager,
 )
 from ._common import (
-    check_supported_server_product,
     CommitResponse,
     InitResponse,
     ResetResponse,
@@ -157,7 +156,6 @@ class AsyncBolt4x0(AsyncBolt):
         )
         await self.send_all()
         await self.fetch_all()
-        check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGON message to the outgoing queue."""
@@ -658,7 +656,6 @@ class AsyncBolt4x3(AsyncBolt4x2):
         )
         await self.send_all()
         await self.fetch_all()
-        check_supported_server_product(self.server_info.agent)
 
 
 class AsyncBolt4x4(AsyncBolt4x3):
