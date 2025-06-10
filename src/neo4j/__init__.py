@@ -15,10 +15,10 @@
 
 
 from . import _typing as _t
-from ._api import (  # noqa: F401 dynamic attributes
-    NotificationCategory,
-    NotificationDisabledCategory,
-    NotificationDisabledClassification as _NotificationDisabledClassification,
+from ._api import (
+    NotificationCategory as _NotificationCategory,
+    NotificationDisabledCategory as _NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     NotificationSeverity,
     RoutingControl,
@@ -59,27 +59,28 @@ from ._sync.work import (
 )
 from ._warnings import (
     deprecation_warn as _deprecation_warn,
-    preview_warn as _preview_warn,
     PreviewWarning as _PreviewWarning,
 )
-from ._work import (  # noqa: F401 dynamic attribute
+from ._work import (
     EagerResult,
-    GqlStatusObject as _GqlStatusObject,
-    NotificationClassification as _NotificationClassification,
+    GqlStatusObject,
+    NotificationClassification,
     Query,
     ResultSummary,
     SummaryCounters,
     SummaryInputPosition,
-    SummaryNotification,
+    SummaryNotification as _SummaryNotification,
     unit_of_work,
 )
 
 
 if _t.TYPE_CHECKING:
-    from ._api import NotificationDisabledClassification
+    from ._api import (
+        NotificationCategory,
+        NotificationDisabledCategory,
+    )
     from ._work import (
-        GqlStatusObject,
-        NotificationClassification,
+        SummaryNotification,
     )
     from ._warnings import PreviewWarning
 
@@ -164,18 +165,28 @@ __all__ = [
 
 
 def __getattr__(name) -> _t.Any:
-    # TODO: 6.0 - remove this
-    if name in {
-        "NotificationClassification",
-        "GqlStatusObject",
-        "NotificationDisabledClassification",
-    }:
-        _preview_warn(
-            f"{name} is part of GQLSTATUS support, "
-            "which is a preview feature.",
+    # TODO: 7.0 - consider removing this
+    if name == "SummaryNotification":
+        _deprecation_warn(
+            "SummaryNotification and related APIs are deprecated. "
+            "Use GqlStatusObjects and related APIs instead.",
             stack_level=2,
         )
-        return globals()[f"_{name}"]
+        return _SummaryNotification
+    if name == "NotificationCategory":
+        _deprecation_warn(
+            "NotificationCategory is deprecated. "
+            "Use NotificationClassification instead.",
+            stack_level=2,
+        )
+        return _NotificationCategory
+    if name == "NotificationDisabledCategory":
+        _deprecation_warn(
+            "NotificationDisabledCategory is deprecated. "
+            "Use NotificationDisabledClassification instead.",
+            stack_level=2,
+        )
+        return _NotificationDisabledCategory
     # TODO: 7.0 - remove this
     if name == "PreviewWarning":
         _deprecation_warn(

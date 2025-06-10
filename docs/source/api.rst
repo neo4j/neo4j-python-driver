@@ -687,8 +687,28 @@ See also :attr:`.GqlStatusObject.is_notification`.
 
 ``notifications_disabled_categories``
 -------------------------------------
-Set categories/classifications of notifications the server should not send to the client.
-Disabling categories allows the server to skip analysis for those, which can speed up query execution.
+Identical to :ref:`driver-notifications-disabled-classifications-ref`.
+
+This alias is provided for a consistent naming with :attr:`.SummaryNotification.category`.
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. deprecated:: 6.0
+    This setting is deprecated in favor of :ref:`driver-notifications-disabled-classifications-ref`.
+    It will be removed in a future release.
+
+.. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`, :attr:`.SummaryNotification.category`
+
+
+.. _driver-notifications-disabled-classifications-ref:
+
+``notifications_disabled_classifications``
+------------------------------------------
+Set classifications/categories of notifications the server should not send to the client.
+Disabling classifications allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
@@ -696,40 +716,21 @@ See also :attr:`.GqlStatusObject.is_notification`.
 
 :data:`None` will apply the server's default setting.
 
-If specified together with :ref:`driver-notifications-disabled-classifications-ref`, the settings will be merged.
+If specified together with :ref:`driver-notifications-disabled-categories-ref`, the settings will be merged.
 
 .. Note::
     If configured, the server or all servers of the cluster need to support notifications filtering
     (server version 5.7 and newer).
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
-:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
-:Default: :data:`None`
-
-.. versionadded:: 5.7
-
-.. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`
-
-
-.. _driver-notifications-disabled-classifications-ref:
-
-``notifications_disabled_classifications``
-------------------------------------------
-Identical to :ref:`driver-notifications-disabled-categories-ref`.
-
-This alias is provided for a consistent naming with :attr:`.GqlStatusObject.classification`.
-
-**This is a preview** (see :ref:`filter-warnings-ref`).
-It might be changed without following the deprecation policy.
-See also
-https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledClassification` and/or :class:`str`
 :Default: :data:`None`
 
 .. versionadded:: 5.22
 
-.. seealso:: :class:`.NotificationDisabledClassification`, session config :ref:`session-notifications-disabled-classifications-ref`
+.. versionchanged:: 6.0 Stabilized from preview.
+
+.. seealso:: :class:`.NotificationDisabledClassification`, session config :ref:`session-notifications-disabled-classifications-ref`, :attr:`.GqlStatusObject.classification`
 
 
 .. _driver-warn-notification-severity-ref:
@@ -1186,49 +1187,50 @@ See also :attr:`.GqlStatusObject.is_notification`.
 
 ``notifications_disabled_categories``
 -------------------------------------
-Set categories of notifications the server should not send to the client.
-Disabling categories allows the server to skip analysis for those, which can speed up query execution.
+Identical to :ref:`session-notifications-disabled-classifications-ref`.
 
-Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
-Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
-See also :attr:`.GqlStatusObject.is_notification`.
-
-:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-disabled-categories-ref`).
-
-If specified together with :ref:`session-notifications-disabled-classifications-ref`, the settings will be merged.
-
-.. Note::
-    If configured, the server or all servers of the cluster need to support notifications filtering
-    (server version 5.7 and newer).
-    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+This alias is provided for a consistent naming with :attr:`.SummaryNotification.category`.
 
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
 :Default: :data:`None`
 
 .. versionadded:: 5.7
 
-.. seealso:: :class:`.NotificationDisabledCategory`
+.. deprecated:: 6.0
+    This setting is deprecated in favor of :ref:`session-notifications-disabled-classifications-ref`.
+    It will be removed in a future release.
+
+.. seealso:: :class:`.NotificationDisabledCategory`, :attr:`.SummaryNotification.category`
 
 
 .. _session-notifications-disabled-classifications-ref:
 
 ``notifications_disabled_classifications``
 ------------------------------------------
-Identical to :ref:`session-notifications-disabled-categories-ref`.
+Set classifications/categories of notifications the server should not send to the client.
+Disabling classifications allows the server to skip analysis for those, which can speed up query execution.
 
-This alias is provided for a consistent naming with :attr:`.GqlStatusObject.classification`.
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+Further, they are surfaced (alongside other status objects) through :attr:`.ResultSummary.gql_status_objects`:
+See also :attr:`.GqlStatusObject.is_notification`.
 
-**This is a preview** (see :ref:`filter-warnings-ref`).
-It might be changed without following the deprecation policy.
-See also
-https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-disabled-classifications-ref`).
+
+If specified together with :ref:`session-notifications-disabled-categories-ref`, the settings will be merged.
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering
+    (server version 5.7 and newer).
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledClassification` and/or :class:`str`
 :Default: :data:`None`
 
 .. versionadded:: 5.22
 
-.. seealso:: :class:`.NotificationDisabledClassification`
+.. versionchanged:: 6.0 Stabilized from preview.
+
+.. seealso:: :class:`.NotificationDisabledClassification`, :attr:`.GqlStatusObject.classification`
 
 
 

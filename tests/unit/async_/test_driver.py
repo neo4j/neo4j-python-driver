@@ -29,7 +29,7 @@ from neo4j import (
     AsyncGraphDatabase,
     AsyncNeo4jDriver,
     AsyncResult,
-    NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
     TrustAll,
@@ -66,7 +66,7 @@ from ..._async_compat import (
     AsyncTestDecorators,
     mark_async_test,
 )
-from ..._preview_imports import NotificationDisabledClassification
+from ..._deprecated_imports import NotificationDisabledCategory
 
 
 @pytest.fixture
@@ -658,9 +658,9 @@ async def test_driver_factory_with_notification_filters(
     if dis_clss is not ...:
         filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
-    if "notifications_disabled_classifications" in filter_kwargs:
+    if "notifications_disabled_categories" in filter_kwargs:
         with pytest.warns(
-            PreviewWarning, match="notifications_disabled_classifications"
+            DeprecationWarning, match="notifications_disabled_categories"
         ):
             driver = AsyncGraphDatabase.driver(uri, auth=None, **filter_kwargs)
     else:
@@ -837,9 +837,9 @@ async def test_session_factory_with_notification_filter(
         filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
     async with AsyncGraphDatabase.driver(uri, auth=None) as driver:
-        if "notifications_disabled_classifications" in filter_kwargs:
+        if "notifications_disabled_categories" in filter_kwargs:
             with pytest.warns(
-                PreviewWarning, match="notifications_disabled_classifications"
+                DeprecationWarning, match="notifications_disabled_categories"
             ):
                 session = driver.session(**filter_kwargs)
         else:

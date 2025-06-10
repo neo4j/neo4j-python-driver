@@ -19,8 +19,6 @@ import re
 
 import pytest
 
-from neo4j.warnings import PreviewWarning
-
 
 def test_import_neo4j():
     import neo4j  # noqa: F401 - unused import to test import works
@@ -49,17 +47,17 @@ NEO4J_ATTRIBUTES = (
     ("Driver", None),
     ("EagerResult", None),
     ("get_user_agent", None),
-    ("GqlStatusObject", PreviewWarning),
+    ("GqlStatusObject", None),
     ("GraphDatabase", None),
     ("IPv4Address", None),
     ("IPv6Address", None),
     ("kerberos_auth", None),
     ("ManagedTransaction", None),
     ("Neo4jDriver", None),
-    ("NotificationCategory", None),
-    ("NotificationClassification", PreviewWarning),
-    ("NotificationDisabledCategory", None),
-    ("NotificationDisabledClassification", PreviewWarning),
+    ("NotificationCategory", DeprecationWarning),
+    ("NotificationClassification", None),
+    ("NotificationDisabledCategory", DeprecationWarning),
+    ("NotificationDisabledClassification", None),
     ("NotificationMinimumSeverity", None),
     ("NotificationSeverity", None),
     ("PreviewWarning", DeprecationWarning),
@@ -73,7 +71,7 @@ NEO4J_ATTRIBUTES = (
     ("Session", None),
     ("SummaryCounters", None),
     ("SummaryInputPosition", None),
-    ("SummaryNotification", None),
+    ("SummaryNotification", DeprecationWarning),
     ("SYSTEM_DATABASE", None),
     ("Transaction", None),
     ("TrustAll", None),
@@ -122,21 +120,7 @@ def test_import_star():
         importlib.__import__("neo4j", fromlist=("*",))
     assert len(warnings) == 4
 
-    for name in (
-        "NotificationClassification",
-        "GqlStatusObject",
-        "NotificationDisabledClassification",
-    ):
-        assert (
-            sum(
-                bool(re.match(rf".*\b{name}\b.*", str(w.message)))
-                for w in warnings
-                if issubclass(w.category, PreviewWarning)
-            )
-            == 1
-        )
-
-    for name in ("PreviewWarning",):
+    for name in ("PreviewWarning", "NotificationDisabledCategory"):
         assert (
             sum(
                 bool(re.match(rf".*\b{name}\b.*", str(w.message)))

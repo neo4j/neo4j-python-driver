@@ -39,7 +39,6 @@ from neo4j.time import (
     Duration,
     Time,
 )
-from neo4j.warnings import PreviewWarning
 
 from ._warning_check import warning_check
 from .exceptions import MarkdAsDriverError
@@ -73,12 +72,19 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         return res
 
     def serialize_notifications() -> list[dict] | None:
-        if summary_.notifications is None:
+        with warning_check(
+            DeprecationWarning, r".*\.gql_status_objects instead\b.*"
+        ):
+            notifications = summary_.notifications
+        if notifications is None:
             gql_aware_protocol = summary_.server.protocol_version >= (5, 5)
             return [] if gql_aware_protocol else None
-        return [
-            serialize_notification(n) for n in summary_.summary_notifications
-        ]
+
+        with warning_check(
+            DeprecationWarning, r".*\.gql_status_objects instead\b.*"
+        ):
+            summary_notifications = summary_.summary_notifications
+        return [serialize_notification(n) for n in summary_notifications]
 
     def serialize_gql_status_object(o: neo4j.GqlStatusObject) -> dict:
         res: dict = {
@@ -105,11 +111,9 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         return res
 
     def serialize_gql_status_objects() -> list[dict]:
-        with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-            return [
-                serialize_gql_status_object(o)
-                for o in summary_.gql_status_objects
-            ]
+        return [
+            serialize_gql_status_object(o) for o in summary_.gql_status_objects
+        ]
 
     def format_address(address: neo4j.Address):
         if len(address) == 2:
@@ -321,18 +325,13 @@ def driver_exc(exc, id_=None):
         if isinstance(exc, Neo4jError):
             payload["code"] = exc.code
         if isinstance(exc, GqlError):
-            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                payload["gqlStatus"] = exc.gql_status
-            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                payload["statusDescription"] = exc.gql_status_description
-            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                payload["rawClassification"] = exc.gql_raw_classification
-            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                payload["classification"] = exc.gql_classification
-            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                payload["diagnosticRecord"] = {
-                    k: field(v) for k, v in exc.diagnostic_record.items()
-                }
+            payload["gqlStatus"] = exc.gql_status
+            payload["statusDescription"] = exc.gql_status_description
+            payload["rawClassification"] = exc.gql_raw_classification
+            payload["classification"] = exc.gql_classification
+            payload["diagnosticRecord"] = {
+                k: field(v) for k, v in exc.diagnostic_record.items()
+            }
             cause = driver_exc_cause(getattr(exc, "__cause__", None))
             if cause is not None:
                 payload["cause"] = cause
@@ -349,8 +348,7 @@ def _exc_msg(exc, max_depth=10):
         if isinstance(exc, Neo4jError):
             res = str(exc.message) if exc.message is not None else str(exc)
         else:
-            with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-                msg = exc.message
+            msg = exc.message
             res = f"{msg} - {exc!s}" if exc.args else msg
     else:
         res = str(exc)
@@ -383,19 +381,16 @@ def driver_exc_cause(exc, max_depth=10):
         return driver_exc_cause(
             getattr(exc, "__cause__", None), max_depth=max_depth - 1
         )
-    payload = {"msg": _exc_msg(exc)}
-    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-        payload["gqlStatus"] = exc.gql_status
-    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-        payload["statusDescription"] = exc.gql_status_description
-    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-        payload["diagnosticRecord"] = {
+    payload = {
+        "msg": _exc_msg(exc),
+        "gqlStatus": exc.gql_status,
+        "statusDescription": exc.gql_status_description,
+        "diagnosticRecord": {
             k: field(v) for k, v in exc.diagnostic_record.items()
-        }
-    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-        payload["classification"] = exc.gql_classification
-    with warning_check(PreviewWarning, r".*\bGQLSTATUS\b.*"):
-        payload["rawClassification"] = exc.gql_raw_classification
+        },
+        "classification": exc.gql_classification,
+        "rawClassification": exc.gql_raw_classification,
+    }
     cause = getattr(exc, "__cause__", None)
     if cause is not None:
         payload["cause"] = driver_exc_cause(cause, max_depth=max_depth - 1)

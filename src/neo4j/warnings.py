@@ -21,7 +21,7 @@ from ._debug import NotificationPrinter
 
 
 if _t.TYPE_CHECKING:
-    from ._work.summary import SummaryNotification
+    from ._work.summary import GqlStatusObject
 
 
 __all__ = [
@@ -65,15 +65,18 @@ class Neo4jWarning(Warning):
 
     .. versionadded:: 5.21
 
+    .. versionchanged:: 6.0
+        :attr:`.notification` is now of type :class:`.SummaryNotification`.
+
     .. seealso:: :ref:`development-environment-ref`
     """
 
     #: The notification that triggered the warning.
-    notification: SummaryNotification
+    notification: GqlStatusObject
 
     def __init__(
         self,
-        notification: SummaryNotification,
+        notification: GqlStatusObject,
         query: str | None = None,
     ) -> None:
         msg = str(NotificationPrinter(notification, query))

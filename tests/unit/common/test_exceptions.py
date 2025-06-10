@@ -40,7 +40,6 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
-from neo4j.warnings import PreviewWarning
 
 
 def test_bolt_error():
@@ -158,32 +157,26 @@ def test_serviceunavailable_raised_from_bolt_protocol_error_with_explicit_style(
 
 
 def _assert_default_gql_error_attrs_from_neo4j_error(error: GqlError) -> None:
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert error.gql_status == "50N42"
+    assert error.gql_status == "50N42"
     if error.message:
-        with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-            assert error.gql_status_description == (
-                "error: general processing exception - unexpected error. "
-                f"{error.message}"
-            )
-    else:
-        with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-            assert error.gql_status_description == (
-                "error: general processing exception - unexpected error"
-            )
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert (
-            error.gql_classification
-            == neo4j.exceptions.GqlErrorClassification.UNKNOWN
+        assert error.gql_status_description == (
+            "error: general processing exception - unexpected error. "
+            f"{error.message}"
         )
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert error.gql_raw_classification is None
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert error.diagnostic_record == {
-            "CURRENT_SCHEMA": "/",
-            "OPERATION": "",
-            "OPERATION_CODE": "0",
-        }
+    else:
+        assert error.gql_status_description == (
+            "error: general processing exception - unexpected error"
+        )
+    assert (
+        error.gql_classification
+        == neo4j.exceptions.GqlErrorClassification.UNKNOWN
+    )
+    assert error.gql_raw_classification is None
+    assert error.diagnostic_record == {
+        "CURRENT_SCHEMA": "/",
+        "OPERATION": "",
+        "OPERATION_CODE": "0",
+    }
     assert error.__cause__ is None
 
 
@@ -838,14 +831,6 @@ def test_gql_hydration(metadata, attributes):
     # TODO: test causes
     error = Neo4jError._hydrate_gql(**metadata)
 
-    preview_attrs = {
-        "gql_status",
-        "gql_status_description",
-        "gql_classification",
-        "gql_raw_classification",
-        "diagnostic_record",
-    }
-
     for attr in (
         "code",
         "classification",
@@ -860,11 +845,7 @@ def test_gql_hydration(metadata, attributes):
         "__cause__",
     ):
         expected_value = attributes[attr]
-        if attr in preview_attrs:
-            with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-                actual_value = getattr(error, attr)
-        else:
-            actual_value = getattr(error, attr)
+        actual_value = getattr(error, attr)
         assert actual_value == expected_value
 
 

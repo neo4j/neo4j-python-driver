@@ -14,21 +14,21 @@
 # limitations under the License.
 
 
-import typing as t
+from __future__ import annotations
 
-import pytest
-
-from neo4j.warnings import PreviewWarning
+from ._warning_check import warning_check
 
 
-if t.TYPE_CHECKING:
-    from neo4j import NotificationDisabledClassification
-
-
-with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-    from neo4j import NotificationDisabledClassification
+with warning_check(
+    DeprecationWarning,
+    (
+        r".*\bNotificationDisabledCategory\b.*"
+        r"\bNotificationDisabledClassification instead\b.*"
+    ),
+):
+    from neo4j import NotificationDisabledCategory
 
 
 __all__ = [
-    "NotificationDisabledClassification",
+    "NotificationDisabledCategory",
 ]
