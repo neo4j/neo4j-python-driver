@@ -1388,8 +1388,10 @@ async def test_notification_warning(
             await result._run("CYPHER", {}, None, None, "r", None, None, None)
             await result.consume()
     else:
-        await result._run("CYPHER", {}, None, None, "r", None, None, None)
-        with pytest.warns(expected_warning) as recording:
+        # Ignore PT031: we don't care which of the calls emits the warning.
+        # The warning is only a debugging tool, not meant to be a stable API.
+        with pytest.warns(expected_warning) as recording:  # noqa: PT031
+            await result._run("CYPHER", {}, None, None, "r", None, None, None)
             await result.consume()
         assert len(recording.list) == 1
         assert recording.list[0].category is expected_warning
