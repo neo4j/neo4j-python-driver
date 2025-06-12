@@ -22,8 +22,8 @@ import abc as _abc
 
 from . import _typing as _t
 
-# ignore TCH001 to make sphinx not completely drop the ball
-from ._addressing import Address as _Address  # noqa: TCH001
+# ignore TC001 to make sphinx not completely drop the ball
+from ._addressing import Address as _Address  # noqa: TC001
 
 
 if _t.TYPE_CHECKING:
@@ -267,7 +267,7 @@ class Bookmarks:
         for value in values:
             if not isinstance(value, str):
                 raise TypeError(
-                    "Raw bookmark values must be str. " f"Found {type(value)}"
+                    f"Raw bookmark values must be str. Found {type(value)}"
                 )
             try:
                 value.encode("ascii")

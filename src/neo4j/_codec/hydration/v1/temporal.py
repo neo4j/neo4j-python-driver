@@ -221,8 +221,7 @@ if np is not None:
             # while we could encode years outside the range, they would fail
             # when retrieved from the database.
             raise ValueError(
-                f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) "
-                f"found {year}"
+                f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {year}"
             )
         seconds = value.astype(np.dtype("datetime64[s]")).astype(int)
         nanoseconds = (

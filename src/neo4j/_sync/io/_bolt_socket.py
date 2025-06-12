@@ -95,7 +95,7 @@ class BoltSocket(BoltSocketBase):
             offering = offering_response[-1:-4:-1]
             offerings.append(offering)
         ctx.ctx = "handshake v2 capabilities"
-        _capabilities_offer = self._read_varint(ctx)
+        capabilities_offer = self._read_varint(ctx)
 
         if log.getEffectiveLevel() <= logging.DEBUG:
             log.debug(
@@ -106,7 +106,7 @@ class BoltSocket(BoltSocketBase):
                 " ".join(
                     f"0x{vx[2]:04X}{vx[1]:02X}{vx[0]:02X}" for vx in offerings
                 ),
-                BytesPrinter(self._encode_varint(_capabilities_offer)),
+                BytesPrinter(self._encode_varint(capabilities_offer)),
             )
 
         supported_versions = sorted(self.Bolt.protocol_handlers.keys())

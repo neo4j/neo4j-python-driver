@@ -251,11 +251,6 @@ class AsyncGraphDatabase:
                     "is a preview feature.",
                     stack_level=2,
                 )
-            if "warn_notification_severity" in config:
-                preview_warn(
-                    "notification warnings are a preview feature.",
-                    stack_level=2,
-                )
             _normalize_notifications_config(config, driver_level=True)
 
             liveness_check_timeout = config.get("liveness_check_timeout")
@@ -578,10 +573,10 @@ class AsyncDriver:
             .. versionchanged:: 6.0
                 Raise :exc:`DriverError` if the driver has been closed.
             """
-            if "warn_notification_severity" in config:
-                # Would work just fine, but we don't want to introduce yet
-                # another undocumented/unsupported config option.
-                del config["warn_notification_severity"]
+            # Would work just fine, but we don't want to introduce yet
+            # another undocumented/unsupported config option.
+            config.pop("warn_notification_severity", None)
+
             self._check_state()
             if "notifications_disabled_classifications" in config:
                 preview_warn(
@@ -668,8 +663,8 @@ class AsyncDriver:
         bookmark_manager_: (
             AsyncBookmarkManager
             | BookmarkManager
-            | None
             | t.Literal[_DefaultEnum.default]
+            | None
         ) = _default,
         auth_: _TAuth = None,
         result_transformer_: t.Callable[

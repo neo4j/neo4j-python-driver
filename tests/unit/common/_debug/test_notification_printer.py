@@ -129,7 +129,7 @@ if t.TYPE_CHECKING:
             ),
         ),
     ),
-)  # fmt: skip # noqa: RUF028 - https://github.com/astral-sh/ruff/issues/11689
+)  # fmt: skip
 def test_position(
     notification_factory: TNotificationFactory,
     query: str | None,

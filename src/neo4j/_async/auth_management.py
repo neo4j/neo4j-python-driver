@@ -32,8 +32,8 @@ from .._auth_management import (
     ExpiringAuth,
 )
 
-# ignore TCH001 to make sphinx not completely drop the ball
-from ..api import _TAuth  # noqa: TCH001
+# ignore TC001 to make sphinx not completely drop the ball
+from ..api import _TAuth  # noqa: TC001
 
 
 if t.TYPE_CHECKING:

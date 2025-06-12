@@ -743,13 +743,12 @@ Setting it to :data:`None` will be equivalent to ``OFF``, unless Python runs in 
 (e.g., with ``python -X dev ...``) or the environment variable ``PYTHONNEO4JDEBUG`` is set, in which case the driver
 defaults to emitting warnings on all notification (currently equivalent to :attr:`.NotificationMinimumSeverity.INFORMATION`).
 
-**This is experimental** (see :ref:`filter-warnings-ref`).
-It might be changed or removed any time even without prior notice.
-
 :Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
 :Default: :data:`None`
 
 .. versionadded:: 5.21
+
+.. versionchanged:: 6.0 Stabilized from preview.
 
 .. seealso:: :ref:`development-environment-ref`
 

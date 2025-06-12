@@ -26,7 +26,7 @@ from ..api import (
 
 
 TBmSupplier = t.Callable[[], Bookmarks | t.Union[Bookmarks]]
-TBmConsumer = t.Callable[[Bookmarks], None | t.Union[None]]
+TBmConsumer = t.Callable[[Bookmarks], t.Union[None] | None]
 
 
 class Neo4jBookmarkManager(BookmarkManager):

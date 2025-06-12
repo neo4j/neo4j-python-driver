@@ -21,7 +21,7 @@ import collections
 import re
 import threading
 
-from .. import _typing as t  # noqa: TCH001
+from .. import _typing as t  # noqa: TC001
 from .shims import wait_for
 
 
