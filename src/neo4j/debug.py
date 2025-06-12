@@ -31,8 +31,8 @@ from logging import (
 )
 from sys import stderr as _stderr
 
-# ignore TCH001 to make sphinx not completely drop the ball
-from . import _typing as _t  # noqa: TCH001
+# ignore TC001 to make sphinx not completely drop the ball
+from . import _typing as _t  # noqa: TC001
 
 
 __all__ = [

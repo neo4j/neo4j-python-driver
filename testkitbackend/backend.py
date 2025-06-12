@@ -14,7 +14,10 @@
 # limitations under the License.
 
 
-class Request(dict):
+# ignore FURB189:
+# > Subclassing `dict` can be error prone, use `collections.UserDict` instead
+# Legacy code that works well enough for now.
+class Request(dict):  # noqa: FURB189
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._seen_keys = set()

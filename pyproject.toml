@@ -16,7 +16,11 @@
 [project]
 name = "neo4j"
 description = "Neo4j Bolt driver for Python"
-license = {text = "Apache License, Version 2.0"}
+license = "Apache-2.0 AND Python-2.0"
+license-files = [
+    "LICENSE*.txt",
+    "NOTICE*.txt",
+]
 readme = "README.rst"
 authors = [
     {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
@@ -28,7 +32,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: AsyncIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -61,9 +64,90 @@ pyarrow = ["pyarrow >= 1.0.0"]
 
 [build-system]
 requires = [
-    "setuptools == 75.6.0",
+    "setuptools == 80.9.0",
 ]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+# To install all development dependencies as well as the driver with all optional dependencies,
+# run `pip install --group dev`
+dev = [
+    # dev tools
+    {include-group = "dep-project-dependencies"},
+    {include-group = "tox"},
+    {include-group = "precommit"},
+    {include-group = "unasync"},
+    {include-group = "test"},
+    {include-group = "typing"},
+    {include-group = "docs"},
+    {include-group = "testkit"},
+    {include-group = "benchkit"},
+    {include-group = "packaging"},
+    {include-group = "release"},
+]
+# tool for runnig test matrix
+tox = ["tox >= 4.25.0"]
+# run pre-commit hooks (includes linting, formatting, type checking, ...)
+precommit = [
+    "pre-commit >= 4.2.0",
+    # runs unasync and type checker outside pre-commit's isolation
+    {include-group = "unasync"},
+    {include-group = "typing"},
+]
+# auto-generate sync driver from async code
+unasync = [
+    "unasync == 0.5.0",
+    "isort >= 6.0.1",
+]
+# dependencies for running tests
+test = [
+    "coverage[toml] >= 7.8.0",
+    {include-group = "dep-freezegun"},
+    "mock >= 5.2.0",
+    "pytest >= 8.3.5",
+    "pytest-asyncio >= 0.26.0",
+    "pytest-benchmark >= 5.1.0",
+    "pytest-cov >= 6.1.1",
+    "pytest-mock >= 3.14.0",
+]
+# type checker and type stubs for static type checking
+typing = [
+    "mypy >= 1.15.0",
+    "typing-extensions >= 4.13.2",
+    "types-pytz >= 2025.2.0.20250326",
+    {include-group = "dep-project-dependencies"},
+    # tests are also type-checked
+    {include-group = "test"},
+    # testkit backend is also type-checked
+    {include-group = "testkit"},
+    # benchkit backend is also type-checked
+    {include-group = "benchkit"},
+]
+# generate documentation
+docs = ["Sphinx >= 8.1.3"]
+# running the testkit backend
+testkit = [
+    {include-group = "dep-freezegun"},
+]
+# running the benchkit backend for benchmarking
+benchkit = ["sanic >= 25.3.0"]
+# building and packaging the driver
+packaging = [
+    "build >= 1.2.2",
+]
+# releasing the packaged driver to PyPI
+release = [
+    "twine >= 6.1.0",
+]
+
+# single dependencies and other include-groups (not really meant to be installed as a group, but to avoid duplication)
+dep-freezegun = ["freezegun >= 1.5.1"]
+dep-project-dependencies = [
+    "pytz",
+    "numpy >= 1.7.0, < 3.0.0",
+    "pandas >= 1.1.0, < 3.0.0",
+    "pyarrow >= 1.0.0",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "neo4j._meta.version"}
@@ -182,6 +266,10 @@ extend-ignore = [
     "RET507",
     "RET508",
 
+    # prefer to not use forward references in typing.cast calls
+    # (worse IDE support => worse DX)
+    "TC006",
+
     "PERF203",  # try-except within loop is fine. Especially in a retry scenario
 
     # too noisy and opinionated FURB lints
@@ -244,11 +332,8 @@ select = [
     "RSE",
     # check return statements
     "RET",
-    # TODO: 6.0 - enable and add __slots__ to applicable classes
-    # # check __slots__ usage
-    # "SLOT",
     # check type-checking usage
-    "TCH",
+    "TC",
     # copyright notice
     "CPY",
     # check shebangs
@@ -268,6 +353,7 @@ select = [
 ]
 "tests/integration/examples/**" = [
     "T20",  # print statements are part of the examples
+    "LOG015",  # examples are simplified => they may use non-polished logging calls
 ]
 "tests/unit/**" = [
     "PLW1641",  # no need for production grade test code
@@ -295,3 +381,6 @@ notice-rgx = "# Copyright \\(c\\) \"Neo4j\""
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
+
+[tool.ruff.lint.flake8-pytest-style]
+warns-extend-require-match-for = ["neo4j.warning.PreviewWarning"]

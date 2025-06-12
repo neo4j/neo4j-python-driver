@@ -126,7 +126,6 @@ Specifically for this driver, this will:
  * enable :class:`DeprecationWarning`, which the driver emits if deprecated APIs are used.
  * enable the driver's debug mode (this can also be achieved by setting the environment variable ``PYTHONNEO4JDEBUG``):
 
-   * **This is experimental**.
      It might be changed or removed any time even without prior notice.
    * the driver will raise an exception if non-concurrency-safe methods are used concurrently.
    * the driver will emit warnings if the server sends back notification
@@ -136,6 +135,9 @@ Specifically for this driver, this will:
 
      .. versionchanged:: 5.21
          Added functionality to automatically emit warnings on server notifications.
+
+     .. versionchanged:: 6.0
+         Stabilized from preview.
 
 .. _development mode: https://docs.python.org/3/library/devmode.html
 

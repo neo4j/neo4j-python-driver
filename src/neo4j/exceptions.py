@@ -1045,8 +1045,7 @@ class IncompleteCommit(ServiceUnavailable):
             gql_status="08007",
             message=message,
             description=(
-                "error: connection exception - "
-                "transaction resolution unknown"
+                "error: connection exception - transaction resolution unknown"
             ),
         )
 

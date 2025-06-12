@@ -146,7 +146,7 @@ def assert_node_copy(node1: Node, node2: Node):
 def assert_node_equality(node1: Node, node2: Node):
     assert node1.labels == node2.labels
     assert node1.items() == node2.items()
-    with pytest.warns(DeprecationWarning):
+    with pytest.warns(DeprecationWarning, match="element_id"):
         assert node1.id == node2.id
     assert node1.element_id == node2.element_id
 

@@ -116,7 +116,9 @@ def test_dir():
 
 
 def test_import_star():
-    with pytest.warns() as warnings:
+    # ignore PT029: purposefully capturing all warnings to then apply further
+    # checks on them
+    with pytest.warns() as warnings:  # noqa: PT029
         importlib.__import__("neo4j", fromlist=("*",))
     assert len(warnings) == 4
 

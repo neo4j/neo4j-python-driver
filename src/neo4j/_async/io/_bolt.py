@@ -1053,7 +1053,7 @@ def tx_timeout_as_ms(timeout: float) -> int:
         raise err_type(msg) from None
     if timeout < 0:
         raise ValueError("Timeout must be a positive number or 0.")
-    ms = int(round(1000 * timeout))
+    ms = round(1000 * timeout)
     if ms == 0 and timeout > 0:
         # Special case for 0 < timeout < 0.5 ms.
         # This would be rounded to 0 ms, but the server interprets this as

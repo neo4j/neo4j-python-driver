@@ -131,4 +131,4 @@ def round_half_to_even(n):
         down = int(n - 0.5)
         return up if up % 2 == 0 else down
     else:
-        return int(round(n))
+        return round(n)

@@ -90,9 +90,9 @@ __all__: tuple[str, ...] = (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import NotRequired  # Python 3.11+  # noqa: TCH004
-    from typing_extensions import Self  # Python 3.11  # noqa: TCH004
-    from typing_extensions import (  # Python 3.11  # noqa: TCH004 Python
+    from typing_extensions import NotRequired  # Python 3.11+  # noqa: TC004
+    from typing_extensions import Self  # Python 3.11  # noqa: TC004
+    from typing_extensions import (  # Python 3.11  # noqa: TC004 Python
         LiteralString,
     )
 
