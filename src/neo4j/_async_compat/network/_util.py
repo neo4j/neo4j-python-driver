@@ -22,6 +22,7 @@ from ..._addressing import (
     Address,
     ResolvedAddress,
 )
+from ...exceptions import ServiceUnavailable
 from ..util import AsyncUtil
 
 
@@ -69,7 +70,9 @@ class AsyncNetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            raise ValueError(f"Cannot resolve address {address}") from e
+            raise ServiceUnavailable(
+                f"Failed to DNS resolve address {address}: {e}"
+            ) from e
         return list(_resolved_addresses_from_info(info, address._host_name))
 
     @staticmethod
@@ -151,7 +154,9 @@ class NetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            raise ValueError(f"Cannot resolve address {address}") from e
+            raise ServiceUnavailable(
+                f"Failed to DNS resolve address {address}"
+            ) from e
         return _resolved_addresses_from_info(info, address._host_name)
 
     @staticmethod

@@ -165,6 +165,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `neo4j.graph.Node`, `neo4j.graph.Relationship`, `neo4j.graph.Path`
   - `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`
   - `neo4j.spatial.Point` (and subclasses)
+- Configuring the driver with a URL that cannot be DNS resolved will raise a (retryable) `ServiceUnavailable` error
+  instead of a `ValueError`.
 
 
 ## Version 5.28

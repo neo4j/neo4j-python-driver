@@ -200,7 +200,7 @@ class Address(tuple, metaclass=_AddressMeta):
 
             >>> Address.parse_list("localhost:7687", "[::1]:7687")
             [IPv4Address(('localhost', 7687)), IPv6Address(('::1', 7687, 0, 0))]
-            >>> Address.parse_list("localhost:7687 [::1]:7687")
+            >>> Address.parse_list("localhost:7687", "[::1]:7687")
             [IPv4Address(('localhost', 7687)), IPv6Address(('::1', 7687, 0, 0))]
 
         :param s: The string(s) to parse.
