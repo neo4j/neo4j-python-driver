@@ -37,7 +37,6 @@ from neo4j.auth_management import (
     AsyncClientCertificateProvider,
     ExpiringAuth,
 )
-from neo4j.warnings import PreviewWarning
 
 from .. import (
     fromtestkit,
@@ -219,12 +218,6 @@ async def new_driver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
 
-    expected_warnings.append(
-        (
-            PreviewWarning,
-            r"notification warnings are a preview feature\.",
-        )
-    )
     with warnings_check(expected_warnings):
         driver = neo4j.AsyncGraphDatabase.driver(
             data["uri"],

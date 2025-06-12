@@ -727,19 +727,15 @@ def test_warn_notification_severity_driver_config(
 ) -> None:
     if inspect.isclass(expected) and issubclass(expected, Exception):
         assert min_sev is not ...  # makes no sense to test
-        with (
-            pytest.raises(expected),
-            pytest.warns(PreviewWarning, match="notification warnings"),
-        ):
+        with pytest.raises(expected):
             GraphDatabase.driver(uri, warn_notification_severity=min_sev)
         return
     if min_sev is ...:
         driver = GraphDatabase.driver(uri)
     else:
-        with pytest.warns(PreviewWarning, match="notification warnings"):
-            driver = GraphDatabase.driver(
-                uri, warn_notification_severity=min_sev
-            )
+        driver = GraphDatabase.driver(
+            uri, warn_notification_severity=min_sev
+        )
     with driver:
         if min_sev_session is ...:
             session = driver.session()

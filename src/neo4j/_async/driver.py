@@ -251,11 +251,6 @@ class AsyncGraphDatabase:
                     "is a preview feature.",
                     stack_level=2,
                 )
-            if "warn_notification_severity" in config:
-                preview_warn(
-                    "notification warnings are a preview feature.",
-                    stack_level=2,
-                )
             _normalize_notifications_config(config, driver_level=True)
 
             liveness_check_timeout = config.get("liveness_check_timeout")
