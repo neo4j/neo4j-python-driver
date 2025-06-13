@@ -45,7 +45,6 @@ from ._bolt3 import (
     ServerStateManager,
 )
 from ._common import (
-    check_supported_server_product,
     CommitResponse,
     InitResponse,
     LogonResponse,
@@ -177,7 +176,6 @@ class AsyncBolt5x0(AsyncBolt):
         )
         await self.send_all()
         await self.fetch_all()
-        check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGON message to the outgoing queue."""
@@ -652,7 +650,6 @@ class AsyncBolt5x1(AsyncBolt5x0):
         )
         await self.send_all()
         await self.fetch_all()
-        check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
         dehydration_hooks, hydration_hooks = self._default_hydration_hooks(
@@ -736,7 +733,6 @@ class AsyncBolt5x2(AsyncBolt5x1):
         self.logon(dehydration_hooks, hydration_hooks)
         await self.send_all()
         await self.fetch_all()
-        check_supported_server_product(self.server_info.agent)
 
     def run(
         self,

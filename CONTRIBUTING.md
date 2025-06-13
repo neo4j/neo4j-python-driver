@@ -59,16 +59,28 @@ updating the code if necessary.
 
 Setting up the development environment:
  * Install Python 3.10+
- * Install the requirements
+ * Install the requirements (needs pip 25.1+)
    ```bash
-   $ python3 -m pip install -U pip
-   $ python3 -m pip install -Ur requirements-dev.txt
+   # recommended to use a virtual environment
+   $ python3 -m venv .venv
+   $ source .venv/bin/activate
+   # make sure pip is up to date
+   $ pip install -U pip
+   # install all development dependencies and driver
+   $ pip install -U --group dev -e .
    ```
  * Install the pre-commit hook, that will do some code-format-checking everytime
    you commit.
    ```bash
    $ pre-commit install
    ```
+ * If you need to commit, skipping the pre-commit hook, you can use the `--no-verify`
+   option with `git commit`:
+   ```bash
+   $ git commit --no-verify
+   ```
+   However, the checks will still be run in CI on every pull request. So this can only be
+   used for quick local commits. Make sure all check pass before opening a pull request.
 
 
 ## Got an idea for a new project?

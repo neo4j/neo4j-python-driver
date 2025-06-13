@@ -19,8 +19,8 @@ from __future__ import annotations
 import itertools
 import typing as t
 
-# ignore TCH003 to make sphinx not completely drop the ball
-from collections.abc import Sequence  # noqa: TCH003
+# ignore TC003 to make sphinx not completely drop the ball
+from collections.abc import Sequence  # noqa: TC003
 from copy import deepcopy
 from dataclasses import dataclass
 

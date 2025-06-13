@@ -28,10 +28,7 @@ class Structure:
         try:
             return self.tag == other.tag and self.fields == other.fields
         except AttributeError:
-            return False
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
+            return NotImplementedError
 
     def __len__(self):
         return len(self.fields)

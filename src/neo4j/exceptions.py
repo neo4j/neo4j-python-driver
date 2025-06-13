@@ -60,7 +60,7 @@ Driver API Errors
     + ConnectionAcquisitionTimeoutError
 """
 
-from __future__ import annotations
+from __future__ import annotations as _
 
 from copy import deepcopy as _deepcopy
 from enum import Enum as _Enum
@@ -71,26 +71,26 @@ from ._warnings import preview as _preview
 
 if _t.TYPE_CHECKING:
     from ._async.work import (
-        AsyncManagedTransaction,
-        AsyncResult,
-        AsyncSession,
-        AsyncTransaction,
+        AsyncManagedTransaction as _AsyncManagedTransaction,
+        AsyncResult as _AsyncResult,
+        AsyncSession as _AsyncSession,
+        AsyncTransaction as _AsyncTransaction,
     )
     from ._sync.work import (
-        ManagedTransaction,
-        Result,
-        Session,
-        Transaction,
+        ManagedTransaction as _ManagedTransaction,
+        Result as _Result,
+        Session as _Session,
+        Transaction as _Transaction,
     )
 
     _TTransaction: _t.TypeAlias = (
-        AsyncManagedTransaction
-        | AsyncTransaction
-        | ManagedTransaction
-        | Transaction
+        _AsyncManagedTransaction
+        | _AsyncTransaction
+        | _ManagedTransaction
+        | _Transaction
     )
-    _TResult: _t.TypeAlias = AsyncResult | Result
-    _TSession: _t.TypeAlias = AsyncSession | Session
+    _TResult: _t.TypeAlias = _AsyncResult | _Result
+    _TSession: _t.TypeAlias = _AsyncSession | _Session
     _T = _t.TypeVar("_T")
 
 
@@ -1045,8 +1045,7 @@ class IncompleteCommit(ServiceUnavailable):
             gql_status="08007",
             message=message,
             description=(
-                "error: connection exception - "
-                "transaction resolution unknown"
+                "error: connection exception - transaction resolution unknown"
             ),
         )
 

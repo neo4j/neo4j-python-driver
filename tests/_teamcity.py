@@ -98,6 +98,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
 # changes applied:
 # - non-functional changes (e.g., formatting, removed dead code)
 # - removed support for pep8-check and pylint
+# - simplified code using str.removesuffix
 def format_test_id(nodeid: str) -> str:
     test_id = nodeid
 
@@ -114,8 +115,7 @@ def format_test_id(nodeid: str) -> str:
         if params.endswith("]"):
             params = params[:-1] + ")"
         test_id = test_id[:first_bracket]
-        if test_id.endswith("::"):
-            test_id = test_id[:-2]
+        test_id = test_id.removesuffix("::")
     else:
         params = ""
 

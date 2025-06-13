@@ -39,7 +39,6 @@ from ._bolt import (
     tx_timeout_as_ms,
 )
 from ._common import (
-    check_supported_server_product,
     CommitResponse,
     InitResponse,
     ResetResponse,
@@ -237,7 +236,6 @@ class Bolt3(Bolt):
         )
         self.send_all()
         self.fetch_all()
-        check_supported_server_product(self.server_info.agent)
 
     def logon(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGON message to the outgoing queue."""

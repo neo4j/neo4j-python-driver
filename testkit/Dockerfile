@@ -54,6 +54,5 @@ RUN pyenv global $(pyenv versions --bare --skip-aliases | sort --version-sort --
 # + tox and tools for starting the tests
 # https://pip.pypa.io/en/stable/news/
 RUN for version in $PYTHON_VERSIONS; do \
-        python$version -m pip install -U pip && \
-        python$version -m pip install -U coverage tox; \
+        python$version -m pip install -U pip; \
     done

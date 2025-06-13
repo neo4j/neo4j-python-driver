@@ -1,3 +1,2 @@
-include NOTICE* src/**/py.typed
-global-exclude *.class *.py[cod] *.so *.dll __pycache__
+recursive-include src py.typed
 prune test*

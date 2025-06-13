@@ -77,10 +77,7 @@ class Point(tuple[float, ...]):
                 _t.cast(Point, other)
             )
         except (AttributeError, TypeError):
-            return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+            return NotImplemented
 
     def __hash__(self):
         return hash(type(self)) ^ hash(tuple(self))

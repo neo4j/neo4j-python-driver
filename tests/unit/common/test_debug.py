@@ -270,9 +270,9 @@ def test_watcher_colour(logger_mocker, colour, thread, task) -> None:
     assert isinstance(handler, logging.Handler)
     assert isinstance(handler.formatter, logging.Formatter)
     if colour:
-        assert isinstance(handler.formatter, neo4j_debug.ColourFormatter)
+        assert isinstance(handler.formatter, neo4j_debug._ColourFormatter)
     else:
-        assert not isinstance(handler.formatter, neo4j_debug.ColourFormatter)
+        assert not isinstance(handler.formatter, neo4j_debug._ColourFormatter)
 
 
 @pytest.mark.parametrize("colour", (True, False))
@@ -305,7 +305,9 @@ def test_watcher_format(logger_mocker, colour, thread, task) -> None:
 def _assert_task_injection(
     async_: bool, mocker, logger_mocker, colour: bool, thread: bool, task: bool
 ) -> None:
-    handler_cls_mock = mocker.patch("neo4j.debug.StreamHandler", autospec=True)
+    handler_cls_mock = mocker.patch(
+        "neo4j.debug._StreamHandler", autospec=True
+    )
     handler_mock = handler_cls_mock.return_value
     logger_name = "neo4j"
     logger_mocker(logger_name)[0]

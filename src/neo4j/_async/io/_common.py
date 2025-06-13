@@ -26,7 +26,6 @@ from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
     SessionExpired,
-    UnsupportedServerProduct,
 )
 
 
@@ -81,6 +80,15 @@ class AsyncInbox:
                 self._unpacker.unpack(hydration_hooks) for _ in range(size)
             ]
             return tag, fields
+        except Exception as error:
+            log.debug(
+                "[#%04X]  _: Failed to unpack response: %r",
+                self._local_port,
+                error,
+            )
+            self._broken = True
+            await AsyncUtil.callback(self.on_error, error)
+            raise
         finally:
             # Reset for new message
             self._unpacker.reset()
@@ -320,20 +328,6 @@ class ResetResponse(Response):
 
 class CommitResponse(Response):
     pass
-
-
-def check_supported_server_product(agent):
-    """
-    Check that a server product is supported by the driver.
-
-    This is done by inspecting the server agent string.
-
-    :param agent: server agent string to check for validity
-
-    :raises UnsupportedServerProduct: if the product is not supported
-    """
-    if not agent.startswith("Neo4j/"):
-        raise UnsupportedServerProduct(agent)
 
 
 async def receive_into_buffer(sock, buffer, n_bytes):

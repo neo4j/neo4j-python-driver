@@ -15,13 +15,26 @@
 
 
 import asyncio
+import random
 
 import pytest
 
 import neo4j.auth_management
 from neo4j._async.io import AsyncBolt
+from neo4j._async.io._bolt5 import AsyncBolt5x8
 from neo4j._async.io._bolt_socket import AsyncBoltSocket
-from neo4j.exceptions import UnsupportedServerProduct
+from neo4j._async.io._common import (
+    CommitResponse,
+    ResetResponse,
+    Response,
+)
+from neo4j._exceptions import SocketDeadlineExceededError
+from neo4j.exceptions import (
+    IncompleteCommit,
+    ServiceUnavailable,
+    SessionExpired,
+    UnsupportedServerProduct,
+)
 
 from ...._async_compat import (
     AsyncTestDecorators,
@@ -206,7 +219,7 @@ async def test_failing_version_negotiation(mocker, bolt_version, none_auth):
 
 
 @AsyncTestDecorators.mark_async_only_test
-async def test_cancel_manager_in_open(mocker):
+async def test_cancel_auth_manager_in_open(mocker):
     address = ("localhost", 7687)
     socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)
 
@@ -228,7 +241,7 @@ async def test_cancel_manager_in_open(mocker):
 
 
 @AsyncTestDecorators.mark_async_only_test
-async def test_fail_manager_in_open(mocker):
+async def test_fail_auth_manager_in_open(mocker):
     address = ("localhost", 7687)
     socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)
 
@@ -248,3 +261,135 @@ async def test_fail_manager_in_open(mocker):
     assert exc.value is auth_manager.get_auth.side_effect
 
     socket_mock.close.assert_called_once_with()
+
+
+@pytest.mark.parametrize("mode", ("r", "w"))
+@pytest.mark.parametrize(
+    "error",
+    (
+        RuntimeError("test error"),
+        RecursionError("How deep is your ~~love~~ recursion?"),
+        asyncio.CancelledError("STOP! Cancel time!"),
+    ),
+)
+@pytest.mark.parametrize("queued_commit", (None, 0, 1, 10))
+@mark_async_test
+async def test_error_handler_bubbling(
+    mocker, fake_socket, mode, error, queued_commit
+):
+    mocks = ErrorHandlerTestMockHolder(mocker)
+    if queued_commit is not None:
+        mocks.queue_commit_message_at(queued_commit)
+
+    connection = mocks.connection
+    handler = mocks.get_error_handler(mode)
+
+    with pytest.raises(type(error)) as exc:
+        await handler(error)
+    assert exc.value is error
+
+    if isinstance(error, asyncio.CancelledError):
+        connection.socket.kill.assert_called_once()
+        connection.socket.close.assert_not_called()
+    else:
+        connection.socket.close.assert_awaited_once()
+
+    assert connection.closed()
+    assert connection.defunct()
+
+
+@pytest.mark.parametrize("mode", ("r", "w"))
+@pytest.mark.parametrize(
+    "error",
+    (
+        OSError("computer says no! *cough*"),
+        SocketDeadlineExceededError("too late, too little"),
+        ServiceUnavailable("borked connection"),
+        SessionExpired("nobody at home"),
+    ),
+)
+@pytest.mark.parametrize("routing", (True, False))
+@pytest.mark.parametrize("queued_commit", (None, 0, 1, 10))
+@mark_async_test
+async def test_error_handler_rewritten(
+    mocker, fake_socket, mode, error, routing, queued_commit
+):
+    mocks = ErrorHandlerTestMockHolder(mocker)
+    mocks.mock_driver_routing(routing)
+    if queued_commit is not None:
+        mocks.queue_commit_message_at(queued_commit)
+
+    connection = mocks.connection
+    handler = mocks.get_error_handler(mode)
+
+    if queued_commit is not None:
+        expected_error = IncompleteCommit
+    elif routing:
+        expected_error = SessionExpired
+    else:
+        expected_error = ServiceUnavailable
+
+    with pytest.raises(expected_error) as exc:
+        await handler(error)
+    assert exc.value.__cause__ is error
+    connection.socket.close.assert_awaited_once()
+
+    assert connection.closed()
+    assert connection.defunct()
+
+
+class ErrorHandlerTestMockHolder:
+    def __init__(self, mocker):
+        self.address = neo4j.Address(("127.0.0.1", 7687))
+        self.socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)
+        self.socket_mock.getpeername.return_value = self.address
+        self.connection = AsyncBolt5x8(self.address, self.socket_mock, 108000)
+        self.pool = mocker.AsyncMock()
+        self.connection.pool = self.pool
+
+    def mock_driver_routing(self, routing):
+        self.pool.is_direct_pool = not routing
+
+    def queue_random_non_commit_response(self):
+        resp_cls = random.choice((ResetResponse, Response))
+        resp = resp_cls(self.connection, "MESSAGE", {})
+        self.connection.responses.append(resp)
+
+    def queue_commit_message(self):
+        resp = CommitResponse(self.connection, "MESSAGE", {})
+        self.connection.responses.append(resp)
+
+    def queue_commit_message_at(self, position):
+        self.connection.responses.clear()
+        for _ in range(position - 1):
+            self.queue_random_non_commit_response()
+        self.queue_commit_message()
+        self.queue_random_non_commit_response()
+
+    def get_error_handler(self, mode):
+        if mode == "r":
+            return self.connection._set_defunct_read
+        elif mode == "w":
+            return self.connection._set_defunct_write
+        else:
+            raise ValueError(f"Invalid handler mode {mode!r}")
+
+
+def test_configures_inbox_error_handler(mocker):
+    inbox_cls_mock = mocker.patch(
+        "neo4j._async.io._bolt.AsyncInbox", autospec=True
+    )
+    mocks = ErrorHandlerTestMockHolder(mocker)
+    inbox_cls_mock.assert_called_once()
+    call_args = inbox_cls_mock.call_args
+    assert call_args.kwargs["on_error"] == mocks.connection._set_defunct_read
+
+
+def test_configures_outbox_error_handler(mocker):
+    inbox_cls_mock = mocker.patch(
+        "neo4j._async.io._bolt.AsyncOutbox", autospec=True
+    )
+    mocks = ErrorHandlerTestMockHolder(mocker)
+    inbox_cls_mock.assert_called_once()
+    call_args = inbox_cls_mock.call_args
+    assert call_args.kwargs["on_error"] == mocks.connection._set_defunct_write

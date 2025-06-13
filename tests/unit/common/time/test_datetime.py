@@ -1190,6 +1190,62 @@ def test_comparison(dt1, dt2) -> None:
     assert not dt1 >= dt2
 
 
+@pytest.mark.parametrize(
+    ("dt1_args", "dt2_args"),
+    (
+        (
+            (2022, 11, 25, 12, 34, 56, 789124),
+            (2022, 11, 25, 12, 34, 56, 789124),
+        ),
+        (
+            (2022, 11, 25, 12, 33, 56, 789124),
+            (2022, 11, 25, 12, 34, 56, 789124),
+        ),
+        (
+            (2022, 11, 25, 12, 34, 56, 789124),
+            (2022, 11, 25, 12, 35, 56, 789124),
+        ),
+        (
+            (2022, 11, 25, 12, 32, 56, 789124),
+            (2022, 11, 25, 12, 34, 56, 789124),
+        ),
+        (
+            (2022, 11, 25, 12, 34, 56, 789124),
+            (2022, 11, 25, 12, 36, 56, 789124),
+        ),
+    ),
+)
+@pytest.mark.parametrize("dt1_cls", (DateTime, datetime))
+@pytest.mark.parametrize("dt2_cls", (DateTime, datetime))
+@pytest.mark.parametrize(
+    "tz",
+    (FixedOffset(0), FixedOffset(1), FixedOffset(-1), utc, timezone_berlin),
+)
+def test_comparison_only_one_with_tzinfo(
+    dt1_args, dt1_cls, dt2_args, dt2_cls, tz
+) -> None:
+    dt1 = dt1_cls(*dt1_args)
+    dt2 = dt2_cls(*dt2_args, tzinfo=None)
+    err_msg = "can't compare offset-naive and offset-aware"
+    dt2 = dt2.replace(tzinfo=tz)
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt1 < dt2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt2 < dt1
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt1 <= dt2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt2 <= dt1
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt1 > dt2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt2 > dt1
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt1 <= dt2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not dt2 <= dt1
+
+
 def test_str() -> None:
     dt = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
     assert str(dt) == "2018-04-26T23:00:17.914390409"

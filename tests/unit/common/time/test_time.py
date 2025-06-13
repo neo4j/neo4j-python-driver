@@ -577,6 +577,62 @@ class TestTime:
         assert expected.foo is not actual.foo
 
 
+@pytest.mark.parametrize(
+    ("t1_args", "t2_args"),
+    (
+        (
+            (12, 34, 56, 789124),
+            (12, 34, 56, 789124),
+        ),
+        (
+            (12, 33, 56, 789124),
+            (12, 34, 56, 789124),
+        ),
+        (
+            (12, 34, 56, 789124),
+            (12, 35, 56, 789124),
+        ),
+        (
+            (12, 32, 56, 789124),
+            (12, 34, 56, 789124),
+        ),
+        (
+            (12, 34, 56, 789124),
+            (12, 36, 56, 789124),
+        ),
+    ),
+)
+@pytest.mark.parametrize("t1_cls", (Time, time))
+@pytest.mark.parametrize("t2_cls", (Time, time))
+@pytest.mark.parametrize(
+    "tz",
+    (FixedOffset(0), FixedOffset(1), FixedOffset(-1), utc),
+)
+def test_comparison_only_one_with_tzinfo(
+    t1_args, t1_cls, t2_args, t2_cls, tz
+) -> None:
+    t1 = t1_cls(*t1_args)
+    t2 = t2_cls(*t2_args, tzinfo=None)
+    err_msg = "can't compare offset-naive and offset-aware"
+    t2 = t2.replace(tzinfo=tz)
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t1 < t2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t2 < t1
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t1 <= t2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t2 <= t1
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t1 > t2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t2 > t1
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t1 <= t2
+    with pytest.raises(TypeError, match=err_msg):
+        assert not t2 <= t1
+
+
 def test_str() -> None:
     t = Time(12, 34, 56, 789123001)
     assert str(t) == "12:34:56.789123001"

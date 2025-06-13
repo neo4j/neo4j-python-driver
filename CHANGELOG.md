@@ -98,6 +98,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ERROR_REWRITE_MAP`
     - `client_errors`
     - `transient_errors`
+    - all other indirectly exposed items from imports (e.g. `typing` as `neo4j.exceptions.t`)
   - `neo4j.time`
     - `DATE_ISO_PATTERN`
     - `TIME_ISO_PATTERN`
@@ -128,6 +129,18 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `.default_host`
     - `.default_port`
     - `.default_target`
+  - `neo4j.graph`, `neo4j.addressing`, `neo4j.api`
+    - indirectly exposed items from imports (e.g. `collections.abc.Mapping` as `neo4j.graph.Mapping`).
+  - `BoltDriver` and `Neo4jDriver`
+    - `.open`
+    - `.parse_target`
+    - `.default_host`
+    - `.default_port`
+    - `.default_target`
+  - `neo4j.debug`
+    - `ColourFormatter`
+    - `TaskIdFilter`
+    - all other indirectly exposed items from imports (e.g. `asyncio` as `neo4j.debug.asyncio`)
 - Deprecate ClockTime and its accessors
   - For each `neo4j.time.Date`, `neo4j.time.DateTime`, `neo4j.time.Time`
     - `from_clock_time` and `to_clock_time` methods
@@ -143,6 +156,17 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   should be treated as immutable.
 - Graph type sets (`neo4j.graph.EntitySetView`) can no longer by indexed by legacy `id` (`int`, e.g., `graph.nodes[0]`).  
   Use the `element_id` instead (`str`, e.g., `graph.nodes["..."]`).
+- Make all comparator magic methods return `NotImplemented` instead of `False` (or raising `TypeError` in some
+  instances) if the other operand is not of a supported type.
+  This means that when comparing a driver type with another type is doesn't support, the other type get the chance to
+  handle the comparison.  
+  Affected types:
+  - `neo4j.Record`
+  - `neo4j.graph.Node`, `neo4j.graph.Relationship`, `neo4j.graph.Path`
+  - `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`
+  - `neo4j.spatial.Point` (and subclasses)
+- Separate out log entries that are session-related (including transaction retries)
+  form sub-logger `neo4j.pool` to a new sub-logger `neo4j.session`.
 
 
 ## Version 5.28

@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v5.0.0
     hooks:
       - id: check-case-conflict
       - id: check-docstring-first
@@ -27,14 +27,14 @@ repos:
         types_or: [ python, pyi ]
         language: system
   - repo: https://github.com/sphinx-contrib/sphinx-lint
-    rev: e83a1a42a73284d301c05baaffc176042ffbcf82
+    rev: ff671d6a030a3141634793e6d1e8909ab6091830
     hooks:
       - id: sphinx-lint
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.4
+    rev: v0.11.12
     hooks:
       - id: ruff-format
-      - id: ruff
+      - id: ruff-check
         args: [ --fix ]
       - id: ruff-format
   - repo: local

@@ -16,15 +16,17 @@
 
 """Base classes and helpers."""
 
-from __future__ import annotations
+from __future__ import annotations as _
 
-import abc
+import abc as _abc
 
 from . import _typing as _t
 
+# ignore TC001 to make sphinx not completely drop the ball
+from ._addressing import Address as _Address  # noqa: TC001
+
 
 if _t.TYPE_CHECKING:
-    from ._addressing import Address
     from ._typing import Protocol as _Protocol
 else:
     _Protocol = object
@@ -111,7 +113,7 @@ class Auth:
         if parameters:
             self.parameters = parameters
 
-    def __eq__(self, other: _t.Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Auth):
             return NotImplemented
         return vars(self) == vars(other)
@@ -265,7 +267,7 @@ class Bookmarks:
         for value in values:
             if not isinstance(value, str):
                 raise TypeError(
-                    "Raw bookmark values must be str. " f"Found {type(value)}"
+                    f"Raw bookmark values must be str. Found {type(value)}"
                 )
             try:
                 value.encode("ascii")
@@ -279,13 +281,13 @@ class Bookmarks:
 class ServerInfo:
     """Represents a package of information relating to a Neo4j server."""
 
-    def __init__(self, address: Address, protocol_version: tuple[int, int]):
+    def __init__(self, address: _Address, protocol_version: tuple[int, int]):
         self._address = address
         self._protocol_version = protocol_version
         self._metadata: dict = {}
 
     @property
-    def address(self) -> Address:
+    def address(self) -> _Address:
         """Network address of the remote server."""
         return self._address
 
@@ -314,7 +316,7 @@ class ServerInfo:
         self._metadata.update(metadata)
 
 
-class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
+class BookmarkManager(_Protocol, metaclass=_abc.ABCMeta):
     """
     Class to manage bookmarks throughout the driver's lifetime.
 
@@ -355,7 +357,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. versionchanged:: 5.8 Stabilized from experimental.
     """
 
-    @abc.abstractmethod
+    @_abc.abstractmethod
     def update_bookmarks(
         self,
         previous_bookmarks: _t.Collection[str],
@@ -371,7 +373,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         """
         ...
 
-    @abc.abstractmethod
+    @_abc.abstractmethod
     def get_bookmarks(self) -> _t.Collection[str]:
         """
         Return the bookmarks stored in the bookmark manager.
@@ -381,7 +383,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         ...
 
 
-class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
+class AsyncBookmarkManager(_Protocol, metaclass=_abc.ABCMeta):
     """
     Same as :class:`.BookmarkManager` but with async methods.
 
@@ -396,7 +398,7 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. versionchanged:: 5.8 Stabilized from experimental.
     """
 
-    @abc.abstractmethod
+    @_abc.abstractmethod
     async def update_bookmarks(
         self,
         previous_bookmarks: _t.Collection[str],
@@ -405,7 +407,7 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
 
     update_bookmarks.__doc__ = BookmarkManager.update_bookmarks.__doc__
 
-    @abc.abstractmethod
+    @_abc.abstractmethod
     async def get_bookmarks(self) -> _t.Collection[str]: ...
 
     get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__

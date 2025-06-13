@@ -1219,60 +1219,31 @@ class Date(_date_base_class, metaclass=_DateType):
     def __eq__(self, other: object) -> bool:
         """``==`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, _date)):
-            # TODO: 6.0 - return NotImplemented for non-Date objects
-            # return NotImplemented
-            return False
+            return NotImplemented
         return self.toordinal() == other.toordinal()
-
-    def __ne__(self, other: object) -> bool:
-        """``!=`` comparison with :class:`.Date` or :class:`datetime.date`."""
-        # TODO: 6.0 - return NotImplemented for non-Date objects
-        # if not isinstance(other, (Date, date)):
-        #     return NotImplemented
-        return not self.__eq__(other)
 
     def __lt__(self, other: Date | _date) -> bool:
         """``<`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, _date)):
-            # TODO: 6.0 - return NotImplemented for non-Date objects
-            # return NotImplemented
-            raise TypeError(
-                "'<' not supported between instances of 'Date' and "
-                f"{type(other).__name__!r}"
-            )
+            return NotImplemented
         return self.toordinal() < other.toordinal()
 
     def __le__(self, other: Date | _date) -> bool:
         """``<=`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, _date)):
-            # TODO: 6.0 - return NotImplemented for non-Date objects
-            # return NotImplemented
-            raise TypeError(
-                "'<=' not supported between instances of 'Date' and "
-                f"{type(other).__name__!r}"
-            )
+            return NotImplemented
         return self.toordinal() <= other.toordinal()
 
     def __ge__(self, other: Date | _date) -> bool:
         """``>=`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, _date)):
-            # TODO: 6.0 - return NotImplemented for non-Date objects
-            # return NotImplemented
-            raise TypeError(
-                "'>=' not supported between instances of 'Date' and "
-                f"{type(other).__name__!r}"
-            )
+            return NotImplemented
         return self.toordinal() >= other.toordinal()
 
     def __gt__(self, other: Date | _date) -> bool:
         """``>`` comparison with :class:`.Date` or :class:`datetime.date`."""
         if not isinstance(other, (Date, _date)):
-            # TODO: 6.0 - return NotImplemented for non-Date objects
-            # return NotImplemented
-            raise TypeError(
-                "'>' not supported between instances of 'Date' and "
-                f"{type(other).__name__!r}"
-            )
+            return NotImplemented
         return self.toordinal() > other.toordinal()
 
     def __add__(self, other: Duration) -> Date:  # type: ignore[override]
@@ -1919,29 +1890,37 @@ class Time(_time_base_class, metaclass=_TimeType):
 
     # OPERATIONS #
 
-    def _get_both_normalized_ticks(self, other: object, strict=True):
-        if isinstance(other, (_time, Time)) and (
-            (self.utc_offset() is None) ^ (other.utcoffset() is None)
-        ):
+    @_t.overload
+    def _get_both_normalized_ticks(
+        self, other: Time | _time, strict: _t.Literal[True] = True
+    ) -> tuple[int, int]: ...
+
+    @_t.overload
+    def _get_both_normalized_ticks(
+        self, other: Time | _time, strict: _t.Literal[False]
+    ) -> tuple[int, int] | None: ...
+
+    def _get_both_normalized_ticks(
+        self, other: Time | _time, strict: bool = True
+    ) -> tuple[int, int] | None:
+        if (self.utc_offset() is None) ^ (other.utcoffset() is None):
             if strict:
                 raise TypeError(
                     "can't compare offset-naive and offset-aware times"
                 )
             else:
-                return None, None
+                return None
         other_ticks: int
         if isinstance(other, Time):
             other_ticks = other.__ticks
-        elif isinstance(other, _time):
+        else:
+            assert isinstance(other, _time)
             other_ticks = int(
                 3600000000000 * other.hour
                 + 60000000000 * other.minute
                 + _NANO_SECONDS * other.second
                 + 1000 * other.microsecond
             )
-        else:
-            return None, None
-        assert isinstance(other, (Time, _time))
         utc_offset: _timedelta | None = other.utcoffset()
         if utc_offset is not None:
             other_ticks -= int(utc_offset.total_seconds() * _NANO_SECONDS)
@@ -1961,43 +1940,40 @@ class Time(_time_base_class, metaclass=_TimeType):
 
     def __eq__(self, other: object) -> bool:
         """`==` comparison with :class:`.Time` or :class:`datetime.time`."""
-        self_ticks, other_ticks = self._get_both_normalized_ticks(
-            other, strict=False
-        )
-        if self_ticks is None:
+        if not isinstance(other, (Time, _time)):
+            return NotImplemented
+        ticks = self._get_both_normalized_ticks(other, strict=False)
+        if ticks is None:
             return False
+        self_ticks, other_ticks = ticks
         return self_ticks == other_ticks
-
-    def __ne__(self, other: object) -> bool:
-        """`!=` comparison with :class:`.Time` or :class:`datetime.time`."""
-        return not self.__eq__(other)
 
     def __lt__(self, other: Time | _time) -> bool:
         """`<` comparison with :class:`.Time` or :class:`datetime.time`."""
-        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
-        if self_ticks is None:
+        if not isinstance(other, (Time, _time)):
             return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks < other_ticks
 
     def __le__(self, other: Time | _time) -> bool:
         """`<=` comparison with :class:`.Time` or :class:`datetime.time`."""
-        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
-        if self_ticks is None:
+        if not isinstance(other, (Time, _time)):
             return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks <= other_ticks
 
     def __ge__(self, other: Time | _time) -> bool:
         """`>=` comparison with :class:`.Time` or :class:`datetime.time`."""
-        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
-        if self_ticks is None:
+        if not isinstance(other, (Time, _time)):
             return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks >= other_ticks
 
     def __gt__(self, other: Time | _time) -> bool:
         """`>` comparison with :class:`.Time` or :class:`datetime.time`."""
-        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
-        if self_ticks is None:
+        if not isinstance(other, (Time, _time)):
             return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
         return self_ticks > other_ticks
 
     # INSTANCE METHODS #
@@ -2606,29 +2582,36 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
 
     # OPERATIONS #
 
-    def _get_both_normalized(self, other, strict=True):
-        if isinstance(other, (_datetime, DateTime)) and (
-            (self.utc_offset() is None) ^ (other.utcoffset() is None)
-        ):
+    @_t.overload
+    def _get_both_normalized(
+        self, other: _datetime | DateTime, strict: _t.Literal[True] = True
+    ) -> tuple[DateTime, DateTime | _datetime]: ...
+
+    @_t.overload
+    def _get_both_normalized(
+        self, other: _datetime | DateTime, strict: _t.Literal[False]
+    ) -> tuple[DateTime, DateTime | _datetime] | None: ...
+
+    def _get_both_normalized(
+        self, other: _datetime | DateTime, strict: bool = True
+    ) -> tuple[DateTime, DateTime | _datetime] | None:
+        if (self.utc_offset() is None) ^ (other.utcoffset() is None):
             if strict:
                 raise TypeError(
                     "can't compare offset-naive and offset-aware datetimes"
                 )
             else:
-                return None, None
+                return None
         self_norm = self
         utc_offset = self.utc_offset()
         if utc_offset is not None:
             self_norm -= utc_offset
         self_norm = self_norm.replace(tzinfo=None)
         other_norm = other
-        if isinstance(other, (_datetime, DateTime)):
-            utc_offset = other.utcoffset()
-            if utc_offset is not None:
-                other_norm -= utc_offset
-            other_norm = other_norm.replace(tzinfo=None)
-        else:
-            return None, None
+        utc_offset = other.utcoffset()
+        if utc_offset is not None:
+            other_norm -= utc_offset
+        other_norm = other_norm.replace(tzinfo=None)
         return self_norm, other_norm
 
     def __hash__(self):
@@ -2650,20 +2633,11 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
             return NotImplemented
         if self.utc_offset() == other.utcoffset():
             return self.date() == other.date() and self.time() == other.time()
-        self_norm, other_norm = self._get_both_normalized(other, strict=False)
-        if self_norm is None:
+        normalized = self._get_both_normalized(other, strict=False)
+        if normalized is None:
             return False
+        self_norm, other_norm = normalized
         return self_norm == other_norm
-
-    def __ne__(self, other: object) -> bool:
-        """
-        ``!=`` comparison with another datetime.
-
-        Accepts :class:`.DateTime` and :class:`datetime.datetime`.
-        """
-        if not isinstance(other, (DateTime, _datetime)):
-            return NotImplemented
-        return not self.__eq__(other)
 
     def __lt__(  # type: ignore[override]
         self, other: _datetime | DateTime
