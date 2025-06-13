@@ -125,7 +125,6 @@ Specifically for this driver, this will:
  * enable :class:`DeprecationWarning`, which the driver emits if deprecated APIs are used.
  * enable the driver's debug mode (this can also be achieved by setting the environment variable ``PYTHONNEO4JDEBUG``):
 
-     It might be changed or removed any time even without prior notice.
    * the driver will raise an exception if non-concurrency-safe methods are used concurrently.
    * the driver will emit warnings if the server sends back notification
      (see also :ref:`driver-warn-notification-severity-ref`).
