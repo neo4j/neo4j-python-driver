@@ -80,7 +80,6 @@ NEO4J_ATTRIBUTES = (
     ("TrustCustomCAs", None),
     ("TrustSystemCAs", None),
     ("unit_of_work", None),
-    ("Vector", None),
     ("WRITE_ACCESS", None),
 )
 
@@ -154,6 +153,7 @@ NEO4J_MODULES = (
     ("auth_management", None),
     ("debug", None),
     ("exceptions", None),
+    ("vector", None),
     ("warnings", None),
 )
 

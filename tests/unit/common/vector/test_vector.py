@@ -228,18 +228,23 @@ def test_swap_endian_unhandled_size(mocker, ext, type_size):
     ),
 )
 @pytest.mark.parametrize("input_endian", (None, "big", "little"))
+@pytest.mark.parametrize("as_bytearray", (False, True))
 def test_raw_data(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     data: bytes,
     input_endian: t.Literal["big", "little"] | None,
+    as_bytearray: bool,
 ) -> None:
     swapped_data = _swap_endian(_get_type_size(dtype), data)
     if input_endian is None:
-        v = Vector(data, dtype)
+        input_data = bytearray(data) if as_bytearray else data
+        v = Vector(input_data, dtype)
     elif input_endian == "big":
-        v = Vector(data, dtype, byteorder=input_endian)
+        input_data = bytearray(data) if as_bytearray else data
+        v = Vector(input_data, dtype, byteorder=input_endian)
     elif input_endian == "little":
-        v = Vector(swapped_data, dtype, byteorder=input_endian)
+        input_data = bytearray(swapped_data) if as_bytearray else swapped_data
+        v = Vector(input_data, dtype, byteorder=input_endian)
     else:
         raise ValueError(f"Invalid input_endian {input_endian}")
     assert v.dtype == dtype

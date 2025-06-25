@@ -56,19 +56,23 @@ __all__ = [
 
 
 class Vector:
-    """
+    r"""
     A class representing a Neo4j vector.
-
-    Internally, a vector is stored as a contiguous block of memory
-    (:class:`bytes`), containing homogeneous values encoded in big-endian
-    order.
-
-    To be able to send and receive these types, the driver must be connected
-    to a DBMS supporting Bolt version 6.0 or later. This corresponds to Neo4j
-    2025.05 or later.
 
     The constructor accepts various types of data to create a vector.
     Depending on ``data``'s type, further arguments may be required/allowed.
+    Examples of valid invocations are::
+
+        Vector([1, 2, 3], "i8")
+        Vector(b"\x00\x01\x00\x02", VectorDType.I16)
+        Vector(b"\x01\x00\x02\x00", "i16", byteorder="little")
+        Vector(numpy.array([1, 2, 3]))
+        Vector(pyarrow.array([1, 2, 3]))
+
+    Internally, a vector is stored as a contiguous block of memory
+    (:class:`bytes`), containing homogeneous values encoded in big-endian
+    order. Support for this feature requires a DBMS supporting Bolt version
+    6.0 or later. This corresponds to Neo4j 2025.05 or later.
 
     TODO: check and update final server version above!
 
@@ -76,37 +80,40 @@ class Vector:
         The data from which the vector will be constructed.
         The constructor accepts the following types:
 
-        * ``bytes``: Use raw bytes to construct the vector.
-          The ``dtype`` parameter is required and ``byteorder`` is optional.
-        * ``Iterable[float]``, ``Iterable[float]``:
+        * ``Iterable[float]``, ``Iterable[int]`` (but not ``bytes`` or
+          ``bytearray``):
           Use an iterable of floats or an iterable of ints to construct the
           vector from native Python values.
+          The ``dtype`` parameter is required.
+        * ``bytes``, ``bytearray``: Use raw bytes to construct the vector.
+          The ``dtype`` parameter is required and ``byteorder`` is optional.
         * ``numpy.ndarray``: Use a numpy array to construct the vector.
           No further parameters are accepted.
         * ``pyarrow.Array``: Use a pyarrow array to construct the vector.
-        No further parameters are accepted.
+          No further parameters are accepted.
     :param dtype: The type of the vector.
         See :attr:`.dtype` for currently supported inner data types.
 
         This parameter is required if ``data`` is of type :class:`bytes`,
-        ``Iterable[float]`, or ``Iterable[int]`. Otherwise, it must be omitted.
-    :param byteorder: The endianness of the data.
-        If ``"little"``, the bytes in data will be flipped to big-endian. If
-        installed, ``neo4j-rust-ext`` or ``numpy`` will be used to speed up the
-        byte flipping. Use :data:`sys.byteorder` if you want to use the
-        system's native endianness.
+        :class:`bytearray`, ``Iterable[float]``, or ``Iterable[int]``.
+        Otherwise, it must be omitted.
+    :param byteorder: The endianness of the input data (default: ``"big"``).
+        If ``"little"`` is given, ``neo4j-rust-ext`` or ``numpy`` is used to
+        speed up the internal byte flipping (if either package is installed).
+        Use :data:`sys.byteorder` if you want to use the system's native
+        endianness.
 
-        This parameter is optional if ``data`` is of type ``bytes``.
-        For other types of ``data``, the parameter must be omitted.
+        This parameter is optional if ``data`` is of type ``bytes`` or
+        ``bytearray``. Otherwise, it must be omitted.
 
     :raises ValueError:
         Depending on the type of ``data``:
-            * ``bytes``:
+            * ``Iterable[float]``, ``Iterable[int]`` (excluding byte types):
+                * If the dtype is not supported.
+            * ``bytes``, ``bytearray``:
                 * If the dtype is not supported or data's size is not a
                   multiple of dtype's size.
                 * If byteorder is not one of ``"big"`` or ``"little"``.
-            * ``Iterable[float]``, ``Iterable[float]``:
-                * If the dtype is not supported.
             * ``numpy.ndarray``:
                 * If the dtype is not supported.
                 * If the array is not one-dimensional.
@@ -115,12 +122,12 @@ class Vector:
                 * If the array contains null values.
     :raises TypeError:
         Depending on the type of ``data``:
-            * ``Iterable[float]``, ``Iterable[int]``:
+            * ``Iterable[float]``, ``Iterable[int]``(excluding byte types):
                 * If data's elements don't match the expected type depending on
                   dtype.
     :raises OverflowError:
         Depending on the type of ``data``:
-            * ``Iterable[float]``, ``Iterable[int]``:
+            * ``Iterable[float]``, ``Iterable[int]``(excluding byte types):
                 * If the value is out of range for the given type.
 
     .. versionadded: 6.0
@@ -129,16 +136,6 @@ class Vector:
     __slots__ = ("__weakref__", "_inner")
 
     _inner: _InnerVector
-
-    @_t.overload
-    def __init__(
-        self,
-        data: bytes,
-        dtype: _T_VectorDType,
-        /,
-        *,
-        byteorder: _T_VectorEndian = "big",
-    ) -> None: ...
 
     @_t.overload
     def __init__(
@@ -157,14 +154,24 @@ class Vector:
     ) -> None: ...
 
     @_t.overload
+    def __init__(
+        self,
+        data: bytes | bytearray,
+        dtype: _T_VectorDType,
+        /,
+        *,
+        byteorder: _T_VectorEndian = "big",
+    ) -> None: ...
+
+    @_t.overload
     def __init__(self, data: numpy.ndarray, /) -> None: ...
 
     @_t.overload
     def __init__(self, data: pyarrow.Array, /) -> None: ...
 
     def __init__(self, data, *args, **kwargs) -> None:
-        if isinstance(data, bytes):
-            self._set_bytes(data, *args, **kwargs)
+        if isinstance(data, (bytes, bytearray)):
+            self._set_bytes(bytes(data), *args, **kwargs)
         elif _np is not None and isinstance(data, _np.ndarray):
             self._set_numpy(data, *args, **kwargs)
         elif _pa is not None and isinstance(data, _pa.Array):
@@ -257,7 +264,7 @@ class Vector:
         return str(self._inner)
 
     def __repr__(self) -> str:
-        return f"Vector(dtype={self.dtype!r}, data={self.raw()!r})"
+        return f"{self.__class__.__name__}({self.raw()!r}, {self.dtype!r})"
 
     @classmethod
     def from_bytes(
@@ -321,10 +328,10 @@ class Vector:
         """
         Create a Vector instance from an iterable of values.
 
-        :param dtype: The type of the vector.
-            See also :attr:`.dtype`.
         :param data: The list, tuple, or other iterable of values to create the
             vector from.
+        :param dtype: The type of the vector.
+            See also :attr:`.dtype`.
 
         ``data`` must contain values that match the expected type given by
         ``dtype``:
@@ -342,13 +349,14 @@ class Vector:
         :raises OverflowError: If the value is out of range for the given type.
         """
         obj = cls.__new__(cls)
-        obj._set_native(dtype, data)
+        obj._set_native(data, dtype)
         return obj
 
     def _set_native(
         self,
-        dtype: _T_VectorDType,
         data: _t.Iterable[float] | _t.Iterable[int],
+        dtype: _T_VectorDType,
+        /,
     ) -> None:
         self._inner = _get_type(dtype).from_native(data)
 

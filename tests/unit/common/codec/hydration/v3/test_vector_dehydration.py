@@ -71,4 +71,4 @@ class TestVectorDehydration(HydrationHandlerTestBase):
         ),
     )
     def test_vector(self, assert_transforms, dtype, marker, data):
-        assert_transforms(Vector(dtype, data), Structure(b"V", marker, data))
+        assert_transforms(Vector(data, dtype), Structure(b"V", marker, data))
