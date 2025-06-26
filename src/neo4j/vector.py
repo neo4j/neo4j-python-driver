@@ -39,9 +39,11 @@ if False:
 
 
 try:
+    from ._rust import vector as _vec_rust
     from ._rust.vector import swap_endian as _swap_endian_unchecked_rust
 except ImportError:
     _swap_endian_unchecked_rust = None
+    _vec_rust = None
 
 if _t.TYPE_CHECKING:
     import numpy  # type: ignore[import]
@@ -309,20 +311,20 @@ class Vector:
     @classmethod
     @_t.overload
     def from_native(
-        cls, dtype: _T_VectorDTypeFloat, data: _t.Iterable[float], /
+        cls, data: _t.Iterable[float], dtype: _T_VectorDTypeFloat, /
     ) -> _t.Self: ...
 
     @classmethod
     @_t.overload
     def from_native(
-        cls, dtype: _T_VectorDTypeInt, data: _t.Iterable[int], /
+        cls, data: _t.Iterable[int], dtype: _T_VectorDTypeInt, /
     ) -> _t.Self: ...
 
     @classmethod
     def from_native(
         cls,
-        dtype: _T_VectorDType,
         data: _t.Iterable[float] | _t.Iterable[int],
+        dtype: _T_VectorDType,
         /,
     ) -> _t.Self:
         """
@@ -749,7 +751,22 @@ class _VecF64(_InnerVector):
     size = 8
 
     @classmethod
-    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self:
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_f64_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_float = tuple(item for item in data if not isinstance(item, float))
+        if non_float:
+            raise TypeError(
+                f"Cannot build f64 vector from {type(non_float[0]).__name__}, "
+                "expected float."
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">f8")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
         bytes_ = bytearray()
         for item in data:
             if not isinstance(item, float):
@@ -760,11 +777,31 @@ class _VecF64(_InnerVector):
             bytes_.extend(_struct.pack(">d", item))
         return cls(bytes(bytes_))
 
-    def to_native(self) -> list[object]:
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_f64_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">f8")).tolist()
+
+    def _to_native_py(self) -> list[object]:
         return [
             _struct.unpack(">d", self.data[i : i + self.size])[0]
             for i in range(0, len(self.data), self.size)
         ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
 
     def to_numpy(self) -> numpy.ndarray:
         import numpy
@@ -787,7 +824,22 @@ class _VecF32(_InnerVector):
     size = 4
 
     @classmethod
-    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self:
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_f32_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_float = tuple(item for item in data if not isinstance(item, float))
+        if non_float:
+            raise TypeError(
+                f"Cannot build f32 vector from {type(non_float[0]).__name__}, "
+                "expected float."
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">f4")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
         bytes_ = bytearray()
         for item in data:
             if not isinstance(item, float):
@@ -798,11 +850,31 @@ class _VecF32(_InnerVector):
             bytes_.extend(_struct.pack(">f", item))
         return cls(bytes(bytes_))
 
-    def to_native(self) -> list[object]:
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_f32_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">f4")).tolist()
+
+    def _to_native_py(self) -> list[object]:
         return [
             _struct.unpack(">f", self.data[i : i + self.size])[0]
             for i in range(0, len(self.data), self.size)
         ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
 
     def to_numpy(self) -> numpy.ndarray:
         import numpy
@@ -818,11 +890,8 @@ class _VecF32(_InnerVector):
         )
 
 
-class _VecI(_abc.ABC):
-    __slots__ = ()
-
-    MAX: int
-    MIN: int
+_I64_MIN = -9_223_372_036_854_775_808
+_I64_MAX = 9_223_372_036_854_775_807
 
 
 class _VecI64(_InnerVector):
@@ -832,7 +901,31 @@ class _VecI64(_InnerVector):
     size = 8
 
     @classmethod
-    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self:
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i64_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i64 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I64_MIN <= item <= _I64_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i64: "
+                f"[-{_I64_MIN}, {_I64_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i8")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
         bytes_ = bytearray()
         for item in data:
             if not isinstance(item, int):
@@ -840,19 +933,39 @@ class _VecI64(_InnerVector):
                     f"Cannot build i64 vector from {type(item).__name__}, "
                     "expected int."
                 )
-            if not -9223372036854775808 <= item <= 9223372036854775807:
+            if not _I64_MIN <= item <= _I64_MAX:
                 raise OverflowError(
                     f"Value {item} is out of range for i64: "
-                    "[-9223372036854775808, 9223372036854775807]"
+                    f"[-{_I64_MIN}, {_I64_MAX}]"
                 )
             bytes_.extend(_struct.pack(">q", item))
         return cls(bytes(bytes_))
 
-    def to_native(self) -> list[object]:
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i64_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i8")).tolist()
+
+    def _to_native_py(self) -> list[object]:
         return [
             _struct.unpack(">q", self.data[i : i + self.size])[0]
             for i in range(0, len(self.data), self.size)
         ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
 
     def to_numpy(self) -> numpy.ndarray:
         import numpy
@@ -868,6 +981,10 @@ class _VecI64(_InnerVector):
         )
 
 
+_I32_MIN = -2_147_483_648
+_I32_MAX = 2_147_483_647
+
+
 class _VecI32(_InnerVector):
     __slots__ = ()
 
@@ -875,7 +992,31 @@ class _VecI32(_InnerVector):
     size = 4
 
     @classmethod
-    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self:
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i32_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i32 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I32_MIN <= item <= _I32_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i32: "
+                f"[-{_I32_MIN}, {_I32_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i4")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
         bytes_ = bytearray()
         for item in data:
             if not isinstance(item, int):
@@ -883,19 +1024,39 @@ class _VecI32(_InnerVector):
                     f"Cannot build i32 vector from {type(item).__name__}, "
                     "expected int."
                 )
-            if not -2147483648 <= item <= 2147483647:
+            if not _I32_MIN <= item <= _I32_MAX:
                 raise OverflowError(
                     f"Value {item} is out of range for i32: "
-                    "[-2147483648, 2147483647]"
+                    f"[-{_I32_MIN}, {_I32_MAX}]"
                 )
             bytes_.extend(_struct.pack(">i", item))
         return cls(bytes(bytes_))
 
-    def to_native(self) -> list[object]:
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i32_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i4")).tolist()
+
+    def _to_native_py(self) -> list[object]:
         return [
             _struct.unpack(">i", self.data[i : i + self.size])[0]
             for i in range(0, len(self.data), self.size)
         ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
 
     def to_numpy(self) -> numpy.ndarray:
         import numpy
@@ -911,6 +1072,10 @@ class _VecI32(_InnerVector):
         )
 
 
+_I16_MIN = -32_768
+_I16_MAX = 32_767
+
+
 class _VecI16(_InnerVector):
     __slots__ = ()
 
@@ -918,7 +1083,31 @@ class _VecI16(_InnerVector):
     size = 2
 
     @classmethod
-    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self:
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i16_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i16 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I16_MIN <= item <= _I16_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i16: "
+                f"[-{_I16_MIN}, {_I16_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i2")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
         bytes_ = bytearray()
         for item in data:
             if not isinstance(item, int):
@@ -926,18 +1115,39 @@ class _VecI16(_InnerVector):
                     f"Cannot build i16 vector from {type(item).__name__}, "
                     "expected int."
                 )
-            if not -32768 <= item <= 32767:
+            if not _I16_MIN <= item <= _I16_MAX:
                 raise OverflowError(
-                    f"Value {item} is out of range for i16: [-32768, 32767]"
+                    f"Value {item} is out of range for i16: "
+                    f"[-{_I16_MIN}, {_I16_MAX}]"
                 )
             bytes_.extend(_struct.pack(">h", item))
         return cls(bytes(bytes_))
 
-    def to_native(self) -> list[object]:
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i16_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i2")).tolist()
+
+    def _to_native_py(self) -> list[object]:
         return [
             _struct.unpack(">h", self.data[i : i + self.size])[0]
             for i in range(0, len(self.data), self.size)
         ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
 
     def to_numpy(self) -> numpy.ndarray:
         import numpy
@@ -953,6 +1163,10 @@ class _VecI16(_InnerVector):
         )
 
 
+_I8_MIN = -128
+_I8_MAX = 127
+
+
 class _VecI8(_InnerVector):
     __slots__ = ()
 
@@ -960,7 +1174,31 @@ class _VecI8(_InnerVector):
     size = 1
 
     @classmethod
-    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self:
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i8_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i8 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I8_MIN <= item <= _I8_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i8: "
+                f"[-{_I8_MIN}, {_I8_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i1")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
         bytes_ = bytearray()
         for item in data:
             if not isinstance(item, int):
@@ -968,18 +1206,39 @@ class _VecI8(_InnerVector):
                     f"Cannot build i8 vector from {type(item).__name__}, "
                     "expected int."
                 )
-            if not -128 <= item <= 127:
+            if not _I8_MIN <= item <= _I8_MAX:
                 raise OverflowError(
-                    f"Value {item} is out of range for i8: [-128, 127]"
+                    f"Value {item} is out of range for i8: "
+                    f"[-{_I8_MIN}, {_I8_MAX}]"
                 )
             bytes_.extend(_struct.pack(">b", item))
         return cls(bytes(bytes_))
 
-    def to_native(self) -> list[object]:
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i8_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i1")).tolist()
+
+    def _to_native_py(self) -> list[object]:
         return [
             _struct.unpack(">b", self.data[i : i + self.size])[0]
             for i in range(0, len(self.data), self.size)
         ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
 
     def to_numpy(self) -> numpy.ndarray:
         import numpy

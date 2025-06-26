@@ -130,8 +130,15 @@ def _mock_mask_extensions(mocker, used_ext):
         _swap_endian_unchecked_np,
         _swap_endian_unchecked_py,
         _swap_endian_unchecked_rust,
+        _VecF32,
+        _VecF64,
+        _VecI8,
+        _VecI16,
+        _VecI32,
+        _VecI64,
     )
 
+    vec_types = (_VecF64, _VecF32, _VecI64, _VecI32, _VecI16, _VecI8)
     match used_ext:
         case "numpy":
             if _swap_endian_unchecked_np is None:
@@ -140,6 +147,15 @@ def _mock_mask_extensions(mocker, used_ext):
                 "neo4j.vector._swap_endian_unchecked",
                 new=_swap_endian_unchecked_np,
             )
+            for vec_type in vec_types:
+                mocker.patch(
+                    f"neo4j.vector.{vec_type.__name__}.from_native",
+                    new=vec_type._from_native_np,
+                )
+                mocker.patch(
+                    f"neo4j.vector.{vec_type.__name__}.to_native",
+                    new=vec_type._to_native_np,
+                )
         case "rust":
             if _swap_endian_unchecked_rust is None:
                 pytest.skip("rust extensions are not installed")
@@ -147,22 +163,77 @@ def _mock_mask_extensions(mocker, used_ext):
                 "neo4j.vector._swap_endian_unchecked",
                 new=_swap_endian_unchecked_rust,
             )
+            for vec_type in vec_types:
+                mocker.patch(
+                    f"neo4j.vector.{vec_type.__name__}.from_native",
+                    new=vec_type._from_native_rust,
+                )
+                mocker.patch(
+                    f"neo4j.vector.{vec_type.__name__}.to_native",
+                    new=vec_type._to_native_rust,
+                )
         case "python":
             mocker.patch(
                 "neo4j.vector._swap_endian_unchecked",
                 new=_swap_endian_unchecked_py,
             )
+            for vec_type in vec_types:
+                mocker.patch(
+                    f"neo4j.vector.{vec_type.__name__}.from_native",
+                    new=vec_type._from_native_py,
+                )
+                mocker.patch(
+                    f"neo4j.vector.{vec_type.__name__}.to_native",
+                    new=vec_type._to_native_py,
+                )
         case _:
             raise ValueError(f"Invalid ext value {used_ext}")
 
 
 @pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
 def _test_bench_swap_endian(mocker, ext):
-    data = bytes(i % 256 for i in range(100_000))
+    data = bytes(i % 256 for i in range(10_000))
     _mock_mask_extensions(mocker, ext)
     print(timeit.timeit(lambda: _swap_endian(2, data), number=1_000))  # noqa: T201
     print(timeit.timeit(lambda: _swap_endian(4, data), number=1_000))  # noqa: T201
     print(timeit.timeit(lambda: _swap_endian(8, data), number=1_000))  # noqa: T201
+
+
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
+@pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
+def _test_bench_from_native(mocker, ext, dtype):
+    print(f"Testing {ext} for {dtype}")  # noqa: T201
+    data_raw = bytes(i % 256 for i in range(8 * 1_000))
+    data = Vector.from_bytes(data_raw, dtype).to_native()
+    _mock_mask_extensions(mocker, ext)
+
+    def work(data, dtype):
+        Vector.from_native(data, dtype)
+
+    print(timeit.timeit(lambda: work(iter(data), dtype), number=1_000))  # noqa: T201
+    print(timeit.timeit(lambda: work(data, dtype), number=1_000))  # noqa: T201
+
+    print()  # noqa: T201
+    data_raw = bytes(i % 256 for i in range(8 * 1))
+    data = Vector.from_bytes(data_raw, dtype).to_native()
+    print(timeit.timeit(lambda: work(iter(data), dtype), number=100_000))  # noqa: T201
+    print(timeit.timeit(lambda: work(data, dtype), number=100_000))  # noqa: T201
+
+
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
+@pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
+def _test_bench_to_native(mocker, ext, dtype):
+    print(f"Testing {ext} for {dtype}")  # noqa: T201
+    data = Vector.from_bytes(bytes(i % 256 for i in range(8 * 1_000)), dtype)
+    _mock_mask_extensions(mocker, ext)
+
+    print(timeit.timeit(data.to_native, number=1_000))  # noqa: T201
+    print(timeit.timeit(data.to_native, number=1_000))  # noqa: T201
+
+    print()  # noqa: T201
+    data = Vector.from_bytes(bytes(i % 256 for i in range(8 * 1)), dtype)
+    print(timeit.timeit(data.to_native, number=100_000))  # noqa: T201
+    print(timeit.timeit(data.to_native, number=100_000))  # noqa: T201
 
 
 @pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
@@ -271,11 +342,15 @@ def nan_equals(a: list[object], b: list[object]) -> bool:
 
 @pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
 def test_from_native_random(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     repeat: int,
     size: int,
+    ext: str,
+    mocker: t.Any,
 ) -> None:
+    _mock_mask_extensions(mocker, ext)
     type_size = _get_type_size(dtype)
     for _ in range(repeat):
         data = _random_value_be_bytes(type_size, size)
@@ -285,7 +360,7 @@ def test_from_native_random(
             )[0]
             for i in range(0, len(data), type_size)
         ]
-        v = Vector.from_native(dtype, values)
+        v = Vector.from_native(values, dtype)
         expected_raw = data
         if dtype.startswith("f"):
             expected_raw = _normalize_float_bytes(dtype, data)
@@ -422,22 +497,91 @@ SPECIAL_VALUES = (
 
 
 @pytest.mark.parametrize(("dtype", "value", "data_be"), SPECIAL_VALUES)
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
 def test_from_native_special_values(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     value: object,
     data_be: bytes,
+    ext: str,
+    mocker: t.Any,
 ) -> None:
+    _mock_mask_extensions(mocker, ext)
     if dtype in {"f32", "f64"}:
         assert isinstance(value, float)
         dtype_f = t.cast(t.Literal["f32", "f64"], dtype)
-        v = Vector.from_native(dtype_f, [value])
+        v = Vector.from_native([value], dtype_f)
     elif dtype in {"i8", "i16", "i32", "i64"}:
         assert isinstance(value, int)
         dtype_i = t.cast(t.Literal["i8", "i16", "i32", "i64"], dtype)
-        v = Vector.from_native(dtype_i, [value])
+        v = Vector.from_native([value], dtype_i)
     else:
         raise ValueError(f"Invalid dtype {dtype}")
     assert v.raw() == data_be
+
+
+@pytest.mark.parametrize(
+    ("dtype", "value"),
+    (
+        ("i8", "1"),
+        ("i8", None),
+        ("i8", 1.0),
+        ("i16", "1"),
+        ("i16", None),
+        ("i16", 1.0),
+        ("i32", "1"),
+        ("i32", None),
+        ("i32", 1.0),
+        ("i64", "1"),
+        ("i64", None),
+        ("i64", 1.0),
+        ("f32", "1.0"),
+        ("f32", None),
+        ("f32", 1),
+        ("f64", "1.0"),
+        ("f64", None),
+        ("f64", 1),
+    ),
+)
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
+def test_from_native_wrong_type(
+    dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
+    value: object,
+    ext: str,
+    mocker: t.Any,
+) -> None:
+    _mock_mask_extensions(mocker, ext)
+    with pytest.raises(TypeError) as exc:
+        Vector.from_native([value], dtype)  # type: ignore
+
+    assert dtype in str(exc.value)
+    assert str(type(value).__name__) in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    ("dtype", "value"),
+    (
+        ("i8", -129),
+        ("i8", 128),
+        ("i16", -32769),
+        ("i16", 32768),
+        ("i32", -2147483649),
+        ("i32", 2147483648),
+        ("i64", -9223372036854775809),
+        ("i64", 9223372036854775808),
+    ),
+)
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
+def test_from_native_overflow(
+    dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
+    value: object,
+    ext: str,
+    mocker: t.Any,
+) -> None:
+    _mock_mask_extensions(mocker, ext)
+    with pytest.raises(OverflowError) as exc:
+        Vector.from_native([value], dtype)  # type: ignore
+
+    assert dtype in str(exc.value)
 
 
 def _vector_from_data(
