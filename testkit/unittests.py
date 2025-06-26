@@ -19,7 +19,7 @@ from _common import run_python
 
 if __name__ == "__main__":
     run_python(
-        ["-m", "pip", "install", "--group", "tox"],
+        ["-m", "pip", "install", "-U", "--group", "tox"],
         warning_as_error=False,
     )
     run_python(
