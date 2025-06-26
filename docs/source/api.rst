@@ -430,6 +430,11 @@ it should be chosen larger than :ref:`connection-timeout-ref`.
 :Type: ``float``
 :Default: ``60.0``
 
+.. versionadded:: 6.0
+    The setting now entails *anything* required to acquire a connection.
+    This includes potential fetching of routing tables which in itself requires acquiring a connection.
+    Previously, the timeout wold be restarted for such auxiliary connection acquisitions.
+
 
 .. _connection-timeout-ref:
 

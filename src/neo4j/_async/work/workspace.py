@@ -30,12 +30,14 @@ from ...exceptions import (
 )
 from .._debug import AsyncNonConcurrentMethodChecker
 from ..io import (
+    acquisition_timeout_to_deadline,
     AcquisitionAuth,
     AcquisitionDatabase,
 )
 
 
 if t.TYPE_CHECKING:
+    from ..._deadline import Deadline
     from ...api import _TAuth
     from ...auth_management import (
         AsyncAuthManager,
@@ -159,13 +161,19 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
             await self._connection.fetch_all()
             await self._disconnect()
 
+        acquisition_deadline = acquisition_timeout_to_deadline(
+            acquisition_timeout
+        )
+
         ssr_enabled = self._pool.ssr_enabled
         target_db = await self._get_routing_target_database(
-            acquire_auth, ssr_enabled=ssr_enabled
+            acquire_auth,
+            ssr_enabled=ssr_enabled,
+            acquisition_deadline=acquisition_deadline,
         )
         acquire_kwargs_ = {
             "access_mode": access_mode,
-            "timeout": acquisition_timeout,
+            "timeout": acquisition_deadline,
             "database": target_db,
             "bookmarks": await self._get_bookmarks(),
             "auth": acquire_auth,
@@ -188,7 +196,9 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
             )
             await self._disconnect()
             target_db = await self._get_routing_target_database(
-                acquire_auth, ssr_enabled=False
+                acquire_auth,
+                ssr_enabled=False,
+                acquisition_deadline=acquisition_deadline,
             )
             acquire_kwargs_["database"] = target_db
             self._connection = await self._pool.acquire(**acquire_kwargs_)
@@ -198,6 +208,7 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         self,
         acquire_auth: AcquisitionAuth,
         ssr_enabled: bool,
+        acquisition_deadline: Deadline,
     ) -> AcquisitionDatabase:
         if (
             self._pinned_database
@@ -232,14 +243,13 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
                 )
                 return AcquisitionDatabase(cached_db, guessed=True)
 
-        acquisition_timeout = self._config.connection_acquisition_timeout
         log.debug("[#0000]  _: <WORKSPACE> resolve home database")
         await self._pool.update_routing_table(
             database=self._config.database,
             imp_user=self._config.impersonated_user,
             bookmarks=await self._get_bookmarks(),
             auth=acquire_auth,
-            acquisition_timeout=acquisition_timeout,
+            acquisition_timeout=acquisition_deadline,
             database_callback=self._make_db_resolution_callback(),
         )
         return AcquisitionDatabase(self._config.database)

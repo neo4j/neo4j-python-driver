@@ -28,6 +28,7 @@ __all__ = [
     "AsyncBoltPool",
     "AsyncNeo4jPool",
     "ConnectionErrorHandler",
+    "acquisition_timeout_to_deadline",
 ]
 
 
@@ -40,6 +41,7 @@ from . import (  # noqa - imports needed to register protocol handlers
 from ._bolt import AsyncBolt
 from ._common import ConnectionErrorHandler
 from ._pool import (
+    acquisition_timeout_to_deadline,
     AcquisitionAuth,
     AcquisitionDatabase,
     AsyncBoltPool,

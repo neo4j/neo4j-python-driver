@@ -260,6 +260,8 @@ class AsyncIOPool(abc.ABC):
                     with self.lock:
                         self.connections_reservations[address] -= 1
 
+        if deadline.expired():
+            return None
         max_pool_size = self.pool_config.max_connection_pool_size
         infinite_pool_size = max_pool_size < 0 or max_pool_size == float("inf")
         with self.lock:
@@ -969,7 +971,9 @@ class AsyncNeo4jPool(AsyncIOPool):
 
         :raise neo4j.exceptions.ServiceUnavailable:
         """
-        _check_acquisition_timeout(acquisition_timeout)
+        acquisition_timeout = acquisition_timeout_to_deadline(
+            acquisition_timeout
+        )
         async with self.refresh_lock:
             routing_table = await self.get_routing_table(database)
             if routing_table is not None:
@@ -1147,7 +1151,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         database_callback=None,
     ):
         access_mode = check_access_mode(access_mode)
-        _check_acquisition_timeout(timeout)
+        timeout = acquisition_timeout_to_deadline(timeout)
 
         target_database = database.name
 
@@ -1240,6 +1244,13 @@ class AsyncNeo4jPool(AsyncIOPool):
             if table is not None:
                 table.writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
+
+
+def acquisition_timeout_to_deadline(timeout: object) -> Deadline:
+    if isinstance(timeout, Deadline):
+        return timeout
+    _check_acquisition_timeout(timeout)
+    return Deadline(timeout)
 
 
 def _check_acquisition_timeout(timeout: object) -> None:
