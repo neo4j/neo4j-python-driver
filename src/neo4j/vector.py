@@ -615,6 +615,8 @@ def _get_type(dtype: _T_VectorDType, /) -> type[_InnerVector]:
         if dtype not in VectorDType.__members__.values():
             raise ValueError(f"Unsupported vector type: {dtype!r}.")
         dtype = VectorDType(dtype)
+    if not isinstance(dtype, VectorDType):
+        raise TypeError(f"Expected a VectorDType or str, got {type(dtype)}.")
     if dtype not in _TYPES:
         raise ValueError(f"Unsupported vector type: {dtype!r}.")
     return _TYPES[dtype]
