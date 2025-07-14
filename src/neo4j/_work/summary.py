@@ -30,16 +30,18 @@ from .._api import (
     NotificationSeverity,
 )
 from .._exceptions import BoltProtocolError
-from .._warnings import preview
 
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
+    from typing_extensions import deprecated
 
     from .._addressing import Address
     from ..api import ServerInfo
 
     _T = t.TypeVar("_T")
+else:
+    from .._warnings import deprecated
 
 
 class ResultSummary:
@@ -80,20 +82,8 @@ class ResultSummary:
     #: The time it took for the server to consume the result. (milliseconds)
     result_consumed_after: int | None
 
-    #: A list of Dictionaries containing notification information.
-    #: Notifications provide extra information for a user executing a
-    #: statement.
-    #: They can be warnings about problematic queries or other valuable
-    #: information that can be
-    #: presented in a client.
-    #: Unlike failures or errors, notifications do not affect the execution of
-    #: a statement.
-    #:
-    #: .. seealso:: :attr:`.summary_notifications`
-    notifications: list[dict] | None
-
-    # cache for notifications
-    _notifications_set: bool = False
+    #: see :attr:`.notifications`
+    _notifications: list[dict] | None
 
     # cache for property `summary_notifications`
     _summary_notifications: tuple[SummaryNotification, ...]
@@ -139,17 +129,6 @@ class ResultSummary:
             self.result_available_after = metadata.get("t_first")
             self.result_consumed_after = metadata.get("t_last")
 
-    def __dir__(self):
-        return {*super().__dir__(), "notifications"}
-
-    def __getattr__(self, key):
-        if key == "notifications":
-            self._set_notifications()
-            return self.notifications
-        raise AttributeError(
-            f"'{self.__class__.__name__}' object has no attribute '{key}'"
-        )
-
     @staticmethod
     def _notification_from_status(status: dict) -> dict:
         notification = {}
@@ -178,20 +157,56 @@ class ResultSummary:
 
         return notification
 
+    @property
+    @deprecated(
+        "ResultSummary.notifications is deprecated, "
+        "use ResultSummary.gql_status_objects instead."
+    )
+    def notifications(self) -> list[dict] | None:
+        """
+        A list of Dictionaries containing notification information.
+
+        Notifications provide extra information for a user executing a
+        statement.
+        They can be warnings about problematic queries or other valuable
+        information that can be presented in a client.
+        Unlike failures or errors, notifications do not affect the execution of
+        a statement.
+
+        .. seealso:: :attr:`.summary_notifications`
+
+        .. deprecated:: 6.0
+            Use :attr:`.gql_status_objects` instead.
+        """
+        return self._get_notifications()
+
+    @notifications.setter
+    @deprecated(
+        "ResultSummary.notifications is deprecated, "
+        "use ResultSummary.gql_status_objects instead."
+    )
+    def notifications(self, value: list[dict] | None) -> None:
+        self._notifications = value
+
+    def _get_notifications(self) -> list[dict] | None:
+        if not hasattr(self, "_notifications"):
+            self._set_notifications()
+        return self._notifications
+
     def _set_notifications(self) -> None:
         if "notifications" in self.metadata:
             notifications = self.metadata["notifications"]
             if not isinstance(notifications, list):
-                self.notifications = None
+                self._notifications = None
                 return
-            self.notifications = notifications
+            self._notifications = notifications
             return
 
         # polyfill notifications from GqlStatusObjects
         if "statuses" in self.metadata:
             statuses = self.metadata["statuses"]
             if not isinstance(statuses, list):
-                self.notifications = None
+                self._notifications = None
                 return
             notifications = []
             for status in statuses:
@@ -200,12 +215,16 @@ class ResultSummary:
                     continue
                 notification = self._notification_from_status(status)
                 notifications.append(notification)
-            self.notifications = notifications or None
+            self._notifications = notifications or None
             return
 
-        self.notifications = None
+        self._notifications = None
 
     @property
+    @deprecated(
+        "ResultSummary.summary_notifications is deprecated, "
+        "use ResultSummary.gql_status_objects instead."
+    )
     def summary_notifications(self) -> Sequence[SummaryNotification]:
         """
         The same as ``notifications`` but in a parsed, structured form.
@@ -216,11 +235,14 @@ class ResultSummary:
         .. seealso:: :attr:`.notifications`, :class:`.SummaryNotification`
 
         .. versionadded:: 5.7
+
+        .. deprecated:: 6.0
+            Use :attr:`.gql_status_objects` instead.
         """
         if getattr(self, "_summary_notifications", None) is not None:
             return self._summary_notifications
 
-        raw_notifications = self.notifications
+        raw_notifications = self._get_notifications()
         if not isinstance(raw_notifications, list):
             self._summary_notifications = ()
             return self._summary_notifications
@@ -230,7 +252,6 @@ class ResultSummary:
         return self._summary_notifications
 
     @property
-    @preview("GQLSTATUS support is a preview feature.")
     def gql_status_objects(self) -> t.Sequence[GqlStatusObject]:
         """
         Get GqlStatusObjects that arose when executing the query.
@@ -248,13 +269,9 @@ class ResultSummary:
         * A "success" (``00xxx``) has precedence over anything informational
           (``03xxx``).
 
-        **This is a preview** (see :ref:`filter-warnings-ref`).
-        It might be changed without following the deprecation policy.
-
-        See also
-        https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
         .. versionadded:: 5.22
+
+        .. versionchanged:: 6.0 Stabilized from preview.
         """
         raw_status_objects = self.metadata.get("statuses")
         if isinstance(raw_status_objects, list):
@@ -264,7 +281,7 @@ class ResultSummary:
             )
             return self._gql_status_objects
 
-        raw_notifications = self.notifications
+        raw_notifications = self._get_notifications()
         notification_status_objects: t.Iterable[GqlStatusObject]
         if isinstance(raw_notifications, list):
             notification_status_objects = [

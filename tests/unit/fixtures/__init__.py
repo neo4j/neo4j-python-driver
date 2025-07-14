@@ -17,6 +17,9 @@
 from .notifications import (
     notification_factory,
     raw_notification_factory,
+    raw_status_notification_factory,
+    status_notification_factory,
+    status_notification_legacy_factory,
 )
 from .socket import (
     async_bolt_socket_factory,
@@ -29,4 +32,7 @@ __all__ = [
     "bolt_socket_factory",
     "notification_factory",
     "raw_notification_factory",
+    "raw_status_notification_factory",
+    "status_notification_factory",
+    "status_notification_legacy_factory",
 ]

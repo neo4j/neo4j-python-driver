@@ -26,6 +26,9 @@ from .fixtures import (
     bolt_socket_factory,
     notification_factory,
     raw_notification_factory,
+    raw_status_notification_factory,
+    status_notification_factory,
+    status_notification_legacy_factory,
 )
 from .sync.fixtures import (
     fake_connection,
@@ -49,6 +52,9 @@ __all__ = [
     "fake_pool",
     "notification_factory",
     "raw_notification_factory",
+    "raw_status_notification_factory",
     "scripted_connection",
     "scripted_connection_generator",
+    "status_notification_factory",
+    "status_notification_legacy_factory",
 ]
