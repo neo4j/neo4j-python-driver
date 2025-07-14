@@ -244,10 +244,10 @@ class GraphDatabase:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
 
-            if "notifications_disabled_classifications" in config:
-                preview_warn(
-                    "notifications_disabled_classifications "
-                    "is a preview feature.",
+            if "notifications_disabled_categories" in config:
+                deprecation_warn(
+                    "notifications_disabled_categories is deprecated, "
+                    "use notifications_disabled_classifications instead.",
                     stack_level=2,
                 )
             _normalize_notifications_config(config, driver_level=True)
@@ -577,10 +577,10 @@ class Driver:
             config.pop("warn_notification_severity", None)
 
             self._check_state()
-            if "notifications_disabled_classifications" in config:
-                preview_warn(
-                    "notifications_disabled_classifications "
-                    "is a preview feature.",
+            if "notifications_disabled_categories" in config:
+                deprecation_warn(
+                    "notifications_disabled_categories is deprecated, "
+                    "use notifications_disabled_classifications instead.",
                     stack_level=2,
                 )
             session_config = self._read_session_config(config)

@@ -216,7 +216,9 @@ def new_driver(backend, data):
                 for cert in data["trustedCertificates"]
             )
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
-    fromtestkit.set_notifications_config(kwargs, data)
+    fromtestkit.set_notifications_config(
+        kwargs, data, expected_warnings=expected_warnings
+    )
 
     with warnings_check(expected_warnings):
         driver = neo4j.GraphDatabase.driver(
@@ -728,6 +730,8 @@ class SessionTracker:
 
 @request_handler
 def new_session(backend, data):
+    expected_warnings = []
+
     driver = backend.drivers[data["driverId"]]
     config = {
         "database": data["database"],
@@ -756,8 +760,11 @@ def new_session(backend, data):
             config[conf_name] = data[data_name]
     if data.get("authorizationToken"):
         config["auth"] = fromtestkit.to_auth_token(data, "authorizationToken")
-    fromtestkit.set_notifications_config(config, data)
-    session = driver.session(**config)
+    fromtestkit.set_notifications_config(
+        config, data, expected_warnings=expected_warnings
+    )
+    with warnings_check(expected_warnings):
+        session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)
     backend.send_response("Session", {"id": key})

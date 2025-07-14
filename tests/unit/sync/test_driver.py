@@ -28,7 +28,7 @@ from neo4j import (
     BoltDriver,
     GraphDatabase,
     Neo4jDriver,
-    NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
     Result,
@@ -65,7 +65,7 @@ from ..._async_compat import (
     mark_sync_test,
     TestDecorators,
 )
-from ..._preview_imports import NotificationDisabledClassification
+from ..._deprecated_imports import NotificationDisabledCategory
 
 
 @pytest.fixture
@@ -657,9 +657,9 @@ def test_driver_factory_with_notification_filters(
     if dis_clss is not ...:
         filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
-    if "notifications_disabled_classifications" in filter_kwargs:
+    if "notifications_disabled_categories" in filter_kwargs:
         with pytest.warns(
-            PreviewWarning, match="notifications_disabled_classifications"
+            DeprecationWarning, match="notifications_disabled_categories"
         ):
             driver = GraphDatabase.driver(uri, auth=None, **filter_kwargs)
     else:
@@ -836,9 +836,9 @@ def test_session_factory_with_notification_filter(
         filter_kwargs["notifications_disabled_classifications"] = dis_clss
 
     with GraphDatabase.driver(uri, auth=None) as driver:
-        if "notifications_disabled_classifications" in filter_kwargs:
+        if "notifications_disabled_categories" in filter_kwargs:
             with pytest.warns(
-                PreviewWarning, match="notifications_disabled_classifications"
+                DeprecationWarning, match="notifications_disabled_categories"
             ):
                 session = driver.session(**filter_kwargs)
         else:

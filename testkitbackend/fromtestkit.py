@@ -22,7 +22,7 @@ import pytz
 
 import neo4j
 from neo4j import (
-    NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
 )
@@ -42,7 +42,7 @@ from neo4j.vector import (
     VectorDType,
 )
 
-from ._preview_imports import NotificationDisabledClassification
+from ._deprecated_imports import NotificationDisabledCategory
 
 
 def to_cypher_and_params(data):
@@ -236,7 +236,7 @@ def to_client_cert(data, key) -> ClientCertificate | None:
     )
 
 
-def set_notifications_config(config, data):
+def set_notifications_config(config, data, expected_warnings=None):
     if "notificationsMinSeverity" in data:
         config["notifications_min_severity"] = NotificationMinimumSeverity[
             data["notificationsMinSeverity"]
@@ -246,6 +246,16 @@ def set_notifications_config(config, data):
             NotificationDisabledCategory[c]
             for c in data["notificationsDisabledCategories"]
         ]
+        if expected_warnings is not None:
+            expected_warnings.append(
+                (
+                    DeprecationWarning,
+                    (
+                        r"\bnotifications_disabled_categories\b.*"
+                        r"\buse notifications_disabled_classifications instead"
+                    ),
+                )
+            )
     if "notificationsDisabledClassifications" in data:
         config["notifications_disabled_classifications"] = [
             NotificationDisabledClassification[c]

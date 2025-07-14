@@ -67,8 +67,10 @@ from ...._async_compat import (
 
 if t.TYPE_CHECKING:
     from ...fixtures.notifications import (
-        TNotificationFactory,
         TRawNotificationFactory,
+        TRawStatusNotificationFactory,
+        TStatusNotificationFactory,
+        TStatusNotificationLegacyFactory,
     )
 
 
@@ -1384,7 +1386,7 @@ async def test_notification_warning(
     )
     if expected_warning is None:
         with warnings.catch_warnings():
-            warnings.simplefilter("error")  # assert not warnings are emitted
+            warnings.simplefilter("error")  # assert no warnings are emitted
             await result._run("CYPHER", {}, None, None, "r", None, None, None)
             await result.consume()
     else:
@@ -1399,31 +1401,47 @@ async def test_notification_warning(
 
 @pytest.mark.parametrize("notification_severity", ("INFORMATION", "WARNING"))
 @pytest.mark.parametrize(
-    "notification_category",
+    "notification_classification",
     (
         "HINT",
         "DEPRECATION",
         "UNRECOGNIZED",
     ),
 )
+@pytest.mark.parametrize("legacy_input", (True, False))
 @mark_async_test
 async def test_notification_logging(
     raw_notification_factory: TRawNotificationFactory,
-    notification_factory: TNotificationFactory,
+    raw_status_notification_factory: TRawStatusNotificationFactory,
+    status_notification_legacy_factory: TStatusNotificationLegacyFactory,
+    status_notification_factory: TStatusNotificationFactory,
     notification_severity: str,
-    notification_category: str,
+    notification_classification: str,
+    legacy_input: bool,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    notification_data = raw_notification_factory(
-        data_overwrite={
-            "severity": notification_severity,
-            "category": notification_category,
-        }
-    )
-    notification = notification_factory(notification_data)
+    summary_meta: dict[str, t.Any]
+    if legacy_input:
+        notification_data = raw_notification_factory(
+            data_overwrite={
+                "severity": notification_severity,
+                "category": notification_classification,
+            }
+        )
+        gql_status = status_notification_legacy_factory(notification_data)
+        summary_meta = {"notifications": [notification_data]}
+    else:
+        status_data = raw_status_notification_factory(
+            diag_rec_overwrite={
+                "_severity": notification_severity,
+                "_classification": notification_classification,
+            }
+        )
+        gql_status = status_notification_factory(status_data)
+        summary_meta = {"statuses": [status_data]}
     connection = AsyncConnectionStub(
         records=Records(["foo"], ()),
-        summary_meta={"notifications": [notification_data]},
+        summary_meta=summary_meta,
     )
     result = AsyncResult(connection, 1, None, noop, noop, None)
     with caplog.at_level(logging.INFO, logger="neo4j.notifications"):
@@ -1431,7 +1449,7 @@ async def test_notification_logging(
         await result.consume()
     assert len(caplog.messages) == 1
     formatted_notification = str(
-        NotificationPrinter(notification, "CYPHER", one_line=True)
+        NotificationPrinter(gql_status, "CYPHER", one_line=True)
     )
     expected_message = (
         f"Received notification from DBMS server: {formatted_notification}"
