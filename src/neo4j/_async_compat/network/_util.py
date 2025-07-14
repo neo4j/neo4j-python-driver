@@ -41,6 +41,14 @@ def _resolved_addresses_from_info(info, host_name):
             yield ResolvedAddress(addr, host_name=host_name)
 
 
+_RETRYABLE_DNS_ERRNOS = {
+    socket.EAI_ADDRFAMILY,
+    socket.EAI_AGAIN,
+    socket.EAI_MEMORY,
+    socket.EAI_NODATA,
+}
+
+
 class AsyncNetworkUtil:
     @staticmethod
     async def get_address_info(
@@ -70,7 +78,10 @@ class AsyncNetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            if e.errno == socket.EAI_NONAME and isinstance(address.host, str):
+            if e.errno in _RETRYABLE_DNS_ERRNOS or (
+                e.errno == socket.EAI_NONAME
+                and (address.host is not None or address.port is not None)
+            ):
                 raise ServiceUnavailable(
                     f"Failed to DNS resolve address {address}: {e}"
                 ) from e
@@ -158,7 +169,10 @@ class NetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            if e.errno == socket.EAI_NONAME and isinstance(address.host, str):
+            if e.errno in _RETRYABLE_DNS_ERRNOS or (
+                e.errno == socket.EAI_NONAME
+                and (address.host is not None or address.port is not None)
+            ):
                 raise ServiceUnavailable(
                     f"Failed to DNS resolve address {address}: {e}"
                 ) from e
