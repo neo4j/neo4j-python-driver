@@ -74,9 +74,7 @@ class Vector:
     Internally, a vector is stored as a contiguous block of memory
     (:class:`bytes`), containing homogeneous values encoded in big-endian
     order. Support for this feature requires a DBMS supporting Bolt version
-    6.0 or later. This corresponds to Neo4j 2025.05 or later.
-
-    TODO: check and update final server version above!
+    6.0 or later. This corresponds to Neo4j 2025.07 or later.
 
     :param data:
         The data from which the vector will be constructed.
