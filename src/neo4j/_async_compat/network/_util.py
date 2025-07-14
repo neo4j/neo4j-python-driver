@@ -70,7 +70,11 @@ class AsyncNetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            raise ServiceUnavailable(
+            if e.errno == socket.EAI_NONAME and isinstance(address.host, str):
+                raise ServiceUnavailable(
+                    f"Failed to DNS resolve address {address}: {e}"
+                ) from e
+            raise ValueError(
                 f"Failed to DNS resolve address {address}: {e}"
             ) from e
         return list(_resolved_addresses_from_info(info, address._host_name))
@@ -154,8 +158,12 @@ class NetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            raise ServiceUnavailable(
-                f"Failed to DNS resolve address {address}"
+            if e.errno == socket.EAI_NONAME and isinstance(address.host, str):
+                raise ServiceUnavailable(
+                    f"Failed to DNS resolve address {address}: {e}"
+                ) from e
+            raise ValueError(
+                f"Failed to DNS resolve address {address}: {e}"
             ) from e
         return _resolved_addresses_from_info(info, address._host_name)
 

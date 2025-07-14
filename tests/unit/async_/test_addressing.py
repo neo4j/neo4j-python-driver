@@ -24,6 +24,7 @@ from neo4j import (
 )
 from neo4j._async_compat.network import AsyncNetworkUtil
 from neo4j._async_compat.util import AsyncUtil
+from neo4j.exceptions import ServiceUnavailable
 
 from ..._async_compat import mark_async_test
 
@@ -53,14 +54,19 @@ async def test_address_resolve_with_custom_resolver_none() -> None:
 @pytest.mark.parametrize(
     ("test_input", "expected"),
     [
+        (Address(("example.invalid", "7687")), ServiceUnavailable),
+        (Address(("example.invalid", 7687)), ServiceUnavailable),
         (Address(("127.0.0.1", "abcd")), ValueError),
         (Address((None, None)), ValueError),
+        (Address((1234, "7687")), TypeError),
     ],
 )
 @mark_async_test
 async def test_address_resolve_with_unresolvable_address(
     test_input, expected
 ) -> None:
+    # import contextlib
+    # with contextlib.suppress(Exception):
     with pytest.raises(expected):
         await AsyncUtil.list(
             AsyncNetworkUtil.resolve_address(test_input, resolver=None)
