@@ -41,4 +41,4 @@ class TestVectorDehydration(HydrationHandlerTestBase):
 
     def test_vector(self, transformer):
         with pytest.raises(ConfigurationError, match="Vector"):
-            transformer(Vector.from_native("f64", [1.0]))
+            transformer(Vector.from_native([1.0], "f64"))

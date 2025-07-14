@@ -191,8 +191,8 @@ def to_param(m):
         )
     if name == "CypherVector":
         return Vector(
-            VectorDType(data["dtype"]),
             bytes([int(byte, 16) for byte in data["data"].split()]),
+            VectorDType(data["dtype"]),
         )
     raise ValueError("Unknown param type " + name)
 
