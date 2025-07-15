@@ -39,12 +39,15 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
    (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
     `UnsupportedServerProduct` is now a subclass of `ServiceUnavailable` (instead of `Exception` directly).
   - `connection_acquisition_timeout` configuration option
-    - `ValueError` on invalid values (instead of `ClientError`)
+    - Raise `ValueError` on invalid values (instead of `ClientError`).
     - Consistently restrict the value to be strictly positive
     - New `ConnectionAcquisitionTimeoutError` (subclass of `DriverError`) instead of `ClientError`
       (subclass of `Neo4jError`) the timeout is exceeded.
       - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side
         errors.
+    - The option now spans *anything* required to acquire a connection.  
+      This includes potential fetching of routing tables which in itself requires acquiring a connection.
+      Previously, the timeout would be restarted for such auxiliary connection acquisitions.
   - `TypeError` instead of `ValueError` when passing a `Query` object to `Transaction.run`.
   - `TransactionError` (subclass of `DriverError`) instead of `ClientError` (subclass of `Neo4jError`) when calling
     `session.run()` while an explicit transaction is active on that session.
