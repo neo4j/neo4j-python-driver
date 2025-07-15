@@ -608,6 +608,12 @@ class Neo4jError(GqlError):
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
+        .. warning::
+
+            Auto-commit transactions
+            (:meth:`.Session.run`/:meth:`.AsyncSession.run`) are not retryable
+            regardless of this value.
+
         :returns: :data:`True` if the error is retryable,
             :data:`False` otherwise.
 
@@ -817,6 +823,12 @@ class DriverError(GqlError):
         Indicates whether a transaction that yielded this error makes sense to
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
+
+        .. warning::
+
+            Auto-commit transactions
+            (:meth:`.Session.run`/:meth:`.AsyncSession.run`) are not retryable
+            regardless of this value.
 
         :returns: :data:`True` if the error is retryable,
             :data:`False` otherwise.
