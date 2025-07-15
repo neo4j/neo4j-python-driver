@@ -141,7 +141,7 @@ class TestMixedConnectionPoolTestCase:
 
         def acquire1(pool_):
             nonlocal cx1
-            cx = pool_._acquire(address, acquire_auth1, Deadline(0), None)
+            cx = pool_._acquire(address, acquire_auth1, Deadline(1), None)
             acquire1_event.set()
             cx1 = cx
             while True:
@@ -258,7 +258,7 @@ class TestMixedConnectionPoolTestCase:
         async def acquire1(pool_):
             nonlocal cx1
             cx = await pool_._acquire(
-                address, acquire_auth1, Deadline(0), None
+                address, acquire_auth1, Deadline(1), None
             )
             cx1 = cx
             while len(pool_.cond._waiters) == 0:

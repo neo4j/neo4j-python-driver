@@ -658,7 +658,7 @@ class BoltPool(IOPool):
         timeout,
         database,
         bookmarks,
-        auth: AcquisitionAuth,
+        auth: AcquisitionAuth | None,
         liveness_check_timeout,
         unprepared=False,
         database_callback=None,
@@ -666,14 +666,13 @@ class BoltPool(IOPool):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
         access_mode = check_access_mode(access_mode)
-        _check_acquisition_timeout(timeout)
+        deadline = acquisition_timeout_to_deadline(timeout)
         log.debug(
             "[#0000]  _: <POOL> acquire direct connection, "
             "access_mode=%r, database=%r",
             access_mode,
             database,
         )
-        deadline = Deadline.from_timeout_or_deadline(timeout)
         return self._acquire(
             self.address, auth, deadline, liveness_check_timeout, unprepared
         )

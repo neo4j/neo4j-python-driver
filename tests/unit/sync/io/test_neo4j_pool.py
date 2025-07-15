@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import contextlib
 import inspect
 
 import pytest
@@ -37,6 +38,7 @@ from neo4j._sync.io import (
 )
 from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
+    ConnectionAcquisitionTimeoutError,
     Neo4jError,
     ServiceUnavailable,
     SessionExpired,
@@ -914,3 +916,37 @@ def test_tracks_ssr_connection_hints(custom_routing_opener):
         pool.release(cx)
 
     assert pool.ssr_enabled
+
+
+@pytest.mark.parametrize(
+    ("timeout", "expected_error"),
+    (
+        (1, None),
+        (2 ^ 128, None),
+        (0.000000001, None),
+        (float("inf"), None),
+        (-1, ValueError),
+        (0, ValueError),
+        (float("-inf"), ValueError),
+        (float("NaN"), ValueError),
+        (float("-NaN"), ValueError),
+        ("1", TypeError),
+        (None, TypeError),
+        ([1], TypeError),
+    ),
+)
+@mark_sync_test
+def test_invalid_acquisition_timeouts(opener, timeout, expected_error):
+    pool = _simple_pool(opener)
+
+    def call():
+        with contextlib.suppress(ConnectionAcquisitionTimeoutError):
+            pool.acquire(
+                READ_ACCESS, timeout, TEST_DB1, None, None, None
+            )
+
+    if expected_error is None:
+        call()
+    else:
+        with pytest.raises(expected_error):
+            call()
