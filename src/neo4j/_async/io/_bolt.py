@@ -286,6 +286,7 @@ class AsyncBolt:
         cls.protocol_handlers[protocol_version] = cls
         super().__init_subclass__(**kwargs)
 
+    # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def get_handshake(cls) -> bytes:
         """

@@ -18,12 +18,12 @@ import pytest
 
 from neo4j._codec.hydration.v3 import HydrationHandler
 
-from ..v2.test_spacial_hydration import (
-    TestSpatialHydration as _TestSpatialHydration,
+from ..v2.test_spatial_dehydration import (
+    TestSpatialDehydration as _TestSpatialDehydration,
 )
 
 
-class TestSpatialHydration(_TestSpatialHydration):
+class TestSpatialDehydration(_TestSpatialDehydration):
     @pytest.fixture
     def hydration_handler(self):
         return HydrationHandler()

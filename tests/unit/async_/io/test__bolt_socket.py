@@ -42,6 +42,7 @@ BOLT_HANDSHAKE = AsyncBolt.get_handshake()
 DEADLINE = Deadline(float("inf"))
 
 
+# [bolt-version-bump] search tag when changing bolt version support
 @mark_async_test
 @pytest.mark.parametrize("log_level", (1, logging.DEBUG, logging.CRITICAL))
 async def test_handshake(async_bolt_socket_factory, caplog, log_level):

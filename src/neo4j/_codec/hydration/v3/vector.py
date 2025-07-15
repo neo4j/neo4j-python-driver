@@ -30,7 +30,7 @@ _DTYPE_LOOKUP = {
     b"\xc1": VectorDType.F64,
 }
 
-_TYP_LOOKUP = {v: k for k, v in _DTYPE_LOOKUP.items()}
+_TYPE_LOOKUP = {v: k for k, v in _DTYPE_LOOKUP.items()}
 
 
 def hydrate_vector(typ: bytes, data: bytes) -> Vector:
@@ -53,4 +53,4 @@ def dehydrate_vector(value: Vector) -> Structure:
     :type value: Vector
     :returns:
     """
-    return Structure(b"V", _TYP_LOOKUP[value.dtype], value.raw())
+    return Structure(b"V", _TYPE_LOOKUP[value.dtype], value.raw())

@@ -94,9 +94,9 @@ __all__: tuple[str, ...] = (
 _te_available = _find_spec("typing_extensions") is not None
 
 if TYPE_CHECKING or _te_available:
-    from typing_extensions import LiteralString  # Python 3.11
+    from typing_extensions import LiteralString  # Python 3.11+
     from typing_extensions import NotRequired  # Python 3.11+
-    from typing_extensions import Self  # Python 3.11
+    from typing_extensions import Self  # Python 3.11+
 
     __all__ = (  # noqa: PLE0604 false positive
         *__all__,

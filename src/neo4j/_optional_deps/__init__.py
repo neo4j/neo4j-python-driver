@@ -37,4 +37,8 @@ with suppress(ImportError):
     import pyarrow as pa  # type: ignore[no-redef]
 
 
-__all__ = ["np", "pa", "pd"]
+__all__ = [
+    "np",
+    "pa",
+    "pd",
+]

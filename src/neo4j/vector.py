@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Vectors.
-
-https://trello.com/c/2xcLszsC/1164-python-vector-types-design-investigation
-"""
+"""Vector type to be exchanged with the DBMS."""
 
 from __future__ import annotations as _
 
