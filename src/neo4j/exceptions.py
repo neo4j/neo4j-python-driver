@@ -219,6 +219,14 @@ class GqlError(Exception):
     Instead, only subclasses are raised.
     Further, it is used as the :attr:`__cause__` of GqlError subclasses.
 
+    Sometimes it is helpful or necessary to traverse the cause chain of
+    GqlErrors to fully understand or appropriately handle the error. In such
+    cases, users can either traverse the :attr:`__cause__` attribute of the
+    error(s) or use the helper method :meth:`.find_by_gql_status`. Note that
+    :attr:`__cause__` is a standard attribute of all Python
+    :class:`BaseException` s: the cause chain may contain other exception types
+    besides GqlError.
+
     .. versionadded: 5.26
 
     .. versionchanged:: 6.0 Stabilized from preview.
@@ -232,6 +240,16 @@ class GqlError(Exception):
     _status_diagnostic_record: dict[str, _t.Any]  # original, internal only
     _diagnostic_record: dict[str, _t.Any]  # copy to be used externally
     _gql_cause: GqlError | None
+
+    __cause__: BaseException | None
+    """
+    The GqlError's cause, if any.
+
+    Sometimes it is helpful or necessary to traverse the cause chain of
+    GqlErrors to fully understand or appropriately handle the error.
+
+    .. seealso:: :meth:`.find_by_gql_status`
+    """
 
     @staticmethod
     def _hydrate_cause(**metadata: _t.Any) -> GqlError:
@@ -426,6 +444,36 @@ class GqlError(Exception):
 
         self._status_diagnostic_record = dict(_UNKNOWN_GQL_DIAGNOSTIC_RECORD)
         return self._status_diagnostic_record
+
+    def find_by_gql_status(self, status: str) -> GqlError | None:
+        """
+        Return the first GqlError in the cause chain with the given GQL status.
+
+        This method traverses this GQLErorrs's :attr:`__cause__` chain,
+        starting with this error itself, and returns the first error that has
+        the given GQL status. If no error matches, :data:`None` is returned.
+
+        Example::
+
+            def invalid_syntax(err: GqlError) -> bool:
+                return err.find_by_gql_status("42001") is not None
+
+        :param status: The GQL status to search for.
+
+        :returns: The first matching error or :data:`None`.
+
+        .. versionadded:: 6.0
+        """
+        if self.gql_status == status:
+            return self
+
+        cause = self.__cause__
+        while cause is not None:
+            if isinstance(cause, GqlError) and cause.gql_status == status:
+                return cause
+            cause = getattr(cause, "__cause__", None)
+
+        return None
 
     def __str__(self):
         return (

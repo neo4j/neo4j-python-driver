@@ -1965,7 +1965,9 @@ GQL Errors
 ==========
 .. autoexception:: neo4j.exceptions.GqlError()
     :show-inheritance:
-    :members: gql_status, message, gql_status_description, gql_raw_classification, gql_classification, diagnostic_record, __cause__
+    :members:
+        gql_status, message, gql_status_description, gql_raw_classification, gql_classification, diagnostic_record,
+        find_by_gql_status, __cause__
 
 .. autoclass:: neo4j.exceptions.GqlErrorClassification()
     :show-inheritance:
@@ -2007,7 +2009,7 @@ Server-side errors
 
 .. autoexception:: neo4j.exceptions.Neo4jError()
     :show-inheritance:
-    :members: message, code, is_retriable, is_retryable
+    :members: message, code, is_retryable
 
 .. autoexception:: neo4j.exceptions.ClientError()
     :show-inheritance:
