@@ -53,13 +53,13 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - It is now the same error raised as when trying to start an explicit transaction while another explicit transaction
       is already active.
 - Slightly change `Neo4jError` and `ClientError`:
-    - Properties `message` and `code` are always a `str` (instead of `str | None`).
-    - Remove possibility to override/set `message` and `code` properties.
-    - Remove undocumented, internal methods `Neo4jError.hydrate`, `Neo4jError.invalidates_all_connections`,
-      and `Neo4jError.is_fatal_during_discovery`.
-    - Remove deprecated method `Neo4jError.is_retriable`.  
-      Use `Neo4jError.is_retryable` instead.
-    - Change string representation of `Neo4jError` to include GQL error information.
+  - Properties `message` and `code` are always a `str` (instead of `str | None`).
+  - Remove possibility to override/set `message` and `code` properties.
+  - Remove undocumented, internal methods `Neo4jError.hydrate`, `Neo4jError.invalidates_all_connections`,
+    and `Neo4jError.is_fatal_during_discovery`.
+  - Remove deprecated method `Neo4jError.is_retriable`.  
+    Use `Neo4jError.is_retryable` instead.
+  - Change string representation of `Neo4jError` to include GQL error information.
 - Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Bookmarks
