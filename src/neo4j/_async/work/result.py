@@ -27,7 +27,7 @@ from warnings import (
 
 from ... import _typing as t
 from ..._api import (
-    NotificationCategory,
+    NotificationClassification,
     NotificationMinimumSeverity,
     NotificationSeverity,
 )
@@ -325,21 +325,28 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
         summary = self._obtain_summary()
         query = self._metadata.get("query")
-        for notification in summary.summary_notifications:
+        for notification in (
+            gql_status_object
+            for gql_status_object in summary.gql_status_objects
+            if gql_status_object.is_notification
+        ):
             log_call = notification_log.debug
-            if notification.severity_level == NotificationSeverity.INFORMATION:
+            if notification.severity == NotificationSeverity.INFORMATION:
                 log_call = notification_log.info
-            elif notification.severity_level == NotificationSeverity.WARNING:
+            elif notification.severity == NotificationSeverity.WARNING:
                 log_call = notification_log.warning
             log_call(
                 "Received notification from DBMS server: %s",
                 NotificationPrinter(notification, query, one_line=True),
             )
 
-            if notification.severity_level not in sev_filter:
+            if notification.severity not in sev_filter:
                 continue
             warning_cls: type[Warning] = Neo4jWarning
-            if notification.category == NotificationCategory.DEPRECATION:
+            if (
+                notification.classification
+                == NotificationClassification.DEPRECATION
+            ):
                 warning_cls = Neo4jDeprecationWarning
             creation_frame = self._creation_frame
             if creation_frame is False:

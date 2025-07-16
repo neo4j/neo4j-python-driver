@@ -21,11 +21,15 @@ from _common import run_python
 
 if __name__ == "__main__":
     run_python(
-        ["-m", "pip", "install", "--group", "packaging"],
+        ["-m", "pip", "install", "-U", "pip"],
+        warning_as_error=False,
+    )
+    run_python(
+        ["-m", "pip", "install", "-U", "--group", "packaging"],
         warning_as_error=False,
     )
     run_python(["-m", "build", "."], warning_as_error=True)
     run_python(
-        ["-m", "pip", "install", "--group", "testkit", "-e", "."],
+        ["-m", "pip", "install", "-U", "--group", "testkit", "-e", "."],
         warning_as_error=False,
     )

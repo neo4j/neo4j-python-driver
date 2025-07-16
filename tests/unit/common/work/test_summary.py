@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import typing as t
-import warnings
 
 
 if t.TYPE_CHECKING:
@@ -30,23 +29,19 @@ import pytest
 
 from neo4j import (
     Address,
-    NotificationCategory,
+    GqlStatusObject,
+    NotificationClassification,
     NotificationSeverity,
     ResultSummary,
     ServerInfo,
     SummaryCounters,
     SummaryInputPosition,
+)
+
+from ...._deprecated_imports import (
+    NotificationCategory,
     SummaryNotification,
 )
-from neo4j.warnings import PreviewWarning
-
-
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=PreviewWarning)
-    from neo4j import (
-        GqlStatusObject,
-        NotificationClassification,
-    )
 
 
 @pytest.fixture
@@ -172,7 +167,7 @@ def test_summary_notifications(summary_args_kwargs, exists) -> None:
         kwargs["metadata"]["notifications"] = summary_in = [object()]
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: list[dict] | None = summary.notifications
+    summary_out = _get_notifications(summary)
 
     assert summary_out is summary_in
 
@@ -219,10 +214,10 @@ def test_statuses_and_notifications_dont_mix(summary_args_kwargs) -> None:
 
     summary = ResultSummary(*args, **kwargs)
 
-    notifications = summary.notifications
+    notifications = _get_notifications(summary)
     assert notifications == [raw_notification]
 
-    parsed_notifications = summary.summary_notifications
+    parsed_notifications = _get_summary_notifications(summary)
     assert len(parsed_notifications) == 1
     notification = parsed_notifications[0]
     assert notification.code == raw_notification["code"]
@@ -236,8 +231,7 @@ def test_statuses_and_notifications_dont_mix(summary_args_kwargs) -> None:
         line=42, column=1337, offset=0
     )
 
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        statuses = summary.gql_status_objects
+    statuses = summary.gql_status_objects
     assert len(statuses) == 1
     status = statuses[0]
     assert status.gql_status == raw_status["gql_status"]
@@ -382,10 +376,7 @@ def test_non_notification_statuses(raw_status, summary_args_kwargs) -> None:
     kwargs["metadata"]["statuses"] = [raw_status]
 
     summary = ResultSummary(*args, **kwargs)
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = (
-            summary.gql_status_objects
-        )
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
 
     assert len(status_objects) == 1
     status = status_objects[0]
@@ -436,10 +427,7 @@ def test_gql_statuses_keep_order(
     ]
     summary = ResultSummary(*args, **kwargs)
 
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = (
-            summary.gql_status_objects
-        )
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
 
     assert len(status_objects) == len(types)
     status: GqlStatusObject
@@ -673,10 +661,7 @@ def test_status(
     kwargs["metadata"]["statuses"] = [raw_status]
     summary = ResultSummary(*args, **kwargs)
 
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = (
-            summary.gql_status_objects
-        )
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
 
     assert len(status_objects) == 1
     status = status_objects[0]
@@ -759,7 +744,7 @@ def test_summary_summary_notifications(
         kwargs["metadata"]["notifications"] = summary_in
 
     summary = ResultSummary(*args, **kwargs)
-    summary_out: Sequence[SummaryNotification] = summary.summary_notifications
+    summary_out = _get_summary_notifications(summary)
 
     assert isinstance(summary_out, tuple)
     if summary_in is None:
@@ -977,10 +962,7 @@ def test_status_from_no_notification(
     kwargs["had_record"] = had_record
     summary = ResultSummary(*args, **kwargs)
 
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = (
-            summary.gql_status_objects
-        )
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
 
     assert len(status_objects) == 1
     status: GqlStatusObject = status_objects[0]
@@ -1288,10 +1270,7 @@ def test_status_from_notifications(
     kwargs["metadata"]["notifications"] = [raw_notification]
     summary = ResultSummary(*args, **kwargs)
 
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects: t.Sequence[GqlStatusObject] = (
-            summary.gql_status_objects
-        )
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
     notifications = [s for s in status_objects if s.is_notification]
 
     if "diagnostic_record" in expectation_overwrite:
@@ -1453,8 +1432,7 @@ def test_status_precedence(
     ]
 
     summary = ResultSummary(*args, **kwargs)
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        status_objects = summary.gql_status_objects
+    status_objects = summary.gql_status_objects
     gql_statuses = [s.gql_status for s in status_objects]
 
     assert gql_statuses == expected_statuses
@@ -1468,10 +1446,8 @@ def test_no_notification_from_status(raw_status, summary_args_kwargs) -> None:
     kwargs["metadata"]["statuses"] = [raw_status]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications: list[dict] | None = summary.notifications
-    summary_notifications: Sequence[SummaryNotification] = (
-        summary.summary_notifications
-    )
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     assert notifications is None
     assert summary_notifications == ()
@@ -1676,8 +1652,8 @@ def test_notification_from_status(
     ]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications = summary.notifications
-    summary_notifications = summary.summary_notifications
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     expected_notification = {
         "code": expected_overwrite.get("code", default_code),
@@ -1741,8 +1717,8 @@ def test_no_notification_from_wrong_type_status(
     kwargs["metadata"]["statuses"] = [status_in]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications = summary.notifications
-    summary_notifications = summary.summary_notifications
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     assert notifications is None
     assert summary_notifications == ()
@@ -1935,8 +1911,8 @@ def test_no_notification_from_status_without_neo4j_code(
     kwargs["metadata"]["statuses"] = [raw_status]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications = summary.notifications
-    summary_notifications = summary.summary_notifications
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     assert notifications is None
     assert summary_notifications == ()
@@ -1972,8 +1948,8 @@ def test_notification_from_incomplete_status(
     kwargs["metadata"]["statuses"] = [raw_status]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications = summary.notifications
-    summary_notifications = summary.summary_notifications
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     assert notifications == [raw_notification]
 
@@ -2022,8 +1998,8 @@ def test_notification_from_unexpected_status(
     kwargs["metadata"]["statuses"] = [raw_status]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications = summary.notifications
-    summary_notifications = summary.summary_notifications
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     assert notifications == [raw_notification]
 
@@ -2088,7 +2064,7 @@ def test_notification_from_broken_status(
 
     summary = ResultSummary(*args, **kwargs)
 
-    notifications = summary.notifications
+    notifications = _get_notifications(summary)
     assert notifications is None
 
 
@@ -2109,8 +2085,8 @@ def test_notifications_from_statuses_keep_order(
     ]
 
     summary = ResultSummary(*args, **kwargs)
-    notifications = summary.notifications
-    summary_notifications = summary.summary_notifications
+    notifications = _get_notifications(summary)
+    summary_notifications = _get_summary_notifications(summary)
 
     assert notifications is not None
     assert len(notifications) == 4
@@ -2304,3 +2280,21 @@ def test_notification_from_meta_data(
 ) -> None:
     notification = SummaryNotification._from_metadata(meta)
     assert notification == expected
+
+
+def _get_notifications(summary: ResultSummary) -> list[dict] | None:
+    with pytest.warns(
+        DeprecationWarning,
+        match=r"\bnotifications\b.*\bgql_status_objects instead",
+    ):
+        return summary.notifications
+
+
+def _get_summary_notifications(
+    summary: ResultSummary,
+) -> Sequence[SummaryNotification]:
+    with pytest.warns(
+        DeprecationWarning,
+        match=r"\bsummary_notifications\b.*\bgql_status_objects instead",
+    ):
+        return summary.summary_notifications

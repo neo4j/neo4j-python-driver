@@ -20,16 +20,16 @@ from .. import _typing as t
 
 
 if t.TYPE_CHECKING:
-    from .._work import SummaryNotification
+    from .._work import GqlStatusObject
 
 
 class NotificationPrinter:
-    notification: SummaryNotification
+    notification: GqlStatusObject
     query: str | None
 
     def __init__(
         self,
-        notification: SummaryNotification,
+        notification: GqlStatusObject,
         query: str | None = None,
         one_line: bool = False,
     ) -> None:
@@ -39,13 +39,13 @@ class NotificationPrinter:
 
     def __str__(self):
         if self.query is None:
-            return str(self.notification)
+            return repr(self.notification)
         if self._one_line:
-            return f"{self.notification} for query: {self.query!r}"
+            return f"{self.notification!r} for query: {self.query!r}"
         pos = self.notification.position
         if pos is None:
-            return f"{self.notification} for query:\n{self.query}"
-        s = f"{self.notification} for query:\n"
+            return f"{self.notification!r} for query:\n{self.query}"
+        s = f"{self.notification!r} for query:\n"
         query_lines = self.query.splitlines()
         if pos.line <= 0 or pos.line > len(query_lines) or pos.column <= 0:
             return s + self.query

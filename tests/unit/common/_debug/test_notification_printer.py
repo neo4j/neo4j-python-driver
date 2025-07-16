@@ -26,7 +26,7 @@ from neo4j._debug import NotificationPrinter
 if t.TYPE_CHECKING:
     from ...fixtures.notifications import (
         Position,
-        TNotificationFactory,
+        TStatusNotificationFactory,
     )
 
 
@@ -34,19 +34,19 @@ if t.TYPE_CHECKING:
     ("query", "position", "expected_output_template"),
     (
         # no query
-        (None, None, "{notification}"),
-        (None, {"offset": 0, "line": 1, "column": 1}, "{notification}"),
+        (None, None, "{gql_status}"),
+        (None, {"offset": 0, "line": 1, "column": 1}, "{gql_status}"),
         # ---------------------------------------------------------------------
         # no position
-        ("MATCH (n) RETURN n", None, "{notification} for query:\n{query}"),
-        ("MATCH (n)\nRETURN n", None, "{notification} for query:\n{query}"),
+        ("MATCH (n) RETURN n", None, "{gql_status} for query:\n{query}"),
+        ("MATCH (n)\nRETURN n", None, "{gql_status} for query:\n{query}"),
         # ---------------------------------------------------------------------
         # normal position
         (
             "MATCH (n) RETURN n",
             {"offset": 0, "line": 1, "column": 1},
             (
-                "{notification} for query:\n"
+                "{gql_status} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "^"
             ),
@@ -55,7 +55,7 @@ if t.TYPE_CHECKING:
             "MATCH (n) RETURN n",
             {"offset": 2, "line": 1, "column": 3},
             (
-                "{notification} for query:\n"
+                "{gql_status} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "  ^"
             ),
@@ -67,7 +67,7 @@ if t.TYPE_CHECKING:
             ),
             {"offset": 0, "line": 1, "column": 3},
             (
-                "{notification} for query:\n"
+                "{gql_status} for query:\n"
                 "MATCH (n)\n"
                 "  ^\n"
                 "RETURN n"
@@ -80,7 +80,7 @@ if t.TYPE_CHECKING:
             ),
             {"offset": 0, "line": 2, "column": 8},
             (
-                "{notification} for query:\n"
+                "{gql_status} for query:\n"
                 "MATCH (n)\n"
                 "RETURN n\n"
                 "       ^"
@@ -93,7 +93,7 @@ if t.TYPE_CHECKING:
                 "MATCH (n) RETURN n",
                 {"offset": 0, "line": line, "column": column},
                 (
-                    "{notification} for query:\n"
+                    "{gql_status} for query:\n"
                     "MATCH (n) RETURN n"
                 ),
             )
@@ -110,7 +110,7 @@ if t.TYPE_CHECKING:
             "MATCH (n) RETURN n",
             {"offset": 0, "line": 1, "column": 20},
             (
-                "{notification} for query:\n"
+                "{gql_status} for query:\n"
                 "MATCH (n) RETURN n\n"
                 "                   ^"
             ),
@@ -122,7 +122,7 @@ if t.TYPE_CHECKING:
             ),
             {"offset": 0, "line": 1, "column": 20},
             (
-                "{notification} for query:\n"
+                "{gql_status} for query:\n"
                 "MATCH (n)\n"
                 "                   ^\n"
                 "RETURN n"
@@ -131,14 +131,16 @@ if t.TYPE_CHECKING:
     ),
 )  # fmt: skip
 def test_position(
-    notification_factory: TNotificationFactory,
+    status_notification_factory: TStatusNotificationFactory,
     query: str | None,
     position: Position | None,
     expected_output_template: str,
 ) -> None:
-    notification = notification_factory(data_overwrite={"position": position})
-    printer = NotificationPrinter(notification, query)
+    gql_status = status_notification_factory(
+        diag_rec_overwrite={"_position": position}
+    )
+    printer = NotificationPrinter(gql_status, query)
     expected_output = expected_output_template.format(
-        query=query, notification=notification
+        query=query, gql_status=repr(gql_status)
     )
     assert str(printer) == expected_output

@@ -40,7 +40,6 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
-from neo4j.warnings import PreviewWarning
 
 
 def test_bolt_error():
@@ -158,32 +157,26 @@ def test_serviceunavailable_raised_from_bolt_protocol_error_with_explicit_style(
 
 
 def _assert_default_gql_error_attrs_from_neo4j_error(error: GqlError) -> None:
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert error.gql_status == "50N42"
+    assert error.gql_status == "50N42"
     if error.message:
-        with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-            assert error.gql_status_description == (
-                "error: general processing exception - unexpected error. "
-                f"{error.message}"
-            )
-    else:
-        with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-            assert error.gql_status_description == (
-                "error: general processing exception - unexpected error"
-            )
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert (
-            error.gql_classification
-            == neo4j.exceptions.GqlErrorClassification.UNKNOWN
+        assert error.gql_status_description == (
+            "error: general processing exception - unexpected error. "
+            f"{error.message}"
         )
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert error.gql_raw_classification is None
-    with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-        assert error.diagnostic_record == {
-            "CURRENT_SCHEMA": "/",
-            "OPERATION": "",
-            "OPERATION_CODE": "0",
-        }
+    else:
+        assert error.gql_status_description == (
+            "error: general processing exception - unexpected error"
+        )
+    assert (
+        error.gql_classification
+        == neo4j.exceptions.GqlErrorClassification.UNKNOWN
+    )
+    assert error.gql_raw_classification is None
+    assert error.diagnostic_record == {
+        "CURRENT_SCHEMA": "/",
+        "OPERATION": "",
+        "OPERATION_CODE": "0",
+    }
     assert error.__cause__ is None
 
 
@@ -838,14 +831,6 @@ def test_gql_hydration(metadata, attributes):
     # TODO: test causes
     error = Neo4jError._hydrate_gql(**metadata)
 
-    preview_attrs = {
-        "gql_status",
-        "gql_status_description",
-        "gql_classification",
-        "gql_raw_classification",
-        "diagnostic_record",
-    }
-
     for attr in (
         "code",
         "classification",
@@ -860,11 +845,7 @@ def test_gql_hydration(metadata, attributes):
         "__cause__",
     ):
         expected_value = attributes[attr]
-        if attr in preview_attrs:
-            with pytest.warns(PreviewWarning, match="GQLSTATUS"):
-                actual_value = getattr(error, attr)
-        else:
-            actual_value = getattr(error, attr)
+        actual_value = getattr(error, attr)
         assert actual_value == expected_value
 
 
@@ -887,3 +868,35 @@ def test_deprecated_setter(attr):
         setattr(error, attr, obj)
 
     assert getattr(error, attr) is not obj
+
+
+@pytest.mark.parametrize("insert_after", range(-1, 3))
+def test_find_by_gql_status(insert_after: int) -> None:
+    root = error_to_find = None
+    if insert_after == -1:
+        root = error_to_find = _make_test_gql_error("12345")
+    for i in range(3):
+        root = _make_test_gql_error(f"{i + 2}2345", cause=root)
+        if i == insert_after:
+            root = error_to_find = _make_test_gql_error("12345", cause=root)
+
+    if root is None:
+        raise RuntimeError("unreachable, loop is not empty")
+    if error_to_find is None:
+        raise ValueError(
+            f"insert_after is out of range [-1, 3), got {insert_after}"
+        )
+
+    assert root.find_by_gql_status("12345") is error_to_find
+
+
+def test_find_by_gql_status_no_match() -> None:
+    root = None
+    for i in range(3):
+        root = _make_test_gql_error(f"{i + 1}2345", cause=root)
+
+    if root is None:
+        raise RuntimeError("unreachable, loop is not empty")
+
+    for status in ("2345", "02345", "42345", "54321"):
+        assert root.find_by_gql_status(status) is None

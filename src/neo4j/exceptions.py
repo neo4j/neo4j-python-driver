@@ -66,7 +66,6 @@ from copy import deepcopy as _deepcopy
 from enum import Enum as _Enum
 
 from . import _typing as _t
-from ._warnings import preview as _preview
 
 
 if _t.TYPE_CHECKING:
@@ -195,14 +194,11 @@ class GqlErrorClassification(str, _Enum):
         >>> GqlErrorClassification.TRANSIENT_ERROR == "TRANSIENT_ERROR"
         True
 
-    **This is a preview**.
-    It might be changed without following the deprecation policy.
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. seealso:: :attr:`.GqlError.gql_classification`
 
     .. versionadded:: 5.26
+
+    .. versionchanged:: 6.0 Stabilized from preview.
     """
 
     CLIENT_ERROR = "CLIENT_ERROR"
@@ -223,12 +219,17 @@ class GqlError(Exception):
     Instead, only subclasses are raised.
     Further, it is used as the :attr:`__cause__` of GqlError subclasses.
 
-    **This is a preview**.
-    It might be changed without following the deprecation policy.
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+    Sometimes it is helpful or necessary to traverse the cause chain of
+    GqlErrors to fully understand or appropriately handle the error. In such
+    cases, users can either traverse the :attr:`__cause__` attribute of the
+    error(s) or use the helper method :meth:`.find_by_gql_status`. Note that
+    :attr:`__cause__` is a standard attribute of all Python
+    :class:`BaseException` s: the cause chain may contain other exception types
+    besides GqlError.
 
     .. versionadded: 5.26
+
+    .. versionchanged:: 6.0 Stabilized from preview.
     """
 
     _gql_status: str
@@ -239,6 +240,16 @@ class GqlError(Exception):
     _status_diagnostic_record: dict[str, _t.Any]  # original, internal only
     _diagnostic_record: dict[str, _t.Any]  # copy to be used externally
     _gql_cause: GqlError | None
+
+    __cause__: BaseException | None
+    """
+    The GqlError's cause, if any.
+
+    Sometimes it is helpful or necessary to traverse the cause chain of
+    GqlErrors to fully understand or appropriately handle the error.
+
+    .. seealso:: :meth:`.find_by_gql_status`
+    """
 
     @staticmethod
     def _hydrate_cause(**metadata: _t.Any) -> GqlError:
@@ -329,15 +340,6 @@ class GqlError(Exception):
             return None
 
     @property
-    def _gql_status_no_preview(self) -> str:
-        if hasattr(self, "_gql_status"):
-            return self._gql_status
-
-        self._set_gql_unknown()
-        return self._gql_status
-
-    @property
-    @_preview("GQLSTATUS support is a preview feature.")
     def gql_status(self) -> str:
         """
         The GQLSTATUS returned from the server.
@@ -352,18 +354,12 @@ class GqlError(Exception):
             This means that the code ``50N42`` is not guaranteed to be stable
             and may change in future versions of the driver or the server.
         """
-        return self._gql_status_no_preview
-
-    @property
-    def _message_no_preview(self) -> str:
-        if hasattr(self, "_message"):
-            return self._message
-
+        if hasattr(self, "_gql_status"):
+            return self._gql_status
         self._set_gql_unknown()
-        return self._message
+        return self._gql_status
 
     @property
-    @_preview("GQLSTATUS support is a preview feature.")
     def message(self) -> str:
         """
         The error message returned by the server.
@@ -376,18 +372,12 @@ class GqlError(Exception):
         This value is never :data:`None` unless the subclass in question
         states otherwise.
         """
-        return self._message_no_preview
-
-    @property
-    def _gql_status_description_no_preview(self) -> str:
-        if hasattr(self, "_gql_status_description"):
-            return self._gql_status_description
-
+        if hasattr(self, "_message"):
+            return self._message
         self._set_gql_unknown()
-        return self._gql_status_description
+        return self._message
 
     @property
-    @_preview("GQLSTATUS support is a preview feature.")
     def gql_status_description(self) -> str:
         """
         A description of the GQLSTATUS returned from the server.
@@ -397,10 +387,20 @@ class GqlError(Exception):
         This description is meant for human consumption and debugging purposes.
         Don't rely on it in a programmatic way.
         """
-        return self._gql_status_description_no_preview
+        if hasattr(self, "_gql_status_description"):
+            return self._gql_status_description
+        self._set_gql_unknown()
+        return self._gql_status_description
 
     @property
-    def _gql_raw_classification_no_preview(self) -> str | None:
+    def gql_raw_classification(self) -> str | None:
+        """
+        Vendor specific classification of the error.
+
+        This is a convenience accessor for ``_classification`` in the
+        diagnostic record. :data:`None` is returned if the classification is
+        not available or not a string.
+        """
         if hasattr(self, "_gql_raw_classification"):
             return self._gql_raw_classification
 
@@ -413,24 +413,11 @@ class GqlError(Exception):
         return self._gql_raw_classification
 
     @property
-    @_preview("GQLSTATUS support is a preview feature.")
-    def gql_raw_classification(self) -> str | None:
-        """
-        Vendor specific classification of the error.
-
-        This is a convenience accessor for ``_classification`` in the
-        diagnostic record.
-        :data:`None` is returned if the classification is not available
-        or not a string.
-        """
-        return self._gql_raw_classification_no_preview
-
-    @property
-    def _gql_classification_no_preview(self) -> GqlErrorClassification:
+    def gql_classification(self) -> GqlErrorClassification:
+        """The stable GqlErrorClassification for this error."""
         if hasattr(self, "_gql_classification"):
             return self._gql_classification
-
-        classification = self._gql_raw_classification_no_preview
+        classification = self.gql_raw_classification
         if not (
             isinstance(classification, str)
             and classification
@@ -442,9 +429,14 @@ class GqlError(Exception):
         return self._gql_classification
 
     @property
-    @_preview("GQLSTATUS support is a preview feature.")
-    def gql_classification(self) -> GqlErrorClassification:
-        return self._gql_classification_no_preview
+    def diagnostic_record(self) -> _t.Mapping[str, _t.Any]:
+        """The diagnostic record for this error."""
+        if hasattr(self, "_diagnostic_record"):
+            return self._diagnostic_record
+        self._diagnostic_record = _deepcopy(
+            self._get_status_diagnostic_record()
+        )
+        return self._diagnostic_record
 
     def _get_status_diagnostic_record(self) -> dict[str, _t.Any]:
         if hasattr(self, "_status_diagnostic_record"):
@@ -453,30 +445,43 @@ class GqlError(Exception):
         self._status_diagnostic_record = dict(_UNKNOWN_GQL_DIAGNOSTIC_RECORD)
         return self._status_diagnostic_record
 
-    @property
-    def _diagnostic_record_no_preview(self) -> _t.Mapping[str, _t.Any]:
-        if hasattr(self, "_diagnostic_record"):
-            return self._diagnostic_record
+    def find_by_gql_status(self, status: str) -> GqlError | None:
+        """
+        Return the first GqlError in the cause chain with the given GQL status.
 
-        self._diagnostic_record = _deepcopy(
-            self._get_status_diagnostic_record()
-        )
-        return self._diagnostic_record
+        This method traverses this GQLErorrs's :attr:`__cause__` chain,
+        starting with this error itself, and returns the first error that has
+        the given GQL status. If no error matches, :data:`None` is returned.
 
-    @property
-    @_preview("GQLSTATUS support is a preview feature.")
-    def diagnostic_record(self) -> _t.Mapping[str, _t.Any]:
-        return self._diagnostic_record_no_preview
+        Example::
+
+            def invalid_syntax(err: GqlError) -> bool:
+                return err.find_by_gql_status("42001") is not None
+
+        :param status: The GQL status to search for.
+
+        :returns: The first matching error or :data:`None`.
+
+        .. versionadded:: 6.0
+        """
+        if self.gql_status == status:
+            return self
+
+        cause = self.__cause__
+        while cause is not None:
+            if isinstance(cause, GqlError) and cause.gql_status == status:
+                return cause
+            cause = getattr(cause, "__cause__", None)
+
+        return None
 
     def __str__(self):
         return (
-            f"{{gql_status: {self._gql_status_no_preview}}} "
-            f"{{gql_status_description: "
-            f"{self._gql_status_description_no_preview}}} "
-            f"{{message: {self._message_no_preview}}} "
-            f"{{diagnostic_record: {self._diagnostic_record_no_preview}}} "
-            f"{{raw_classification: "
-            f"{self._gql_raw_classification_no_preview}}}"
+            f"{{gql_status: {self.gql_status}}} "
+            f"{{gql_status_description: {self.gql_status_description}}} "
+            f"{{message: {self.message}}} "
+            f"{{diagnostic_record: {self.diagnostic_record}}} "
+            f"{{raw_classification: {self.gql_raw_classification}}}"
         )
 
 
@@ -694,8 +699,8 @@ class Neo4jError(GqlError):
         code = self._neo4j_code
         message = self._message
         # TODO: 7.0 - Check if including neo4j_code is still useful
-        gql_status = self._gql_status_no_preview
-        gql_description = self._gql_status_description_no_preview
+        gql_status = self._gql_status
+        gql_description = self._gql_status_description
         return (
             f"{{neo4j_code: {code}}} "
             f"{{message: {message}}} "

@@ -167,6 +167,17 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `neo4j.spatial.Point` (and subclasses)
 - Separate out log entries that are session-related (including transaction retries)
   form sub-logger `neo4j.pool` to a new sub-logger `neo4j.session`.
+- Notifications:
+  - Deprecate notifications and related APIs:
+    - `ResultSummary.notifications`
+    - `ResultSummary.summary_notifications`
+    - `neo4j.SummaryNotification`
+    - `neo4j.NotificationCategory`
+    - `neo4j.NotificationDisabledCategory`
+  - Stabilize GQL status objects (use this instead of notifications):
+    - `ResultSummary.gql_status_objects`
+    - `neo4j.GqlStatusObject`
+    - (`neo4j.exceptions.GqlError`, `neo4j.exceptions.GqlErrorClassification`)
 
 
 ## Version 5.28

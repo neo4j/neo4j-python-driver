@@ -70,7 +70,7 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 # To install all development dependencies as well as the driver with all optional dependencies,
-# run `pip install --group dev`
+# run `pip install --group dev -e .` inside repository root folder.
 dev = [
     # dev tools
     {include-group = "dep-project-dependencies"},
