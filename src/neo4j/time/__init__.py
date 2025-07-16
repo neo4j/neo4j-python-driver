@@ -826,7 +826,7 @@ class Date(_date_base_class, metaclass=_DateType):
 
     Each date is based on a proleptic Gregorian ordinal, which models 1 Jan
     0001 as ``day 1`` and counts each subsequent day up to, and including,
-    31 Dec 9999. The standard ``year``, ``month`` and ``day`` value of eacch
+    31 Dec 9999. The standard ``year``, ``month`` and ``day`` value of each
     date is also available.
 
     Internally, the day of the month is always stored as-is, except for the
