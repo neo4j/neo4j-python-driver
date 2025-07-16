@@ -113,7 +113,7 @@ test = [
 # type checker and type stubs for static type checking
 typing = [
     "mypy >= 1.15.0",
-    # "typing-extensions >= 4.13.2",
+    "typing-extensions >= 4.13.2",
     "types-pytz >= 2025.2.0.20250326",
     {include-group = "dep-project-dependencies"},
     # tests are also type-checked
