@@ -32,7 +32,7 @@ from ..v1.temporal import get_date_unix_epoch_ordinal
 
 def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
     """
-    Hydrator for `DateTime` and `LocalDateTime` values.
+    Hydrator for ``DateTime`` and ``LocalDateTime`` values.
 
     :param seconds:
     :param nanoseconds:
@@ -61,7 +61,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
 
 def dehydrate_datetime(value):  # type: ignore[no-redef]
     """
-    Dehydrator for `datetime` values.
+    Dehydrator for ``datetime`` values.
 
     :param value:
     :type value: datetime
@@ -113,7 +113,7 @@ if pd is not None:
 
     def dehydrate_pandas_datetime(value):
         """
-        Dehydrator for `pandas.Timestamp` values.
+        Dehydrator for ``pandas.Timestamp`` values.
 
         :param value:
         :type value: pandas.Timestamp

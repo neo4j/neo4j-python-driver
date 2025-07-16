@@ -55,7 +55,7 @@ def get_datetime_unix_epoch_utc():
 
 def hydrate_date(days):
     """
-    Hydrator for `Date` values.
+    Hydrator for ``Date`` values.
 
     :param days:
     :returns: Date
@@ -65,7 +65,7 @@ def hydrate_date(days):
 
 def dehydrate_date(value):
     """
-    Dehydrator for `date` values.
+    Dehydrator for ``date`` values.
 
     :param value:
     :type value: Date
@@ -78,7 +78,7 @@ def dehydrate_date(value):
 
 def hydrate_time(nanoseconds, tz=None):
     """
-    Hydrator for `Time` and `LocalTime` values.
+    Hydrator for ``Time`` and ``LocalTime`` values.
 
     :param nanoseconds:
     :param tz:
@@ -99,7 +99,7 @@ def hydrate_time(nanoseconds, tz=None):
 
 def dehydrate_time(value):
     """
-    Dehydrator for `time` values.
+    Dehydrator for ``time`` values.
 
     :param value:
     :type value: Time
@@ -128,7 +128,7 @@ def dehydrate_time(value):
 
 def hydrate_datetime(seconds, nanoseconds, tz=None):
     """
-    Hydrator for `DateTime` and `LocalDateTime` values.
+    Hydrator for ``DateTime`` and ``LocalDateTime`` values.
 
     :param seconds:
     :param nanoseconds:
@@ -159,7 +159,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
 
 def dehydrate_datetime(value):
     """
-    Dehydrator for `datetime` values.
+    Dehydrator for ``datetime`` values.
 
     :param value:
     :type value: datetime or DateTime
@@ -208,7 +208,7 @@ if np is not None:
 
     def dehydrate_np_datetime(value):
         """
-        Dehydrator for `numpy.datetime64` values.
+        Dehydrator for ``numpy.datetime64`` values.
 
         :param value:
         :type value: numpy.datetime64
@@ -235,7 +235,7 @@ if pd is not None:
 
     def dehydrate_pandas_datetime(value):
         """
-        Dehydrator for `pandas.Timestamp` values.
+        Dehydrator for ``pandas.Timestamp`` values.
 
         :param value:
         :type value: pandas.Timestamp
@@ -257,13 +257,13 @@ if pd is not None:
 
 def hydrate_duration(months, days, seconds, nanoseconds):
     """
-    Hydrator for `Duration` values.
+    Hydrator for ``Duration`` values.
 
     :param months:
     :param days:
     :param seconds:
     :param nanoseconds:
-    :returns: `duration` namedtuple
+    :returns: ``duration`` namedtuple
     """
     return Duration(
         months=months, days=days, seconds=seconds, nanoseconds=nanoseconds
@@ -272,7 +272,7 @@ def hydrate_duration(months, days, seconds, nanoseconds):
 
 def dehydrate_duration(value):
     """
-    Dehydrator for `duration` values.
+    Dehydrator for ``duration`` values.
 
     :param value:
     :type value: Duration
@@ -285,7 +285,7 @@ def dehydrate_duration(value):
 
 def dehydrate_timedelta(value):
     """
-    Dehydrator for `timedelta` values.
+    Dehydrator for ``timedelta`` values.
 
     :param value:
     :type value: timedelta
@@ -314,7 +314,7 @@ if np is not None:
 
     def dehydrate_np_timedelta(value):
         """
-        Dehydrator for `numpy.timedelta64` values.
+        Dehydrator for ``numpy.timedelta64`` values.
 
         :param value:
         :type value: numpy.timedelta64
@@ -337,7 +337,7 @@ if pd is not None:
 
     def dehydrate_pandas_timedelta(value):
         """
-        Dehydrator for `pandas.Timedelta` values.
+        Dehydrator for ``pandas.Timedelta`` values.
 
         :param value:
         :type value: pandas.Timedelta

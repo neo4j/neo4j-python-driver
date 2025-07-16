@@ -121,7 +121,7 @@ class AuthManager(metaclass=abc.ABCMeta):
         Furthermore, the manager is expected to be thread-safe.
 
         The token returned must always belong to the same identity.
-        Switching identities using the `AuthManager` is undefined behavior.
+        Switching identities using the ``AuthManager`` is undefined behavior.
         You may use :ref:`session-level authentication<session-auth-ref>`
         for such use-cases.
 
@@ -132,7 +132,7 @@ class AuthManager(metaclass=abc.ABCMeta):
     .. versionchanged:: 5.12
         ``on_auth_expired`` was removed from the interface and replaced by
         :meth:`handle_security_exception`. The new method is called when the
-        server returns any `Neo.ClientError.Security.*` error. Its signature
+        server returns any ``Neo.ClientError.Security.*`` error. Its signature
         differs in that it additionally receives the error returned by the
         server and returns a boolean indicating whether the error was handled.
 
@@ -151,9 +151,10 @@ class AuthManager(metaclass=abc.ABCMeta):
 
             The method must only ever return auth information belonging to the
             same identity.
-            Switching identities using the `AuthManager` is undefined behavior.
-            You may use :ref:`session-level authentication<session-auth-ref>`
-            for such use-cases.
+            Switching identities using the ``AuthManager`` is undefined
+            behavior. You may use
+            :ref:`session-level authentication<session-auth-ref>` for such
+            use-cases.
         """
         ...
 
@@ -165,7 +166,7 @@ class AuthManager(metaclass=abc.ABCMeta):
         Handle the server indicating authentication failure.
 
         The driver will call this method when the server returns any
-        `Neo.ClientError.Security.*` error. The error will then be processed
+        ``Neo.ClientError.Security.*`` error. The error will then be processed
         further as usual.
 
         :param auth:

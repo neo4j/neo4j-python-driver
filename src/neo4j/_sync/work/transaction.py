@@ -143,8 +143,8 @@ class TransactionBase(NonConcurrentMethodChecker):
         Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
         through a dictionary of parameters, through individual parameter
-        arguments, or as a mixture of both. For example, the `run`
-        queries below are all equivalent::
+        arguments, or as a mixture of both. For example, the ``run``
+        calls below are all equivalent::
 
             query = "CREATE (a:Person { name: $name, age: $age })"
             result = tx.run(query, {"name": "Alice", "age": 33})

@@ -22,6 +22,7 @@ from ..._addressing import (
     Address,
     ResolvedAddress,
 )
+from ...exceptions import ServiceUnavailable
 from ..util import AsyncUtil
 
 
@@ -38,6 +39,14 @@ def _resolved_addresses_from_info(info, host_name):
         if addr not in resolved:
             resolved.append(addr)
             yield ResolvedAddress(addr, host_name=host_name)
+
+
+_RETRYABLE_DNS_ERRNOS = {
+    socket.EAI_ADDRFAMILY,
+    socket.EAI_AGAIN,
+    socket.EAI_MEMORY,
+    socket.EAI_NODATA,
+}
 
 
 class AsyncNetworkUtil:
@@ -69,7 +78,16 @@ class AsyncNetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            raise ValueError(f"Cannot resolve address {address}") from e
+            if e.errno in _RETRYABLE_DNS_ERRNOS or (
+                e.errno == socket.EAI_NONAME
+                and (address.host is not None or address.port is not None)
+            ):
+                raise ServiceUnavailable(
+                    f"Failed to DNS resolve address {address}: {e}"
+                ) from e
+            raise ValueError(
+                f"Failed to DNS resolve address {address}: {e}"
+            ) from e
         return list(_resolved_addresses_from_info(info, address._host_name))
 
     @staticmethod
@@ -88,7 +106,7 @@ class AsyncNetworkUtil:
 
         :param address: the Address to resolve
         :param family: optional address family to filter resolved
-                       addresses by (e.g. `socket.AF_INET6`)
+                       addresses by (e.g. ``socket.AF_INET6``)
         :param resolver: optional customer resolver function to be
                          called before regular DNS resolution
         """
@@ -151,7 +169,16 @@ class NetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            raise ValueError(f"Cannot resolve address {address}") from e
+            if e.errno in _RETRYABLE_DNS_ERRNOS or (
+                e.errno == socket.EAI_NONAME
+                and (address.host is not None or address.port is not None)
+            ):
+                raise ServiceUnavailable(
+                    f"Failed to DNS resolve address {address}: {e}"
+                ) from e
+            raise ValueError(
+                f"Failed to DNS resolve address {address}: {e}"
+            ) from e
         return _resolved_addresses_from_info(info, address._host_name)
 
     @staticmethod
@@ -170,7 +197,7 @@ class NetworkUtil:
 
         :param address: the Address to resolve
         :param family: optional address family to filter resolved
-                       addresses by (e.g. `socket.AF_INET6`)
+                       addresses by (e.g. ``socket.AF_INET6``)
         :param resolver: optional customer resolver function to be
                          called before regular DNS resolution
         """

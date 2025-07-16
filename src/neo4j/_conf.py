@@ -34,9 +34,9 @@ def iter_items(iterable):
     """
     Iterate through key-value pairs of a dict-like object.
 
-    If the object has a `keys` method, this is used along with `__getitem__`
-    to yield each pair in turn. If no `keys` method exists, each iterable
-    element is assumed to be a 2-tuple of key and value.
+    If the object has a ``keys`` method, this is used along with
+    ``__getitem__`` to yield each pair in turn. If no ``keys`` method exists,
+    each iterable element is assumed to be a 2-tuple of key and value.
     """
     if hasattr(iterable, "keys"):
         for key in iterable:

@@ -82,13 +82,13 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | URI Scheme             | Driver Object and Setting                                                                                                             |
 +========================+=======================================================================================================================================+
-| bolt                   | :ref:`bolt-driver-ref` with no encryption.                                                                                            |
+| bolt                   | :ref:`bolt-driver-ref` with no encryption or with custom encryption configuration, see :ref:`driver-configuration-ref`.               |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | bolt+ssc               | :ref:`bolt-driver-ref` with encryption (accepts self signed certificates).                                                            |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | bolt+s                 | :ref:`bolt-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.        |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
-| neo4j                  | :ref:`neo4j-driver-ref` with no encryption.                                                                                           |
+| neo4j                  | :ref:`neo4j-driver-ref` with no encryption or with custom encryption configuration, see :ref:`driver-configuration-ref`.              |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+ssc              | :ref:`neo4j-driver-ref` with encryption (accepts self signed certificates).                                                           |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
@@ -429,6 +429,11 @@ it should be chosen larger than :ref:`connection-timeout-ref`.
 
 :Type: ``float``
 :Default: ``60.0``
+
+.. versionadded:: 6.0
+    The setting now entails *anything* required to acquire a connection.
+    This includes potential fetching of routing tables which in itself requires acquiring a connection.
+    Previously, the timeout would be restarted for such auxiliary connection acquisitions.
 
 
 .. _connection-timeout-ref:
@@ -799,9 +804,8 @@ For example:
             self.driver.close()
 
 Connection details held by the :class:`neo4j.Driver` are immutable.
-Therefore if, for example, a password is changed, a replacement :class:`neo4j.Driver` object must be created.
-More than one :class:`.Driver` may be required if connections to multiple remotes, or connections as multiple users, are required,
-unless when using impersonation (:ref:`impersonated-user-ref`).
+Therefore if, for example, the server URI is changed, a replacement :class:`neo4j.Driver` object must be created.
+More than one :class:`.Driver` may be required if connections to multiple remotes.
 
 :class:`neo4j.Driver` objects are thread-safe but cannot be shared across processes.
 Therefore, ``multithreading`` should generally be preferred over ``multiprocessing`` for parallel database access.
@@ -959,7 +963,8 @@ more information.
     :class:`neo4j.Bookmarks` object instead.
 
 .. versionchanged:: 6.0
-    Only accepts :class:`neo4j.Bookmarks` objects or :data:`None`.
+    No longer accepts an iterable of strings.
+    Pass a :class:`neo4j.Bookmarks` objects or :data:`None` instead.
 
 
 .. _database-ref:
@@ -980,7 +985,7 @@ Name of the database to query.
     straightforward way and potentially simplifies driver logic as well as
     reduces network communication resulting in better performance.
 
-    Usage of Cypher clauses like `USE` is not a replacement for this option.
+    Usage of Cypher clauses like ``USE`` is not a replacement for this option.
     The driver does not parse any Cypher.
 
 When no explicit name is set, the driver behavior depends on the connection
@@ -1379,7 +1384,7 @@ Example:
 
 .. _managed-transactions-ref:
 
-Managed Transactions (`transaction functions`)
+Managed Transactions (*transaction functions*)
 ==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
@@ -1960,7 +1965,9 @@ GQL Errors
 ==========
 .. autoexception:: neo4j.exceptions.GqlError()
     :show-inheritance:
-    :members: gql_status, message, gql_status_description, gql_raw_classification, gql_classification, diagnostic_record, __cause__
+    :members:
+        gql_status, message, gql_status_description, gql_raw_classification, gql_classification, diagnostic_record,
+        find_by_gql_status, __cause__
 
 .. autoclass:: neo4j.exceptions.GqlErrorClassification()
     :show-inheritance:
@@ -2002,7 +2009,7 @@ Server-side errors
 
 .. autoexception:: neo4j.exceptions.Neo4jError()
     :show-inheritance:
-    :members: message, code, is_retriable, is_retryable
+    :members: message, code, is_retryable
 
 .. autoexception:: neo4j.exceptions.ClientError()
     :show-inheritance:

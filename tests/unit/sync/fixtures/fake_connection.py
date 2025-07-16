@@ -157,23 +157,23 @@ def scripted_connection_generator(fake_connection_generator):
             Set a scripted sequence of callbacks.
 
             :param callbacks: The callbacks. They should be a list of 2-tuples.
-                `("name_of_message", {"callback_name": arguments})`. E.g.,
-                ```
-                [
-                    ("run", {"on_success": ({},), "on_summary": None}),
-                    ("pull", {
-                        "on_records": ([some_record],),
-                        "on_success": None,
-                        "on_summary": None,
-                    })
-                    # use any exception to throw it instead of calling handlers
-                    ("commit", RuntimeError("oh no!"))
-                ]
-                ```
-                Note that arguments can be `None`. In this case,
+                ``("name_of_message", {"callback_name": arguments})``. E.g., ::
+
+                    [
+                        ("run", {"on_success": ({},), "on_summary": None}),
+                        ("pull", {
+                            "on_records": ([some_record],),
+                            "on_success": None,
+                            "on_summary": None,
+                        })
+                        # use any exception to throw it instead of calling handlers
+                        ("commit", RuntimeError("oh no!"))
+                    ]
+
+                Note that arguments can be :data:`None`. In this case,
                 ScriptedConnection will make a guess on best-suited default
                 arguments.
-            """
+            """  # noqa: E501 example code isn't too long
             self._script = callbacks
             self._script_pos = 0
 

@@ -61,8 +61,8 @@ class ResultSummary:
     parameters: dict[str, t.Any] | None
 
     #: A string that describes the type of query
-    # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-only,
-    # ``'s'`` = schema.
+    #: ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-only,
+    #: ``'s'`` = schema.
     query_type: t.Literal["r", "rw", "w", "s"] | None
 
     #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the
@@ -85,10 +85,10 @@ class ResultSummary:
     #: see :attr:`.notifications`
     _notifications: list[dict] | None
 
-    # cache for property `summary_notifications`
+    # cache for property ``summary_notifications``
     _summary_notifications: tuple[SummaryNotification, ...]
 
-    # cache for property `summary_notifications`
+    # cache for property ``summary_notifications``
     _gql_status_objects: tuple[GqlStatusObject, ...]
 
     _had_key: bool

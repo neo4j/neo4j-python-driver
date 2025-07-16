@@ -341,7 +341,6 @@ class IPv6Address(Address):
         return "[{}]:{}".format(*self)
 
 
-# TODO: 6.0 - make this class private
 class ResolvedAddress(Address):
     _unresolved_host_name: str
 
@@ -360,11 +359,9 @@ class ResolvedAddress(Address):
         return new
 
 
-# TODO: 6.0 - make this class private
 class ResolvedIPv4Address(IPv4Address, ResolvedAddress):
     pass
 
 
-# TODO: 6.0 - make this class private
 class ResolvedIPv6Address(IPv6Address, ResolvedAddress):
     pass

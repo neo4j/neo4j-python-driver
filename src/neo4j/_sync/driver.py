@@ -300,18 +300,18 @@ class GraphDatabase:
             driver = neo4j.GraphDatabase.driver(...)
             bookmark_manager = neo4j.GraphDatabase.bookmark_manager(...)
 
-            with driver.session(
-                bookmark_manager=bookmark_manager
-            ) as session1:
-                with driver.session(
+            with (
+                driver.session(bookmark_manager=bookmark_manager) as session1,
+                driver.session(
                     bookmark_manager=bookmark_manager,
-                    access_mode=neo4j.READ_ACCESS
-                ) as session2:
-                    result1 = session1.run("<WRITE_QUERY>")
-                    result1.consume()
-                    # READ_QUERY is guaranteed to see what WRITE_QUERY wrote.
-                    result2 = session2.run("<READ_QUERY>")
-                    result2.consume()
+                    default_access_mode=neo4j.READ_ACCESS,
+                ) as session2,
+            ):
+                result1 = session1.run("<WRITE_QUERY>")
+                result1.consume()
+                # READ_QUERY is guaranteed to see what WRITE_QUERY wrote.
+                result2 = session2.run("<READ_QUERY>")
+                result2.consume()
 
         This is a very contrived example, and in this particular case, having
         both queries in the same session has the exact same effect and might

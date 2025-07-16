@@ -39,12 +39,15 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
    (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
     `UnsupportedServerProduct` is now a subclass of `ServiceUnavailable` (instead of `Exception` directly).
   - `connection_acquisition_timeout` configuration option
-    - `ValueError` on invalid values (instead of `ClientError`)
+    - Raise `ValueError` on invalid values (instead of `ClientError`).
     - Consistently restrict the value to be strictly positive
     - New `ConnectionAcquisitionTimeoutError` (subclass of `DriverError`) instead of `ClientError`
       (subclass of `Neo4jError`) the timeout is exceeded.
       - This improves the differentiation between `DriverError` for client-side errors and `Neo4jError` for server-side
         errors.
+    - The option now spans *anything* required to acquire a connection.  
+      This includes potential fetching of routing tables which in itself requires acquiring a connection.
+      Previously, the timeout would be restarted for such auxiliary connection acquisitions.
   - `TypeError` instead of `ValueError` when passing a `Query` object to `Transaction.run`.
   - `TransactionError` (subclass of `DriverError`) instead of `ClientError` (subclass of `Neo4jError`) when calling
     `session.run()` while an explicit transaction is active on that session.
@@ -53,13 +56,13 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - It is now the same error raised as when trying to start an explicit transaction while another explicit transaction
       is already active.
 - Slightly change `Neo4jError` and `ClientError`:
-    - Properties `message` and `code` are always a `str` (instead of `str | None`).
-    - Remove possibility to override/set `message` and `code` properties.
-    - Remove undocumented, internal methods `Neo4jError.hydrate`, `Neo4jError.invalidates_all_connections`,
-      and `Neo4jError.is_fatal_during_discovery`.
-    - Remove deprecated method `Neo4jError.is_retriable`.  
-      Use `Neo4jError.is_retryable` instead.
-    - Change string representation of `Neo4jError` to include GQL error information.
+  - Properties `message` and `code` are always a `str` (instead of `str | None`).
+  - Remove possibility to override/set `message` and `code` properties.
+  - Remove undocumented, internal methods `Neo4jError.hydrate`, `Neo4jError.invalidates_all_connections`,
+    and `Neo4jError.is_fatal_during_discovery`.
+  - Remove deprecated method `Neo4jError.is_retriable`.  
+    Use `Neo4jError.is_retryable` instead.
+  - Change string representation of `Neo4jError` to include GQL error information.
 - Remove deprecated `Record.__getslice__`. This magic method has been removed in Python 3.0.  
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Bookmarks
@@ -165,6 +168,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   - `neo4j.graph.Node`, `neo4j.graph.Relationship`, `neo4j.graph.Path`
   - `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`
   - `neo4j.spatial.Point` (and subclasses)
+- Configuring the driver with a URL that cannot be DNS resolved will raise a (retryable) `ServiceUnavailable` error
+  instead of a `ValueError`.
 - Separate out log entries that are session-related (including transaction retries)
   form sub-logger `neo4j.pool` to a new sub-logger `neo4j.session`.
 - Notifications:

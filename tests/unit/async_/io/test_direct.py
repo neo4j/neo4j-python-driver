@@ -204,7 +204,7 @@ async def test_pool_max_conn_pool_size(async_fake_connection_generator):
         async_fake_connection_generator, (), max_connection_pool_size=1
     ) as pool:
         address = neo4j.Address(("127.0.0.1", 7687))
-        await pool._acquire(address, None, Deadline(0), None)
+        await pool._acquire(address, None, Deadline(float("inf")), None)
         assert pool.in_use_connection_count(address) == 1
         with pytest.raises(ConnectionAcquisitionTimeoutError):
             await pool._acquire(address, None, Deadline(0), None)
