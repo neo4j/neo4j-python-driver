@@ -20,7 +20,6 @@ import math
 import random
 import struct
 import sys
-import timeit
 import typing as t
 
 import pytest
@@ -188,52 +187,6 @@ def _mock_mask_extensions(mocker, used_ext):
                 )
         case _:
             raise ValueError(f"Invalid ext value {used_ext}")
-
-
-@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
-def _test_bench_swap_endian(mocker, ext):
-    data = bytes(i % 256 for i in range(10_000))
-    _mock_mask_extensions(mocker, ext)
-    print(timeit.timeit(lambda: _swap_endian(2, data), number=1_000))  # noqa: T201
-    print(timeit.timeit(lambda: _swap_endian(4, data), number=1_000))  # noqa: T201
-    print(timeit.timeit(lambda: _swap_endian(8, data), number=1_000))  # noqa: T201
-
-
-@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
-@pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
-def _test_bench_from_native(mocker, ext, dtype):
-    print(f"Testing {ext} for {dtype}")  # noqa: T201
-    data_raw = bytes(i % 256 for i in range(8 * 1_000))
-    data = Vector.from_bytes(data_raw, dtype).to_native()
-    _mock_mask_extensions(mocker, ext)
-
-    def work(data, dtype):
-        Vector.from_native(data, dtype)
-
-    print(timeit.timeit(lambda: work(iter(data), dtype), number=1_000))  # noqa: T201
-    print(timeit.timeit(lambda: work(data, dtype), number=1_000))  # noqa: T201
-
-    print()  # noqa: T201
-    data_raw = bytes(i % 256 for i in range(8 * 1))
-    data = Vector.from_bytes(data_raw, dtype).to_native()
-    print(timeit.timeit(lambda: work(iter(data), dtype), number=100_000))  # noqa: T201
-    print(timeit.timeit(lambda: work(data, dtype), number=100_000))  # noqa: T201
-
-
-@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
-@pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
-def _test_bench_to_native(mocker, ext, dtype):
-    print(f"Testing {ext} for {dtype}")  # noqa: T201
-    data = Vector.from_bytes(bytes(i % 256 for i in range(8 * 1_000)), dtype)
-    _mock_mask_extensions(mocker, ext)
-
-    print(timeit.timeit(data.to_native, number=1_000))  # noqa: T201
-    print(timeit.timeit(data.to_native, number=1_000))  # noqa: T201
-
-    print()  # noqa: T201
-    data = Vector.from_bytes(bytes(i % 256 for i in range(8 * 1)), dtype)
-    print(timeit.timeit(data.to_native, number=100_000))  # noqa: T201
-    print(timeit.timeit(data.to_native, number=100_000))  # noqa: T201
 
 
 @pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
