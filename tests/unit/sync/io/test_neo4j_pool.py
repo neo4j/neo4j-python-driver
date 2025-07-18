@@ -17,6 +17,7 @@
 import contextlib
 import inspect
 import sys
+from copy import deepcopy
 
 import pytest
 
@@ -389,7 +390,7 @@ def test_acquire_performs_no_liveness_check_on_fresh_connection(
         READER1_ADDRESS, None, Deadline(30), liveness_timeout
     )
     assert cx1.unresolved_address == READER1_ADDRESS
-    cx1.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
 
 
 @pytest.mark.parametrize("liveness_timeout", (0, 1, 2))
@@ -406,13 +407,13 @@ def test_acquire_performs_liveness_check_on_existing_connection(
     # make sure we assume the right state
     assert cx1.unresolved_address == READER1_ADDRESS
     cx1.is_idle_for.assert_not_called()
-    cx1.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
 
     cx1.is_idle_for.return_value = True
 
     # release the connection
     pool.release(cx1)
-    cx1.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
 
     # then acquire it again and assert the liveness check was performed
     cx2 = pool._acquire(
@@ -420,7 +421,7 @@ def test_acquire_performs_liveness_check_on_existing_connection(
     )
     assert cx1 is cx2
     cx1.is_idle_for.assert_called_once_with(liveness_timeout)
-    cx2.reset.assert_called_once()
+    cx2.liveness_check.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -443,15 +444,15 @@ def test_acquire_creates_connection_on_failed_liveness_check(
     # make sure we assume the right state
     assert cx1.unresolved_address == READER1_ADDRESS
     cx1.is_idle_for.assert_not_called()
-    cx1.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
 
     cx1.is_idle_for.return_value = True
     # simulate cx1 failing liveness check
-    cx1.reset.side_effect = liveness_side_effect
+    cx1.liveness_check.side_effect = liveness_side_effect
 
     # release the connection
     pool.release(cx1)
-    cx1.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
 
     # then acquire it again and assert the liveness check was performed
     cx2 = pool._acquire(
@@ -460,7 +461,7 @@ def test_acquire_creates_connection_on_failed_liveness_check(
     assert cx1 is not cx2
     assert cx1.unresolved_address == cx2.unresolved_address
     cx1.is_idle_for.assert_called_once_with(liveness_timeout)
-    cx2.reset.assert_not_called()
+    cx2.liveness_check.assert_not_called()
     assert cx1 not in pool.connections[cx1.unresolved_address]
     assert cx2 in pool.connections[cx1.unresolved_address]
 
@@ -491,18 +492,18 @@ def test_acquire_returns_other_connection_on_failed_liveness_check(
     assert cx1 is not cx2
     cx1.is_idle_for.assert_not_called()
     cx2.is_idle_for.assert_not_called()
-    cx1.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
 
     cx1.is_idle_for.return_value = True
     cx2.is_idle_for.return_value = True
     # simulate cx1 failing liveness check
-    cx1.reset.side_effect = liveness_side_effect
+    cx1.liveness_check.side_effect = liveness_side_effect
 
     # release the connection
     pool.release(cx1)
     pool.release(cx2)
-    cx1.reset.assert_not_called()
-    cx2.reset.assert_not_called()
+    cx1.liveness_check.assert_not_called()
+    cx2.liveness_check.assert_not_called()
 
     # then acquire it again and assert the liveness check was performed
     cx3 = pool._acquire(
@@ -510,11 +511,36 @@ def test_acquire_returns_other_connection_on_failed_liveness_check(
     )
     assert cx3 is cx2
     cx1.is_idle_for.assert_called_once_with(liveness_timeout)
-    cx1.reset.assert_called_once()
+    cx1.liveness_check.assert_called_once()
     cx3.is_idle_for.assert_called_once_with(liveness_timeout)
-    cx3.reset.assert_called_once()
+    cx3.liveness_check.assert_called_once()
     assert cx1 not in pool.connections[cx1.unresolved_address]
     assert cx3 in pool.connections[cx1.unresolved_address]
+
+
+@pytest.mark.parametrize(
+    "liveness_error", (OSError, ServiceUnavailable, SessionExpired)
+)
+@mark_sync_test
+def test_failed_liveness_check_does_not_alter_routing_table(
+    opener, liveness_error
+):
+    def liveness_side_effect(*args, **kwargs):
+        raise liveness_error("liveness check failed")
+
+    liveness_timeout = 1
+    pool = _simple_pool(opener)
+    cx1 = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+    # simulate cx1 failing next liveness check
+    cx1.liveness_check.side_effect = liveness_side_effect
+    pool.release(cx1)
+    rts = deepcopy(pool.routing_tables)
+
+    cx2 = pool.acquire(
+        READ_ACCESS, 30, TEST_DB1, None, None, liveness_timeout
+    )
+    assert cx2 is not cx1
+    assert rts == pool.routing_tables
 
 
 @mark_sync_test

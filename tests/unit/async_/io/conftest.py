@@ -110,6 +110,10 @@ class AsyncFakeSocket2:
         self._outbox.append_message(tag, fields, None)
         await self._outbox.flush()
 
+    def assert_no_more_messages(self):
+        assert self._messages
+        assert not self.recv_buffer
+
 
 class AsyncFakeSocketPair:
     def __init__(self, address, packer_cls=None, unpacker_cls=None):

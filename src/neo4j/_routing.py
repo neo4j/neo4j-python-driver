@@ -193,3 +193,14 @@ class RoutingTable:
 
     def servers(self):
         return set(self.routers) | set(self.writers) | set(self.readers)
+
+    def __eq__(self, other):
+        if not isinstance(other, RoutingTable):
+            return NotImplemented
+        return (
+            self.database == other.database
+            and self.routers == other.routers
+            and self.readers == other.readers
+            and self.writers == other.writers
+            and self.ttl == other.ttl
+        )

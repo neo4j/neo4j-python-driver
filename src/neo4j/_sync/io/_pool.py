@@ -352,7 +352,7 @@ class IOPool(abc.ABC):
                             "[#%04X]  _: <POOL> liveness check",
                             connection_.local_port,
                         )
-                        connection_.reset()
+                        connection_.liveness_check()
                     except (OSError, ServiceUnavailable, SessionExpired):
                         return False
             return True

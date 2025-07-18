@@ -306,6 +306,9 @@ class Address(tuple, metaclass=_AddressMeta):
             pass
         raise error_cls(f"Unknown port value {self[1]!r}")
 
+    def __reduce__(self):
+        return Address, (tuple(self),)
+
 
 class IPv4Address(Address):
     """
@@ -352,11 +355,14 @@ class ResolvedAddress(Address):
     def _unresolved(self) -> Address:
         return super().__new__(Address, (self._host_name, *self[1:]))
 
-    def __new__(cls, iterable, *, host_name: str) -> ResolvedAddress:
+    def __new__(cls, iterable, host_name: str) -> ResolvedAddress:
         new = super().__new__(cls, iterable)
         new = t.cast(ResolvedAddress, new)
         new._unresolved_host_name = host_name
         return new
+
+    def __reduce__(self):
+        return ResolvedAddress, (tuple(self), self._unresolved_host_name)
 
 
 class ResolvedIPv4Address(IPv4Address, ResolvedAddress):

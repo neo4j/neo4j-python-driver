@@ -261,7 +261,7 @@ async def test_liveness_check(
         else:
             cx1.is_idle_for.assert_not_called()
         await pool.release(cx1)
-        cx1.reset.assert_not_called()
+        cx1.liveness_check.assert_not_called()
 
         # simulate after timeout
         cx1.is_idle_for.return_value = True
@@ -271,13 +271,13 @@ async def test_liveness_check(
         assert cx2 is cx1
         if effective_timeout is not None:
             cx1.is_idle_for.assert_called_once_with(effective_timeout)
-            cx1.reset.assert_awaited_once()
+            cx1.liveness_check.assert_awaited_once()
         else:
             cx1.is_idle_for.assert_not_called()
-            cx1.reset.assert_not_called()
-        cx1.reset.reset_mock()
+            cx1.liveness_check.assert_not_called()
+        cx1.liveness_check.reset_mock()
         await pool.release(cx1)
-        cx1.reset.assert_not_called()
+        cx1.liveness_check.assert_not_called()
 
 
 @pytest.mark.parametrize("unprepared", (True, False, None))

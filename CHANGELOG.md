@@ -183,6 +183,9 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ResultSummary.gql_status_objects`
     - `neo4j.GqlStatusObject`
     - (`neo4j.exceptions.GqlError`, `neo4j.exceptions.GqlErrorClassification`)
+- On failed liveness check (s. `liveness_check_timeout` configuration option), the driver will no longer remove the
+  remote from the cached routing tables, but only close the connection under test.  
+  This aligns the driver with the other official Neo4j drivers.
 
 
 ## Version 5.28

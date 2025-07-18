@@ -55,6 +55,7 @@ def fake_connection_generator(session_mocker):
             self.attach_mock(
                 mock.MagicMock(spec=AuthManager), "auth_manager"
             )
+            self.attach_mock(mock.MagicMock(), "liveness_check")
             self.unresolved_address = next(iter(args), "localhost")
 
             self.callbacks = []

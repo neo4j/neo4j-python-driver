@@ -126,6 +126,9 @@ class AsyncBolt:
     _closed = False
     _defunct = False
 
+    # Flag if the connection is currently performing a liveness check.
+    _liveness_check = False
+
     #: The pool of which this connection is a member
     pool = None
 
@@ -758,6 +761,13 @@ class AsyncBolt:
             type understood by packstream and are free to return anything.
         """
 
+    async def liveness_check(self):
+        self._liveness_check = True
+        try:
+            await self.reset()
+        finally:
+            self._liveness_check = False
+
     @abc.abstractmethod
     def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
         """
@@ -934,7 +944,11 @@ class AsyncBolt:
             # remove the connection from the pool, nor to try to close the
             # connection again.
             await self.close()
-            if self.pool and not self._get_server_state_manager().failed():
+            if (
+                not self._liveness_check
+                and self.pool
+                and not self._get_server_state_manager().failed()
+            ):
                 await self.pool.deactivate(address=self.unresolved_address)
 
         # Iterate through the outstanding responses, and if any correspond
