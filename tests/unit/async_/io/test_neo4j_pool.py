@@ -16,6 +16,7 @@
 
 import contextlib
 import inspect
+import sys
 
 import pytest
 
@@ -648,6 +649,68 @@ async def test_discovery_is_retried(custom_routing_opener, error):
     # successful router
     # same reader again
     assert len(opener.connections) == 4
+
+
+@mark_async_test
+async def test_failed_discovery_chains_errors(custom_routing_opener) -> None:
+    error1 = Neo4jError._hydrate_neo4j(
+        code="Neo.ClientError.Security.AuthorizationExpired",
+        message="message",
+    )
+    error2 = ServiceUnavailable("message")
+    error2_cause = Exception("just (be)cause")
+    error2.__cause__ = error2_cause
+    error3 = SessionExpired("message")
+    error4 = Neo4jError._hydrate_neo4j(
+        code="Neo.Made.Up.Code",
+        message="message",
+    )
+    opener = custom_routing_opener(
+        [
+            None,  # first call to router for seeding the RT with more routers
+            error1,  # router 1 fails
+            error2,  # router 2 fails
+            error3,  # router 3 fails
+            error4,  # initial router fails
+        ]
+    )
+    pool = AsyncNeo4jPool(
+        opener,
+        _pool_config(),
+        WorkspaceConfig(),
+        ResolvedAddress(("1.2.3.1", 9999), host_name="host"),
+    )
+    cx1 = await pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+    await pool.release(cx1)
+    pool.routing_tables.get(TEST_DB1.name).ttl = 0
+
+    with pytest.raises(ServiceUnavailable) as exc_info:
+        await pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+
+    exc = exc_info.value
+    if sys.version_info >= (3, 11):
+        group = exc.__cause__
+        assert isinstance(group, ExceptionGroup)  # noqa: F821
+        assert all(
+            a is b
+            for a, b in zip(
+                group.exceptions,
+                [error1, error2, error3, error4],
+                strict=True,
+            )
+        )
+        assert error4.__cause__ is None
+        assert error3.__cause__ is None
+        assert error2.__cause__ is error2_cause
+        assert error2_cause.__cause__ is None
+        assert error1.__cause__ is None
+    else:
+        assert exc.__cause__ is error4
+        assert error4.__cause__ is error3
+        assert error3.__cause__ is error2
+        assert error2.__cause__ is error2_cause
+        assert error2_cause.__cause__ is error1
+        assert error1.__cause__ is None
 
 
 @pytest.mark.parametrize(

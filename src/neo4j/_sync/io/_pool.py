@@ -20,6 +20,7 @@ import abc
 import asyncio
 import logging
 import math
+import sys
 from collections import (
     defaultdict,
     deque,
@@ -53,6 +54,7 @@ from ...exceptions import (
     DriverError,
     Neo4jError,
     ReadServiceUnavailable,
+    RoutingServiceUnavailable,
     ServiceUnavailable,
     SessionExpired,
     WriteServiceUnavailable,
@@ -807,6 +809,7 @@ class Neo4jPool(IOPool):
         imp_user,
         bookmarks,
         auth,
+        ignored_errors=None,
     ):
         """
         Fetch a routing table from a given router address.
@@ -820,6 +823,7 @@ class Neo4jPool(IOPool):
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
         :param auth: auth
+        :param ignored_errors: optional list to accumulate ignored errors in
 
         :returns: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
@@ -840,15 +844,16 @@ class Neo4jPool(IOPool):
             # router. Hence, the driver should fail fast during discovery.
             if e._is_fatal_during_discovery():
                 raise
-        except (ServiceUnavailable, SessionExpired):
-            pass
+            if ignored_errors is not None:
+                ignored_errors.append(e)
+        except (ServiceUnavailable, SessionExpired) as e:
+            if ignored_errors is not None:
+                ignored_errors.append(e)
         if not new_routing_info:
             log.debug(
                 "[#0000]  _: <POOL> failed to fetch routing info from %r",
                 address,
             )
-            # TODO: 7.0 - when Python 3.11+ is the minimum,
-            #       use exception groups instead of swallowing discovery errors
             return None
         else:
             servers = new_routing_info[0]["servers"]
@@ -873,6 +878,12 @@ class Neo4jPool(IOPool):
                 "server %s",
                 address,
             )
+            if ignored_errors is not None:
+                ignored_errors.append(
+                    RoutingServiceUnavailable(
+                        "Rejected routing table: no routers"
+                    )
+                )
             return None
 
         # No readers
@@ -881,6 +892,12 @@ class Neo4jPool(IOPool):
                 "[#0000]  _: <POOL> no read servers returned from server %s",
                 address,
             )
+            if ignored_errors is not None:
+                ignored_errors.append(
+                    ReadServiceUnavailable(
+                        "Rejected routing table: no readers"
+                    )
+                )
             return None
 
         # At least one of each is fine, so return this table
@@ -895,6 +912,7 @@ class Neo4jPool(IOPool):
         auth,
         acquisition_timeout,
         database_callback,
+        ignored_errors=None,
     ):
         """
         Try to update routing tables with the given routers.
@@ -921,6 +939,7 @@ class Neo4jPool(IOPool):
                     imp_user=imp_user,
                     bookmarks=bookmarks,
                     auth=auth,
+                    ignored_errors=ignored_errors,
                 )
                 if new_routing_table is not None:
                     new_database = new_routing_table.database
@@ -970,6 +989,7 @@ class Neo4jPool(IOPool):
         acquisition_timeout = acquisition_timeout_to_deadline(
             acquisition_timeout
         )
+        errors = []
         with self.refresh_lock:
             routing_table = self.get_routing_table(database)
             if routing_table is not None:
@@ -994,6 +1014,7 @@ class Neo4jPool(IOPool):
                     auth=auth,
                     acquisition_timeout=acquisition_timeout,
                     database_callback=database_callback,
+                    ignored_errors=errors,
                 )
             ):
                 # Why is only the first initial routing address used?
@@ -1006,6 +1027,7 @@ class Neo4jPool(IOPool):
                 auth=auth,
                 acquisition_timeout=acquisition_timeout,
                 database_callback=database_callback,
+                ignored_errors=errors,
             ):
                 return
 
@@ -1019,6 +1041,7 @@ class Neo4jPool(IOPool):
                     auth=auth,
                     acquisition_timeout=acquisition_timeout,
                     database_callback=database_callback,
+                    ignored_errors=errors,
                 )
             ):
                 # Why is only the first initial routing address used?
@@ -1026,7 +1049,33 @@ class Neo4jPool(IOPool):
 
             # None of the routers have been successful, so just fail
             log.error("Unable to retrieve routing information")
-            raise ServiceUnavailable("Unable to retrieve routing information")
+            if sys.version_info >= (3, 11):
+                e = ExceptionGroup(  # noqa: F821 # version guard in place
+                    "All routing table requests failed", errors
+                )
+            else:
+                e = None
+                for error in errors:
+                    if e is None:
+                        e = error
+                        continue
+                    cause = error
+                    seen_causes = {id(cause)}
+                    while True:
+                        next_cause = getattr(cause, "__cause__", None)
+                        if next_cause is None:
+                            break
+                        if id(next_cause) in seen_causes:
+                            # Avoid infinite recursion in case of circular
+                            # references.
+                            break
+                        cause = next_cause
+                        seen_causes.add(id(cause))
+                    cause.__cause__ = e
+                    e = error
+            raise ServiceUnavailable(
+                "Unable to retrieve routing information"
+            ) from e
 
     def update_connection_pool(self):
         with self.refresh_lock:
