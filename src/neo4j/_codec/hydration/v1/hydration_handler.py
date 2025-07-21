@@ -41,6 +41,7 @@ from ....time import (
     Duration,
     Time,
 )
+from ....vector import Vector
 from .._common import (
     GraphHydrator,
     HydrationScope,
@@ -49,6 +50,7 @@ from .._interface import HydrationHandlerABC
 from . import (
     spatial,
     temporal,
+    vector,
 )
 
 
@@ -177,6 +179,7 @@ class HydrationHandler(HydrationHandlerABC):
                 datetime: temporal.dehydrate_datetime,
                 Duration: temporal.dehydrate_duration,
                 timedelta: temporal.dehydrate_timedelta,
+                Vector: vector.dehydrate_vector,
             }
         )
         if np is not None:

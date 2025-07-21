@@ -137,6 +137,7 @@ NEO4J_MODULES = (
     ("auth_management", None),
     ("debug", None),
     ("exceptions", None),
+    ("vector", None),
     ("warnings", None),
 )
 

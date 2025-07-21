@@ -68,7 +68,7 @@ def test_handshake_manifest_v1(
     caplog,
     log_level,
 ):
-    chosen_version = (5, 8)
+    chosen_version = (6, 0)
     expected_feature_bits = b"\x00"  # varint(0)
 
     caplog.set_level(log_level)

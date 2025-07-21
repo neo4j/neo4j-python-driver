@@ -23,11 +23,11 @@ from neo4j._codec.packstream import Structure
 from neo4j.time import DateTime
 
 from ..v1.test_temporal_hydration import (
-    TestTemporalHydration as _TestTemporalHydrationV1,
+    TestTemporalHydration as _TestTemporalHydration,
 )
 
 
-class TestTemporalHydration(_TestTemporalHydrationV1):
+class TestTemporalHydration(_TestTemporalHydration):
     @pytest.fixture
     def hydration_handler(self):
         return HydrationHandler()

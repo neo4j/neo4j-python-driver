@@ -27,7 +27,7 @@ from neo4j.time import (
     Time,
 )
 
-from ._base import HydrationHandlerTestBase
+from .._base import HydrationHandlerTestBase
 
 
 class TestTemporalHydration(HydrationHandlerTestBase):

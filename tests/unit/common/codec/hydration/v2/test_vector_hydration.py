@@ -14,31 +14,16 @@
 # limitations under the License.
 
 
-from __future__ import annotations
+import pytest
 
-from contextlib import suppress
+from neo4j._codec.hydration.v2 import HydrationHandler
 
-from .. import _typing as t  # noqa: TC001
-
-
-np: t.Any = None
-
-with suppress(ImportError):
-    import numpy as np  # type: ignore[no-redef]
-
-pd: t.Any = None
-
-with suppress(ImportError):
-    import pandas as pd  # type: ignore[no-redef]
-
-pa: t.Any = None
-
-with suppress(ImportError):
-    import pyarrow as pa  # type: ignore[no-redef]
+from ..v1.test_vector_hydration import (
+    TestVectorHydration as _TestVectorHydration,
+)
 
 
-__all__ = [
-    "np",
-    "pa",
-    "pd",
-]
+class TestVectorHydration(_TestVectorHydration):
+    @pytest.fixture
+    def hydration_handler(self):
+        return HydrationHandler()

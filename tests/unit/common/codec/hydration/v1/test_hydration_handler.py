@@ -43,8 +43,9 @@ from neo4j.time import (
     Duration,
     Time,
 )
+from neo4j.vector import Vector
 
-from ._base import HydrationHandlerTestBase
+from .._base import HydrationHandlerTestBase
 
 
 class TestHydrationHandler(HydrationHandlerTestBase):
@@ -85,6 +86,7 @@ class TestHydrationHandler(HydrationHandlerTestBase):
             pd.Timestamp,
             pd.Timedelta,
             type(pd.NaT),
+            Vector,
         }
         assert not hooks.subtypes
 

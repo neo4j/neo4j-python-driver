@@ -49,6 +49,7 @@ def test_class_method_protocol_handlers():
         (3, 0),
         (4, 2), (4, 3), (4, 4),
         (5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8),
+        (6, 0),
     }
     # fmt: on
 
@@ -81,7 +82,8 @@ def test_class_method_protocol_handlers():
         ((5, 7), 1),
         ((5, 8), 1),
         ((5, 9), 0),
-        ((6, 0), 0),
+        ((6, 0), 1),
+        ((6, 1), 0),
     ],
 )
 def test_class_method_protocol_handlers_with_protocol_version(
@@ -91,7 +93,6 @@ def test_class_method_protocol_handlers_with_protocol_version(
     assert (test_input in protocol_handlers) == expected
 
 
-# [bolt-version-bump] search tag when changing bolt version support
 def test_class_method_get_handshake():
     handshake = Bolt.get_handshake()
     assert (
@@ -153,6 +154,7 @@ def test_cancel_hello_in_open(mocker, none_auth):
         ((5, 6), "neo4j._sync.io._bolt5.Bolt5x6"),
         ((5, 7), "neo4j._sync.io._bolt5.Bolt5x7"),
         ((5, 8), "neo4j._sync.io._bolt5.Bolt5x8"),
+        ((6, 0), "neo4j._sync.io._bolt6.Bolt6x0"),
     ),
 )
 @mark_sync_test
@@ -193,14 +195,15 @@ def test_version_negotiation(
         (4, 0),
         (4, 1),
         (5, 9),
-        (6, 0),
+        (6, 1),
     ),
 )
 @mark_sync_test
 def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     supported_protocols = (
         "('3.0', '4.2', '4.3', '4.4', "
-        "'5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8')"
+        "'5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8', "
+        "'6.0')"
     )
 
     address = ("localhost", 7687)

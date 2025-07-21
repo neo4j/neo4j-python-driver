@@ -54,12 +54,12 @@ Forum = "https://community.neo4j.com/c/drivers-stacks/python/"
 Discord = "https://discord.com/invite/neo4j"
 
 [project.optional-dependencies]
-numpy = ["numpy >= 1.7.0, < 3.0.0"]
+numpy = ["numpy >= 1.21.2, < 3.0.0"]
 pandas = [
     "pandas >= 1.1.0, < 3.0.0",
-    "numpy >= 1.7.0, < 3.0.0",
+    "numpy >= 1.21.2, < 3.0.0",
 ]
-pyarrow = ["pyarrow >= 1.0.0"]
+pyarrow = ["pyarrow >= 6.0.0, < 21.0.0"]
 
 
 [build-system]
@@ -207,8 +207,9 @@ asyncio_default_fixture_loop_scope="function"
 [[tool.mypy.overrides]]
 module = [
     "pandas.*",
-    "neo4j._codec.packstream._rust",
-    "neo4j._codec.packstream._rust.*",
+    "pyarrow.*",
+    "neo4j._rust",
+    "neo4j._rust.*",
 ]
 ignore_missing_imports = true
 

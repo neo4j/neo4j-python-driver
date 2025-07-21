@@ -36,7 +36,7 @@ from .types import (
 
 
 try:
-    from .._rust.v1 import (
+    from ...._rust.codec.packstream.v1 import (
         pack as _rust_pack,
         unpack as _rust_unpack,
     )

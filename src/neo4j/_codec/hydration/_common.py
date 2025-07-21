@@ -46,7 +46,7 @@ class DehydrationHooks:
         transformer = self.exact_types.get(type_)
         if transformer is not None:
             return transformer
-        transformer = next(
+        return next(
             (
                 f
                 for super_type, f in self.subtypes.items()
@@ -54,9 +54,6 @@ class DehydrationHooks:
             ),
             None,
         )
-        if transformer is not None:
-            return transformer
-        return None
 
 
 class BrokenHydrationObject:

@@ -39,6 +39,7 @@ from neo4j.time import (
     Duration,
     Time,
 )
+from neo4j.vector import Vector
 
 from ._warning_check import warning_check
 from .exceptions import MarkdAsDriverError
@@ -299,6 +300,14 @@ def field(v):
                 "days": v.days,
                 "seconds": v.seconds,
                 "nanoseconds": v.nanoseconds,
+            },
+        }
+    if isinstance(v, Vector):
+        return {
+            "name": "CypherVector",
+            "data": {
+                "dtype": v.dtype,
+                "data": " ".join(f"{byte:02x}" for byte in v.raw()),
             },
         }
 

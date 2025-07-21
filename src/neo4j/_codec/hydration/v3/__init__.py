@@ -13,32 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from __future__ import annotations
-
-from contextlib import suppress
-
-from .. import _typing as t  # noqa: TC001
-
-
-np: t.Any = None
-
-with suppress(ImportError):
-    import numpy as np  # type: ignore[no-redef]
-
-pd: t.Any = None
-
-with suppress(ImportError):
-    import pandas as pd  # type: ignore[no-redef]
-
-pa: t.Any = None
-
-with suppress(ImportError):
-    import pyarrow as pa  # type: ignore[no-redef]
+from .hydration_handler import HydrationHandler
 
 
 __all__ = [
-    "np",
-    "pa",
-    "pd",
+    "HydrationHandler",
 ]

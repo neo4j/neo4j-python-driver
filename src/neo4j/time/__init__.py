@@ -59,6 +59,11 @@ else:
     from .._warnings import deprecated as _deprecated
 
 
+if False:
+    # Ugly work-around to make sphinx understand `@_t.overload`
+    import typing as _t  # type: ignore[no-redef]
+
+
 __all__ = [
     "MAX_INT64",
     "MAX_YEAR",

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from __future__ import annotations
+from __future__ import annotations as _
 
 from collections.abc import (
     AsyncIterator,
@@ -32,6 +32,7 @@ from collections.abc import (
     Set,
     ValuesView,
 )
+from importlib.util import find_spec as _find_spec
 from typing import (
     Any,
     cast,
@@ -89,12 +90,13 @@ __all__: tuple[str, ...] = (
     "overload",
 )
 
-if TYPE_CHECKING:
-    from typing_extensions import NotRequired  # Python 3.11+  # noqa: TC004
-    from typing_extensions import Self  # Python 3.11  # noqa: TC004
-    from typing_extensions import (  # Python 3.11  # noqa: TC004 Python
-        LiteralString,
-    )
+
+_te_available = _find_spec("typing_extensions") is not None
+
+if TYPE_CHECKING or _te_available:
+    from typing_extensions import LiteralString  # Python 3.11+
+    from typing_extensions import NotRequired  # Python 3.11+
+    from typing_extensions import Self  # Python 3.11+
 
     __all__ = (  # noqa: PLE0604 false positive
         *__all__,

@@ -1,0 +1,1250 @@
+# Copyright (c) "Neo4j"
+# Neo4j Sweden AB [https://neo4j.com]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Vector type to be exchanged with the DBMS."""
+
+from __future__ import annotations as _
+
+import abc as _abc
+import struct as _struct
+import sys as _sys
+from enum import Enum as _Enum
+
+from . import _typing as _t
+from ._optional_deps import (
+    np as _np,
+    pa as _pa,
+)
+
+
+if False:
+    # Ugly work-around to make sphinx understand `@_t.overload`
+    import typing as _t  # type: ignore[no-redef]
+
+
+try:
+    from ._rust import vector as _vec_rust
+    from ._rust.vector import swap_endian as _swap_endian_unchecked_rust
+except ImportError:
+    _swap_endian_unchecked_rust = None
+    _vec_rust = None
+
+if _t.TYPE_CHECKING:
+    import numpy  # type: ignore[import]
+    import pyarrow  # type: ignore[import]
+
+
+__all__ = [
+    "Vector",
+    "VectorDType",
+    "VectorEndian",
+]
+
+
+class Vector:
+    r"""
+    A class representing a Neo4j vector.
+
+    The constructor accepts various types of data to create a vector.
+    Depending on ``data``'s type, further arguments may be required/allowed.
+    Examples of valid invocations are::
+
+        Vector([1, 2, 3], "i8")
+        Vector(b"\x00\x01\x00\x02", VectorDType.I16)
+        Vector(b"\x01\x00\x02\x00", "i16", byteorder="little")
+        Vector(numpy.array([1, 2, 3]))
+        Vector(pyarrow.array([1, 2, 3]))
+
+    Internally, a vector is stored as a contiguous block of memory
+    (:class:`bytes`), containing homogeneous values encoded in big-endian
+    order. Support for this feature requires a DBMS supporting Bolt version
+    6.0 or later. This corresponds to Neo4j 2025.08 or later.
+
+    :param data:
+        The data from which the vector will be constructed.
+        The constructor accepts the following types:
+
+        * ``Iterable[float]``, ``Iterable[int]`` (but not ``bytes`` or
+          ``bytearray``):
+          Use an iterable of floats or an iterable of ints to construct the
+          vector from native Python values.
+          The ``dtype`` parameter is required.
+        * ``bytes``, ``bytearray``: Use raw bytes to construct the vector.
+          The ``dtype`` parameter is required and ``byteorder`` is optional.
+        * ``numpy.ndarray``: Use a numpy array to construct the vector.
+          No further parameters are accepted.
+        * ``pyarrow.Array``: Use a pyarrow array to construct the vector.
+          No further parameters are accepted.
+    :param dtype: The type of the vector.
+        See :attr:`.dtype` for currently supported inner data types.
+
+        This parameter is required if ``data`` is of type :class:`bytes`,
+        :class:`bytearray`, ``Iterable[float]``, or ``Iterable[int]``.
+        Otherwise, it must be omitted.
+    :param byteorder: The endianness of the input data (default: ``"big"``).
+        If ``"little"`` is given, ``neo4j-rust-ext`` or ``numpy`` is used to
+        speed up the internal byte flipping (if either package is installed).
+        Use :data:`sys.byteorder` if you want to use the system's native
+        endianness.
+
+        This parameter is optional if ``data`` is of type ``bytes`` or
+        ``bytearray``. Otherwise, it must be omitted.
+
+    :raises ValueError:
+        Depending on the type of ``data``:
+            * ``Iterable[float]``, ``Iterable[int]`` (excluding byte types):
+                * If the dtype is not supported.
+            * ``bytes``, ``bytearray``:
+                * If the dtype is not supported or data's size is not a
+                  multiple of dtype's size.
+                * If byteorder is not one of ``"big"`` or ``"little"``.
+            * ``numpy.ndarray``:
+                * If the dtype is not supported.
+                * If the array is not one-dimensional.
+            * ``pyarrow.Array``:
+                * If the array's type is not supported.
+                * If the array contains null values.
+    :raises TypeError:
+        Depending on the type of ``data``:
+            * ``Iterable[float]``, ``Iterable[int]``(excluding byte types):
+                * If data's elements don't match the expected type depending on
+                  dtype.
+    :raises OverflowError:
+        Depending on the type of ``data``:
+            * ``Iterable[float]``, ``Iterable[int]``(excluding byte types):
+                * If the value is out of range for the given type.
+
+    .. versionadded: 6.0
+    """
+
+    __slots__ = ("__weakref__", "_inner")
+
+    _inner: _InnerVector
+
+    @_t.overload
+    def __init__(
+        self,
+        data: _t.Iterable[float],
+        dtype: _T_VectorDTypeFloat,
+        /,
+    ) -> None: ...
+
+    @_t.overload
+    def __init__(
+        self,
+        data: _t.Iterable[int],
+        dtype: _T_VectorDTypeInt,
+        /,
+    ) -> None: ...
+
+    @_t.overload
+    def __init__(
+        self,
+        data: bytes | bytearray,
+        dtype: _T_VectorDType,
+        /,
+        *,
+        byteorder: _T_VectorEndian = "big",
+    ) -> None: ...
+
+    @_t.overload
+    def __init__(self, data: numpy.ndarray, /) -> None: ...
+
+    @_t.overload
+    def __init__(self, data: pyarrow.Array, /) -> None: ...
+
+    def __init__(self, data, *args, **kwargs) -> None:
+        if isinstance(data, (bytes, bytearray)):
+            self._set_bytes(bytes(data), *args, **kwargs)
+        elif _np is not None and isinstance(data, _np.ndarray):
+            self._set_numpy(data, *args, **kwargs)
+        elif _pa is not None and isinstance(data, _pa.Array):
+            self._set_pyarrow(data, *args, **kwargs)
+        else:
+            self._set_native(data, *args, **kwargs)
+
+    def raw(self, /, *, byteorder: _T_VectorEndian = "big") -> bytes:
+        """
+        Get the raw bytes of the vector.
+
+        The data is a continuous block of memory, containing an array of the
+        vector's data type. The data is stored in big-endian order. Pass
+        another byte-order to this method to get the converted data.
+
+        :param byteorder: The endianness the data should be returned in.
+            If the data's byte-order needs flipping, this method tries to use
+            ``neo4j-rust-ext`` or ``numpy``, if installed, to speed up the
+            process. Use :data:`sys.byteorder` if you want to use the system's
+            native endianness.
+
+        :returns: The raw bytes of the vector.
+
+        :raises ValueError:
+            If byteorder is not one of ``"big"`` or ``"little"``.
+        """
+        match byteorder:
+            case "big":
+                return self._inner.data
+            case "little":
+                return self._inner.data_le
+            case _:
+                raise ValueError(
+                    f"Invalid byteorder: {byteorder!r}. "
+                    "Must be 'big' or 'little'."
+                )
+
+    def set_raw(
+        self,
+        data: bytes,
+        /,
+        *,
+        byteorder: _T_VectorEndian = "big",
+    ) -> None:
+        """
+        Set the raw bytes of the vector.
+
+        :param data: The new raw bytes of the vector.
+        :param byteorder: The endianness of ``data``.
+            The data will always be stored in big-endian order. If passed-in
+            byte-order needs flipping, this method tries to use
+            ``neo4j-rust-ext`` or ``numpy``, if installed, to speed up the
+            process. Use :data:`sys.byteorder` if you want to use the system's
+            native endianness.
+
+        :raises ValueError:
+          * If data's size is not a multiple of dtype's size.
+          * If byteorder is not one of ``"big"`` or ``"little"``.
+        :raises TypeError: If the data is not of type bytes.
+        """
+        match byteorder:
+            case "big":
+                self._inner.data = data
+            case "little":
+                self._inner.data_le = data
+            case _:
+                raise ValueError(
+                    f"Invalid byteorder: {byteorder!r}. "
+                    "Must be 'big' or 'little'."
+                )
+
+    @property
+    def dtype(self) -> VectorDType:
+        """
+        Get the type of the vector.
+
+        :returns: The type of the vector.
+        """
+        return self._inner.dtype
+
+    def __len__(self) -> int:
+        """
+        Get the number of elements in the vector.
+
+        :returns: The number of elements in the vector.
+        """
+        return len(self._inner)
+
+    def __str__(self) -> str:
+        return str(self._inner)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.raw()!r}, {self.dtype!r})"
+
+    @classmethod
+    def from_bytes(
+        cls,
+        data: bytes,
+        dtype: _T_VectorDType,
+        /,
+        *,
+        byteorder: _T_VectorEndian = "big",
+    ) -> _t.Self:
+        """
+        Create a Vector instance from raw bytes.
+
+        :param data: The raw bytes to create the vector from.
+        :param dtype: The type of the vector.
+            See also :attr:`.dtype`.
+        :param byteorder: The endianness of the data.
+            If ``"little"``, the bytes in data will be flipped to big-endian.
+            If installed, ``neo4j-rust-ext`` or ``numpy`` will be used to speed
+            up the byte flipping. Use :data:`sys.byteorder` if you want to use
+            the system's native endianness.
+
+        :raises ValueError:
+          * If data's size is not a multiple of dtype's size.
+          * If byteorder is not one of ``"big"`` or ``"little"``.
+        :raises TypeError: If the data is not of type bytes.
+        """
+        obj = cls.__new__(cls)
+        obj._set_bytes(data, dtype, byteorder=byteorder)
+        return obj
+
+    def _set_bytes(
+        self,
+        data: bytes,
+        dtype: _T_VectorDType,
+        /,
+        *,
+        byteorder: _T_VectorEndian = "big",
+    ) -> None:
+        self._inner = _get_type(dtype)(data, byteorder=byteorder)
+
+    @classmethod
+    @_t.overload
+    def from_native(
+        cls, data: _t.Iterable[float], dtype: _T_VectorDTypeFloat, /
+    ) -> _t.Self: ...
+
+    @classmethod
+    @_t.overload
+    def from_native(
+        cls, data: _t.Iterable[int], dtype: _T_VectorDTypeInt, /
+    ) -> _t.Self: ...
+
+    @classmethod
+    def from_native(
+        cls,
+        data: _t.Iterable[float] | _t.Iterable[int],
+        dtype: _T_VectorDType,
+        /,
+    ) -> _t.Self:
+        """
+        Create a Vector instance from an iterable of values.
+
+        :param data: The list, tuple, or other iterable of values to create the
+            vector from.
+        :param dtype: The type of the vector.
+            See also :attr:`.dtype`.
+
+        ``data`` must contain values that match the expected type given by
+        ``dtype``:
+
+        * ``dtype == "f32"``: :class:`float`
+        * ``dtype == "f64"``: :class:`float`
+        * ``dtype == "i8"``: :class:`int`
+        * ``dtype == "i16"``: :class:`int`
+        * ``dtype == "i32"``: :class:`int`
+        * ``dtype == "i64"``: :class:`int`
+
+        :raises ValueError: If the dtype is not supported.
+        :raises TypeError: If data's elements don't match the expected type
+            depending on dtype.
+        :raises OverflowError: If the value is out of range for the given type.
+        """
+        obj = cls.__new__(cls)
+        obj._set_native(data, dtype)
+        return obj
+
+    def _set_native(
+        self,
+        data: _t.Iterable[float] | _t.Iterable[int],
+        dtype: _T_VectorDType,
+        /,
+    ) -> None:
+        self._inner = _get_type(dtype).from_native(data)
+
+    def to_native(self) -> list[object]:
+        """
+        Convert the vector to a native Python list.
+
+        The type of the elements in the list depends on the dtype of the
+        vector. See :meth:`Vector.from_native` for details.
+
+        :returns: A list of values representing the vector.
+        """
+        return self._inner.to_native()
+
+    @classmethod
+    def from_numpy(cls, data: numpy.ndarray, /) -> _t.Self:
+        """
+        Create a Vector instance from a numpy array.
+
+        :param data: The numpy array to create the vector from.
+            The array must be one-dimensional and have a dtype that is
+            supported by Neo4j vectors: ``float64``, ``float32``,
+            ``int64``, ``int32``, ``int16``, or ``int8``.
+            See also :attr:`.dtype`.
+
+        :raises ValueError:
+          * If the dtype is not supported.
+          * If the array is not one-dimensional.
+        :raises ImportError: If numpy is not installed.
+
+        :returns: A Vector instance constructed from the numpy array.
+        """
+        obj = cls.__new__(cls)
+        obj._set_numpy(data)
+        return obj
+
+    def to_numpy(self) -> numpy.ndarray:
+        """
+        Convert the vector to a numpy array.
+
+        The array's dtype depends on the dtype of the vector. However, it will
+        always be in big-endian order.
+
+        :returns: A numpy array representing the vector.
+
+        :raises ImportError: If numpy is not installed.
+        """
+        return self._inner.to_numpy()
+
+    def _set_numpy(self, data: numpy.ndarray, /) -> None:
+        if data.ndim != 1:
+            raise ValueError("Data must be one-dimensional")
+        type_: type[_InnerVector]
+        match data.dtype.name:
+            case "float64":
+                type_ = _VecF64
+            case "float32":
+                type_ = _VecF32
+            case "int64":
+                type_ = _VecI64
+            case "int32":
+                type_ = _VecI32
+            case "int16":
+                type_ = _VecI16
+            case "int8":
+                type_ = _VecI8
+            case _:
+                raise ValueError(f"Unsupported numpy dtype: {data.dtype.name}")
+        self._inner = type_.from_numpy(data)
+
+    @classmethod
+    def from_pyarrow(cls, data: pyarrow.Array, /) -> _t.Self:
+        """
+        Create a Vector instance from a pyarrow array.
+
+        :param data: The pyarrow array to create the vector from.
+            The array must have a type that is supported by Neo4j.
+            See also :attr:`.dtype`.
+
+        PyArrow stores data in little endian. Therefore, the byte-order needs
+        to be swapped. If ``neo4j-rust-ext`` or ``numpy`` is installed, it will
+        be used to speed up the byte flipping.
+
+        :raises ValueError:
+          * If the array's type is not supported.
+          * If the array contains null values.
+        :raises ImportError: If pyarrow is not installed.
+
+        :returns: A Vector instance constructed from the pyarrow array.
+        """
+        obj = cls.__new__(cls)
+        obj._set_pyarrow(data)
+        return obj
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        """
+        Convert the vector to a pyarrow array.
+
+        :returns: A pyarrow array representing the vector.
+
+        :raises ImportError: If pyarrow is not installed.
+        """
+        return self._inner.to_pyarrow()
+
+    def _set_pyarrow(self, data: pyarrow.Array, /) -> None:
+        import pyarrow
+
+        type_: type[_InnerVector]
+        if data.type == pyarrow.float64():
+            type_ = _VecF64
+        elif data.type == pyarrow.float32():
+            type_ = _VecF32
+        elif data.type == pyarrow.int64():
+            type_ = _VecI64
+        elif data.type == pyarrow.int32():
+            type_ = _VecI32
+        elif data.type == pyarrow.int16():
+            type_ = _VecI16
+        elif data.type == pyarrow.int8():
+            type_ = _VecI8
+        else:
+            raise ValueError(f"Unsupported pyarrow dtype: {data.type}")
+        inner = type_.from_pyarrow(data)
+        self._inner = inner
+
+    # TODO: consider conversion to/from
+    #   * tensorflow
+    #   * pandas
+    #   * polars
+
+
+class VectorEndian(str, _Enum):
+    """
+    Data endianness (i.e., byte order) of the elements in a :class:`Vector`.
+
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Every driver API accepting a :class:`.VectorEndian` value will also accept
+    a string::
+
+        >>> VectorEndian.BIG == "big"
+        True
+        >>> VectorEndian.LITTLE == "little"
+        True
+
+    .. seealso:: :attr:`Vector.raw`
+
+    .. versionadded:: 6.0
+    """
+
+    BIG = "big"
+    LITTLE = "little"
+
+
+_T_VectorEndian = VectorEndian | _t.Literal["big", "little"]
+
+
+class VectorDType(str, _Enum):
+    """
+    The data type of the elements in a :class:`Vector`.
+
+    Currently supported types are:
+
+        * ``f32``: 32-bit floating point number (single)
+        * ``f64``: 64-bit floating point number (double)
+        * ``i8``: 8-bit integer
+        * ``i16``: 16-bit integer
+        * ``i32``: 32-bit integer
+        * ``i64``: 64-bit integer
+
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Every driver API accepting a :class:`.VectorDType` value will also accept
+    a string::
+
+        >>> VectorDType.F32 == "f32"
+        True
+        >>> VectorDType.I8 == "i8"
+        True
+
+    .. seealso:: :attr:`Vector.dtype`
+
+    .. versionadded:: 6.0
+    """
+
+    F32 = "f32"
+    F64 = "f64"
+    I8 = "i8"
+    I16 = "i16"
+    I32 = "i32"
+    I64 = "i64"
+
+
+_T_VectorDType = (
+    VectorDType | _t.Literal["f32", "f64", "i8", "i16", "i32", "i64"]
+)
+_T_VectorDTypeInt = _t.Literal[
+    VectorDType.I8,
+    VectorDType.I16,
+    VectorDType.I32,
+    VectorDType.I64,
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+]
+_T_VectorDTypeFloat = _t.Literal[
+    VectorDType.F32, VectorDType.F64, "f32", "f64"
+]
+
+
+def _swap_endian(type_size: int, data: bytes, /) -> bytes:
+    """Swap from big endian to little endian."""
+    if type_size == 1:
+        return data
+    if type_size not in {2, 4, 8}:
+        raise ValueError(f"Unsupported type size: {type_size}")
+    if len(data) % type_size != 0:
+        raise ValueError(
+            f"Data length {len(data)} is not a multiple of {type_size}"
+        )
+    return _swap_endian_unchecked(type_size, data)
+
+
+def _swap_endian_unchecked_np(type_size: int, data: bytes, /) -> bytes:
+    match type_size:
+        case 2:
+            dtype = _np.dtype("<i2")
+        case 4:
+            dtype = _np.dtype("<i4")
+        case 8:
+            dtype = _np.dtype("<i8")
+        case _:
+            raise ValueError(f"Unsupported type size: {type_size}")
+    return _np.frombuffer(data, dtype=dtype).byteswap().tobytes()
+
+
+def _swap_endian_unchecked_py(type_size: int, data: bytes, /) -> bytes:
+    return bytes(
+        byte
+        for i in range(0, len(data), type_size)
+        for byte in data[i : i + type_size][::-1]
+    )
+
+
+if _swap_endian_unchecked_rust is not None:
+    _swap_endian_unchecked = _swap_endian_unchecked_rust
+elif _np is not None:
+    _swap_endian_unchecked = _swap_endian_unchecked_np
+else:
+    _swap_endian_unchecked = _swap_endian_unchecked_py
+
+
+def _get_type(dtype: _T_VectorDType, /) -> type[_InnerVector]:
+    if isinstance(dtype, str):
+        if dtype not in VectorDType.__members__.values():
+            raise ValueError(f"Unsupported vector type: {dtype!r}.")
+        dtype = VectorDType(dtype)
+    if not isinstance(dtype, VectorDType):
+        raise TypeError(f"Expected a VectorDType or str, got {type(dtype)}.")
+    if dtype not in _TYPES:
+        raise ValueError(f"Unsupported vector type: {dtype!r}.")
+    return _TYPES[dtype]
+
+
+_TYPES: dict[VectorDType, type[_InnerVector]] = {}
+
+
+class _InnerVector(_abc.ABC):
+    __slots__ = ("_data", "_data_le")
+
+    dtype: _t.ClassVar[VectorDType]
+    size: _t.ClassVar[int]
+    _data: bytes
+    _data_le: bytes | None
+
+    def __init__(
+        self, data: bytes, /, *, byteorder: _T_VectorEndian = "big"
+    ) -> None:
+        super().__init__()
+        if self.__class__ == _InnerVector:
+            raise TypeError("Cannot instantiate abstract class InnerVector")
+        match byteorder:
+            case "big":
+                self.data = data
+                self._data_le = None
+            case "little":
+                self.data = _swap_endian(self.size, data)
+                self._data_le = data
+            case _:
+                raise ValueError(
+                    f"Invalid byteorder: {byteorder!r}. "
+                    "Must be 'big' or 'little'."
+                )
+
+    @property
+    def data(self) -> bytes:
+        return self._data
+
+    @data.setter
+    def data(self, data: bytes, /) -> None:
+        if not isinstance(data, bytes):
+            raise TypeError("Data must be of type bytes")
+        if not len(data) % self.size == 0:
+            raise ValueError(
+                f"Data length {len(data)} is not a multiple of {self.size}"
+            )
+        self._data = data
+
+    @property
+    def data_le(self) -> bytes:
+        if self._data_le is None:
+            self._data_le = _swap_endian(self.size, self.data)
+        return self._data_le
+
+    @data_le.setter
+    def data_le(self, data: bytes, /) -> None:
+        self.data = _swap_endian(self.size, data)
+        self._data_le = data
+
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        dtype = getattr(cls, "dtype", None)
+        if not isinstance(dtype, VectorDType):
+            raise TypeError(
+                f"Class {cls.__name__} must have a VectorDType attribute"
+                "'dtype'"
+            )
+        if not isinstance(getattr(cls, "size", None), int):
+            raise TypeError(
+                f"Class {cls.__name__} must have a str attribute 'size'"
+            )
+        if cls.size not in {1, 2, 4, 8}:
+            # Either change the sub-type's size if it was a typo or add support
+            # for the new size in the swap_endian function.
+            raise ValueError(
+                f"Class {cls.__name__} has an unhandled size {cls.size}"
+            )
+        if dtype in _TYPES:
+            raise ValueError(
+                f"Class {cls.__name__} has a duplicate type '{dtype}'"
+            )
+        _TYPES[dtype] = cls
+
+    def __len__(self) -> int:
+        return len(self.data) // self.size
+
+    def __str__(self) -> str:
+        size = len(self)
+        return f"Vec[{self.dtype}; {size}]"
+
+    def __repr__(self) -> str:
+        cls_name = self.__class__.__name__
+        return f"{cls_name}({self.data!r})"
+
+    @classmethod
+    @_abc.abstractmethod
+    def from_native(cls, data: _t.Iterable[object], /) -> _t.Self: ...
+
+    @_abc.abstractmethod
+    def to_native(self) -> list[object]: ...
+
+    @classmethod
+    def from_numpy(cls, data: numpy.ndarray, /) -> _t.Self:
+        if data.dtype.byteorder == "<" or (
+            data.dtype.byteorder == "=" and _sys.byteorder == "little"
+        ):
+            data = data.byteswap()
+        return cls(data.tobytes())
+
+    @_abc.abstractmethod
+    def to_numpy(self) -> numpy.ndarray: ...
+
+    @classmethod
+    def from_pyarrow(cls, data: pyarrow.Array, /) -> _t.Self:
+        width = data.type.byte_width
+        assert cls.size == width
+        if _pa.compute.count(data, mode="only_null").as_py():
+            raise ValueError("PyArrow array must not contain any null values.")
+        _, buffer = data.buffers()
+        buffer = buffer[
+            data.offset * width : (data.offset + len(data)) * width
+        ]
+        return cls(bytes(buffer), byteorder=_sys.byteorder)
+
+    @_abc.abstractmethod
+    def to_pyarrow(self) -> pyarrow.Array: ...
+
+
+class _VecF64(_InnerVector):
+    __slots__ = ()
+
+    dtype = VectorDType.F64
+    size = 8
+
+    @classmethod
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_f64_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_float = tuple(item for item in data if not isinstance(item, float))
+        if non_float:
+            raise TypeError(
+                f"Cannot build f64 vector from {type(non_float[0]).__name__}, "
+                "expected float."
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">f8")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
+        bytes_ = bytearray()
+        for item in data:
+            if not isinstance(item, float):
+                raise TypeError(
+                    f"Cannot build f64 vector from {type(item).__name__}, "
+                    "expected float."
+                )
+            bytes_.extend(_struct.pack(">d", item))
+        return cls(bytes(bytes_))
+
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_f64_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">f8")).tolist()
+
+    def _to_native_py(self) -> list[object]:
+        return [
+            _struct.unpack(">d", self.data[i : i + self.size])[0]
+            for i in range(0, len(self.data), self.size)
+        ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
+
+    def to_numpy(self) -> numpy.ndarray:
+        import numpy
+
+        return numpy.frombuffer(self.data, dtype=numpy.dtype(">f8"))
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        import pyarrow
+
+        buffer = pyarrow.py_buffer(self.data_le)
+        return pyarrow.Array.from_buffers(
+            pyarrow.float64(), len(self), [None, buffer], 0
+        )
+
+
+class _VecF32(_InnerVector):
+    __slots__ = ()
+
+    dtype = VectorDType.F32
+    size = 4
+
+    @classmethod
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_f32_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_float = tuple(item for item in data if not isinstance(item, float))
+        if non_float:
+            raise TypeError(
+                f"Cannot build f32 vector from {type(non_float[0]).__name__}, "
+                "expected float."
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">f4")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
+        bytes_ = bytearray()
+        for item in data:
+            if not isinstance(item, float):
+                raise TypeError(
+                    f"Cannot build f32 vector from {type(item).__name__}, "
+                    "expected float."
+                )
+            bytes_.extend(_struct.pack(">f", item))
+        return cls(bytes(bytes_))
+
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_f32_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">f4")).tolist()
+
+    def _to_native_py(self) -> list[object]:
+        return [
+            _struct.unpack(">f", self.data[i : i + self.size])[0]
+            for i in range(0, len(self.data), self.size)
+        ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
+
+    def to_numpy(self) -> numpy.ndarray:
+        import numpy
+
+        return numpy.frombuffer(self.data, dtype=numpy.dtype(">f4"))
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        import pyarrow
+
+        buffer = pyarrow.py_buffer(self.data_le)
+        return pyarrow.Array.from_buffers(
+            pyarrow.float32(), len(self), [None, buffer], 0
+        )
+
+
+_I64_MIN = -9_223_372_036_854_775_808
+_I64_MAX = 9_223_372_036_854_775_807
+
+
+class _VecI64(_InnerVector):
+    __slots__ = ()
+
+    dtype = VectorDType.I64
+    size = 8
+
+    @classmethod
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i64_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i64 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I64_MIN <= item <= _I64_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i64: "
+                f"[-{_I64_MIN}, {_I64_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i8")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
+        bytes_ = bytearray()
+        for item in data:
+            if not isinstance(item, int):
+                raise TypeError(
+                    f"Cannot build i64 vector from {type(item).__name__}, "
+                    "expected int."
+                )
+            if not _I64_MIN <= item <= _I64_MAX:
+                raise OverflowError(
+                    f"Value {item} is out of range for i64: "
+                    f"[-{_I64_MIN}, {_I64_MAX}]"
+                )
+            bytes_.extend(_struct.pack(">q", item))
+        return cls(bytes(bytes_))
+
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i64_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i8")).tolist()
+
+    def _to_native_py(self) -> list[object]:
+        return [
+            _struct.unpack(">q", self.data[i : i + self.size])[0]
+            for i in range(0, len(self.data), self.size)
+        ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
+
+    def to_numpy(self) -> numpy.ndarray:
+        import numpy
+
+        return numpy.frombuffer(self.data, dtype=numpy.dtype(">i8"))
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        import pyarrow
+
+        buffer = pyarrow.py_buffer(self.data_le)
+        return pyarrow.Array.from_buffers(
+            pyarrow.int64(), len(self), [None, buffer], 0
+        )
+
+
+_I32_MIN = -2_147_483_648
+_I32_MAX = 2_147_483_647
+
+
+class _VecI32(_InnerVector):
+    __slots__ = ()
+
+    dtype = VectorDType.I32
+    size = 4
+
+    @classmethod
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i32_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i32 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I32_MIN <= item <= _I32_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i32: "
+                f"[-{_I32_MIN}, {_I32_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i4")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
+        bytes_ = bytearray()
+        for item in data:
+            if not isinstance(item, int):
+                raise TypeError(
+                    f"Cannot build i32 vector from {type(item).__name__}, "
+                    "expected int."
+                )
+            if not _I32_MIN <= item <= _I32_MAX:
+                raise OverflowError(
+                    f"Value {item} is out of range for i32: "
+                    f"[-{_I32_MIN}, {_I32_MAX}]"
+                )
+            bytes_.extend(_struct.pack(">i", item))
+        return cls(bytes(bytes_))
+
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i32_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i4")).tolist()
+
+    def _to_native_py(self) -> list[object]:
+        return [
+            _struct.unpack(">i", self.data[i : i + self.size])[0]
+            for i in range(0, len(self.data), self.size)
+        ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
+
+    def to_numpy(self) -> numpy.ndarray:
+        import numpy
+
+        return numpy.frombuffer(self.data, dtype=numpy.dtype(">i4"))
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        import pyarrow
+
+        buffer = pyarrow.py_buffer(self.data_le)
+        return pyarrow.Array.from_buffers(
+            pyarrow.int32(), len(self), [None, buffer], 0
+        )
+
+
+_I16_MIN = -32_768
+_I16_MAX = 32_767
+
+
+class _VecI16(_InnerVector):
+    __slots__ = ()
+
+    dtype = VectorDType.I16
+    size = 2
+
+    @classmethod
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i16_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i16 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I16_MIN <= item <= _I16_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i16: "
+                f"[-{_I16_MIN}, {_I16_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i2")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
+        bytes_ = bytearray()
+        for item in data:
+            if not isinstance(item, int):
+                raise TypeError(
+                    f"Cannot build i16 vector from {type(item).__name__}, "
+                    "expected int."
+                )
+            if not _I16_MIN <= item <= _I16_MAX:
+                raise OverflowError(
+                    f"Value {item} is out of range for i16: "
+                    f"[-{_I16_MIN}, {_I16_MAX}]"
+                )
+            bytes_.extend(_struct.pack(">h", item))
+        return cls(bytes(bytes_))
+
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i16_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i2")).tolist()
+
+    def _to_native_py(self) -> list[object]:
+        return [
+            _struct.unpack(">h", self.data[i : i + self.size])[0]
+            for i in range(0, len(self.data), self.size)
+        ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
+
+    def to_numpy(self) -> numpy.ndarray:
+        import numpy
+
+        return numpy.frombuffer(self.data, dtype=numpy.dtype(">i2"))
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        import pyarrow
+
+        buffer = pyarrow.py_buffer(self.data_le)
+        return pyarrow.Array.from_buffers(
+            pyarrow.int16(), len(self), [None, buffer], 0
+        )
+
+
+_I8_MIN = -128
+_I8_MAX = 127
+
+
+class _VecI8(_InnerVector):
+    __slots__ = ()
+
+    dtype = VectorDType.I8
+    size = 1
+
+    @classmethod
+    def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
+        return cls(_vec_rust.vec_i8_from_native(data))
+
+    @classmethod
+    def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
+        data = tuple(data)
+        non_int = tuple(item for item in data if not isinstance(item, int))
+        if non_int:
+            raise TypeError(
+                f"Cannot build i8 vector from {type(non_int[0]).__name__}, "
+                "expected int."
+            )
+        data = _t.cast(tuple[int, ...], data)
+        overflow_int = tuple(
+            item for item in data if not _I8_MIN <= item <= _I8_MAX
+        )
+        if overflow_int:
+            raise OverflowError(
+                f"Value {overflow_int[0]} is out of range for i8: "
+                f"[-{_I8_MIN}, {_I8_MAX}]"
+            )
+        return cls(_np.fromiter(data, dtype=_np.dtype(">i1")).tobytes())
+
+    @classmethod
+    def _from_native_py(cls, data: _t.Iterable[object], /) -> _t.Self:
+        bytes_ = bytearray()
+        for item in data:
+            if not isinstance(item, int):
+                raise TypeError(
+                    f"Cannot build i8 vector from {type(item).__name__}, "
+                    "expected int."
+                )
+            if not _I8_MIN <= item <= _I8_MAX:
+                raise OverflowError(
+                    f"Value {item} is out of range for i8: "
+                    f"[-{_I8_MIN}, {_I8_MAX}]"
+                )
+            bytes_.extend(_struct.pack(">b", item))
+        return cls(bytes(bytes_))
+
+    if _vec_rust is not None:
+        from_native = _from_native_rust
+    elif _np is not None:
+        from_native = _from_native_np
+    else:
+        from_native = _from_native_py
+
+    def _to_native_rust(self) -> list[object]:
+        return _vec_rust.vec_i8_to_native(self.data)
+
+    def _to_native_np(self) -> list[object]:
+        return _np.frombuffer(self.data, dtype=_np.dtype(">i1")).tolist()
+
+    def _to_native_py(self) -> list[object]:
+        return [
+            _struct.unpack(">b", self.data[i : i + self.size])[0]
+            for i in range(0, len(self.data), self.size)
+        ]
+
+    if _vec_rust is not None:
+        to_native = _to_native_rust
+    elif _np is not None:
+        to_native = _to_native_np
+    else:
+        to_native = _to_native_py
+
+    def to_numpy(self) -> numpy.ndarray:
+        import numpy
+
+        return numpy.frombuffer(self.data, dtype=numpy.dtype(">i1"))
+
+    def to_pyarrow(self) -> pyarrow.Array:
+        import pyarrow
+
+        buffer = pyarrow.py_buffer(self.data_le)
+        return pyarrow.Array.from_buffers(
+            pyarrow.int8(), len(self), [None, buffer], 0
+        )

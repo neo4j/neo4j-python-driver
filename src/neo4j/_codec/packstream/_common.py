@@ -15,7 +15,7 @@
 
 
 try:
-    from ._rust import Structure
+    from ..._rust.codec.packstream import Structure
 
     RUST_AVAILABLE = True
 except ImportError:

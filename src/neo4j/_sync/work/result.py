@@ -66,6 +66,11 @@ if t.TYPE_CHECKING:
     from ...graph import Graph
 
 
+if False:
+    # Ugly work-around to make sphinx understand `@_t.overload`
+    import typing as t  # type: ignore[no-redef]
+
+
 notification_log = getLogger("neo4j.notifications")
 
 

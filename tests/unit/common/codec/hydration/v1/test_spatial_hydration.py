@@ -24,7 +24,7 @@ from neo4j.spatial import (
     WGS84Point,
 )
 
-from ._base import HydrationHandlerTestBase
+from .._base import HydrationHandlerTestBase
 
 
 class TestSpatialHydration(HydrationHandlerTestBase):

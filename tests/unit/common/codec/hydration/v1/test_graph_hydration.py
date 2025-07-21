@@ -23,7 +23,7 @@ from neo4j.graph import (
     Relationship,
 )
 
-from ._base import HydrationHandlerTestBase
+from .._base import HydrationHandlerTestBase
 
 
 class TestGraphHydration(HydrationHandlerTestBase):
