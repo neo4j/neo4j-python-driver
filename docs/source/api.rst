@@ -2084,8 +2084,6 @@ Client-side errors
 
     * :class:`neo4j.exceptions.ReadServiceUnavailable`
 
-    * :class:`neo4j.exceptions.UnsupportedServerProduct`
-
     * :class:`neo4j.exceptions.IncompleteCommit`
 
   * :class:`neo4j.exceptions.ConfigurationError`
@@ -2093,6 +2091,8 @@ Client-side errors
     * :class:`neo4j.exceptions.AuthConfigurationError`
 
     * :class:`neo4j.exceptions.CertificateConfigurationError`
+
+    * :class:`neo4j.exceptions.UnsupportedServerProduct`
 
   * :class:`neo4j.exceptions.ConnectionPoolError`
 
@@ -2145,9 +2145,6 @@ Client-side errors
 .. autoexception:: neo4j.exceptions.ReadServiceUnavailable()
     :show-inheritance:
 
-.. autoexception:: neo4j.exceptions.UnsupportedServerProduct()
-    :show-inheritance:
-
 .. autoexception:: neo4j.exceptions.IncompleteCommit()
     :show-inheritance:
 
@@ -2158,6 +2155,9 @@ Client-side errors
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.CertificateConfigurationError()
+    :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.UnsupportedServerProduct()
     :show-inheritance:
 
 

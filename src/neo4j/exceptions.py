@@ -51,11 +51,11 @@ Driver API Errors
     + RoutingServiceUnavailable
     + WriteServiceUnavailable
     + ReadServiceUnavailable
-    + UnsupportedServerProduct
     + IncompleteCommit
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
+    + UnsupportedServerProduct
   + ConnectionPoolError
     + ConnectionAcquisitionTimeoutError
 """
@@ -1028,20 +1028,6 @@ class ReadServiceUnavailable(ServiceUnavailable):
     """Raised when no read service is available."""
 
 
-# DriverError > ServiceUnavailable > UnsupportedServerProduct
-class UnsupportedServerProduct(ServiceUnavailable):
-    """
-    Raised when an unsupported server product is detected.
-
-    .. versionchanged:: 6.0
-        This exception is now a subclass of :class:`ServiceUnavailable`.
-        Before it was a subclass of :class:`Exception`.
-    """
-
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)
-
-
 # DriverError > ServiceUnavailable > IncompleteCommit
 class IncompleteCommit(ServiceUnavailable):
     """
@@ -1083,6 +1069,20 @@ class AuthConfigurationError(ConfigurationError):
 # DriverError > ConfigurationError > CertificateConfigurationError
 class CertificateConfigurationError(ConfigurationError):
     """Raised when there is an error with the certificate configuration."""
+
+
+# DriverError > ConfigurationError > UnsupportedServerProduct
+class UnsupportedServerProduct(ConfigurationError):
+    """
+    Raised when an unsupported server product is detected.
+
+    .. versionchanged:: 6.0
+        This exception is now a subclass of :class:`ConfigurationError`.
+        Before it was a subclass of :class:`Exception`.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
 
 # DriverError > ConnectionPoolError
