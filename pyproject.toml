@@ -59,7 +59,7 @@ pandas = [
     "pandas >= 1.1.0, < 3.0.0",
     "numpy >= 1.21.2, < 3.0.0",
 ]
-pyarrow = ["pyarrow >= 6.0.0, < 21.0.0"]
+pyarrow = ["pyarrow >= 6.0.0, < 22.0.0"]
 
 
 [build-system]
@@ -146,7 +146,7 @@ dep-project-dependencies = [
     "pytz",
     "numpy >= 1.7.0, < 3.0.0",
     "pandas >= 1.1.0, < 3.0.0",
-    "pyarrow >= 1.0.0",
+    "pyarrow >= 6.0.0, < 22.0.0",
 ]
 
 [tool.setuptools.dynamic]

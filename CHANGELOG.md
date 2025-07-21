@@ -3,6 +3,10 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
+- No breaking or major changes.
+
+
+## Version 6.0
 - Python 3.7, 3.8, and 3.9 support has been dropped.
 - Remove deprecated package alias `neo4j-driver`. Use `pip install neo4j` instead.
 - Remove `setup.py`. Please use a recent enough packaging/build tool that supports `pyproject.toml`
@@ -37,7 +41,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - Consistently check the value (also for non-routing drivers)
   - `neo4j.exceptions.UnsupportedServerProduct` if no common bolt protocol version could be negotiated with the server
    (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
-    `UnsupportedServerProduct` is now a subclass of `ServiceUnavailable` (instead of `Exception` directly).
+    `UnsupportedServerProduct` is now a subclass of `ConfigurationError` (instead of `Exception` directly).
   - `connection_acquisition_timeout` configuration option
     - Raise `ValueError` on invalid values (instead of `ClientError`).
     - Consistently restrict the value to be strictly positive
@@ -67,7 +71,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   If you were calling it directly, please use `Record.__getitem__(slice(...))` or simply `record[...]` instead.
 - Bookmarks
   - Remove deprecated class `neo4j.Bookmark` in favor of `neo4j.Bookmarks`.
-  - Remove deprecated class `session.last_bookmark()` in favor of `last_bookmarks()`.
+  - Remove deprecated method `session.last_bookmark()` in favor of `last_bookmarks()`.
   - Deprecate passing raw sting bookmarks as `initial_bookmarks` to `GraphDatabase.bookmark_manager()`.  
     Use a `neo4j.Bookmarks` object instead.
   - `Driver.session()` no longer accepts raw string bookmarks as `bookmarks` argument.  
