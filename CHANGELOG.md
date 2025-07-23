@@ -148,7 +148,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ColourFormatter`
     - `TaskIdFilter`
     - all other indirectly exposed items from imports (e.g. `asyncio` as `neo4j.debug.asyncio`)
-- Deprecate ClockTime and its accessors
+- Deprecate `ClockTime` and its accessors
   - For each `neo4j.time.Date`, `neo4j.time.DateTime`, `neo4j.time.Time`
     - `from_clock_time` and `to_clock_time` methods
   - `neo4j.time.ClockTime` itself
