@@ -753,10 +753,11 @@ class _VecF64(_InnerVector):
     @classmethod
     def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
         data = tuple(data)
-        non_float = tuple(item for item in data if not isinstance(item, float))
+        non_float_gen = (item for item in data if not isinstance(item, float))
+        non_float = next(non_float_gen, None)
         if non_float:
             raise TypeError(
-                f"Cannot build f64 vector from {type(non_float[0]).__name__}, "
+                f"Cannot build f64 vector from {type(non_float).__name__}, "
                 "expected float."
             )
         return cls(_np.fromiter(data, dtype=_np.dtype(">f8")).tobytes())
@@ -826,10 +827,11 @@ class _VecF32(_InnerVector):
     @classmethod
     def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
         data = tuple(data)
-        non_float = tuple(item for item in data if not isinstance(item, float))
+        non_float_gen = (item for item in data if not isinstance(item, float))
+        non_float = next(non_float_gen, None)
         if non_float:
             raise TypeError(
-                f"Cannot build f32 vector from {type(non_float[0]).__name__}, "
+                f"Cannot build f32 vector from {type(non_float).__name__}, "
                 "expected float."
             )
         return cls(_np.fromiter(data, dtype=_np.dtype(">f4")).tobytes())
@@ -903,10 +905,11 @@ class _VecI64(_InnerVector):
     @classmethod
     def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
         data = tuple(data)
-        non_int = tuple(item for item in data if not isinstance(item, int))
+        non_int_gen = (item for item in data if not isinstance(item, int))
+        non_int = next(non_int_gen, None)
         if non_int:
             raise TypeError(
-                f"Cannot build i64 vector from {type(non_int[0]).__name__}, "
+                f"Cannot build i64 vector from {type(non_int).__name__}, "
                 "expected int."
             )
         data = _t.cast(tuple[int, ...], data)
@@ -994,10 +997,11 @@ class _VecI32(_InnerVector):
     @classmethod
     def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
         data = tuple(data)
-        non_int = tuple(item for item in data if not isinstance(item, int))
+        non_int_gen = (item for item in data if not isinstance(item, int))
+        non_int = next(non_int_gen, None)
         if non_int:
             raise TypeError(
-                f"Cannot build i32 vector from {type(non_int[0]).__name__}, "
+                f"Cannot build i32 vector from {type(non_int).__name__}, "
                 "expected int."
             )
         data = _t.cast(tuple[int, ...], data)
@@ -1085,10 +1089,11 @@ class _VecI16(_InnerVector):
     @classmethod
     def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
         data = tuple(data)
-        non_int = tuple(item for item in data if not isinstance(item, int))
+        non_int_gen = (item for item in data if not isinstance(item, int))
+        non_int = next(non_int_gen, None)
         if non_int:
             raise TypeError(
-                f"Cannot build i16 vector from {type(non_int[0]).__name__}, "
+                f"Cannot build i16 vector from {type(non_int).__name__}, "
                 "expected int."
             )
         data = _t.cast(tuple[int, ...], data)
@@ -1176,10 +1181,11 @@ class _VecI8(_InnerVector):
     @classmethod
     def _from_native_np(cls, data: _t.Iterable[object], /) -> _t.Self:
         data = tuple(data)
-        non_int = tuple(item for item in data if not isinstance(item, int))
+        non_int_gen = (item for item in data if not isinstance(item, int))
+        non_int = next(non_int_gen, None)
         if non_int:
             raise TypeError(
-                f"Cannot build i8 vector from {type(non_int[0]).__name__}, "
+                f"Cannot build i8 vector from {type(non_int).__name__}, "
                 "expected int."
             )
         data = _t.cast(tuple[int, ...], data)
