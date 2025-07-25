@@ -319,7 +319,8 @@ def test_hint_recv_timeout_seconds(
         packer_cls=Bolt5x6.PACKER_CLS,
         unpacker_cls=Bolt5x6.UNPACKER_CLS,
     )
-    sockets.client.settimeout = mocker.Mock()
+    sockets.client.set_read_timeout = mocker.Mock()
+    sockets.client.set_write_timeout = mocker.Mock()
     sockets.server.send_message(
         b"\x70", {"server": "Neo4j/4.3.4", "hints": hints}
     )
@@ -327,21 +328,24 @@ def test_hint_recv_timeout_seconds(
     connection = Bolt5x6(
         address, sockets.client, PoolConfig.max_connection_lifetime
     )
+
     with caplog.at_level(logging.INFO):
         connection.hello()
+
+    sockets.client.set_write_timeout.assert_not_called()
     if valid:
         if "connection.recv_timeout_seconds" in hints:
-            sockets.client.settimeout.assert_called_once_with(
+            sockets.client.set_read_timeout.assert_called_once_with(
                 hints["connection.recv_timeout_seconds"]
             )
         else:
-            sockets.client.settimeout.assert_not_called()
+            sockets.client.set_read_timeout.assert_not_called()
         assert not any(
             "recv_timeout_seconds" in msg and "invalid" in msg
             for msg in caplog.messages
         )
     else:
-        sockets.client.settimeout.assert_not_called()
+        sockets.client.set_read_timeout.assert_not_called()
         assert any(
             repr(hints["connection.recv_timeout_seconds"]) in msg
             and "recv_timeout_seconds" in msg

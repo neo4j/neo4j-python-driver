@@ -67,17 +67,23 @@ def async_fake_connection_generator(session_mocker):
                 mock.AsyncMock(side_effect=close_side_effect), "close"
             )
 
-            self.socket.attach_mock(
-                mock.Mock(return_value=None), "get_deadline"
-            )
+            for op in ("read", "write"):
+                self.socket.attach_mock(
+                    mock.Mock(return_value=None), f"get_{op}_deadline"
+                )
 
-            def set_deadline_side_effect(deadline):
-                deadline = Deadline.from_timeout_or_deadline(deadline)
-                self.socket.get_deadline.return_value = deadline
+                def make_set_deadline_side_effect(op_):
+                    def side_effect(deadline):
+                        deadline = Deadline.from_timeout_or_deadline(deadline)
+                        get_mock = getattr(self.socket, f"get_{op_}_deadline")
+                        get_mock.return_value = deadline
 
-            self.socket.attach_mock(
-                mock.Mock(side_effect=set_deadline_side_effect), "set_deadline"
-            )
+                    return side_effect
+
+                self.socket.attach_mock(
+                    mock.Mock(side_effect=make_set_deadline_side_effect(op)),
+                    f"set_{op}_deadline",
+                )
 
         @property
         def is_reset(self):

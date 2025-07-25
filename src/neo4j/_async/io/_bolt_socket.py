@@ -32,7 +32,10 @@ from ..._exceptions import (
     BoltError,
     BoltProtocolError,
 )
-from ..._io import BoltProtocolVersion
+from ..._io import (
+    BoltProtocolVersion,
+    min_timeout,
+)
 from ...exceptions import (
     DriverError,
     ServiceUnavailable,
@@ -157,8 +160,8 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         return res
 
     async def _handshake_read(self, ctx: HandshakeCtx, n: int) -> bytes:
-        original_timeout = self.gettimeout()
-        self.settimeout(ctx.deadline.to_timeout())
+        original_timeout = self.get_read_timeout()
+        self.set_read_timeout(ctx.deadline.to_timeout())
         try:
             response = await self.recv(n)
             ctx.full_response.extend(response)
@@ -168,7 +171,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 f"{ctx.resolved_address!r} (deadline {ctx.deadline})"
             ) from exc
         finally:
-            self.settimeout(original_timeout)
+            self.set_read_timeout(original_timeout)
         data_size = len(response)
         if data_size == 0:
             # If no data is returned after a successful select
@@ -192,9 +195,11 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
 
         return response
 
-    async def _handshake_send(self, ctx, data):
-        original_timeout = self.gettimeout()
-        self.settimeout(ctx.deadline.to_timeout())
+    async def _handshake_send(self, ctx, data, write_timeout=None):
+        original_timeout = self.get_write_timeout()
+        self.set_write_timeout(
+            min_timeout(ctx.deadline.to_timeout(), write_timeout)
+        )
         try:
             await self.sendall(data)
         except OSError as exc:
@@ -203,7 +208,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 f"{ctx.resolved_address!r} (deadline {ctx.deadline})"
             ) from exc
         finally:
-            self.settimeout(original_timeout)
+            self.set_write_timeout(original_timeout)
 
     async def _handshake(
         self,

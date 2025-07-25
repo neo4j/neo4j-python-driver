@@ -25,6 +25,7 @@ import pytest
 from neo4j import _typing as t
 from neo4j._async.io._bolt_socket import AsyncBoltSocket
 from neo4j._exceptions import SocketDeadlineExceededError
+from neo4j._sync.io._bolt_socket import BoltSocket
 
 from ...._async_compat.mark_decorator import mark_async_test
 
@@ -100,10 +101,17 @@ def writer(s: AsyncBoltSocket):
         (5, 4, 0, 6, SocketDeadlineExceededError),
     ),
 )
-@pytest.mark.parametrize("method", ("recv", "recv_into", "sendall"))
+@pytest.mark.parametrize(
+    ("method", "op"),
+    (
+        ("recv", "read"),
+        ("recv_into", "read"),
+        ("sendall", "write"),
+    ),
+)
 @mark_async_test
-async def test_async_bolt_socket_read_timeout(
-    socket_factory, timeout, deadline, pre_tick, tick, exception, method
+async def test_async_bolt_socket_timeout(
+    socket_factory, timeout, deadline, pre_tick, tick, exception, method, op
 ):
     def make_read_side_effect(freeze_time: TFreezeTime):
         async def read_side_effect(n):
@@ -139,9 +147,9 @@ async def test_async_bolt_socket_read_timeout(
     with freezegun.freeze_time("1970-01-01T00:00:00") as frozen_time:
         socket = socket_factory()
         if timeout is not None:
-            socket.settimeout(timeout)
+            getattr(socket, f"set_{op}_timeout")(timeout)
         if deadline is not None:
-            socket.set_deadline(deadline)
+            getattr(socket, f"set_{op}_deadline")(deadline)
         if pre_tick:
             frozen_time.tick(pre_tick)
 
@@ -161,3 +169,57 @@ async def test_async_bolt_socket_read_timeout(
                 await call_method(socket)
         else:
             await call_method(socket)
+
+
+@pytest.mark.parametrize(
+    ("timeout", "deadline", "expected_timeout"),
+    (
+        (None, None, None),
+        (5, None, 5),
+        (1.23, None, 1.23),
+        (None, 5, 5),
+        (None, 1.23, 1.23),
+        (1, 2, 1),
+        (2, 1, 1),
+        (1.2, 2, 1.2),
+        (2, 1.2, 1.2),
+        (1, 2.3, 1),
+        (2.3, 1, 1),
+    ),
+)
+@pytest.mark.parametrize(
+    ("method", "op"),
+    (
+        ("recv", "read"),
+        ("recv_into", "read"),
+        ("sendall", "write"),
+    ),
+)
+def test_bolt_socket_timeout_forwarding(
+    timeout, deadline, expected_timeout, method, op, mocker
+):
+    def call_method(s: BoltSocket):
+        if method == "recv":
+            s.recv(1)
+        elif method == "recv_into":
+            b = bytearray(1)
+            s.recv_into(b, 1)
+        elif method == "sendall":
+            s.sendall(b"y")
+        else:
+            raise NotImplementedError(f"method: {method}")
+
+    socket_mock = mocker.Mock(spec=socket.socket)
+    bolt_socket = BoltSocket(socket_mock)
+
+    with freezegun.freeze_time("1970-01-01T00:00:00"):
+        if timeout is not None:
+            getattr(bolt_socket, f"set_{op}_timeout")(timeout)
+        if deadline is not None:
+            getattr(bolt_socket, f"set_{op}_deadline")(deadline)
+
+        socket_mock.settimeout.assert_not_called()
+
+        call_method(bolt_socket)
+
+        socket_mock.settimeout.assert_called_once_with(expected_timeout)

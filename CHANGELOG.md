@@ -190,6 +190,9 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - On failed liveness check (s. `liveness_check_timeout` configuration option), the driver will no longer remove the
   remote from the cached routing tables, but only close the connection under test.  
   This aligns the driver with the other official Neo4j drivers.
+- The driver incorrectly applied a timeout hint received from the server to both read and write I/O operations.
+  It is now only applied to read I/O operations.  
+  In turn, a new configuration option `connection_write_timeout` with a default value of `30 seconds` is introduced.
 
 
 ## Version 5.28

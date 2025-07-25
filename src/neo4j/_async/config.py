@@ -54,6 +54,10 @@ class AsyncPoolConfig(Config):
     # The maximum amount of time to wait for a TCP connection to be
     # established.
 
+    #: Connection Write Timeout
+    connection_write_timeout = 30.0  # seconds
+    # The maximum amount of time to wait for I/O write operations to complete.
+
     #: Custom Resolver
     resolver = None
     # Custom resolver function, returning list of resolved addresses.

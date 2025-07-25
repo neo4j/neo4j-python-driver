@@ -72,6 +72,14 @@ def _sanitize_deadline(deadline):
     return deadline
 
 
+def _sanitize_timeout(timeout):
+    if timeout is None:
+        return timeout
+    else:
+        assert timeout >= 0
+        return timeout
+
+
 class AsyncBoltSocketBase(abc.ABC):
     Bolt: t.Final[type[AsyncBolt]] = None  # type: ignore[assignment]
 
@@ -79,19 +87,42 @@ class AsyncBoltSocketBase(abc.ABC):
         self._reader = reader  # type: asyncio.StreamReader
         self._protocol = protocol  # type: asyncio.StreamReaderProtocol
         self._writer = writer  # type: asyncio.StreamWriter
+        self._read_deadline = None
+        self._write_deadline = None
         # 0 - non-blocking
         # None infinitely blocking
         # int - seconds to wait for data
-        self._timeout = None
-        self._deadline = None
+        self._read_timeout = None
+        self._write_timeout = None
 
-    async def _wait_for_io(self, io_async_fn, *args, **kwargs):
-        timeout = self._timeout
+    def _wait_for_read(self, io_async_fn, *args, **kwargs):
+        return self._wait_for_io(
+            "read",
+            self._read_timeout,
+            self._read_deadline,
+            io_async_fn,
+            *args,
+            **kwargs,
+        )
+
+    def _wait_for_write(self, io_async_fn, *args, **kwargs):
+        return self._wait_for_io(
+            "write",
+            self._write_timeout,
+            self._write_deadline,
+            io_async_fn,
+            *args,
+            **kwargs,
+        )
+
+    async def _wait_for_io(
+        self, name, timeout, deadline, io_async_fn, *args, **kwargs
+    ):
         to_raise = TimeoutError
-        if self._deadline is not None:
-            deadline_timeout = self._deadline.to_timeout()
+        if deadline is not None:
+            deadline_timeout = deadline.to_timeout()
             if deadline_timeout <= 0:
-                raise SocketDeadlineExceededError("timed out")
+                raise SocketDeadlineExceededError(f"{name} timed out")
             if timeout is None or deadline_timeout <= timeout:
                 timeout = deadline_timeout
                 to_raise = SocketDeadlineExceededError
@@ -111,13 +142,31 @@ class AsyncBoltSocketBase(abc.ABC):
         try:
             return await wait_for(io_fut, timeout)
         except asyncio.TimeoutError as e:
-            raise to_raise("timed out") from e
+            raise to_raise(f"{name} timed out") from e
 
-    def get_deadline(self):
-        return self._deadline
+    def get_read_deadline(self):
+        return self._read_deadline
 
-    def set_deadline(self, deadline):
-        self._deadline = _sanitize_deadline(deadline)
+    def set_read_deadline(self, deadline):
+        self._read_deadline = _sanitize_deadline(deadline)
+
+    def get_write_deadline(self):
+        return self._write_deadline
+
+    def set_write_deadline(self, deadline):
+        self._write_deadline = _sanitize_deadline(deadline)
+
+    def get_read_timeout(self):
+        return self._read_timeout
+
+    def set_read_timeout(self, timeout):
+        self._read_timeout = _sanitize_timeout(timeout)
+
+    def get_write_timeout(self):
+        return self._write_timeout
+
+    def set_write_timeout(self, timeout):
+        self._write_timeout = _sanitize_timeout(timeout)
 
     @property
     def _socket(self) -> socket:
@@ -134,28 +183,18 @@ class AsyncBoltSocketBase(abc.ABC):
             *args, **kwargs
         )
 
-    def gettimeout(self):
-        return self._timeout
-
-    def settimeout(self, timeout):
-        if timeout is None:
-            self._timeout = timeout
-        else:
-            assert timeout >= 0
-            self._timeout = timeout
-
     async def recv(self, n):
-        return await self._wait_for_io(self._reader.read, n)
+        return await self._wait_for_read(self._reader.read, n)
 
     async def recv_into(self, buffer, nbytes):
         # FIXME: not particularly memory or time efficient
-        res = await self._wait_for_io(self._reader.read, nbytes)
+        res = await self._wait_for_read(self._reader.read, nbytes)
         buffer[: len(res)] = res
         return len(res)
 
     async def sendall(self, data):
         self._writer.write(data)
-        return await self._wait_for_io(self._writer.drain)
+        return await self._wait_for_write(self._writer.drain)
 
     async def close(self):
         self._writer.close()
@@ -247,6 +286,12 @@ class AsyncBoltSocketBase(abc.ABC):
                 cls._kill_raw_socket(s)
             raise
         except (SSLError, CertificateError) as error:
+            log.debug(
+                "[#0000]  S: <SECURE FAILURE> %s: %s",
+                resolved_address,
+                error,
+            )
+            log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
                 cls._kill_raw_socket(s)
             raise BoltSecurityError(
@@ -310,7 +355,10 @@ class BoltSocketBase:
 
     def __init__(self, socket_: socket):
         self._socket = socket_
-        self._deadline = None
+        self._read_deadline = None
+        self._write_deadline = None
+        self._read_timeout = None
+        self._write_timeout = None
 
     @property
     def _socket(self):
@@ -325,46 +373,87 @@ class BoltSocketBase:
             self.getpeercert = t.cast(SSLSocket, socket_).getpeercert
         elif "getpeercert" in self.__dict__:
             del self.__dict__["getpeercert"]
-        self.gettimeout = socket_.gettimeout
-        self.settimeout = socket_.settimeout
 
     getsockname: t.Callable = None  # type: ignore
     getpeername: t.Callable = None  # type: ignore
     getpeercert: t.Callable = None  # type: ignore
-    gettimeout: t.Callable = None  # type: ignore
-    settimeout: t.Callable = None  # type: ignore
 
-    def _wait_for_io(self, func, *args, **kwargs):
-        if self._deadline is None:
+    def _wait_for_read(self, func, *args, **kwargs):
+        return self._wait_for_io(
+            "read",
+            self._read_timeout,
+            self._read_deadline,
+            func,
+            *args,
+            **kwargs,
+        )
+
+    def _wait_for_write(self, func, *args, **kwargs):
+        return self._wait_for_io(
+            "write",
+            self._write_timeout,
+            self._write_deadline,
+            func,
+            *args,
+            **kwargs,
+        )
+
+    def _wait_for_io(self, name, timeout, deadline, func, *args, **kwargs):
+        if deadline is None:
+            deadline_timeout = None
+        else:
+            deadline_timeout = deadline.to_timeout()
+            if deadline_timeout <= 0:
+                raise SocketDeadlineExceededError(f"{name} timed out")
+        if deadline_timeout is not None and (
+            timeout is None or deadline_timeout <= timeout
+        ):
+            effective_timeout = deadline_timeout
+            rewrite_error = True
+        else:
+            effective_timeout = timeout
+            rewrite_error = False
+
+        self._socket.settimeout(effective_timeout)
+        try:
             return func(*args, **kwargs)
-        timeout = self._socket.gettimeout()
-        deadline_timeout = self._deadline.to_timeout()
-        if deadline_timeout <= 0:
-            raise SocketDeadlineExceededError("timed out")
-        if timeout is None or deadline_timeout <= timeout:
-            self._socket.settimeout(deadline_timeout)
-            try:
-                return func(*args, **kwargs)
-            except TimeoutError as e:
-                raise SocketDeadlineExceededError("timed out") from e
-            finally:
-                self._socket.settimeout(timeout)
-        return func(*args, **kwargs)
+        except TimeoutError as e:
+            if not rewrite_error:
+                raise
+            raise SocketDeadlineExceededError(f"{name} timed out") from e
 
-    def get_deadline(self):
-        return self._deadline
+    def get_read_deadline(self):
+        return self._read_deadline
 
-    def set_deadline(self, deadline):
-        self._deadline = _sanitize_deadline(deadline)
+    def set_read_deadline(self, deadline):
+        self._read_deadline = _sanitize_deadline(deadline)
+
+    def get_write_deadline(self):
+        return self._write_deadline
+
+    def set_write_deadline(self, deadline):
+        self._write_deadline = _sanitize_deadline(deadline)
+
+    def get_read_timeout(self):
+        return self._read_timeout
+
+    def set_read_timeout(self, timeout):
+        self._read_timeout = _sanitize_timeout(timeout)
+
+    def get_write_timeout(self):
+        return self._write_timeout
+
+    def set_write_timeout(self, timeout):
+        self._write_timeout = _sanitize_timeout(timeout)
 
     def recv(self, n):
-        return self._wait_for_io(self._socket.recv, n)
+        return self._wait_for_read(self._socket.recv, n)
 
     def recv_into(self, buffer, nbytes):
-        return self._wait_for_io(self._socket.recv_into, buffer, nbytes)
+        return self._wait_for_read(self._socket.recv_into, buffer, nbytes)
 
     def sendall(self, data):
-        return self._wait_for_io(self._socket.sendall, data)
+        return self._wait_for_write(self._socket.sendall, data)
 
     def close(self):
         self.close_socket(self._socket)
@@ -412,6 +501,9 @@ class BoltSocketBase:
                 s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
             except TimeoutError:
                 log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
+                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                if s:
+                    cls._kill_raw_socket(s)
                 raise ServiceUnavailable(
                     "Timed out trying to establish connection to "
                     f"{resolved_address!r}"
@@ -422,6 +514,9 @@ class BoltSocketBase:
                     type(error).__name__,
                     " ".join(map(repr, error.args)),
                 )
+                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                if s:
+                    cls._kill_raw_socket(s)
                 if isinstance(error, OSError):
                     raise ServiceUnavailable(
                         "Failed to establish connection to "
@@ -438,6 +533,14 @@ class BoltSocketBase:
                 try:
                     s = ssl_context.wrap_socket(s, server_hostname=sni_host)
                 except (OSError, SSLError, CertificateError) as cause:
+                    log.debug(
+                        "[#0000]  S: <SECURE FAILURE> %s: %s",
+                        resolved_address,
+                        cause,
+                    )
+                    log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                    if s:
+                        cls._kill_raw_socket(s)
                     raise BoltSecurityError(
                         message="Failed to establish encrypted connection.",
                         address=(hostname, local_port),
@@ -447,6 +550,13 @@ class BoltSocketBase:
                     binary_form=True
                 )
                 if der_encoded_server_certificate is None:
+                    log.debug(
+                        "[#0000]  S: <SECURE FAILURE> %s: no certificate",
+                        resolved_address,
+                    )
+                    log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                    if s:
+                        cls._kill_raw_socket(s)
                     raise BoltProtocolError(
                         "When using an encrypted socket, the server should"
                         "always provide a certificate",

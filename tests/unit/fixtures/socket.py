@@ -122,7 +122,6 @@ def bolt_socket_factory(mocker) -> _SocketFactory[BoltSocket]:
         socket_mock.sendall.side_effect = send_all
         socket_mock.getsockname.return_value = ("localhost", 0x1234)
         socket_mock.getpeername.return_value = "peer_name"
-        socket_mock.gettimeout.return_value = None
 
         return BoltSocket(socket_mock)
 

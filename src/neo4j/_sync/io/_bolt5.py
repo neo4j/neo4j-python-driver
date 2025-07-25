@@ -149,7 +149,7 @@ class Bolt5x0(Bolt):
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
-                    self.socket.settimeout(recv_timeout)
+                    self.socket.set_read_timeout(recv_timeout)
                 else:
                     log.info(
                         "[#%04X]  _: <CONNECTION> Server supplied an "
@@ -622,7 +622,7 @@ class Bolt5x1(Bolt5x0):
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
-                    self.socket.settimeout(recv_timeout)
+                    self.socket.set_read_timeout(recv_timeout)
                 else:
                     log.info(
                         "[#%04X]  _: <CONNECTION> Server supplied an "
@@ -708,7 +708,7 @@ class Bolt5x2(Bolt5x1):
                     "connection.recv_timeout_seconds"
                 ]
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
-                    self.socket.settimeout(recv_timeout)
+                    self.socket.set_read_timeout(recv_timeout)
                 else:
                     log.info(
                         "[#%04X]  _: <CONNECTION> Server supplied an "

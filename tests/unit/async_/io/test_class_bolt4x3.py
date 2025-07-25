@@ -287,7 +287,8 @@ async def test_hint_recv_timeout_seconds(
         packer_cls=AsyncBolt4x3.PACKER_CLS,
         unpacker_cls=AsyncBolt4x3.UNPACKER_CLS,
     )
-    sockets.client.settimeout = mocker.Mock()
+    sockets.client.set_read_timeout = mocker.Mock()
+    sockets.client.set_write_timeout = mocker.Mock()
     await sockets.server.send_message(
         b"\x70", {"server": "Neo4j/4.3.0", "hints": hints}
     )
@@ -296,19 +297,20 @@ async def test_hint_recv_timeout_seconds(
     )
     with caplog.at_level(logging.INFO):
         await connection.hello()
+    sockets.client.set_write_timeout.assert_not_called()
     if valid:
         if "connection.recv_timeout_seconds" in hints:
-            sockets.client.settimeout.assert_called_once_with(
+            sockets.client.set_read_timeout.assert_called_once_with(
                 hints["connection.recv_timeout_seconds"]
             )
         else:
-            sockets.client.settimeout.assert_not_called()
+            sockets.client.set_read_timeout.assert_not_called()
         assert not any(
             "recv_timeout_seconds" in msg and "invalid" in msg
             for msg in caplog.messages
         )
     else:
-        sockets.client.settimeout.assert_not_called()
+        sockets.client.set_read_timeout.assert_not_called()
         assert any(
             repr(hints["connection.recv_timeout_seconds"]) in msg
             and "recv_timeout_seconds" in msg
@@ -341,7 +343,6 @@ async def test_credentials_are_not_logged(
         packer_cls=AsyncBolt4x3.PACKER_CLS,
         unpacker_cls=AsyncBolt4x3.UNPACKER_CLS,
     )
-    sockets.client.settimeout = mocker.Mock()
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
     connection = AsyncBolt4x3(
         address,

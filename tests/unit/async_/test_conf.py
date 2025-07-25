@@ -45,6 +45,7 @@ watch("neo4j")
 
 test_pool_config = {
     "connection_timeout": 30.0,
+    "connection_write_timeout": 30.0,
     "keep_alive": True,
     "max_connection_lifetime": 3600,
     "liveness_check_timeout": None,

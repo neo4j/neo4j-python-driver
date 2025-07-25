@@ -127,6 +127,7 @@ class AsyncGraphDatabase:
             liveness_check_timeout: float | None = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
+            connection_write_timeout: float = ...,
             resolver: (
                 t.Callable[[Address], t.Iterable[Address]]
                 | t.Callable[[Address], t.Awaitable[t.Iterable[Address]]]

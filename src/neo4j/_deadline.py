@@ -84,16 +84,41 @@ def merge_deadlines_and_timeouts(*deadline):
 
 @contextmanager
 def connection_deadline(connection, deadline):
-    original_deadline = connection.socket.get_deadline()
-    if deadline is None and original_deadline is not None:
+    with (
+        connection_read_deadline(connection, deadline),
+        connection_write_deadline(connection, deadline),
+    ):
+        yield
+
+
+def connection_read_deadline(connection, deadline):
+    return _connection_deadline_wrapper(
+        deadline,
+        connection.socket.get_read_deadline,
+        connection.socket.set_read_deadline,
+    )
+
+
+def connection_write_deadline(connection, deadline):
+    return _connection_deadline_wrapper(
+        deadline,
+        connection.socket.get_write_deadline,
+        connection.socket.set_write_deadline,
+    )
+
+
+@contextmanager
+def _connection_deadline_wrapper(deadline, deadline_getter, deadline_setter):
+    if deadline is None:
         # nothing to do here
         yield
         return
+    original_deadline = deadline_getter()
     deadline = merge_deadlines(
         d for d in (deadline, original_deadline) if d is not None
     )
-    connection.socket.set_deadline(deadline)
+    deadline_setter(deadline)
     try:
         yield
     finally:
-        connection.socket.set_deadline(original_deadline)
+        deadline_setter(original_deadline)

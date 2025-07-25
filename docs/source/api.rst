@@ -399,6 +399,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
++ :ref:`connection-write-timeout-ref`
 + :ref:`encrypted-ref`
 + :ref:`keep-alive-ref`
 + :ref:`max-connection-lifetime-ref`
@@ -430,7 +431,7 @@ it should be chosen larger than :ref:`connection-timeout-ref`.
 :Type: ``float``
 :Default: ``60.0``
 
-.. versionadded:: 6.0
+.. versionchanged:: 6.0
     The setting now entails *anything* required to acquire a connection.
     This includes potential fetching of routing tables which in itself requires acquiring a connection.
     Previously, the timeout would be restarted for such auxiliary connection acquisitions.
@@ -445,6 +446,16 @@ established.
 
 This *does not* include any handshake(s), or authentication required before the
 connection can be used to perform database related work.
+
+:Type: ``float``
+:Default: ``30.0``
+
+
+.. _connection-write-timeout-ref:
+
+``connection_write_timeout``
+----------------------------
+The maximum amount of time in seconds to wait for TCP write operations to complete.
 
 :Type: ``float``
 :Default: ``30.0``

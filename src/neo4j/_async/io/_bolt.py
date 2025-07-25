@@ -418,11 +418,13 @@ class AsyncBolt:
         )
 
         try:
-            connection.socket.set_deadline(deadline)
+            connection.socket.set_read_deadline(deadline)
+            connection.socket.set_write_deadline(deadline)
             try:
                 await connection.hello()
             finally:
-                connection.socket.set_deadline(None)
+                connection.socket.set_read_deadline(None)
+                connection.socket.set_write_deadline(None)
         except (
             Exception,
             # Python 3.8+: CancelledError is a subclass of BaseException

@@ -273,7 +273,8 @@ async def test_hint_recv_timeout_seconds_gets_ignored(
         packer_cls=AsyncBolt4x2.PACKER_CLS,
         unpacker_cls=AsyncBolt4x2.UNPACKER_CLS,
     )
-    sockets.client.settimeout = mocker.AsyncMock()
+    sockets.client.set_read_timeout = mocker.AsyncMock()
+    sockets.client.set_write_timeout = mocker.AsyncMock()
     await sockets.server.send_message(
         b"\x70",
         {
@@ -285,7 +286,8 @@ async def test_hint_recv_timeout_seconds_gets_ignored(
         address, sockets.client, AsyncPoolConfig.max_connection_lifetime
     )
     await connection.hello()
-    sockets.client.settimeout.assert_not_called()
+    sockets.client.set_read_timeout.assert_not_called()
+    sockets.client.set_write_timeout.assert_not_called()
 
 
 CREDENTIALS = "+++super-secret-sauce+++"
@@ -312,7 +314,6 @@ async def test_credentials_are_not_logged(
         packer_cls=AsyncBolt4x2.PACKER_CLS,
         unpacker_cls=AsyncBolt4x2.UNPACKER_CLS,
     )
-    sockets.client.settimeout = mocker.Mock()
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
     connection = AsyncBolt4x2(
         address,

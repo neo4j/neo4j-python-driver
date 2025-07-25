@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import math
+
 from .. import _typing as t  # noqa: TC001
 
 
@@ -94,3 +96,15 @@ class BoltProtocolVersion:
 
     def __str__(self) -> str:
         return f"{self.major}.{self.minor}"
+
+
+def min_timeout(*timeouts: float | None) -> float | None:
+    """Return the minimum timeout from an iterable of timeouts."""
+    return min(
+        (
+            to
+            for to in timeouts
+            if to is not None and not math.isnan(to) and to >= 0
+        ),
+        default=None,
+    )
