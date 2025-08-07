@@ -996,9 +996,9 @@ def _dtype_to_cypher_type(dtype: T_DTYPE_LITERAL) -> str:
         "i8": "INTEGER8 NOT NULL",
         "i16": "INTEGER16 NOT NULL",
         "i32": "INTEGER32 NOT NULL",
-        "i64": "INTEGER64 NOT NULL",
+        "i64": "INTEGER NOT NULL",
         "f32": "FLOAT32 NOT NULL",
-        "f64": "FLOAT64 NOT NULL",
+        "f64": "FLOAT NOT NULL",
     }[dtype]
 
 
@@ -1008,9 +1008,9 @@ def _dtype_to_cypher_type(dtype: T_DTYPE_LITERAL) -> str:
         (Vector([], "i8"), "vector([], 0, INTEGER8 NOT NULL)"),
         (Vector([], "i16"), "vector([], 0, INTEGER16 NOT NULL)"),
         (Vector([], "i32"), "vector([], 0, INTEGER32 NOT NULL)"),
-        (Vector([], "i64"), "vector([], 0, INTEGER64 NOT NULL)"),
+        (Vector([], "i64"), "vector([], 0, INTEGER NOT NULL)"),
         (Vector([], "f32"), "vector([], 0, FLOAT32 NOT NULL)"),
-        (Vector([], "f64"), "vector([], 0, FLOAT64 NOT NULL)"),
+        (Vector([], "f64"), "vector([], 0, FLOAT NOT NULL)"),
         *(
             (
                 Vector([value], dtype),
@@ -1031,11 +1031,19 @@ def test_vector_str_random(
     repeat: int,
     size: int,
 ) -> None:
+    def cypher_repr(value: t.Any) -> str:
+        if isinstance(value, float):
+            if math.isnan(value):
+                return "NaN"
+            if math.isinf(value):
+                return "Infinity" if value > 0 else "-Infinity"
+        return repr(value)
+
     type_size = _get_type_size(dtype)
     cypher_dtype = _dtype_to_cypher_type(dtype)
     for _ in range(repeat):
         data = _random_value_be_bytes(type_size, size)
         v = Vector(data, dtype)
-        values = v.to_native()
-        expected = f"vector({values!r}, {size}, {cypher_dtype})"
+        values_repr = f"[{', '.join(map(cypher_repr, v.to_native()))}]"
+        expected = f"vector({values_repr}, {size}, {cypher_dtype})"
         assert str(v) == expected
