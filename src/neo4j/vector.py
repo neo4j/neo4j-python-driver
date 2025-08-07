@@ -263,7 +263,9 @@ class Vector:
         return str(self._inner)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.raw()!r}, {self.dtype!r})"
+        return (
+            f"{self.__class__.__name__}({self.raw()!r}, {self.dtype.value!r})"
+        )
 
     @classmethod
     def from_bytes(
@@ -627,6 +629,7 @@ class _InnerVector(_abc.ABC):
 
     dtype: _t.ClassVar[VectorDType]
     size: _t.ClassVar[int]
+    gql_inner_type_repr: _t.ClassVar[str]
     _data: bytes
     _data_le: bytes | None
 
@@ -703,7 +706,9 @@ class _InnerVector(_abc.ABC):
 
     def __str__(self) -> str:
         size = len(self)
-        return f"Vec[{self.dtype}; {size}]"
+        type_repr = self.gql_inner_type_repr
+        values_repr = str(self.to_native())
+        return f"vector({values_repr}, {size}, {type_repr})"
 
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
@@ -748,6 +753,7 @@ class _VecF64(_InnerVector):
 
     dtype = VectorDType.F64
     size = 8
+    gql_inner_type_repr = "FLOAT64 NOT NULL"
 
     @classmethod
     def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
@@ -822,6 +828,7 @@ class _VecF32(_InnerVector):
 
     dtype = VectorDType.F32
     size = 4
+    gql_inner_type_repr = "FLOAT32 NOT NULL"
 
     @classmethod
     def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
@@ -900,6 +907,7 @@ class _VecI64(_InnerVector):
 
     dtype = VectorDType.I64
     size = 8
+    gql_inner_type_repr = "INTEGER64 NOT NULL"
 
     @classmethod
     def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
@@ -992,6 +1000,7 @@ class _VecI32(_InnerVector):
 
     dtype = VectorDType.I32
     size = 4
+    gql_inner_type_repr = "INTEGER32 NOT NULL"
 
     @classmethod
     def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
@@ -1084,6 +1093,7 @@ class _VecI16(_InnerVector):
 
     dtype = VectorDType.I16
     size = 2
+    gql_inner_type_repr = "INTEGER16 NOT NULL"
 
     @classmethod
     def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
@@ -1176,6 +1186,7 @@ class _VecI8(_InnerVector):
 
     dtype = VectorDType.I8
     size = 1
+    gql_inner_type_repr = "INTEGER8 NOT NULL"
 
     @classmethod
     def _from_native_rust(cls, data: _t.Iterable[object], /) -> _t.Self:
