@@ -568,9 +568,25 @@ class TestPackStream:
             data_out += bytearray([0x81, 64 + el, el])
         assert_packable(data_in, bytes(data_out))
 
+    @pytest.mark.parametrize("size", range(0x10))
+    def test_tiny_maps_padded_key(self, assert_packable, size):
+        data_in = {}
+        data_out = bytearray([0xA0 + size])
+        padding = b"1234567890abcdefghijklmnopqrstuvwxyz"
+        for el in range(1, size + 1):
+            data_in[padding.decode("ascii") + chr(64 + el)] = el
+            data_out += bytearray([0xD0, 37, *padding, 64 + el, el])
+        assert_packable(data_in, bytes(data_out))
+
     def test_map_8(self, pack, assert_packable):
         d = {f"A{i}": 1 for i in range(40)}
         b = b"".join(pack(f"A{i}", 1) for i in range(40))
+        assert_packable(d, b"\xd8\x28" + b)
+
+    def test_map_8_padded_key(self, pack, assert_packable):
+        padding = "1234567890abcdefghijklmnopqrstuvwxyz"
+        d = {f"{padding}-{i}": 1 for i in range(40)}
+        b = b"".join(pack(f"{padding}-{i}", 1) for i in range(40))
         assert_packable(d, b"\xd8\x28" + b)
 
     def test_map_16(self, pack, assert_packable):
@@ -582,6 +598,30 @@ class TestPackStream:
         d = {f"A{i}": 1 for i in range(80000)}
         b = b"".join(pack(f"A{i}", 1) for i in range(80000))
         assert_packable(d, b"\xda\x00\x01\x38\x80" + b)
+
+    def test_map_key_tiny_string(self, assert_packable):
+        key = "A"
+        d = {key: 1}
+        data_out = b"\xa1\x81" + key.encode("utf-8") + b"\x01"
+        assert_packable(d, bytes(data_out))
+
+    def test_map_key_string_8(self, assert_packable):
+        key = "A" * 40
+        d = {key: 1}
+        data_out = b"\xa1\xd0\x28" + key.encode("utf-8") + b"\x01"
+        assert_packable(d, data_out)
+
+    def test_map_key_string_16(self, assert_packable):
+        key = "A" * 40000
+        d = {key: 1}
+        data_out = b"\xa1\xd1\x9c\x40" + key.encode("utf-8") + b"\x01"
+        assert_packable(d, data_out)
+
+    def test_map_key_string_32(self, assert_packable):
+        key = "A" * 80000
+        d = {key: 1}
+        data_out = b"\xa1\xd2\x00\x01\x38\x80" + key.encode("utf-8") + b"\x01"
+        assert_packable(d, data_out)
 
     def test_empty_dataframe_maps(self, assert_packable):
         df = pd.DataFrame()
