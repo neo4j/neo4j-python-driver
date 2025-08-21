@@ -330,6 +330,28 @@ class ResultSummary:
         return self._gql_status_objects
 
 
+_COUNTER_KEY_TO_ATTR_NAME = {
+    "nodes-created": "nodes_created",
+    "nodes-deleted": "nodes_deleted",
+    "relationships-created": "relationships_created",
+    "relationships-deleted": "relationships_deleted",
+    "properties-set": "properties_set",
+    "labels-added": "labels_added",
+    "labels-removed": "labels_removed",
+    "indexes-added": "indexes_added",
+    "indexes-removed": "indexes_removed",
+    "constraints-added": "constraints_added",
+    "constraints-removed": "constraints_removed",
+    "system-updates": "system_updates",
+    "contains-updates": "_contains_updates",
+    "contains-system-updates": "_contains_system_updates",
+}
+
+_COUNTER_ATTR_NAME_TO_KEY = {
+    v: k for k, v in _COUNTER_KEY_TO_ATTR_NAME.items()
+}
+
+
 class SummaryCounters:
     """Contains counters for various operations that a query triggered."""
 
@@ -373,29 +395,33 @@ class SummaryCounters:
     _contains_system_updates = None
 
     def __init__(self, statistics) -> None:
-        key_to_attr_name = {
-            "nodes-created": "nodes_created",
-            "nodes-deleted": "nodes_deleted",
-            "relationships-created": "relationships_created",
-            "relationships-deleted": "relationships_deleted",
-            "properties-set": "properties_set",
-            "labels-added": "labels_added",
-            "labels-removed": "labels_removed",
-            "indexes-added": "indexes_added",
-            "indexes-removed": "indexes_removed",
-            "constraints-added": "constraints_added",
-            "constraints-removed": "constraints_removed",
-            "system-updates": "system_updates",
-            "contains-updates": "_contains_updates",
-            "contains-system-updates": "_contains_system_updates",
-        }
         for key, value in dict(statistics).items():
-            attr_name = key_to_attr_name.get(key)
+            attr_name = _COUNTER_KEY_TO_ATTR_NAME.get(key)
             if attr_name:
                 setattr(self, attr_name, value)
 
     def __repr__(self) -> str:
-        return repr(vars(self))
+        statistics = {
+            _COUNTER_ATTR_NAME_TO_KEY[k]: v
+            for k, v in vars(self).items()
+            if k in _COUNTER_ATTR_NAME_TO_KEY
+        }
+        return f"{self.__class__.__name__}({statistics!r})"
+
+    def __str__(self) -> str:
+        attrs = []
+        for k, v in vars(self).items():
+            if k.startswith("_"):  # hide private attributes
+                continue
+            if hasattr(self.__class__, k) and getattr(self.__class__, k) == v:
+                # hide default values
+                continue
+            attrs.append(f"{k}: {v}")
+        attrs.append(f"contains_updates: {self.contains_updates}")
+        attrs.append(
+            f"contains_system_updates: {self.contains_system_updates}"
+        )
+        return f"SummaryCounters{{{', '.join(attrs)}}}"
 
     @property
     def contains_updates(self) -> bool:
