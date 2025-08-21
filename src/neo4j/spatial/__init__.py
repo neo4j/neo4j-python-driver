@@ -69,7 +69,7 @@ class Point(tuple[float, ...]):
         return tuple.__new__(cls, map(float, iterable))
 
     def __repr__(self) -> str:
-        return f"POINT({' '.join(map(str, self))})"
+        return f"{self.__class__.__name__}({', '.join(map(repr, self))})"
 
     def __eq__(self, other: object) -> bool:
         try:

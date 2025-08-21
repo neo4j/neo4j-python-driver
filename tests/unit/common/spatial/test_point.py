@@ -93,3 +93,17 @@ class TestPoint:
         assert expected is not actual
         assert expected.foo == actual.foo
         assert expected.foo is not actual.foo
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        (
+            ((), "Point()"),
+            ((0,), "Point(0.0)"),
+            ((1, 2), "Point(1.0, 2.0)"),
+            ((1, 2, 3), "Point(1.0, 2.0, 3.0)"),
+            ((1.23, 2.34, 3.45, 4.56), "Point(1.23, 2.34, 3.45, 4.56)"),
+        ),
+    )
+    def test_repr(self, args, expected):
+        p = Point(args)
+        assert repr(p) == expected

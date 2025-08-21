@@ -193,6 +193,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - The driver incorrectly applied a timeout hint received from the server to both read and write I/O operations.
   It is now only applied to read I/O operations.  
   In turn, a new configuration option `connection_write_timeout` with a default value of `30 seconds` is introduced.
+- Adjust `repr` string representation of spatial types to conform with Python's recommendations.
 
 
 ## Version 5.28

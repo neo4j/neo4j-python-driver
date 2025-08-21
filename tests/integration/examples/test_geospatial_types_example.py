@@ -49,7 +49,7 @@ def test_cartesian_point(driver):
 
     # Reading a 2D point from a record
     point2d: CartesianPoint = record_with_2d_point.get("fieldName")
-    str(point2d)  # POINT(1.0 5.1)
+    str(point2d)  # CartesianPoint(1.0, 5.1)
     _ = point2d.x  # 1.0
     _ = point2d.y  # 5.1
     # point2d.z raises AttributeError
@@ -58,7 +58,7 @@ def test_cartesian_point(driver):
 
     # Reading a 3D point from a record
     point3d: CartesianPoint = record_with_3d_point.get("fieldName")
-    str(point3d)  # POINT(1.0 -2.0 3.1)
+    str(point3d)  # CartesianPoint(1.0, -2.0, 3.1)
     _ = point3d.x  # 1.0
     _ = point3d.y  # -2.0
     _ = point3d.z  # 3.1
@@ -66,7 +66,7 @@ def test_cartesian_point(driver):
     len(point2d)  # 3
     # end::geospatial-types-cartesian[]
 
-    assert str(point2d) == "POINT(1.0 5.1)"
+    assert str(point2d) == "CartesianPoint(1.0, 5.1)"
     assert isinstance(point2d.x, float) and point2d.x == 1.0
     assert isinstance(point2d.y, float) and point2d.y == 5.1
     with pytest.raises(AttributeError):
@@ -75,7 +75,7 @@ def test_cartesian_point(driver):
     assert len(point2d) == 2
     assert point2d == in_point2d
 
-    assert str(point3d) == "POINT(1.0 -2.0 3.1)"
+    assert str(point3d) == "CartesianPoint(1.0, -2.0, 3.1)"
     assert isinstance(point3d.x, float) and point3d.x == 1.0
     assert isinstance(point3d.y, float) and point3d.y == -2.0
     assert isinstance(point3d.z, float) and point3d.z == 3.1
@@ -110,7 +110,7 @@ def test_wgs84_point(driver):
 
     # Reading a 2D point from a record
     point2d: WGS84Point = record_with_2d_point.get("fieldName")
-    str(point2d)  # POINT(1.0 5.1)
+    str(point2d)  # WGS84Point(1.0, 5.1)
     _ = point2d.longitude  # 1.0 (point2d.x is an alias for longitude)
     _ = point2d.latitude  # 5.1 (point2d.y is an alias for latitude)
     # point2d.height raises AttributeError (same with point2d.z)
@@ -119,7 +119,7 @@ def test_wgs84_point(driver):
 
     # Reading a 3D point from a record
     point3d = record_with_3d_point.get("fieldName")  # type: WGS84Point
-    str(point3d)  # POINT(1.0 -2.0 3.1)
+    str(point3d)  # WGS84Point(1.0, -2.0, 3.1)
     _ = point3d.longitude  # 1.0 (point3d.x is an alias for longitude)
     _ = point3d.latitude  # -2.0 (point3d.y is an alias for latitude)
     _ = point3d.height  # 3.1 (point3d.z is an alias for height)
@@ -127,7 +127,7 @@ def test_wgs84_point(driver):
     len(point2d)  # 3
     # end::geospatial-types-wgs84[]
 
-    assert str(point2d) == "POINT(1.0 5.1)"
+    assert str(point2d) == "WGS84Point(1.0, 5.1)"
     assert isinstance(point2d.longitude, float) and point2d.longitude == 1.0
     assert isinstance(point2d.x, float) and point2d.x == 1.0
     assert isinstance(point2d.latitude, float) and point2d.latitude == 5.1
@@ -140,7 +140,7 @@ def test_wgs84_point(driver):
     assert len(point2d) == 2
     assert point2d == in_point2d
 
-    assert str(point3d) == "POINT(1.0 -2.0 3.1)"
+    assert str(point3d) == "WGS84Point(1.0, -2.0, 3.1)"
     assert isinstance(point3d.longitude, float) and point3d.longitude == 1.0
     assert isinstance(point3d.x, float) and point3d.x == 1.0
     assert isinstance(point3d.latitude, float) and point3d.latitude == -2.0
