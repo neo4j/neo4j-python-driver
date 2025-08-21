@@ -14,23 +14,28 @@
 # limitations under the License.
 
 
+from .... import _typing as t
+
+
 class Structure:
-    def __init__(self, tag, *fields):
+    tag: bytes
+    fields: list[t.Any]
+
+    def __init__(self, tag: bytes, *fields: t.Any):
         self.tag = tag
         self.fields = list(fields)
 
-    def __repr__(self):
-        fields = ", ".join(map(repr, self.fields))
-        tag_int = ord(self.tag)
-        return f"Structure[0x{tag_int:02X}]({fields})"
+    def __repr__(self) -> str:
+        args = ", ".join(map(repr, (self.tag, *self.fields)))
+        return f"Structure({args})"
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         try:
             return self.tag == other.tag and self.fields == other.fields
         except AttributeError:
-            return NotImplementedError
+            return NotImplemented
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.fields)
 
     def __getitem__(self, key):
