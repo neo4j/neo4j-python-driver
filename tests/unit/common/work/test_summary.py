@@ -37,6 +37,10 @@ from neo4j import (
     SummaryCounters,
     SummaryInputPosition,
 )
+from neo4j._work.summary import (
+    _CLASSIFICATION_LOOKUP,
+    _SEVERITY_LOOKUP,
+)
 
 from ...._deprecated_imports import (
     NotificationCategory,
@@ -386,6 +390,73 @@ def test_non_notification_statuses(raw_status, summary_args_kwargs) -> None:
     description: str = status.status_description
     assert description == raw_status["status_description"]
     assert_is_non_notification_status(status)
+
+
+@pytest.mark.parametrize(
+    "raw_status",
+    (
+        STATUS_SUCCESS,
+        STATUS_OMITTED_RESULT,
+        STATUS_NO_DATA,
+        StatusOrderHelper.make_raw_status(0, "SUCCESS"),
+        StatusOrderHelper.make_raw_status(0, "OMITTED"),
+        StatusOrderHelper.make_raw_status(0, "NODATA"),
+        StatusOrderHelper.make_raw_status(0, "WARNING"),
+        StatusOrderHelper.make_raw_status(0, "INFORMATION"),
+    ),
+)
+def test_status_order_helper_repr(raw_status, summary_args_kwargs) -> None:
+    args, kwargs = summary_args_kwargs
+    kwargs["metadata"]["statuses"] = [raw_status]
+
+    expected_status = raw_status["gql_status"]
+    expected_description = raw_status["status_description"]
+    expected_diag_record = raw_status.get("diagnostic_record", {})
+    expected_position = SummaryInputPosition._from_metadata(
+        expected_diag_record.get("_position")
+    )
+    expected_raw_cls = expected_diag_record.get("_classification")
+    expected_cls = _CLASSIFICATION_LOOKUP.get(
+        expected_raw_cls, NotificationClassification.UNKNOWN
+    )
+    expected_raw_sev = expected_diag_record.get("_severity")
+    expected_sev = _SEVERITY_LOOKUP.get(
+        expected_raw_sev, NotificationSeverity.UNKNOWN
+    )
+
+    expected = (
+        "<GqlStatusObject "
+        f"gql_status={expected_status!r}, "
+        f"status_description={expected_description!r}, "
+        f"position={expected_position!r}, "
+        f"raw_classification={expected_raw_cls!r}, "
+        f"classification={expected_cls!r}, "
+        f"raw_severity={expected_raw_sev!r}, "
+        f"severity={expected_sev!r}, "
+        f"diagnostic_record={expected_diag_record!r}"
+        ">"
+    )
+
+    summary = ResultSummary(*args, **kwargs)
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
+
+    assert len(status_objects) == 1
+    status = status_objects[0]
+
+    assert repr(status) == expected
+
+
+def test_summary_input_position_repr():
+    position = SummaryInputPosition._from_metadata(
+        {
+            "line": 42,
+            "column": 1337,
+            "offset": 666,
+        }
+    )
+    expected = "<SummaryInputPosition line=42, column=1337, offset=666>"
+
+    assert repr(position) == expected
 
 
 @pytest.mark.parametrize(
