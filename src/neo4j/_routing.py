@@ -32,6 +32,13 @@ class OrderedSet(MutableSet):
         self._current = None
 
     def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(("
+            f"{', '.join(map(repr, self._elements))}"
+            f"))"
+        )
+
+    def __str__(self):
         return f"{{{', '.join(map(repr, self._elements))}}}"
 
     def __contains__(self, element):
@@ -118,10 +125,14 @@ class RoutingTable:
 
     def __repr__(self):
         return (
-            f"RoutingTable(database={self.database!r}, "
-            f"routers={self.routers!r}, readers={self.readers!r}, "
-            f"writers={self.writers!r}, "
-            f"last_updated_time={self.last_updated_time!r}, ttl={self.ttl!r})"
+            "RoutingTable("
+            f"database={self.database!r}, "
+            f"routers={tuple(self.routers)!r}, "
+            f"readers={tuple(self.readers)!r}, "
+            f"writers={tuple(self.writers)!r}, "
+            f"last_updated_time={self.last_updated_time!r}, "
+            f"ttl={self.ttl!r}"
+            ")"
         )
 
     def __contains__(self, address):

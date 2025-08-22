@@ -58,10 +58,6 @@ VALID_ROUTING_RECORD_WITH_EXTRA_ROLE = {
 
 
 class TestOrderedSet:
-    def test_should_repr_as_set(self):
-        s = OrderedSet([1, 2, 3])
-        assert repr(s) == "{1, 2, 3}"
-
     def test_should_contain_element(self):
         s = OrderedSet([1, 2, 3])
         assert 2 in s
@@ -133,6 +129,17 @@ class TestOrderedSet:
         s = OrderedSet([1, 2, 3])
         s.replace([3, 4, 5])
         assert list(s) == [3, 4, 5]
+
+    def test_repr(self):
+        s = OrderedSet([1, 2, 3, "abc"])
+        expected_repr = "OrderedSet((1, 2, 3, 'abc'))"
+        assert repr(s) == expected_repr
+        assert eval(repr(s)) == s
+
+    def test_str(self):
+        s = OrderedSet([1, 2, 3, "abc"])
+        expected_repr = "{1, 2, 3, 'abc'}"
+        assert str(s) == expected_repr
 
 
 class TestRoutingTableConstruction:
