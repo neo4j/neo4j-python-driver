@@ -867,7 +867,7 @@ def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
             "SummaryCounters({})",
         ),
         (
-            {"unreckognized": 42},
+            {"unrecognized": 42},
             "SummaryCounters({})",
         ),
         (
@@ -1051,7 +1051,7 @@ def test_summary_counter_repr(stats: dict, expected: str) -> None:
             ),
         ),
         (
-            {"unreckognized": 42},
+            {"unrecognized": 42},
             (
                 "SummaryCounters{"
                 "contains_updates: False, "
