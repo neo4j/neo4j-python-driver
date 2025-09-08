@@ -859,6 +859,533 @@ def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    (
+        (
+            {},
+            "SummaryCounters({})",
+        ),
+        (
+            {"unrecognized": 42},
+            "SummaryCounters({})",
+        ),
+        (
+            {"nodes-created": 0},
+            "SummaryCounters({'nodes-created': 0})",
+        ),
+        (
+            {"nodes-created": 42},
+            "SummaryCounters({'nodes-created': 42})",
+        ),
+        (
+            {"nodes-deleted": 0},
+            "SummaryCounters({'nodes-deleted': 0})",
+        ),
+        (
+            {"nodes-deleted": 42},
+            "SummaryCounters({'nodes-deleted': 42})",
+        ),
+        (
+            {"relationships-created": 0},
+            "SummaryCounters({'relationships-created': 0})",
+        ),
+        (
+            {"relationships-created": 42},
+            "SummaryCounters({'relationships-created': 42})",
+        ),
+        (
+            {"relationships-deleted": 0},
+            "SummaryCounters({'relationships-deleted': 0})",
+        ),
+        (
+            {"relationships-deleted": 42},
+            "SummaryCounters({'relationships-deleted': 42})",
+        ),
+        (
+            {"properties-set": 0},
+            "SummaryCounters({'properties-set': 0})",
+        ),
+        (
+            {"properties-set": 42},
+            "SummaryCounters({'properties-set': 42})",
+        ),
+        (
+            {"labels-added": 0},
+            "SummaryCounters({'labels-added': 0})",
+        ),
+        (
+            {"labels-added": 42},
+            "SummaryCounters({'labels-added': 42})",
+        ),
+        (
+            {"labels-removed": 0},
+            "SummaryCounters({'labels-removed': 0})",
+        ),
+        (
+            {"labels-removed": 42},
+            "SummaryCounters({'labels-removed': 42})",
+        ),
+        (
+            {"indexes-added": 0},
+            "SummaryCounters({'indexes-added': 0})",
+        ),
+        (
+            {"indexes-added": 42},
+            "SummaryCounters({'indexes-added': 42})",
+        ),
+        (
+            {"indexes-removed": 0},
+            "SummaryCounters({'indexes-removed': 0})",
+        ),
+        (
+            {"indexes-removed": 42},
+            "SummaryCounters({'indexes-removed': 42})",
+        ),
+        (
+            {"constraints-added": 0},
+            "SummaryCounters({'constraints-added': 0})",
+        ),
+        (
+            {"constraints-added": 42},
+            "SummaryCounters({'constraints-added': 42})",
+        ),
+        (
+            {"constraints-removed": 0},
+            "SummaryCounters({'constraints-removed': 0})",
+        ),
+        (
+            {"constraints-removed": 42},
+            "SummaryCounters({'constraints-removed': 42})",
+        ),
+        (
+            {"system-updates": 0},
+            "SummaryCounters({'system-updates': 0})",
+        ),
+        (
+            {"system-updates": 42},
+            "SummaryCounters({'system-updates': 42})",
+        ),
+        (
+            {"contains-updates": True},
+            "SummaryCounters({'contains-updates': True})",
+        ),
+        (
+            {"contains-updates": False},
+            "SummaryCounters({'contains-updates': False})",
+        ),
+        (
+            {"contains-updates": None},
+            "SummaryCounters({'contains-updates': None})",
+        ),
+        (
+            {"contains-system-updates": True},
+            "SummaryCounters({'contains-system-updates': True})",
+        ),
+        (
+            {"contains-system-updates": False},
+            "SummaryCounters({'contains-system-updates': False})",
+        ),
+        (
+            {"contains-system-updates": None},
+            "SummaryCounters({'contains-system-updates': None})",
+        ),
+        (
+            {
+                "nodes-created": 1,
+                "nodes-deleted": 2,
+                "relationships-created": 3,
+                "relationships-deleted": 4,
+                "properties-set": 0,
+                "labels-added": 6,
+                "labels-removed": 7,
+                "indexes-added": 8,
+                "indexes-removed": 9,
+                "constraints-added": 10,
+                "constraints-removed": 11,
+                "system-updates": 12,
+                "contains-updates": True,
+                "contains-system-updates": False,
+            },
+            (
+                "SummaryCounters({"
+                "'nodes-created': 1, "
+                "'nodes-deleted': 2, "
+                "'relationships-created': 3, "
+                "'relationships-deleted': 4, "
+                "'properties-set': 0, "
+                "'labels-added': 6, "
+                "'labels-removed': 7, "
+                "'indexes-added': 8, "
+                "'indexes-removed': 9, "
+                "'constraints-added': 10, "
+                "'constraints-removed': 11, "
+                "'system-updates': 12, "
+                "'contains-updates': True, "
+                "'contains-system-updates': False"
+                "})"
+            ),
+        ),
+    ),
+)
+def test_summary_counter_repr(stats: dict, expected: str) -> None:
+    counters = SummaryCounters(stats)
+    repr_out = repr(counters)
+
+    assert isinstance(repr_out, str)
+    assert repr_out == expected
+
+    assert vars(eval(repr_out)) == vars(counters)
+
+
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    (
+        (
+            {},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"unrecognized": 42},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-created": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-created": 42},
+            (
+                "SummaryCounters{"
+                "nodes_created: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-deleted": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-deleted": 42},
+            (
+                "SummaryCounters{"
+                "nodes_deleted: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-created": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-created": 42},
+            (
+                "SummaryCounters{"
+                "relationships_created: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-deleted": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-deleted": 42},
+            (
+                "SummaryCounters{"
+                "relationships_deleted: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"properties-set": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"properties-set": 42},
+            (
+                "SummaryCounters{"
+                "properties_set: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-added": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-added": 42},
+            (
+                "SummaryCounters{"
+                "labels_added: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-removed": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-removed": 42},
+            (
+                "SummaryCounters{"
+                "labels_removed: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-added": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-added": 42},
+            (
+                "SummaryCounters{"
+                "indexes_added: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-removed": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-removed": 42},
+            (
+                "SummaryCounters{"
+                "indexes_removed: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-added": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-added": 42},
+            (
+                "SummaryCounters{"
+                "constraints_added: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-removed": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-removed": 42},
+            (
+                "SummaryCounters{"
+                "constraints_removed: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"system-updates": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"system-updates": 42},
+            (
+                "SummaryCounters{"
+                "system_updates: 42, "
+                "contains_updates: False, "
+                "contains_system_updates: True"
+                "}"
+            ),
+        ),
+        (
+            {"contains-updates": True},
+            (
+                "SummaryCounters{"
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-updates": False},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-updates": None},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-system-updates": True},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: True"
+                "}"
+            ),
+        ),
+        (
+            {"contains-system-updates": False},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-system-updates": None},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {
+                "nodes-created": 1,
+                "nodes-deleted": 2,
+                "relationships-created": 3,
+                "relationships-deleted": 4,
+                "properties-set": 0,
+                "labels-added": 6,
+                "labels-removed": 7,
+                "indexes-added": 8,
+                "indexes-removed": 9,
+                "constraints-added": 10,
+                "constraints-removed": 11,
+                "system-updates": 12,
+                "contains-updates": None,
+                "contains-system-updates": False,
+            },
+            (
+                "SummaryCounters{"
+                "nodes_created: 1, "
+                "nodes_deleted: 2, "
+                "relationships_created: 3, "
+                "relationships_deleted: 4, "
+                "labels_added: 6, "
+                "labels_removed: 7, "
+                "indexes_added: 8, "
+                "indexes_removed: 9, "
+                "constraints_added: 10, "
+                "constraints_removed: 11, "
+                "system_updates: 12, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+    ),
+)
+def test_summary_counter_str(stats: dict, expected: str) -> None:
+    counters = SummaryCounters(stats)
+    str_out = str(counters)
+
+    assert isinstance(str_out, str)
+    assert str_out == expected
+
+
 # [bolt-version-bump] search tag when changing bolt version support
 @pytest.mark.parametrize("exists", (True, False))
 @pytest.mark.parametrize(

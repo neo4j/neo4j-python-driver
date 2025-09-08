@@ -96,4 +96,4 @@ class TestClockTime:
 
     def test_repr(self):
         ct = _ClockTime(123456.789)
-        assert repr(ct).startswith("ClockTime")
+        assert repr(ct).startswith("neo4j.time.ClockTime")
