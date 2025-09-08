@@ -98,3 +98,17 @@ class TestWGS84Point:
         assert expected is not actual
         assert expected.foo == actual.foo
         assert expected.foo is not actual.foo
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        (
+            ((), "WGS84Point()"),
+            ((0,), "WGS84Point(0.0)"),
+            ((1, 2), "WGS84Point(1.0, 2.0)"),
+            ((1, 2, 3), "WGS84Point(1.0, 2.0, 3.0)"),
+            ((1.23, 2.34, 3.45, 4.56), "WGS84Point(1.23, 2.34, 3.45, 4.56)"),
+        ),
+    )
+    def test_repr(self, args, expected):
+        p = WGS84Point(args)
+        assert repr(p) == expected
