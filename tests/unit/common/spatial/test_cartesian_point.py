@@ -80,3 +80,20 @@ class TestCartesianPoint:
         assert expected is not actual
         assert expected.foo == actual.foo
         assert expected.foo is not actual.foo
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        (
+            ((), "CartesianPoint()"),
+            ((0,), "CartesianPoint(0.0)"),
+            ((1, 2), "CartesianPoint(1.0, 2.0)"),
+            ((1, 2, 3), "CartesianPoint(1.0, 2.0, 3.0)"),
+            (
+                (1.23, 2.34, 3.45, 4.56),
+                "CartesianPoint(1.23, 2.34, 3.45, 4.56)",
+            ),
+        ),
+    )
+    def test_repr(self, args, expected):
+        p = CartesianPoint(args)
+        assert repr(p) == expected

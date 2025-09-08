@@ -37,6 +37,10 @@ from neo4j import (
     SummaryCounters,
     SummaryInputPosition,
 )
+from neo4j._work.summary import (
+    _CLASSIFICATION_LOOKUP,
+    _SEVERITY_LOOKUP,
+)
 
 from ...._deprecated_imports import (
     NotificationCategory,
@@ -386,6 +390,73 @@ def test_non_notification_statuses(raw_status, summary_args_kwargs) -> None:
     description: str = status.status_description
     assert description == raw_status["status_description"]
     assert_is_non_notification_status(status)
+
+
+@pytest.mark.parametrize(
+    "raw_status",
+    (
+        STATUS_SUCCESS,
+        STATUS_OMITTED_RESULT,
+        STATUS_NO_DATA,
+        StatusOrderHelper.make_raw_status(0, "SUCCESS"),
+        StatusOrderHelper.make_raw_status(0, "OMITTED"),
+        StatusOrderHelper.make_raw_status(0, "NODATA"),
+        StatusOrderHelper.make_raw_status(0, "WARNING"),
+        StatusOrderHelper.make_raw_status(0, "INFORMATION"),
+    ),
+)
+def test_status_order_helper_repr(raw_status, summary_args_kwargs) -> None:
+    args, kwargs = summary_args_kwargs
+    kwargs["metadata"]["statuses"] = [raw_status]
+
+    expected_status = raw_status["gql_status"]
+    expected_description = raw_status["status_description"]
+    expected_diag_record = raw_status.get("diagnostic_record", {})
+    expected_position = SummaryInputPosition._from_metadata(
+        expected_diag_record.get("_position")
+    )
+    expected_raw_cls = expected_diag_record.get("_classification")
+    expected_cls = _CLASSIFICATION_LOOKUP.get(
+        expected_raw_cls, NotificationClassification.UNKNOWN
+    )
+    expected_raw_sev = expected_diag_record.get("_severity")
+    expected_sev = _SEVERITY_LOOKUP.get(
+        expected_raw_sev, NotificationSeverity.UNKNOWN
+    )
+
+    expected = (
+        "<GqlStatusObject "
+        f"gql_status={expected_status!r}, "
+        f"status_description={expected_description!r}, "
+        f"position={expected_position!r}, "
+        f"raw_classification={expected_raw_cls!r}, "
+        f"classification={expected_cls!r}, "
+        f"raw_severity={expected_raw_sev!r}, "
+        f"severity={expected_sev!r}, "
+        f"diagnostic_record={expected_diag_record!r}"
+        ">"
+    )
+
+    summary = ResultSummary(*args, **kwargs)
+    status_objects: t.Sequence[GqlStatusObject] = summary.gql_status_objects
+
+    assert len(status_objects) == 1
+    status = status_objects[0]
+
+    assert repr(status) == expected
+
+
+def test_summary_input_position_repr():
+    position = SummaryInputPosition._from_metadata(
+        {
+            "line": 42,
+            "column": 1337,
+            "offset": 666,
+        }
+    )
+    expected = "<SummaryInputPosition line=42, column=1337, offset=666>"
+
+    assert repr(position) == expected
 
 
 @pytest.mark.parametrize(
@@ -857,6 +928,533 @@ def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
     assert summary_out.contains_system_updates == summary_in.get(
         "contains-system-updates", contains_system_updates
     )
+
+
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    (
+        (
+            {},
+            "SummaryCounters({})",
+        ),
+        (
+            {"unrecognized": 42},
+            "SummaryCounters({})",
+        ),
+        (
+            {"nodes-created": 0},
+            "SummaryCounters({'nodes-created': 0})",
+        ),
+        (
+            {"nodes-created": 42},
+            "SummaryCounters({'nodes-created': 42})",
+        ),
+        (
+            {"nodes-deleted": 0},
+            "SummaryCounters({'nodes-deleted': 0})",
+        ),
+        (
+            {"nodes-deleted": 42},
+            "SummaryCounters({'nodes-deleted': 42})",
+        ),
+        (
+            {"relationships-created": 0},
+            "SummaryCounters({'relationships-created': 0})",
+        ),
+        (
+            {"relationships-created": 42},
+            "SummaryCounters({'relationships-created': 42})",
+        ),
+        (
+            {"relationships-deleted": 0},
+            "SummaryCounters({'relationships-deleted': 0})",
+        ),
+        (
+            {"relationships-deleted": 42},
+            "SummaryCounters({'relationships-deleted': 42})",
+        ),
+        (
+            {"properties-set": 0},
+            "SummaryCounters({'properties-set': 0})",
+        ),
+        (
+            {"properties-set": 42},
+            "SummaryCounters({'properties-set': 42})",
+        ),
+        (
+            {"labels-added": 0},
+            "SummaryCounters({'labels-added': 0})",
+        ),
+        (
+            {"labels-added": 42},
+            "SummaryCounters({'labels-added': 42})",
+        ),
+        (
+            {"labels-removed": 0},
+            "SummaryCounters({'labels-removed': 0})",
+        ),
+        (
+            {"labels-removed": 42},
+            "SummaryCounters({'labels-removed': 42})",
+        ),
+        (
+            {"indexes-added": 0},
+            "SummaryCounters({'indexes-added': 0})",
+        ),
+        (
+            {"indexes-added": 42},
+            "SummaryCounters({'indexes-added': 42})",
+        ),
+        (
+            {"indexes-removed": 0},
+            "SummaryCounters({'indexes-removed': 0})",
+        ),
+        (
+            {"indexes-removed": 42},
+            "SummaryCounters({'indexes-removed': 42})",
+        ),
+        (
+            {"constraints-added": 0},
+            "SummaryCounters({'constraints-added': 0})",
+        ),
+        (
+            {"constraints-added": 42},
+            "SummaryCounters({'constraints-added': 42})",
+        ),
+        (
+            {"constraints-removed": 0},
+            "SummaryCounters({'constraints-removed': 0})",
+        ),
+        (
+            {"constraints-removed": 42},
+            "SummaryCounters({'constraints-removed': 42})",
+        ),
+        (
+            {"system-updates": 0},
+            "SummaryCounters({'system-updates': 0})",
+        ),
+        (
+            {"system-updates": 42},
+            "SummaryCounters({'system-updates': 42})",
+        ),
+        (
+            {"contains-updates": True},
+            "SummaryCounters({'contains-updates': True})",
+        ),
+        (
+            {"contains-updates": False},
+            "SummaryCounters({'contains-updates': False})",
+        ),
+        (
+            {"contains-updates": None},
+            "SummaryCounters({'contains-updates': None})",
+        ),
+        (
+            {"contains-system-updates": True},
+            "SummaryCounters({'contains-system-updates': True})",
+        ),
+        (
+            {"contains-system-updates": False},
+            "SummaryCounters({'contains-system-updates': False})",
+        ),
+        (
+            {"contains-system-updates": None},
+            "SummaryCounters({'contains-system-updates': None})",
+        ),
+        (
+            {
+                "nodes-created": 1,
+                "nodes-deleted": 2,
+                "relationships-created": 3,
+                "relationships-deleted": 4,
+                "properties-set": 0,
+                "labels-added": 6,
+                "labels-removed": 7,
+                "indexes-added": 8,
+                "indexes-removed": 9,
+                "constraints-added": 10,
+                "constraints-removed": 11,
+                "system-updates": 12,
+                "contains-updates": True,
+                "contains-system-updates": False,
+            },
+            (
+                "SummaryCounters({"
+                "'nodes-created': 1, "
+                "'nodes-deleted': 2, "
+                "'relationships-created': 3, "
+                "'relationships-deleted': 4, "
+                "'properties-set': 0, "
+                "'labels-added': 6, "
+                "'labels-removed': 7, "
+                "'indexes-added': 8, "
+                "'indexes-removed': 9, "
+                "'constraints-added': 10, "
+                "'constraints-removed': 11, "
+                "'system-updates': 12, "
+                "'contains-updates': True, "
+                "'contains-system-updates': False"
+                "})"
+            ),
+        ),
+    ),
+)
+def test_summary_counter_repr(stats: dict, expected: str) -> None:
+    counters = SummaryCounters(stats)
+    repr_out = repr(counters)
+
+    assert isinstance(repr_out, str)
+    assert repr_out == expected
+
+    assert vars(eval(repr_out)) == vars(counters)
+
+
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    (
+        (
+            {},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"unrecognized": 42},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-created": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-created": 42},
+            (
+                "SummaryCounters{"
+                "nodes_created: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-deleted": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"nodes-deleted": 42},
+            (
+                "SummaryCounters{"
+                "nodes_deleted: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-created": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-created": 42},
+            (
+                "SummaryCounters{"
+                "relationships_created: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-deleted": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"relationships-deleted": 42},
+            (
+                "SummaryCounters{"
+                "relationships_deleted: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"properties-set": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"properties-set": 42},
+            (
+                "SummaryCounters{"
+                "properties_set: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-added": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-added": 42},
+            (
+                "SummaryCounters{"
+                "labels_added: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-removed": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"labels-removed": 42},
+            (
+                "SummaryCounters{"
+                "labels_removed: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-added": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-added": 42},
+            (
+                "SummaryCounters{"
+                "indexes_added: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-removed": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"indexes-removed": 42},
+            (
+                "SummaryCounters{"
+                "indexes_removed: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-added": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-added": 42},
+            (
+                "SummaryCounters{"
+                "constraints_added: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-removed": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"constraints-removed": 42},
+            (
+                "SummaryCounters{"
+                "constraints_removed: 42, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"system-updates": 0},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"system-updates": 42},
+            (
+                "SummaryCounters{"
+                "system_updates: 42, "
+                "contains_updates: False, "
+                "contains_system_updates: True"
+                "}"
+            ),
+        ),
+        (
+            {"contains-updates": True},
+            (
+                "SummaryCounters{"
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-updates": False},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-updates": None},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-system-updates": True},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: True"
+                "}"
+            ),
+        ),
+        (
+            {"contains-system-updates": False},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {"contains-system-updates": None},
+            (
+                "SummaryCounters{"
+                "contains_updates: False, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+        (
+            {
+                "nodes-created": 1,
+                "nodes-deleted": 2,
+                "relationships-created": 3,
+                "relationships-deleted": 4,
+                "properties-set": 0,
+                "labels-added": 6,
+                "labels-removed": 7,
+                "indexes-added": 8,
+                "indexes-removed": 9,
+                "constraints-added": 10,
+                "constraints-removed": 11,
+                "system-updates": 12,
+                "contains-updates": None,
+                "contains-system-updates": False,
+            },
+            (
+                "SummaryCounters{"
+                "nodes_created: 1, "
+                "nodes_deleted: 2, "
+                "relationships_created: 3, "
+                "relationships_deleted: 4, "
+                "labels_added: 6, "
+                "labels_removed: 7, "
+                "indexes_added: 8, "
+                "indexes_removed: 9, "
+                "constraints_added: 10, "
+                "constraints_removed: 11, "
+                "system_updates: 12, "
+                "contains_updates: True, "
+                "contains_system_updates: False"
+                "}"
+            ),
+        ),
+    ),
+)
+def test_summary_counter_str(stats: dict, expected: str) -> None:
+    counters = SummaryCounters(stats)
+    str_out = str(counters)
+
+    assert isinstance(str_out, str)
+    assert str_out == expected
 
 
 # [bolt-version-bump] search tag when changing bolt version support

@@ -356,7 +356,9 @@ class TestDuration:
     def test_repr(self) -> None:
         d = Duration(months=2, days=3, seconds=5.7)
         assert repr(d) == (
-            "Duration(months=2, days=3, seconds=5, nanoseconds=700000000)"
+            "neo4j.time.Duration("
+            "months=2, days=3, seconds=5, nanoseconds=700000000"
+            ")"
         )
 
     def test_iso_format(self) -> None:
