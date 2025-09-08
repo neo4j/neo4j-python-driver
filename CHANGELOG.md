@@ -196,6 +196,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - Adjust string representation(s) of several types:
   - `SummaryCounters`: `repr` and `str` to conform with Python's recommendations.
   - `Point` and its subclasses: `repr` to conform with Python's recommendations.
+  - `Duration` and `ClockTime`: `repr` to be more consistent with other temporal driver types.
   - `GqlStatusObject`: `repr` to conform with Python's recommendations.
   - `SummaryInputPosition`: `repr` to be more informative.
 

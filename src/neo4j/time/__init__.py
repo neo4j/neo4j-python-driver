@@ -274,7 +274,7 @@ class ClockTime(tuple):
 
     def __repr__(self):
         s, ns = self
-        return f"ClockTime(seconds={s!r}, nanoseconds={ns!r})"
+        return f"neo4j.time.ClockTime(seconds={s!r}, nanoseconds={ns!r})"
 
     @property
     def seconds(self):
@@ -655,8 +655,12 @@ class Duration(  # type: ignore[misc]
     def __repr__(self) -> str:
         mo, day, sec, ns = self
         return (
-            f"Duration(months={mo!r}, days={day!r}, seconds={sec!r}, "
-            f"nanoseconds={ns!r})"
+            "neo4j.time.Duration("
+            f"months={mo!r}, "
+            f"days={day!r}, "
+            f"seconds={sec!r}, "
+            f"nanoseconds={ns!r}"
+            ")"
         )
 
     def __str__(self) -> str:
