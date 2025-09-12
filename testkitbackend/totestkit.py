@@ -39,6 +39,7 @@ from neo4j.time import (
     Duration,
     Time,
 )
+from neo4j.types import UnsupportedType
 from neo4j.vector import Vector
 
 from ._warning_check import warning_check
@@ -309,6 +310,18 @@ def field(v):
                 "dtype": v.dtype,
                 "data": " ".join(f"{byte:02x}" for byte in v.raw()),
             },
+        }
+    if isinstance(v, UnsupportedType):
+        data = {
+            "name": v.name,
+            "minimumProtocolMajor": v.minimum_protocol_version[0],
+            "minimumProtocolMinor": v.minimum_protocol_version[1],
+        }
+        if v.message is not None:
+            data["message"] = v.message
+        return {
+            "name": "CypherUnknownType",
+            "data": data,
         }
 
     raise ValueError("Unhandled type:" + str(type(v)))

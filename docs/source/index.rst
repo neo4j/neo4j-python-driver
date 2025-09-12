@@ -38,6 +38,8 @@ Topics
 
 + :ref:`vector-data-types`
 
++ :ref:`other-data-types`
+
 + :ref:`breaking-changes`
 
 
@@ -50,6 +52,7 @@ Topics
    types/spatial.rst
    types/temporal.rst
    types/vector.rst
+   types/other.rst
    breaking_changes.rst
 
 

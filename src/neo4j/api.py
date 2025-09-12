@@ -296,7 +296,7 @@ class ServerInfo:
         """
         Bolt protocol version with which the remote server communicates.
 
-        This is returned as a 2-tuple:class:`tuple` of ``(major, minor)``
+        This is returned as a 2-:class:`tuple` of ``(major, minor)``
         integers.
         """
         return self._protocol_version

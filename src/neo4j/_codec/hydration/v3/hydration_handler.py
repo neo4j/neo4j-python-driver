@@ -45,7 +45,10 @@ from ..v1 import (
 )
 from ..v1.hydration_handler import _GraphHydrator
 from ..v2 import temporal as temporal_v2
-from . import vector
+from . import (
+    unsupported,
+    vector,
+)
 
 
 class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
@@ -64,6 +67,7 @@ class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
             b"d": temporal_v2.hydrate_datetime,  # no time zone
             b"E": temporal_v1.hydrate_duration,
             b"V": vector.hydrate_vector,
+            b"?": unsupported.hydrate_unsupported,
         }
         self.dehydration_hooks.update(
             exact_types={
