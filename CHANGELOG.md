@@ -183,6 +183,8 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `neo4j.SummaryNotification`
     - `neo4j.NotificationCategory`
     - `neo4j.NotificationDisabledCategory`
+    - `notifications_disabled_categories` driver and session configuration option
+      in favor of `notifications_disabled_classifications`
   - Stabilize GQL status objects (use this instead of notifications):
     - `ResultSummary.gql_status_objects`
     - `neo4j.GqlStatusObject`
