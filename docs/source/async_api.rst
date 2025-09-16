@@ -110,7 +110,9 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 
 
 .. note::
+
     See also :ref:`encryption-config-note-ref` to understand how the URI scheme relates to other encryption configuration options.
+
 
 .. note::
 

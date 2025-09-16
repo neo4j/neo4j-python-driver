@@ -97,7 +97,9 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 
 
 .. note::
+
     See also :ref:`encryption-config-note-ref` to understand how the URI scheme relates to other encryption configuration options.
+
 
 .. note::
 
@@ -809,7 +811,7 @@ There are different *mutually exclusive* ways of configuring TLS/SSL encryption 
 
 * Use a URI scheme ending in ``+s``. This auto-configures the driver to use TLS and only trust system CAs.
 * Use a URI scheme ending in ``+ssc``. This auto-configures the driver to use TLS and trust any certificate.
-* Use any other URI scheme and
+* Use a URI scheme without suffix (i.e. ``neo4j://`` or ``bolt://``) and one of the following mutually exclusive options:
 
   * set :ref:`encrypted-ref` to ``True`` and optionally configure :ref:`trusted-certificates-ref` and/or
     :ref:`client-certificate-ref` to enable TLS with custom security settings.
