@@ -272,6 +272,9 @@ class NotificationDisabledCategory(str, Enum):
 
     .. versionchanged:: 5.24
         Added category :attr:`.SCHEMA`.
+
+    .. deprecated:: 6.0
+        Use :class:`.NotificationDisabledClassification` instead.
     """
 
     HINT = "HINT"
@@ -294,12 +297,6 @@ class NotificationDisabledClassification(str, Enum):
     This alternative is provided for a consistent naming with
     :attr:`.GqlStatusObject.classification`.
 
-    **This is a preview**.
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. seealso::
         driver config
         :ref:`driver-notifications-disabled-classifications-ref`,
@@ -310,6 +307,8 @@ class NotificationDisabledClassification(str, Enum):
 
     .. versionchanged:: 5.24
         Added classification :attr:`.SCHEMA`.
+
+    .. versionchanged:: 6.0 Stabilized from preview.
     """
 
     HINT = "HINT"
@@ -326,7 +325,7 @@ class NotificationDisabledClassification(str, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_NotificationDisabledCategory = (
+    T_NotificationDisabledClassification = (
         NotificationDisabledCategory
         | NotificationDisabledClassification
         | t.Literal[
@@ -341,7 +340,7 @@ if t.TYPE_CHECKING:
             "SCHEMA",
         ]
     )
-    __all__.append("T_NotificationDisabledCategory")
+    __all__.append("T_NotificationDisabledClassification")
 
 
 class NotificationCategory(str, Enum):

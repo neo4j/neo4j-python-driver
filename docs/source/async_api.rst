@@ -101,12 +101,18 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
 | bolt+s                 | :ref:`async-bolt-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.        |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
-| neo4j                  | :ref:`async-neo4j-driver-ref` with no encryption or with custom encryption configuration, see :ref:`async-driver-configuration-ref`.         |
+| neo4j                  | :ref:`async-neo4j-driver-ref` with no encryption or with custom encryption configuration, see :ref:`async-driver-configuration-ref`.        |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+ssc              | :ref:`async-neo4j-driver-ref` with encryption (accepts self signed certificates).                                                           |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+s                | :ref:`async-neo4j-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.       |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
+
+
+.. note::
+
+    See also :ref:`encryption-config-note-ref` to understand how the URI scheme relates to other encryption configuration options.
+
 
 .. note::
 

@@ -96,7 +96,7 @@ if t.TYPE_CHECKING:
     from enum import Enum
 
     from .._api import (
-        T_NotificationDisabledCategory,
+        T_NotificationDisabledClassification,
         T_NotificationMinimumSeverity,
         T_RoutingControl,
     )
@@ -143,11 +143,12 @@ class AsyncGraphDatabase:
             notifications_min_severity: (
                 T_NotificationMinimumSeverity | None
             ) = ...,
+            # deprecated in favor of notifications_disabled_classifications
             notifications_disabled_categories: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             notifications_disabled_classifications: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             warn_notification_severity: (
                 T_NotificationMinimumSeverity | None
@@ -542,11 +543,12 @@ class AsyncDriver:
             notifications_min_severity: (
                 T_NotificationMinimumSeverity | None
             ) = ...,
+            # deprecated in favor of notifications_disabled_classifications
             notifications_disabled_categories: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             notifications_disabled_classifications: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -572,7 +574,10 @@ class AsyncDriver:
             :raises DriverError: if the driver has been closed.
 
             .. versionchanged:: 6.0
-                Raise :exc:`DriverError` if the driver has been closed.
+
+                * Raise :exc:`DriverError` if the driver has been closed.
+                * Deprecated ``notifications_disabled_categories`` in favor of
+                  ``notifications_disabled_classifications``.
             """
             # Would work just fine, but we don't want to introduce yet
             # another undocumented/unsupported config option.
@@ -1001,10 +1006,10 @@ class AsyncDriver:
                 T_NotificationMinimumSeverity | None
             ) = ...,
             notifications_disabled_categories: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             notifications_disabled_classifications: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -1078,10 +1083,10 @@ class AsyncDriver:
                 T_NotificationMinimumSeverity | None
             ) = ...,
             notifications_disabled_categories: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             notifications_disabled_classifications: (
-                t.Iterable[T_NotificationDisabledCategory] | None
+                t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
             # undocumented/unsupported options
             initial_retry_delay: float = ...,

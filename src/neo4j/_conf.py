@@ -59,6 +59,9 @@ class TrustSystemCAs(TrustStore):
     certificate authority. This option is primarily intended for use with
     full certificates.
 
+    The driver loads the trusted system CAs using Python's
+    :meth:`ssl.SSLContext.load_default_certs`.
+
     For example::
 
         import neo4j
