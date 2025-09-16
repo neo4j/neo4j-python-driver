@@ -603,6 +603,9 @@ For example:
 ---------------
 Specify a custom SSL context to use for wrapping connections.
 
+The driver offers other, easier APIs for common encryption configurations (see :ref:`encryption-config-note-ref`).
+It's likely that your use-case doesn't actually require this options.
+
 This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 If given, ``encrypted``, ``trusted_certificates``, and ``client_certificate`` have no effect.
