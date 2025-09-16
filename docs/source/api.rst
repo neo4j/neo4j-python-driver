@@ -79,18 +79,24 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | URI Scheme             | Driver Object and Setting                                                                                                             |
 +========================+=======================================================================================================================================+
-| bolt                   | :ref:`bolt-driver-ref` with no encryption.                                                                                            |
+| bolt                   | :ref:`bolt-driver-ref` with no encryption or with custom encryption configuration, see :ref:`driver-configuration-ref`.               |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | bolt+ssc               | :ref:`bolt-driver-ref` with encryption (accepts self signed certificates).                                                            |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | bolt+s                 | :ref:`bolt-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.        |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
-| neo4j                  | :ref:`neo4j-driver-ref` with no encryption.                                                                                           |
+| neo4j                  | :ref:`neo4j-driver-ref` with no encryption or with custom encryption configuration, see :ref:`driver-configuration-ref`.               |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+ssc              | :ref:`neo4j-driver-ref` with encryption (accepts self signed certificates).                                                           |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+s                | :ref:`neo4j-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.       |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+
+
+.. note::
+
+    See also :ref:`encryption-config-note-ref` to understand how the URI scheme relates to other encryption configuration options.
+
 
 .. note::
 
@@ -172,6 +178,8 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`resolver-ref`
 + :ref:`trust-ref`
 + :ref:`user-agent-ref`
+
+:ref:`encryption-config-note-ref`
 
 
 .. _session-connection-timeout-ref:
@@ -367,6 +375,9 @@ This setting does not have any effect if ``encrypted`` is set to ``False``.
    certificate authority. This option is primarily intended for use with
    full certificates.
 
+   The driver loads the trusted system CAs using Python's
+   :meth:`ssl.SSLContext.load_default_certs`.
+
 :Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
 
 
@@ -378,6 +389,22 @@ Specify the client agent name.
 
 :Type: ``str``
 :Default: *The Python Driver will generate a user agent name.*
+
+
+
+.. _encryption-config-note-ref:
+
+Note on Encryption Configuration
+--------------------------------
+There are different *mutually exclusive* ways of configuring TLS/SSL encryption behavior of the driver:
+
+* Use a URI scheme ending in ``+s``. This auto-configures the driver to use TLS and only trust system CAs.
+* Use a URI scheme ending in ``+ssc``. This auto-configures the driver to use TLS and trust any certificate.
+* Use a URI scheme without suffix (i.e. ``neo4j://`` or ``bolt://``) and one of the following mutually exclusive options:
+
+  * set :ref:`encrypted-ref` to ``True`` and optionally configure :ref:`trust-ref` to enable TLS with custom security
+    settings.
+  * or set ``encrypted=False`` (default) to disable TLS.
 
 
 
