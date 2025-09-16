@@ -1002,6 +1002,15 @@ def _dtype_to_cypher_type(dtype: T_DTYPE_LITERAL) -> str:
     }[dtype]
 
 
+def _vec_element_cypher_repr(value: t.Any) -> str:
+    if isinstance(value, float):
+        if math.isnan(value):
+            return "NaN"
+        if math.isinf(value):
+            return "Infinity" if value > 0 else "-Infinity"
+    return repr(value)
+
+
 @pytest.mark.parametrize(
     ("vector", "expected"),
     (
@@ -1014,9 +1023,22 @@ def _dtype_to_cypher_type(dtype: T_DTYPE_LITERAL) -> str:
         *(
             (
                 Vector([value], dtype),
-                f"vector([{value!r}], 1, {_dtype_to_cypher_type(dtype)})",
+                (
+                    f"vector([{_vec_element_cypher_repr(value)}], 1, "
+                    f"{_dtype_to_cypher_type(dtype)})"
+                ),
             )
             for (dtype, value, packed_bytes_be) in SPECIAL_INT_VALUES
+        ),
+        *(
+            (
+                Vector([value], dtype),
+                (
+                    f"vector([{_vec_element_cypher_repr(value)}], 1, "
+                    f"{_dtype_to_cypher_type(dtype)})"
+                ),
+            )
+            for (dtype, value, packed_bytes_be) in SPECIAL_FLOAT_VALUES
         ),
     ),
 )
@@ -1031,19 +1053,13 @@ def test_vector_str_random(
     repeat: int,
     size: int,
 ) -> None:
-    def cypher_repr(value: t.Any) -> str:
-        if isinstance(value, float):
-            if math.isnan(value):
-                return "NaN"
-            if math.isinf(value):
-                return "Infinity" if value > 0 else "-Infinity"
-        return repr(value)
-
     type_size = _get_type_size(dtype)
     cypher_dtype = _dtype_to_cypher_type(dtype)
     for _ in range(repeat):
         data = _random_value_be_bytes(type_size, size)
         v = Vector(data, dtype)
-        values_repr = f"[{', '.join(map(cypher_repr, v.to_native()))}]"
+        values_repr = (
+            f"[{', '.join(map(_vec_element_cypher_repr, v.to_native()))}]"
+        )
         expected = f"vector({values_repr}, {size}, {cypher_dtype})"
         assert str(v) == expected
