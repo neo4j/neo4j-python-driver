@@ -180,14 +180,16 @@ class Session(Workspace):
 
     def _get_server_info(self):
         assert not self._connection
-        self._connect(READ_ACCESS, liveness_check_timeout=0)
+        self._connect(
+            READ_ACCESS, liveness_check_timeout=0, unprepared=True
+        )
         server_info = self._connection.server_info
         self._disconnect()
         return server_info
 
     def _verify_authentication(self):
         assert not self._connection
-        self._connect(READ_ACCESS, force_auth=True)
+        self._connect(READ_ACCESS, force_auth=True, unprepared=True)
         self._disconnect()
 
     @NonConcurrentMethodChecker._non_concurrent_method
@@ -541,8 +543,11 @@ class Session(Workspace):
         transaction_function: t.Callable[
             te.Concatenate[ManagedTransaction, _P], t.Union[_R]
         ],
-        args: _P.args,
-        kwargs: _P.kwargs,
+        # *args: _P.args, **kwargs: _P.kwargs
+        # gives more type safety, but is less performant and makes for harder
+        # to read call sites
+        args: t.Any,
+        kwargs: t.Any,
     ) -> _R:
         self._check_state()
         if not callable(transaction_function):

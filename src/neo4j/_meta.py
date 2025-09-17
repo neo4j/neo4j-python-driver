@@ -170,6 +170,8 @@ class PreviewWarning(Warning):
 
     It might be changed without following the deprecation policy.
     See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. versionadded:: 5.8
     """
 
 

@@ -67,7 +67,7 @@ pyarrow = ["pyarrow >= 1.0.0"]
 requires = [
     "setuptools == 68.0.0; python_version <= '3.7'",  # dropped support for Python 3.7 in 68.1.0
     "setuptools == 75.3.0; python_version == '3.8'",  # dropped support for Python 3.8 in 75.4.0
-    "setuptools == 75.6.0; python_version >= '3.9'",
+    "setuptools == 80.9.0; python_version >= '3.9'",
     # TODO: 6.0 - can be removed once `setup.py` is simplified
     "tomlkit == 0.12.5",  # dropped support (at least CI testing) for Python 3.7 in 0.13.0
 ]
@@ -280,6 +280,9 @@ select = [
 "{tests/unit,testkitbackend}/**" = [
     # allow async functions without await to enable type checking, pretending to be async, matching type signatures
     "RUF029",
+]
+"tests/**" = [
+    "B011",  # allow `assert False` in tests, they won't be run with -O anyway
 ]
 "bin/**" = [
     "T20",  # print statements are ok in our helper scripts

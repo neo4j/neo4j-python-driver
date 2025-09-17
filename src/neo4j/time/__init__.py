@@ -840,13 +840,6 @@ class Date(date_base_class, metaclass=DateType):
     # CONSTRUCTOR #
 
     def __new__(cls, year: int, month: int, day: int) -> Date:
-        # TODO: 6.0 - remove the __new__ magic and ZeroDate being a singleton.
-        #             It's fine to remain as constant. Instead, simply use
-        #             __init__ and simplify pickle/copy (remove __reduce__).
-        #             N.B. this is a breaking change and must be treated as
-        #             such. Also consider introducing __slots__. Potentially
-        #             apply similar treatment to other temporal types as well
-        #             as spatial types.
         if year == month == day == 0:
             return ZeroDate
         year, month, day = _normalize_day(year, month, day)

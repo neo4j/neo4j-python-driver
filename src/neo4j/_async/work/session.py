@@ -180,14 +180,16 @@ class AsyncSession(AsyncWorkspace):
 
     async def _get_server_info(self):
         assert not self._connection
-        await self._connect(READ_ACCESS, liveness_check_timeout=0)
+        await self._connect(
+            READ_ACCESS, liveness_check_timeout=0, unprepared=True
+        )
         server_info = self._connection.server_info
         await self._disconnect()
         return server_info
 
     async def _verify_authentication(self):
         assert not self._connection
-        await self._connect(READ_ACCESS, force_auth=True)
+        await self._connect(READ_ACCESS, force_auth=True, unprepared=True)
         await self._disconnect()
 
     @AsyncNonConcurrentMethodChecker._non_concurrent_method
@@ -541,8 +543,11 @@ class AsyncSession(AsyncWorkspace):
         transaction_function: t.Callable[
             te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
         ],
-        args: _P.args,
-        kwargs: _P.kwargs,
+        # *args: _P.args, **kwargs: _P.kwargs
+        # gives more type safety, but is less performant and makes for harder
+        # to read call sites
+        args: t.Any,
+        kwargs: t.Any,
     ) -> _R:
         self._check_state()
         if not callable(transaction_function):

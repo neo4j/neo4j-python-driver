@@ -70,10 +70,11 @@ class AsyncFakeBoltPool(AsyncIOPool):
         bookmarks,
         auth,
         liveness_check_timeout,
+        unprepared=False,
         database_callback=None,
     ):
         return await self._acquire(
-            self.address, auth, timeout, liveness_check_timeout
+            self.address, auth, timeout, liveness_check_timeout, unprepared
         )
 
 
@@ -277,3 +278,28 @@ async def test_liveness_check(
         cx1.reset.reset_mock()
         await pool.release(cx1)
         cx1.reset.assert_not_called()
+
+
+@pytest.mark.parametrize("unprepared", (True, False, None))
+@mark_async_test
+async def test_reauth(async_fake_connection_generator, unprepared):
+    async with AsyncFakeBoltPool(
+        async_fake_connection_generator,
+        ("127.0.0.1", 7687),
+    ) as pool:
+        address = neo4j.Address(("127.0.0.1", 7687))
+        # pre-populate pool
+        cx = await pool._acquire(address, None, Deadline(3), None)
+        await pool.release(cx)
+        cx.reset_mock()
+
+        kwargs = {}
+        if unprepared is not None:
+            kwargs["unprepared"] = unprepared
+        cx = await pool._acquire(address, None, Deadline(3), None, **kwargs)
+        if unprepared:
+            cx.re_auth.assert_not_called()
+        else:
+            cx.re_auth.assert_called_once()
+
+        await pool.release(cx)

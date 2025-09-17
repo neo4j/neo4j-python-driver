@@ -641,7 +641,15 @@ class Driver:
         return config_kwargs
 
     def close(self) -> None:
-        """Shut down, closing any open connections in the pool."""
+        """Shut down, closing any open connections in the pool.
+
+        .. warning::
+
+            While the driver object is concurrency-safe, ``close`` is *not*.
+            Make sure you are not using the driver object or any resources
+            spawned from it (such as sessions or transactions) while calling
+            this method. Failing to do so results in unspecified behavior.
+        """
         # TODO: 6.0 - NOOP if already closed
         # if self._closed:
         #     return

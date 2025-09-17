@@ -15,7 +15,7 @@
     "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id'":
       "test_subtest_skips.tz_id",
     "stub\\.routing\\.test_routing_v[0-9x]+\\.RoutingV[0-9x]+\\.test_should_drop_connections_failing_liveness_check":
-        "Liveness check error handling is not (yet) unified: https://github.com/neo-technology/drivers-adr/pull/83",
+      "Liveness check error handling is not (yet) unified: https://github.com/neo-technology/drivers-adr/pull/83",
     "'stub.homedb.test_homedb.TestHomeDbMixedCluster.test_connection_acquisition_timeout_during_fallback'":
       "TODO: 6.0 - pending unification: connection acquisition timeout should count towards the total time spent waiting for a connection (including routing, home db resolution, ...)"
   },
