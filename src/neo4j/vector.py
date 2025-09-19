@@ -121,12 +121,12 @@ class Vector:
                 * If the array contains null values.
     :raises TypeError:
         Depending on the type of ``data``:
-            * ``Iterable[float]``, ``Iterable[int]``(excluding byte types):
+            * ``Iterable[float]``, ``Iterable[int]`` (excluding byte types):
                 * If data's elements don't match the expected type depending on
                   dtype.
     :raises OverflowError:
         Depending on the type of ``data``:
-            * ``Iterable[float]``, ``Iterable[int]``(excluding byte types):
+            * ``Iterable[float]``, ``Iterable[int]`` (excluding byte types):
                 * If the value is out of range for the given type.
 
     .. versionadded: 6.0
