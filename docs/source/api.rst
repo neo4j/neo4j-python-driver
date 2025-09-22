@@ -95,6 +95,12 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 | neo4j+s                | :ref:`neo4j-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.       |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 
+
+.. note::
+
+    See also :ref:`encryption-config-note-ref` to understand how the URI scheme relates to other encryption configuration options.
+
+
 .. note::
 
     See https://neo4j.com/docs/operations-manual/current/configuration/ports/ for Neo4j ports.
@@ -413,8 +419,11 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`user-agent-ref`
 + :ref:`driver-notifications-min-severity-ref`
 + :ref:`driver-notifications-disabled-categories-ref`
++ :ref:`driver-notifications-disabled-classifications-ref`
 + :ref:`driver-warn-notification-severity-ref`
 + :ref:`telemetry-disabled-ref`
+
+:ref:`encryption-config-note-ref`
 
 
 .. _connection-acquisition-timeout-ref:
@@ -593,6 +602,9 @@ For example:
 ``ssl_context``
 ---------------
 Specify a custom SSL context to use for wrapping connections.
+
+The driver offers other, easier APIs for common encryption configurations (see :ref:`encryption-config-note-ref`).
+It's likely that your use-case doesn't actually require this options.
 
 This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
@@ -792,6 +804,23 @@ The driver transmits the following information:
 :Default: :data:`False`
 
 .. versionadded:: 5.13
+
+
+.. _encryption-config-note-ref:
+
+Note on Encryption Configuration
+--------------------------------
+There are different *mutually exclusive* ways of configuring TLS/SSL encryption behavior of the driver:
+
+* Use a URI scheme ending in ``+s``. This auto-configures the driver to use TLS and only trust system CAs.
+* Use a URI scheme ending in ``+ssc``. This auto-configures the driver to use TLS and trust any certificate.
+* Use a URI scheme without suffix (i.e. ``neo4j://`` or ``bolt://``) and one of the following mutually exclusive options:
+
+  * set :ref:`encrypted-ref` to ``True`` and optionally configure :ref:`trusted-certificates-ref` and/or
+    :ref:`client-certificate-ref` to enable TLS with custom security settings.
+  * or set :ref:`ssl-context-ref` to gain full control (and responsibility) over the TLS configuration.
+  * or set ``encrypted=False`` (default) to disable TLS.
+
 
 
 Driver Object Lifetime

@@ -31,12 +31,64 @@ from neo4j._optional_deps import (
 from neo4j.vector import (
     _swap_endian,
     Vector,
+    VectorDType,
+    VectorEndian,
 )
 
 
 if t.TYPE_CHECKING:
     import numpy
     import pyarrow
+
+    T_ENDIAN_LITERAL: t.TypeAlias = t.Literal["big", "little"] | VectorEndian
+    T_DTYPE_LITERAL: t.TypeAlias = (
+        t.Literal["i8", "i16", "i32", "i64", "f32", "f64"] | VectorDType
+    )
+    T_DTYPE_INT_LITERAL: t.TypeAlias = t.Literal[
+        "i8",
+        "i16",
+        "i32",
+        "i64",
+        VectorDType.I8,
+        VectorDType.I16,
+        VectorDType.I32,
+        VectorDType.I64,
+    ]
+    T_DTYPE_FLOAT_LITERAL: t.TypeAlias = t.Literal[
+        "f32", "f64", VectorDType.F32, VectorDType.F64
+    ]
+
+
+ENDIAN_LITERALS: tuple[T_ENDIAN_LITERAL, ...] = (
+    "big",
+    "little",
+    *VectorEndian,
+)
+DTYPE_LITERALS: tuple[T_DTYPE_LITERAL, ...] = (
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+    "f32",
+    "f64",
+    *VectorDType,
+)
+DTYPE_INT_LITERALS: tuple[T_DTYPE_INT_LITERAL, ...] = (
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+    VectorDType.I8,
+    VectorDType.I16,
+    VectorDType.I32,
+    VectorDType.I64,
+)
+DTYPE_FLOAT_LITERALS: tuple[T_DTYPE_FLOAT_LITERAL, ...] = (
+    "f32",
+    "f64",
+    VectorDType.F32,
+    VectorDType.F64,
+)
 
 
 def _max_value_be_bytes(size: t.Literal[1, 2, 4, 8], count: int = 1) -> bytes:
@@ -251,12 +303,12 @@ def test_swap_endian_unhandled_size(mocker, ext, type_size):
         ("f64", _random_value_be_bytes(8, 4096)),
     ),
 )
-@pytest.mark.parametrize("input_endian", (None, "big", "little"))
+@pytest.mark.parametrize("input_endian", (None, *ENDIAN_LITERALS))
 @pytest.mark.parametrize("as_bytearray", (False, True))
 def test_raw_data(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     data: bytes,
-    input_endian: t.Literal["big", "little"] | None,
+    input_endian: T_ENDIAN_LITERAL | None,
     as_bytearray: bool,
 ) -> None:
     swapped_data = _swap_endian(_get_type_size(dtype), data)
@@ -274,7 +326,9 @@ def test_raw_data(
     assert v.dtype == dtype
     assert v.raw() == data
     assert v.raw(byteorder="big") == data
+    assert v.raw(byteorder=VectorEndian.BIG) == data
     assert v.raw(byteorder="little") == swapped_data
+    assert v.raw(byteorder=VectorEndian.LITTLE) == swapped_data
 
 
 def nan_equals(a: list[object], b: list[object]) -> bool:
@@ -293,14 +347,16 @@ def nan_equals(a: list[object], b: list[object]) -> bool:
     return True
 
 
-@pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
+@pytest.mark.parametrize("dtype", DTYPE_INT_LITERALS)
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
 @pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
-def test_from_native_random(
-    dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
+@pytest.mark.parametrize("use_init", (False, True))
+def test_from_native_int_random(
+    dtype: T_DTYPE_INT_LITERAL,
     repeat: int,
     size: int,
     ext: str,
+    use_init: bool,
     mocker: t.Any,
 ) -> None:
     _mock_mask_extensions(mocker, ext)
@@ -313,14 +369,51 @@ def test_from_native_random(
             )[0]
             for i in range(0, len(data), type_size)
         ]
-        v = Vector.from_native(values, dtype)
+        assert all(type(v) is int for v in values)
+        if use_init:
+            v = Vector(values, dtype)
+        else:
+            v = Vector.from_native(values, dtype)
         expected_raw = data
         if dtype.startswith("f"):
             expected_raw = _normalize_float_bytes(dtype, data)
         assert v.raw() == expected_raw
 
 
-SPECIAL_VALUES = (
+@pytest.mark.parametrize("dtype", DTYPE_FLOAT_LITERALS)
+@pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
+@pytest.mark.parametrize("ext", ("numpy", "rust", "python"))
+@pytest.mark.parametrize("use_init", (False, True))
+def test_from_native_floatgst_random(
+    dtype: T_DTYPE_FLOAT_LITERAL,
+    repeat: int,
+    size: int,
+    ext: str,
+    use_init: bool,
+    mocker: t.Any,
+) -> None:
+    _mock_mask_extensions(mocker, ext)
+    type_size = _get_type_size(dtype)
+    for _ in range(repeat):
+        data = _random_value_be_bytes(type_size, size)
+        values = [
+            struct.unpack(
+                _dtype_to_pack_format(dtype), data[i : i + type_size]
+            )[0]
+            for i in range(0, len(data), type_size)
+        ]
+        assert all(type(v) is float for v in values)
+        if use_init:
+            v = Vector(values, dtype)
+        else:
+            v = Vector.from_native(values, dtype)
+        expected_raw = data
+        if dtype.startswith("f"):
+            expected_raw = _normalize_float_bytes(dtype, data)
+        assert v.raw() == expected_raw
+
+
+SPECIAL_INT_VALUES: tuple[tuple[T_DTYPE_INT_LITERAL, int, bytes], ...] = (
     # (dtype, value, packed_bytes_be)
     # i8
     ("i8", -128, b"\x80"),
@@ -338,6 +431,11 @@ SPECIAL_VALUES = (
     ("i64", -9223372036854775808, b"\x80\x00\x00\x00\x00\x00\x00\x00"),
     ("i64", 0, b"\x00\x00\x00\x00\x00\x00\x00\x00"),
     ("i64", 9223372036854775807, b"\x7f\xff\xff\xff\xff\xff\xff\xff"),
+)
+SPECIAL_FLOAT_VALUES: tuple[
+    tuple[T_DTYPE_FLOAT_LITERAL, float, bytes], ...
+] = (
+    # (dtype, value, packed_bytes_be)
     # f32
     # NaN
     ("f32", float("nan"), b"\x7f\xc0\x00\x00"),
@@ -447,6 +545,7 @@ SPECIAL_VALUES = (
         b"\xff\xef\xff\xff\xff\xff\xff\xff",
     ),
 )
+SPECIAL_VALUES = SPECIAL_INT_VALUES + SPECIAL_FLOAT_VALUES
 
 
 @pytest.mark.parametrize(("dtype", "value", "data_be"), SPECIAL_VALUES)
@@ -539,8 +638,8 @@ def test_from_native_overflow(
 
 def _vector_from_data(
     data: bytes,
-    dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
-    endian: t.Literal["big", "little"] | None,
+    dtype: T_DTYPE_LITERAL,
+    endian: T_ENDIAN_LITERAL | None,
 ) -> Vector:
     match endian:
         case None:
@@ -555,12 +654,18 @@ def _vector_from_data(
             raise ValueError(f"Invalid endian {endian}")
 
 
-@pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
-@pytest.mark.parametrize("endian", ("big", "little", None))
+@pytest.mark.parametrize("dtype", DTYPE_LITERALS)
+@pytest.mark.parametrize(
+    "endian",
+    (
+        None,
+        *ENDIAN_LITERALS,
+    ),
+)
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
 def test_to_native_random(
-    dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
-    endian: t.Literal["big", "little"] | None,
+    dtype: T_DTYPE_LITERAL,
+    endian: T_ENDIAN_LITERAL | None,
     repeat: int,
     size: int,
 ) -> None:
@@ -628,17 +733,19 @@ def _get_numpy_array(
 @pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
 @pytest.mark.parametrize("endian", ("big", "little", "native"))
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
+@pytest.mark.parametrize("use_init", (False, True))
 def test_from_numpy_random(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     endian: t.Literal["big", "little", "native"],
     repeat: int,
     size: int,
+    use_init: bool,
 ) -> None:
     type_size = _get_type_size(dtype)
     for _ in range(repeat):
         data_be = _random_value_be_bytes(type_size, size)
         array = _get_numpy_array(data_be, dtype, endian)
-        v = Vector.from_numpy(array)
+        v = Vector(array) if use_init else Vector.from_numpy(array)
         assert v.dtype == dtype
         assert v.raw() == data_be
         assert nan_equals(array.tolist(), v.to_native())
@@ -662,11 +769,17 @@ def test_from_numpy_special_values(
 
 @pytest.mark.skipif(np is None, reason="numpy not installed")
 @pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
-@pytest.mark.parametrize("endian", ("big", "little", None))
+@pytest.mark.parametrize(
+    "endian",
+    (
+        None,
+        *ENDIAN_LITERALS,
+    ),
+)
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
 def test_to_numpy_random(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
-    endian: t.Literal["big", "little"] | None,
+    endian: T_ENDIAN_LITERAL | None,
     repeat: int,
     size: int,
 ) -> None:
@@ -684,10 +797,16 @@ def test_to_numpy_random(
 
 @pytest.mark.skipif(np is None, reason="numpy not installed")
 @pytest.mark.parametrize(("dtype", "value", "data_be"), SPECIAL_VALUES)
-@pytest.mark.parametrize("endian", ("big", "little", None))
+@pytest.mark.parametrize(
+    "endian",
+    (
+        None,
+        *ENDIAN_LITERALS,
+    ),
+)
 def test_to_numpy_special_values(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
-    endian: t.Literal["big", "little"] | None,
+    endian: T_ENDIAN_LITERAL | None,
     value: object,
     data_be: bytes,
 ) -> None:
@@ -726,17 +845,20 @@ def _get_pyarrow_array(data_be: bytes, dtype: str) -> pyarrow.Array:
 @pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
 @pytest.mark.parametrize("endian", ("big", "little", "native"))
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
+@pytest.mark.parametrize("use_init", (False, True))
 def test_from_pyarrow_random(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     endian: t.Literal["big", "little", "native"],
     repeat: int,
     size: int,
+    use_init: bool,
 ) -> None:
     type_size = _get_type_size(dtype)
     for _ in range(repeat):
         data_be = _random_value_be_bytes(type_size, size)
         array = _get_pyarrow_array(data_be, dtype)
-        v = Vector.from_pyarrow(array)
+
+        v = Vector(array) if use_init else Vector.from_pyarrow(array)
         assert v.dtype == dtype
         assert v.raw() == data_be
         assert nan_equals(array.to_pylist(), v.to_native())
@@ -758,11 +880,17 @@ def test_from_pyarrow_special_values(
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 @pytest.mark.parametrize("dtype", ("i8", "i16", "i32", "i64", "f32", "f64"))
-@pytest.mark.parametrize("endian", ("big", "little", None))
+@pytest.mark.parametrize(
+    "endian",
+    (
+        None,
+        *ENDIAN_LITERALS,
+    ),
+)
 @pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
 def test_to_pyarrow_random(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
-    endian: t.Literal["big", "little"] | None,
+    endian: T_ENDIAN_LITERAL | None,
     repeat: int,
     size: int,
 ) -> None:
@@ -786,10 +914,16 @@ def test_to_pyarrow_random(
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 @pytest.mark.parametrize(("dtype", "value", "data_be"), SPECIAL_VALUES)
-@pytest.mark.parametrize("endian", ("big", "little", None))
+@pytest.mark.parametrize(
+    "endian",
+    (
+        None,
+        *ENDIAN_LITERALS,
+    ),
+)
 def test_to_pyarrow_special_values(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
-    endian: t.Literal["big", "little"] | None,
+    endian: T_ENDIAN_LITERAL | None,
     value: object,
     data_be: bytes,
 ) -> None:
@@ -807,3 +941,125 @@ def test_to_pyarrow_special_values(
     assert buffers[0] is None
     assert buffers[1].to_pybytes() == data_ne
     assert nan_equals(array.tolist(), v.to_native())
+
+
+@pytest.mark.parametrize(
+    ("vector", "expected"),
+    (
+        (Vector([], "i8"), "Vector(b'', 'i8')"),
+        (Vector([], "i16"), "Vector(b'', 'i16')"),
+        (Vector([], "i32"), "Vector(b'', 'i32')"),
+        (Vector([], "i64"), "Vector(b'', 'i64')"),
+        (Vector([], "f32"), "Vector(b'', 'f32')"),
+        (Vector([], "f64"), "Vector(b'', 'f64')"),
+        *(
+            (
+                Vector([value], dtype),
+                f"Vector({packed_bytes_be!r}, {dtype!r})",
+            )
+            for (dtype, value, packed_bytes_be) in SPECIAL_INT_VALUES
+        ),
+        *(
+            (
+                Vector([value], dtype),
+                f"Vector({packed_bytes_be!r}, {dtype!r})",
+            )
+            for (dtype, value, packed_bytes_be) in SPECIAL_FLOAT_VALUES
+        ),
+    ),
+)
+def test_vector_repr(vector: Vector, expected: str) -> None:
+    assert repr(vector) == expected
+
+
+@pytest.mark.parametrize("dtype", DTYPE_LITERALS)
+@pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
+def test_vector_repr_random(
+    dtype: T_DTYPE_LITERAL,
+    repeat: int,
+    size: int,
+) -> None:
+    type_size = _get_type_size(dtype)
+    for _ in range(repeat):
+        data = _random_value_be_bytes(type_size, size)
+        v = Vector(data, dtype)
+        if isinstance(dtype, VectorDType):
+            expected_dtype = dtype.value
+        else:
+            expected_dtype = dtype
+        expected = f"Vector({data!r}, {expected_dtype!r})"
+        assert repr(v) == expected
+
+
+def _dtype_to_cypher_type(dtype: T_DTYPE_LITERAL) -> str:
+    return {
+        "i8": "INTEGER8 NOT NULL",
+        "i16": "INTEGER16 NOT NULL",
+        "i32": "INTEGER32 NOT NULL",
+        "i64": "INTEGER NOT NULL",
+        "f32": "FLOAT32 NOT NULL",
+        "f64": "FLOAT NOT NULL",
+    }[dtype]
+
+
+def _vec_element_cypher_repr(value: t.Any) -> str:
+    if isinstance(value, float):
+        if math.isnan(value):
+            return "NaN"
+        if math.isinf(value):
+            return "Infinity" if value > 0 else "-Infinity"
+    return repr(value)
+
+
+@pytest.mark.parametrize(
+    ("vector", "expected"),
+    (
+        (Vector([], "i8"), "vector([], 0, INTEGER8 NOT NULL)"),
+        (Vector([], "i16"), "vector([], 0, INTEGER16 NOT NULL)"),
+        (Vector([], "i32"), "vector([], 0, INTEGER32 NOT NULL)"),
+        (Vector([], "i64"), "vector([], 0, INTEGER NOT NULL)"),
+        (Vector([], "f32"), "vector([], 0, FLOAT32 NOT NULL)"),
+        (Vector([], "f64"), "vector([], 0, FLOAT NOT NULL)"),
+        *(
+            (
+                Vector([value], dtype),
+                (
+                    f"vector([{_vec_element_cypher_repr(value)}], 1, "
+                    f"{_dtype_to_cypher_type(dtype)})"
+                ),
+            )
+            for (dtype, value, packed_bytes_be) in SPECIAL_INT_VALUES
+        ),
+        *(
+            (
+                Vector([value], dtype),
+                (
+                    f"vector([{_vec_element_cypher_repr(value)}], 1, "
+                    f"{_dtype_to_cypher_type(dtype)})"
+                ),
+            )
+            for (dtype, value, packed_bytes_be) in SPECIAL_FLOAT_VALUES
+        ),
+    ),
+)
+def test_vector_str(vector: Vector, expected: str) -> None:
+    assert str(vector) == expected
+
+
+@pytest.mark.parametrize("dtype", DTYPE_LITERALS)
+@pytest.mark.parametrize(("repeat", "size"), ((10_000, 1), (1, 10_000)))
+def test_vector_str_random(
+    dtype: T_DTYPE_LITERAL,
+    repeat: int,
+    size: int,
+) -> None:
+    type_size = _get_type_size(dtype)
+    cypher_dtype = _dtype_to_cypher_type(dtype)
+    for _ in range(repeat):
+        data = _random_value_be_bytes(type_size, size)
+        v = Vector(data, dtype)
+        values_repr = (
+            f"[{', '.join(map(_vec_element_cypher_repr, v.to_native()))}]"
+        )
+        expected = f"vector({values_repr}, {size}, {cypher_dtype})"
+        assert str(v) == expected
