@@ -39,7 +39,7 @@
     "Feature:API:Summary:GqlStatusObjects": true,
     "Feature:API:Type.Spatial":  true,
     "Feature:API:Type.Temporal":  true,
-    "Feature:API:Type.UnknownType": true,
+    "Feature:API:Type.UnsupportedType": true,
     "Feature:API:Type.Vector":  true,
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,

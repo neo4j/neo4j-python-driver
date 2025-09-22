@@ -314,13 +314,15 @@ def field(v):
     if isinstance(v, UnsupportedType):
         data = {
             "name": v.name,
-            "minimumProtocolMajor": v.minimum_protocol_version[0],
-            "minimumProtocolMinor": v.minimum_protocol_version[1],
+            "minimumProtocol": (
+                f"{v.minimum_protocol_version[0]}"
+                f".{v.minimum_protocol_version[1]}"
+            ),
         }
         if v.message is not None:
             data["message"] = v.message
         return {
-            "name": "CypherUnknownType",
+            "name": "CypherUnsupportedType",
             "data": data,
         }
 
