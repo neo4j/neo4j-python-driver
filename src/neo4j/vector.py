@@ -23,10 +23,18 @@ import sys as _sys
 from enum import Enum as _Enum
 
 from . import _typing as _t
-from ._optional_deps import (
-    np as _np,
-    pa as _pa,
-)
+
+
+if _t.TYPE_CHECKING:
+    # "Why?", I hear you ask. Because sphinx of course.
+    # This beautiful construct helps sphinx to properly resolve the type hints.
+    import numpy as _np
+    import pyarrow as _pa
+else:
+    from ._optional_deps import (
+        np as _np,
+        pa as _pa,
+    )
 
 
 if False:
@@ -40,10 +48,6 @@ try:
 except ImportError:
     _swap_endian_unchecked_rust = None
     _vec_rust = None
-
-if _t.TYPE_CHECKING:
-    import numpy  # type: ignore[import]
-    import pyarrow  # type: ignore[import]
 
 
 __all__ = [
@@ -84,14 +88,18 @@ class Vector:
           Use an iterable of floats or an iterable of ints to construct the
           vector from native Python values.
           The ``dtype`` parameter is required.
+          See also: :meth:`.from_native`.
         * ``bytes``, ``bytearray``: Use raw bytes to construct the vector.
           The ``dtype`` parameter is required and ``byteorder`` is optional.
         * ``numpy.ndarray``: Use a numpy array to construct the vector.
           No further parameters are accepted.
+          See also: :meth:`.from_numpy`.
         * ``pyarrow.Array``: Use a pyarrow array to construct the vector.
           No further parameters are accepted.
+          See also: :meth:`.from_pyarrow`.
     :param dtype: The type of the vector.
-        See :attr:`.dtype` for currently supported inner data types.
+        See :class:`.VectorDType` for currently supported inner data types.
+        See also :attr:`.dtype`.
 
         This parameter is required if ``data`` is of type :class:`bytes`,
         :class:`bytearray`, ``Iterable[float]``, or ``Iterable[int]``.
@@ -163,10 +171,10 @@ class Vector:
     ) -> None: ...
 
     @_t.overload
-    def __init__(self, data: numpy.ndarray, /) -> None: ...
+    def __init__(self, data: _np.ndarray, /) -> None: ...
 
     @_t.overload
-    def __init__(self, data: pyarrow.Array, /) -> None: ...
+    def __init__(self, data: _pa.Array, /) -> None: ...
 
     def __init__(self, data, *args, **kwargs) -> None:
         if isinstance(data, (bytes, bytearray)):
@@ -373,7 +381,7 @@ class Vector:
         return self._inner.to_native()
 
     @classmethod
-    def from_numpy(cls, data: numpy.ndarray, /) -> _t.Self:
+    def from_numpy(cls, data: _np.ndarray, /) -> _t.Self:
         """
         Create a Vector instance from a numpy array.
 
@@ -381,7 +389,7 @@ class Vector:
             The array must be one-dimensional and have a dtype that is
             supported by Neo4j vectors: ``float64``, ``float32``,
             ``int64``, ``int32``, ``int16``, or ``int8``.
-            See also :attr:`.dtype`.
+            See also :class:`.VectorDType`.
 
         :raises ValueError:
           * If the dtype is not supported.
@@ -394,7 +402,7 @@ class Vector:
         obj._set_numpy(data)
         return obj
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         """
         Convert the vector to a numpy array.
 
@@ -407,7 +415,7 @@ class Vector:
         """
         return self._inner.to_numpy()
 
-    def _set_numpy(self, data: numpy.ndarray, /) -> None:
+    def _set_numpy(self, data: _np.ndarray, /) -> None:
         if data.ndim != 1:
             raise ValueError("Data must be one-dimensional")
         type_: type[_InnerVector]
@@ -429,18 +437,17 @@ class Vector:
         self._inner = type_.from_numpy(data)
 
     @classmethod
-    def from_pyarrow(cls, data: pyarrow.Array, /) -> _t.Self:
+    def from_pyarrow(cls, data: _pa.Array, /) -> _t.Self:
         """
         Create a Vector instance from a pyarrow array.
-
-        :param data: The pyarrow array to create the vector from.
-            The array must have a type that is supported by Neo4j.
-            See also :attr:`.dtype`.
 
         PyArrow stores data in little endian. Therefore, the byte-order needs
         to be swapped. If ``neo4j-rust-ext`` or ``numpy`` is installed, it will
         be used to speed up the byte flipping.
 
+        :param data: The pyarrow array to create the vector from.
+            The array must have a type that is supported by Neo4j.
+            See also :class:`.VectorDType`.
         :raises ValueError:
           * If the array's type is not supported.
           * If the array contains null values.
@@ -452,7 +459,7 @@ class Vector:
         obj._set_pyarrow(data)
         return obj
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         """
         Convert the vector to a pyarrow array.
 
@@ -462,7 +469,7 @@ class Vector:
         """
         return self._inner.to_pyarrow()
 
-    def _set_pyarrow(self, data: pyarrow.Array, /) -> None:
+    def _set_pyarrow(self, data: _pa.Array, /) -> None:
         import pyarrow
 
         type_: type[_InnerVector]
@@ -581,6 +588,7 @@ def _swap_endian(type_size: int, data: bytes, /) -> bytes:
 
 
 def _swap_endian_unchecked_np(type_size: int, data: bytes, /) -> bytes:
+    dtype: _np.dtype
     match type_size:
         case 2:
             dtype = _np.dtype("<i2")
@@ -727,7 +735,7 @@ class _InnerVector(_abc.ABC):
     def to_native(self) -> list[object]: ...
 
     @classmethod
-    def from_numpy(cls, data: numpy.ndarray, /) -> _t.Self:
+    def from_numpy(cls, data: _np.ndarray, /) -> _t.Self:
         if data.dtype.byteorder == "<" or (
             data.dtype.byteorder == "=" and _sys.byteorder == "little"
         ):
@@ -735,10 +743,10 @@ class _InnerVector(_abc.ABC):
         return cls(data.tobytes())
 
     @_abc.abstractmethod
-    def to_numpy(self) -> numpy.ndarray: ...
+    def to_numpy(self) -> _np.ndarray: ...
 
     @classmethod
-    def from_pyarrow(cls, data: pyarrow.Array, /) -> _t.Self:
+    def from_pyarrow(cls, data: _pa.Array, /) -> _t.Self:
         width = data.type.byte_width
         assert cls.size == width
         if _pa.compute.count(data, mode="only_null").as_py():
@@ -750,7 +758,7 @@ class _InnerVector(_abc.ABC):
         return cls(bytes(buffer), byteorder=_sys.byteorder)
 
     @_abc.abstractmethod
-    def to_pyarrow(self) -> pyarrow.Array: ...
+    def to_pyarrow(self) -> _pa.Array: ...
 
 
 class _InnerVectorFloat(_InnerVector, _abc.ABC):
@@ -822,12 +830,12 @@ class _VecF64(_InnerVectorFloat):
     else:
         to_native = _to_native_py
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         import numpy
 
         return numpy.frombuffer(self.data, dtype=numpy.dtype(">f8"))
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         import pyarrow
 
         buffer = pyarrow.py_buffer(self.data_le)
@@ -897,12 +905,12 @@ class _VecF32(_InnerVectorFloat):
     else:
         to_native = _to_native_py
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         import numpy
 
         return numpy.frombuffer(self.data, dtype=numpy.dtype(">f4"))
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         import pyarrow
 
         buffer = pyarrow.py_buffer(self.data_le)
@@ -997,12 +1005,12 @@ class _VecI64(_InnerVectorInt):
     else:
         to_native = _to_native_py
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         import numpy
 
         return numpy.frombuffer(self.data, dtype=numpy.dtype(">i8"))
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         import pyarrow
 
         buffer = pyarrow.py_buffer(self.data_le)
@@ -1090,12 +1098,12 @@ class _VecI32(_InnerVectorInt):
     else:
         to_native = _to_native_py
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         import numpy
 
         return numpy.frombuffer(self.data, dtype=numpy.dtype(">i4"))
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         import pyarrow
 
         buffer = pyarrow.py_buffer(self.data_le)
@@ -1183,12 +1191,12 @@ class _VecI16(_InnerVectorInt):
     else:
         to_native = _to_native_py
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         import numpy
 
         return numpy.frombuffer(self.data, dtype=numpy.dtype(">i2"))
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         import pyarrow
 
         buffer = pyarrow.py_buffer(self.data_le)
@@ -1276,12 +1284,12 @@ class _VecI8(_InnerVectorInt):
     else:
         to_native = _to_native_py
 
-    def to_numpy(self) -> numpy.ndarray:
+    def to_numpy(self) -> _np.ndarray:
         import numpy
 
         return numpy.frombuffer(self.data, dtype=numpy.dtype(">i1"))
 
-    def to_pyarrow(self) -> pyarrow.Array:
+    def to_pyarrow(self) -> _pa.Array:
         import pyarrow
 
         buffer = pyarrow.py_buffer(self.data_le)
