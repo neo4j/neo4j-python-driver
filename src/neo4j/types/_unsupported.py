@@ -23,16 +23,16 @@ class UnsupportedType:
     """
     Represents a type unknown to the driver, received from the server.
 
-    This type is used for instance when a newer DBMS produces a result
+    This type is used, for instance, when a newer DBMS produces a result
     containing a type that the current version of the driver does not yet
     understand.
 
-    Note that this type may only be received from the server, but cannot be
+    Note that this type may only be received from the server but cannot be
     sent to the server (e.g., as a query parameter).
 
     The attributes exposed by this type are meant for displaying and debugging
     purposes.
-    They may change in future versions of the server, and should not be relied
+    They may change in future versions of the server and should not be relied
     upon for any logic in your application.
     If your application requires handling this type, you must upgrade your
     driver to a version that supports it.
