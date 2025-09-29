@@ -70,14 +70,14 @@ class UnsupportedType:
         To understand which driver version this corresponds to, refer to the
         driver's release notes or documentation.
 
+        .. note::
+            Bolt versions are not generally equivalent to driver versions.
+            See the `driver manual`_ for which driver version is required for
+            new types.
 
-        .. seealso::
-            <
-                link to evolving doc listing which version of the driver
-                supports which Bolt version
-            >
+        .. _driver manual:
+            https://neo4j.com/docs/python-manual/current/data-types/
         """
-        # TODO fix link above
         return self._minimum_protocol_version
 
     @property
