@@ -113,8 +113,8 @@ test = [
 # type checker and type stubs for static type checking
 typing = [
     "mypy >= 1.15.0",
-    "typing-extensions >= 4.13.2",
     "types-pytz >= 2025.2.0.20250326",
+    {include-group = "dep-typing-extensions"},
     {include-group = "dep-project-dependencies"},
     # tests are also type-checked
     {include-group = "test"},
@@ -124,7 +124,11 @@ typing = [
     {include-group = "benchkit"},
 ]
 # generate documentation
-docs = ["Sphinx >= 8.1.3"]
+docs = [
+    "Sphinx >= 8.1.3",
+    {include-group = "dep-typing-extensions"},
+    {include-group = "dep-project-dependencies"},
+]
 # running the testkit backend
 testkit = [
     {include-group = "dep-freezegun"},
@@ -141,6 +145,7 @@ release = [
 ]
 
 # single dependencies and other include-groups (not really meant to be installed as a group, but to avoid duplication)
+dep-typing-extensions = ["typing-extensions >= 4.13.2"]
 dep-freezegun = ["freezegun >= 1.5.1"]
 dep-project-dependencies = [
     "pytz",
