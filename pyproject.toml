@@ -86,10 +86,10 @@ dev = [
     {include-group = "release"},
 ]
 # tool for runnig test matrix
-tox = ["tox >= 4.25.0"]
+tox = ["tox >= 4.30.2"]
 # run pre-commit hooks (includes linting, formatting, type checking, ...)
 precommit = [
-    "pre-commit >= 4.2.0",
+    "pre-commit >= 4.3.0",
     # runs unasync and type checker outside pre-commit's isolation
     {include-group = "unasync"},
     {include-group = "typing"},
@@ -101,19 +101,19 @@ unasync = [
 ]
 # dependencies for running tests
 test = [
-    "coverage[toml] >= 7.8.0",
+    "coverage[toml] >= 7.10.7",
     {include-group = "dep-freezegun"},
     "mock >= 5.2.0",
-    "pytest >= 8.3.5",
-    "pytest-asyncio >= 0.26.0",
+    "pytest >= 8.4.2",
+    "pytest-asyncio >= 1.2.0",
     "pytest-benchmark >= 5.1.0",
-    "pytest-cov >= 6.1.1",
-    "pytest-mock >= 3.14.0",
+    "pytest-cov >= 7.0.0",
+    "pytest-mock >= 3.15.1",
 ]
 # type checker and type stubs for static type checking
 typing = [
-    "mypy >= 1.15.0",
-    "types-pytz >= 2025.2.0.20250326",
+    "mypy >= 1.18.2",
+    "types-pytz >= 2025.2.0.20250809",
     {include-group = "dep-typing-extensions"},
     {include-group = "dep-project-dependencies"},
     # tests are also type-checked
@@ -125,7 +125,7 @@ typing = [
 ]
 # generate documentation
 docs = [
-    "Sphinx >= 8.1.3",
+    "Sphinx >= 8.2.3",
     {include-group = "dep-typing-extensions"},
     {include-group = "dep-project-dependencies"},
 ]
@@ -137,16 +137,16 @@ testkit = [
 benchkit = ["sanic >= 25.3.0"]
 # building and packaging the driver
 packaging = [
-    "build >= 1.2.2",
+    "build >= 1.3.0",
 ]
 # releasing the packaged driver to PyPI
 release = [
-    "twine >= 6.1.0",
+    "twine >= 6.2.0",
 ]
 
 # single dependencies and other include-groups (not really meant to be installed as a group, but to avoid duplication)
-dep-typing-extensions = ["typing-extensions >= 4.13.2"]
-dep-freezegun = ["freezegun >= 1.5.1"]
+dep-typing-extensions = ["typing-extensions >= 4.15.0"]
+dep-freezegun = ["freezegun >= 1.5.5"]
 dep-project-dependencies = [
     "pytz",
     "numpy >= 1.7.0, < 3.0.0",

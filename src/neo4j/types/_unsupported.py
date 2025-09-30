@@ -23,16 +23,16 @@ class UnsupportedType:
     """
     Represents a type unknown to the driver, received from the server.
 
-    This type is used for instance when a newer DBMS produces a result
+    This type is used, for instance, when a newer DBMS produces a result
     containing a type that the current version of the driver does not yet
     understand.
 
-    Note that this type may only be received from the server, but cannot be
+    Note that this type may only be received from the server but cannot be
     sent to the server (e.g., as a query parameter).
 
     The attributes exposed by this type are meant for displaying and debugging
     purposes.
-    They may change in future versions of the server, and should not be relied
+    They may change in future versions of the server and should not be relied
     upon for any logic in your application.
     If your application requires handling this type, you must upgrade your
     driver to a version that supports it.
@@ -70,14 +70,14 @@ class UnsupportedType:
         To understand which driver version this corresponds to, refer to the
         driver's release notes or documentation.
 
+        .. note::
+            Bolt versions are not generally equivalent to driver versions.
+            See the `driver manual`_ for which driver version is required for
+            new types.
 
-        .. seealso::
-            <
-                link to evolving doc listing which version of the driver
-                supports which Bolt version
-            >
+        .. _driver manual:
+            https://neo4j.com/docs/python-manual/current/data-types/
         """
-        # TODO fix link above
         return self._minimum_protocol_version
 
     @property
