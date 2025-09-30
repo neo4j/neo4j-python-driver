@@ -15,6 +15,7 @@
 
 
 import asyncio
+import contextlib
 import logging
 import socket
 
@@ -41,12 +42,21 @@ def _resolved_addresses_from_info(info, host_name):
             yield ResolvedAddress(addr, host_name=host_name)
 
 
-_RETRYABLE_DNS_ERRNOS = {
-    socket.EAI_ADDRFAMILY,
-    socket.EAI_AGAIN,
-    socket.EAI_MEMORY,
-    socket.EAI_NODATA,
-}
+def _try_get_socket_attributes(*attrs):
+    for attr in attrs:
+        with contextlib.suppress(AttributeError):
+            yield getattr(socket, attr)
+
+
+_RETRYABLE_DNS_ERRNOS = set(
+    _try_get_socket_attributes(
+        "EAI_ADDRFAMILY",
+        "EAI_AGAIN",
+        "EAI_MEMORY",
+        "EAI_NODATA",
+    )
+)
+_EAI_NONAME = set(_try_get_socket_attributes("EAI_NONAME"))
 
 
 class AsyncNetworkUtil:
@@ -79,7 +89,7 @@ class AsyncNetworkUtil:
             )
         except OSError as e:
             if e.errno in _RETRYABLE_DNS_ERRNOS or (
-                e.errno == socket.EAI_NONAME
+                e.errno in _EAI_NONAME
                 and (address.host is not None or address.port is not None)
             ):
                 raise ServiceUnavailable(
@@ -170,7 +180,7 @@ class NetworkUtil:
             )
         except OSError as e:
             if e.errno in _RETRYABLE_DNS_ERRNOS or (
-                e.errno == socket.EAI_NONAME
+                e.errno in _EAI_NONAME
                 and (address.host is not None or address.port is not None)
             ):
                 raise ServiceUnavailable(
