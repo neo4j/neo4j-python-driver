@@ -17,6 +17,7 @@
 import contextlib
 import inspect
 import sys
+import time
 from copy import deepcopy
 
 import pytest
@@ -26,6 +27,7 @@ from neo4j import (
     WRITE_ACCESS,
 )
 from neo4j._addressing import ResolvedAddress
+from neo4j._async_compat import sleep
 from neo4j._async_compat.util import Util
 from neo4j._conf import (
     RoutingConfig,
@@ -48,6 +50,8 @@ from neo4j.exceptions import (
 
 from ...._async_compat import mark_sync_test
 
+
+MONOTONIC_TIME_RESOLUTION = time.get_clock_info("monotonic").resolution
 
 ROUTER1_ADDRESS = ResolvedAddress(("1.2.3.1", 9000), host_name="host")
 ROUTER2_ADDRESS = ResolvedAddress(("1.2.3.1", 9001), host_name="host")
@@ -197,6 +201,8 @@ def test_acquires_new_routing_table_if_stale(
     old_value = pool.routing_tables[db.name].last_updated_time
     pool.routing_tables[db.name].ttl = 0
 
+    sleep(MONOTONIC_TIME_RESOLUTION * 2)
+
     cx = pool.acquire(READ_ACCESS, 30, db, None, None, None)
     pool.release(cx)
     assert pool.routing_tables[db.name].last_updated_time > old_value
@@ -217,6 +223,8 @@ def test_removes_old_routing_table(opener):
     pool.routing_tables[TEST_DB1.name].ttl = 0
     db2_rt = pool.routing_tables[TEST_DB2.name]
     db2_rt.ttl = -RoutingConfig.routing_table_purge_delay
+
+    sleep(MONOTONIC_TIME_RESOLUTION * 2)
 
     cx = pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     pool.release(cx)
