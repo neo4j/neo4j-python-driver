@@ -38,7 +38,7 @@ jobs:
         run: python -m tox -vv -f unit ${{ matrix.python-version.tox-factor }}
 
   gha-conclusion:
-    name: GHA Conclusion
+    name: gha-conclusion
     needs: win-unit-tests
     runs-on: ubuntu-latest
     steps:
