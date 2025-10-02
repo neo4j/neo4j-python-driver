@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - '5.0'
+  pull_request:
+    branches:
+      - '5.0'
+
+jobs:
+  win-unit-tests:
+    name: Windows Unit Tests
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version:
+          - semver: '3.7'
+            tox-factor: 'py37'
+          - semver: '3.8'
+            tox-factor: 'py38'
+          - semver: '3.9'
+            tox-factor: 'py39'
+          - semver: '3.10'
+            tox-factor: 'py310'
+          - semver: '3.11'
+            tox-factor: 'py311'
+          - semver: '3.12'
+            tox-factor: 'py312'
+          - semver: '3.13'
+            tox-factor: 'py313'
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+
+      - name: Set up Python ${{ matrix.python-version.semver }}
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: ${{ matrix.python-version.semver }}
+          cache: 'pip'
+      - name: Install tox
+        run: python -m pip install -U tox>=4.8.0
+      - name: Run unit tests
+        run: python -m tox -vv -f unit ${{ matrix.python-version.tox-factor }}
+
+  gha-conclusion:
+    name: gha-conclusion
+    needs: win-unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Signal failure
+        if: ${{ cancelled() || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'failure') }}
+        run: |
+          echo "Some workflows have failed!"
+          exit 1
+      - name: Signal success
+        if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'failure') }}
+        run: echo "All done!"

@@ -53,8 +53,12 @@ def test_address_resolve_with_custom_resolver_none() -> None:
 @pytest.mark.parametrize(
     ("test_input", "expected"),
     [
+        (Address(("example.invalid", "7687")), ValueError),
+        (Address(("example.invalid", 7687)), ValueError),
+        (Address(("example.invalid", None)), ValueError),
         (Address(("127.0.0.1", "abcd")), ValueError),
         (Address((None, None)), ValueError),
+        (Address((1234, "7687")), TypeError),
     ],
 )
 @mark_sync_test
@@ -65,6 +69,21 @@ def test_address_resolve_with_unresolvable_address(
         Util.list(
             NetworkUtil.resolve_address(test_input, resolver=None)
         )
+
+
+@pytest.mark.parametrize(
+    "test_input",
+    [
+        Address((None, 7687)),
+        Address(("example.com", None)),
+    ],
+)
+@mark_sync_test
+def test_address_resolves_with_none(test_input) -> None:
+    resolved = Util.list(
+        NetworkUtil.resolve_address(test_input, resolver=None)
+    )
+    assert resolved
 
 
 @mark_sync_test

@@ -15,6 +15,7 @@
 
 
 import struct
+import sys
 from io import BytesIO
 from math import (
     isnan,
@@ -37,6 +38,11 @@ from neo4j._codec.packstream.v1 import (
 
 standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
+SKIP_PANDAS_INT_AS_INT64 = (
+    pd.Series([], dtype=int).dtype.itemsize < 8
+    and sys.version_info < (3, 9)
+    and sys.platform == "win32"
+)
 
 
 @pytest.fixture
@@ -289,7 +295,13 @@ class TestPackStream:
     @pytest.mark.parametrize(
         "dtype",
         (
-            int,
+            pytest.param(
+                int,
+                marks=pytest.mark.skipif(
+                    SKIP_PANDAS_INT_AS_INT64,
+                    reason="Legacy pandas treating int as int32",
+                ),
+            ),
             pd.Int64Dtype(),
             pd.UInt64Dtype(),
             np.int64,
@@ -317,7 +329,13 @@ class TestPackStream:
     @pytest.mark.parametrize(
         "dtype",
         (
-            int,
+            pytest.param(
+                int,
+                marks=pytest.mark.skipif(
+                    SKIP_PANDAS_INT_AS_INT64,
+                    reason="Legacy pandas treating int as int32",
+                ),
+            ),
             pd.Int64Dtype(),
             np.int64,
             np.longlong,
