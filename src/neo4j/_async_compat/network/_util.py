@@ -184,14 +184,17 @@ class NetworkUtil:
                 type=socket.SOCK_STREAM,
             )
         except OSError as e:
-            if e.errno in _RETRYABLE_DNS_ERRNOS or (
-                e.errno in _EAI_NONAME
-                and (address.host is not None or address.port is not None)
+            # note: on some systems like Windows, EAI_NONAME and EAI_NODATA
+            #       have the same error-code.
+            if e.errno in _EAI_NONAME and (
+                address.host is None and address.port is None
             ):
-                raise ServiceUnavailable(
-                    f"Failed to DNS resolve address {address}: {e}"
-                ) from e
-            raise ValueError(
+                err_cls = ValueError
+            elif e.errno in _RETRYABLE_DNS_ERRNOS or e.errno in _EAI_NONAME:
+                err_cls = ServiceUnavailable
+            else:
+                err_cls = ValueError
+            raise err_cls(
                 f"Failed to DNS resolve address {address}: {e}"
             ) from e
         return _resolved_addresses_from_info(info, address._host_name)
