@@ -275,37 +275,114 @@ def test_swap_endian_unhandled_size(mocker, ext, type_size):
 @pytest.mark.parametrize(
     ("dtype", "data"),
     (
-        ("i8", b""),
-        ("i8", b"\x01"),
-        ("i8", b"\x01\x02\x03\x04"),
-        ("i8", _max_value_be_bytes(1, 4096)),
-        ("i16", b""),
-        ("i16", b"\x00\x01"),
-        ("i16", b"\x00\x01\x00\x02"),
-        ("i16", _max_value_be_bytes(2, 4096)),
-        ("i32", b""),
-        ("i32", b"\x00\x00\x00\x01"),
-        ("i32", b"\x00\x00\x00\x01\x00\x00\x00\x02"),
-        ("i32", _max_value_be_bytes(4, 4096)),
-        ("i64", b""),
-        ("i64", b"\x00\x00\x00\x00\x00\x00\x00\x01"),
-        (
+        pytest.param(
+            "i8",
+            b"",
+            id="i8-empty",
+        ),
+        pytest.param(
+            "i8",
+            b"\x01",
+            id="i8-single",
+        ),
+        pytest.param(
+            "i8",
+            b"\x01\x02\x03\x04",
+            id="i8-some",
+        ),
+        pytest.param(
+            "i8",
+            _max_value_be_bytes(1, 4096),
+            id="i8-limit",
+        ),
+        pytest.param(
+            "i16",
+            b"",
+            id="i16-empty",
+        ),
+        pytest.param(
+            "i16",
+            b"\x00\x01",
+            id="i16-single",
+        ),
+        pytest.param(
+            "i16",
+            b"\x00\x01\x00\x02",
+            id="i16-some",
+        ),
+        pytest.param(
+            "i16",
+            _max_value_be_bytes(2, 4096),
+            id="i16-limit",
+        ),
+        pytest.param(
+            "i32",
+            b"",
+            id="i32-empty",
+        ),
+        pytest.param(
+            "i32",
+            b"\x00\x00\x00\x01",
+            id="i32-single",
+        ),
+        pytest.param(
+            "i32",
+            b"\x00\x00\x00\x01\x00\x00\x00\x02",
+            id="i32-some",
+        ),
+        pytest.param(
+            "i32",
+            _max_value_be_bytes(4, 4096),
+            id="i32-limit",
+        ),
+        pytest.param(
+            "i64",
+            b"",
+            id="i64-empty",
+        ),
+        pytest.param(
+            "i64",
+            b"\x00\x00\x00\x00\x00\x00\x00\x01",
+            id="i64-single",
+        ),
+        pytest.param(
             "i64",
             (
                 b"\x00\x00\x00\x00\x00\x00\x00\x01"
                 b"\x00\x00\x00\x00\x00\x00\x00\x02"
             ),
+            id="i64-some",
         ),
-        ("i64", _max_value_be_bytes(8, 4096)),
-        ("f32", b""),
-        ("f32", _random_value_be_bytes(4, 4096)),
-        ("f64", b""),
-        ("f64", _random_value_be_bytes(8, 4096)),
+        pytest.param(
+            "i64",
+            _max_value_be_bytes(8, 4096),
+            id="i64-limit",
+        ),
+        pytest.param(
+            "f32",
+            b"",
+            id="f32-empty",
+        ),
+        pytest.param(
+            "f32",
+            _random_value_be_bytes(4, 4096),
+            id="f32-limit",
+        ),
+        pytest.param(
+            "f64",
+            b"",
+            id="f64-empty",
+        ),
+        pytest.param(
+            "f64",
+            _random_value_be_bytes(8, 4096),
+            id="f64-limit",
+        ),
     ),
 )
 @pytest.mark.parametrize("input_endian", (None, *ENDIAN_LITERALS))
 @pytest.mark.parametrize("as_bytearray", (False, True))
-def test_raw_data(
+def test_raw_data_limits(
     dtype: t.Literal["i8", "i16", "i32", "i64", "f32", "f64"],
     data: bytes,
     input_endian: T_ENDIAN_LITERAL | None,
