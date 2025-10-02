@@ -56,6 +56,7 @@ def test_address_resolve_with_custom_resolver_none() -> None:
     [
         (Address(("example.invalid", "7687")), ServiceUnavailable),
         (Address(("example.invalid", 7687)), ServiceUnavailable),
+        (Address(("example.invalid", None)), ServiceUnavailable),
         (Address(("127.0.0.1", "abcd")), ValueError),
         (Address((None, None)), ValueError),
         (Address((1234, "7687")), TypeError),
@@ -65,12 +66,25 @@ def test_address_resolve_with_custom_resolver_none() -> None:
 def test_address_resolve_with_unresolvable_address(
     test_input, expected
 ) -> None:
-    # import contextlib
-    # with contextlib.suppress(Exception):
     with pytest.raises(expected):
         Util.list(
             NetworkUtil.resolve_address(test_input, resolver=None)
         )
+
+
+@pytest.mark.parametrize(
+    "test_input",
+    [
+        Address((None, 7687)),
+        Address(("example.com", None)),
+    ],
+)
+@mark_sync_test
+def test_address_resolves_with_none(test_input) -> None:
+    resolved = Util.list(
+        NetworkUtil.resolve_address(test_input, resolver=None)
+    )
+    assert resolved
 
 
 @mark_sync_test
