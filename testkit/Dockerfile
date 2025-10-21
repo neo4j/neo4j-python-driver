@@ -4,31 +4,48 @@ FROM ubuntu:20.04 AS base
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y locales && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 ENV LANG=en_US.UTF-8
 
 # Using apt-get update alone in a RUN statement causes caching issues and subsequent apt-get install instructions fail.
-RUN apt-get --quiet update && apt-get --quiet install -y \
-    software-properties-common \
-    bash \
-    python3 \
-    python3-pip \
-    git \
-    curl \
-    tar \
-    wget \
- && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y \
+        software-properties-common \
+        bash \
+        python3 \
+        python3-pip \
+        git \
+        curl \
+        tar \
+        wget && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install Build Tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
-        libsqlite3-dev wget curl llvm libncurses5-dev xz-utils tk-dev \
-        libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
+        make \
+        build-essential \
+        libssl-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libreadline-dev\
+        libsqlite3-dev \
+        wget \
+        curl \
+        llvm \
+        libncurses5-dev \
+        xz-utils \
+        tk-dev\
+        libxml2-dev \
+        libxmlsec1-dev \
+        libffi-dev \
+        liblzma-dev\
         ca-certificates && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install pyenv
 RUN git clone https://github.com/pyenv/pyenv.git .pyenv
@@ -62,20 +79,22 @@ RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U coverage tox; \
     done
 
+ARG TIME_WARP
+ENV DRIVER_TIME_WARP=$TIME_WARP
+
 
 FROM base-py-install AS backend-timewarp
 WORKDIR /home/root/testkit
 COPY requirements*.txt .
-COPY testkit/backend.py testkit/build.py testkit/_common.py .
+COPY testkit/backend.py testkit/build.py testkit/_common.py testkit/
 RUN sed -i 's|-e \..*$||' requirements*.txt
 
-ARG TIME_WARP
 RUN for version in $PYTHON_VERSIONS; do \
-        TEST_BACKEND_VERSION="python$version" python build.py && \
-        python$version -m pip install --force-reinstall neo4j==${TIME_WARP}; \
+        TEST_BACKEND_VERSION="python$version" python testkit/build.py && \
+        python$version -m pip install --force-reinstall neo4j==$TIME_WARP; \
     done
 COPY testkitbackend ./testkitbackend
-ENTRYPOINT ["python", "backend.py"]
+ENTRYPOINT ["python", "testkit/backend.py"]
 
 
 FROM base-py-install AS backend
@@ -88,7 +107,6 @@ RUN update-ca-certificates
 
 
 FROM backend${TIME_WARP:+"-timewarp"} AS final
-ARG TIME_WARP
-ENV DRIVER_TIME_WARP=$TIME_WARP
+RUN env
 WORKDIR /home/root/testkit
 EXPOSE 9876/tcp

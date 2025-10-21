@@ -136,15 +136,15 @@ def _get_blocked_testkit_features() -> frozenset[str]:
 
 def _get_extra_testkit_features() -> frozenset[str]:
     extra: list[str] = []
-    if VERSION < (5, 28):
-        extra.extend(("Feature:Bolt:4.0",))
     return frozenset(extra)
 
 
 BLOCKED_TESTKIT_FEATURES: te.Final[frozenset[str]] = (
     _get_blocked_testkit_features()
 )
-EXTRA_TESTKIT_FEATURES: te.Final[frozenset[str]] = frozenset()
+EXTRA_TESTKIT_FEATURES: te.Final[frozenset[str]] = (
+    _get_extra_testkit_features()
+)
 
 
 if GQL_ERROR_SUPPORT:

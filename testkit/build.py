@@ -16,15 +16,20 @@
 
 """Building driver and test backend inside driver container."""
 
-from _common import run_python
+from _common import (
+    DRIVER_TIME_WARP,
+    run_python,
+)
 
 
 if __name__ == "__main__":
-    run_python(
-        ["-m", "pip", "install", "-U", "pip", "build"],
-        warning_as_error=False,
-    )
-    run_python(["-m", "build", "."], warning_as_error=True)
+    if not DRIVER_TIME_WARP:
+        run_python(
+            ["-m", "pip", "install", "-U", "pip", "build"],
+            warning_as_error=False,
+        )
+        run_python(["-m", "build", "."], warning_as_error=True)
+
     run_python(
         ["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
         warning_as_error=False,
