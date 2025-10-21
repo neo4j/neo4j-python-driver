@@ -45,6 +45,10 @@ from .. import (
 )
 from .._warning_check import warnings_check
 from ..exceptions import MarkdAsDriverError
+from ..test_config import (
+    FEATURES,
+    SKIPPED_TESTS,
+)
 
 
 if t.TYPE_CHECKING:
@@ -106,9 +110,6 @@ def load_config():
     if ssl.HAS_TLSv1_3:
         features += ["Feature:TLS:1.3"]
     return skips, features
-
-
-SKIPPED_TESTS, FEATURES = load_config()
 
 
 def _get_skip_reason(test_name):
