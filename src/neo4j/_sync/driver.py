@@ -153,10 +153,10 @@ class GraphDatabase:
                 T_NotificationMinimumSeverity | None
             ) = ...,
             telemetry_disabled: bool = ...,
+            max_transaction_retry_time: float = ...,
+            connection_acquisition_timeout: float = ...,
             # undocumented/unsupported options
             # they may be changed or removed any time without prior notice
-            connection_acquisition_timeout: float = ...,
-            max_transaction_retry_time: float = ...,
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,

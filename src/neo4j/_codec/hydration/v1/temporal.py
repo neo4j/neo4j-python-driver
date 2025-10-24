@@ -216,16 +216,16 @@ if np is not None:
         """
         if np.isnat(value):
             return None
-        year = value.astype("datetime64[Y]").astype(int) + 1970
+        year = value.astype("datetime64[Y]").astype(np.int64) + 1970
         if not 0 < year <= 9999:
             # while we could encode years outside the range, they would fail
             # when retrieved from the database.
             raise ValueError(
                 f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {year}"
             )
-        seconds = value.astype(np.dtype("datetime64[s]")).astype(int)
+        seconds = value.astype(np.dtype("datetime64[s]")).astype(np.int64)
         nanoseconds = (
-            value.astype(np.dtype("datetime64[ns]")).astype(int)
+            value.astype(np.dtype("datetime64[ns]")).astype(np.int64)
             % _NANO_SECONDS
         )
         return Structure(b"d", seconds, nanoseconds)
@@ -299,6 +299,7 @@ def dehydrate_timedelta(value):
 
 
 if np is not None:
+    _NUMPY_DURATION_NS_FALLBACK = object()
     _NUMPY_DURATION_UNITS = {
         "Y": "years",
         "M": "months",
@@ -310,6 +311,9 @@ if np is not None:
         "ms": "milliseconds",
         "us": "microseconds",
         "ns": "nanoseconds",
+        "ps": _NUMPY_DURATION_NS_FALLBACK,
+        "fs": _NUMPY_DURATION_NS_FALLBACK,
+        "as": _NUMPY_DURATION_NS_FALLBACK,
     }
 
     def dehydrate_np_timedelta(value):
@@ -323,14 +327,17 @@ if np is not None:
         if np.isnat(value):
             return None
         unit, step_size = np.datetime_data(value)
-        numer = int(value.astype(int))
-        # raise RuntimeError((type(numer), type(step_size)))
-        kwarg = _NUMPY_DURATION_UNITS.get(unit)
-        if kwarg is not None:
-            return dehydrate_duration(Duration(**{kwarg: numer * step_size}))
-        return dehydrate_duration(
-            Duration(nanoseconds=value.astype("timedelta64[ns]").astype(int))
-        )
+        numer = int(value.astype(np.int64))
+        try:
+            kwarg = _NUMPY_DURATION_UNITS[unit]
+        except KeyError:
+            raise TypeError(
+                f"Unsupported numpy.timedelta64 unit: {unit!r}"
+            ) from None
+        if kwarg is _NUMPY_DURATION_NS_FALLBACK:
+            nanoseconds = value.astype("timedelta64[ns]").astype(np.int64)
+            return dehydrate_duration(Duration(nanoseconds=nanoseconds))
+        return dehydrate_duration(Duration(**{kwarg: numer * step_size}))
 
 
 if pd is not None:
