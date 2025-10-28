@@ -115,6 +115,7 @@ test = [
 # type checker and type stubs for static type checking
 typing = [
     "mypy >= 1.18.2",
+    "ty >= 0.0.32",
     "types-pytz >= 2025.2.0.20250809",
     "pandas-stubs >= 1.0.0, < 4.0.0",
     "types-mock >= 5.2.0.20260408",

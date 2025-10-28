@@ -50,3 +50,11 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+      - id: ty benchmarks
+        name: ty check benchmarks
+        entry: ty check
+        args: [ --project, benchmarks ]
+        types_or: [ python, pyi ]
+        language: system
+        pass_filenames: false
+        require_serial: true

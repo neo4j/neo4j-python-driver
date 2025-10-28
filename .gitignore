@@ -12,6 +12,8 @@ htmlcov
 .benchmarks
 .cache
 .pytest_cache
+.ruff_cache
+.mypy_cache
 .DS_Store
 
 docs/build
