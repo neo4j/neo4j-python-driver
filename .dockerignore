@@ -2,5 +2,14 @@
 build
 dist
 venv*/
+.venv*/
 .coverage
 tests/
+testkit/
+testkitbackend/
+benchmarks/Dockerfile
+benchmarks/.venv
+benchmarks/.gitignore
+benchmarks/build
+benchmarks/dist
+benchmarks/results
