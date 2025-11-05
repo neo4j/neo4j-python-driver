@@ -30,6 +30,7 @@ from collections.abc import (
     Mapping,
     Sequence,
     Set,
+    Sized,
     ValuesView,
 )
 from importlib.util import find_spec as _find_spec
@@ -79,6 +80,7 @@ __all__: tuple[str, ...] = (
     "Protocol",
     "Sequence",
     "Set",
+    "Sized",
     "SupportsIndex",
     "TextIO",
     "TypeAlias",
