@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import sys
 from functools import wraps
 
@@ -186,7 +187,7 @@ def neo4j_session(neo4j_driver):
 @pytest_asyncio.fixture
 def aio_benchmark(benchmark, event_loop):
     def _wrapper(func, *args, **kwargs):
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @benchmark
             def _():

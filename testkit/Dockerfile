@@ -56,7 +56,7 @@ ENV PIP_NO_CACHE_DIR=1
 
 FROM base AS base-py-arg
 # Install all supported Python versions
-ARG PYTHON_VERSIONS="3.13 3.12 3.11 3.10"
+ARG PYTHON_VERSIONS="3.14 3.13 3.12 3.11 3.10"
 
 
 FROM base AS base-py-arg-single-python

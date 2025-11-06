@@ -16,9 +16,8 @@
 
 from __future__ import annotations
 
-import asyncio
+import inspect
 from functools import wraps
-from inspect import isclass
 from warnings import warn
 
 from . import _typing as t
@@ -98,7 +97,7 @@ def _make_warning_decorator(
     warning_func: _WarningFunc,
 ) -> t.Callable[[_FuncT], _FuncT]:
     def decorator(f):
-        if asyncio.iscoroutinefunction(f):
+        if inspect.iscoroutinefunction(f):
 
             @wraps(f)
             async def inner(*args, **kwargs):
@@ -107,7 +106,8 @@ def _make_warning_decorator(
 
             inner._without_warning = f
             return inner
-        if isclass(f):
+
+        if inspect.isclass(f):
             if hasattr(f, "__init__"):
                 original_init = f.__init__
 
@@ -125,6 +125,7 @@ def _make_warning_decorator(
                 f._without_warning = classmethod(_without_warning)
                 return f
             raise TypeError("Cannot decorate class without __init__")
+
         else:
 
             @wraps(f)

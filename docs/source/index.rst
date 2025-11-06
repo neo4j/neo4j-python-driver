@@ -19,6 +19,7 @@ See https://neo4j.com/developer/kb/neo4j-supported-versions/ for a driver-server
 
 Python versions supported:
 
+* Python 3.14
 * Python 3.13
 * Python 3.12
 * Python 3.11

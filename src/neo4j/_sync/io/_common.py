@@ -15,6 +15,7 @@
 
 
 import asyncio
+import inspect
 import logging
 from contextlib import suppress
 from struct import pack as struct_pack
@@ -191,7 +192,7 @@ class ConnectionErrorHandler:
                 try:
                     func(*args, **kwargs)
                 except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
-                    assert not asyncio.iscoroutinefunction(self.__on_error)
+                    assert not inspect.iscoroutinefunction(self.__on_error)
                     self.__on_error(exc)
                     raise
 
@@ -212,7 +213,7 @@ class ConnectionErrorHandler:
 
             return inner
 
-        if asyncio.iscoroutinefunction(connection_attr):
+        if inspect.iscoroutinefunction(connection_attr):
             return outer_async(connection_attr)
         return outer(connection_attr)
 
