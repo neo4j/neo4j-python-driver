@@ -21,7 +21,6 @@ import itertools
 import pytest
 
 import neo4j._api
-import neo4j.api
 from neo4j.addressing import Address
 from neo4j.exceptions import ConfigurationError
 

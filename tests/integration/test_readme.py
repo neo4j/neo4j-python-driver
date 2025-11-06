@@ -74,9 +74,9 @@ def test_readme_contains_example():
     test_path = Path(__file__)
     readme_path = test_path.parents[2] / "README.rst"
 
-    with test_path.open("r") as fd:
+    with test_path.open("r", encoding="utf-8") as fd:
         test_content = fd.read()
-    with readme_path.open("r") as fd:
+    with readme_path.open("r", encoding="utf-8") as fd:
         readme_content = fd.read()
 
     stripped_test_content = ""

@@ -25,7 +25,6 @@ import tokenize as std_tokenize
 from pathlib import Path
 
 import isort
-import isort.files
 import unasync
 
 

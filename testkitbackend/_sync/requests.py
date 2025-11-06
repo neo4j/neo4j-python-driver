@@ -27,7 +27,6 @@ from os import path
 from freezegun import freeze_time
 
 import neo4j
-import neo4j.api
 import neo4j.auth_management
 from neo4j._async_compat.util import Util
 from neo4j._routing import RoutingTable
