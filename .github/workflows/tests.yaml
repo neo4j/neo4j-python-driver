@@ -23,6 +23,8 @@ jobs:
             tox-factor: 'py312'
           - semver: '3.13'
             tox-factor: 'py313'
+          - semver: '3.14'
+            tox-factor: 'py314'
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
 

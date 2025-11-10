@@ -9,6 +9,7 @@ Driver upgrades within a major version will never contain breaking API changes.
 For version compatibility with Neo4j server, please refer to:
 https://neo4j.com/developer/kb/neo4j-supported-versions/
 
++ Python 3.14 supported.
 + Python 3.13 supported.
 + Python 3.12 supported.
 + Python 3.11 supported.
