@@ -588,7 +588,8 @@ class Bolt3(Bolt):
                     )
                 raise
             except Neo4jError as e:
-                self.pool.on_neo4j_error(e, self)
+                if self.pool:
+                    self.pool.on_neo4j_error(e, self)
                 raise
         else:
             sig_int = ord(summary_signature)

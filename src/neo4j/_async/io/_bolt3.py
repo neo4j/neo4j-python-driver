@@ -588,7 +588,8 @@ class AsyncBolt3(AsyncBolt):
                     )
                 raise
             except Neo4jError as e:
-                await self.pool.on_neo4j_error(e, self)
+                if self.pool:
+                    await self.pool.on_neo4j_error(e, self)
                 raise
         else:
             sig_int = ord(summary_signature)
