@@ -1,0 +1,7 @@
+:include .gitignore
+
+/benchkit/
+/docs/
+/testkit/
+/testkitbackend/
+/tests/
