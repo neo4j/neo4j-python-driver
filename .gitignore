@@ -18,7 +18,8 @@ docs/build
 dist
 *.egg-info
 build
-venv
+/.venv*/
+/venv*/
 
 run
 */run
