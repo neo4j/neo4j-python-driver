@@ -53,9 +53,6 @@ class Neo4jWarning(Warning):
     Which notifications trigger a warning can be controlled by a
     configuration option: :ref:`driver-warn-notification-severity-ref`
 
-    **This is a preview**.
-    It might be changed without following the deprecation policy.
-
     See also
     https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
@@ -66,7 +63,9 @@ class Neo4jWarning(Warning):
     .. versionadded:: 5.21
 
     .. versionchanged:: 6.0
-        :attr:`.notification` is now of type :class:`.SummaryNotification`.
+        * :attr:`.notification` is now of type :class:`.GqlStatusObject`
+          instead of :class:`.SummaryNotification`.
+        * Stabilized from preview.
 
     .. seealso:: :ref:`development-environment-ref`
     """
@@ -93,13 +92,9 @@ class Neo4jDeprecationWarning(Neo4jWarning, DeprecationWarning):
         This warning is a subclass of :class:`DeprecationWarning`.
         This means that Python will not show this warning by default.
 
-    **This is a preview**.
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     :param notification: The notification that triggered the warning.
 
     .. versionadded:: 5.21
+
+    .. versionchanged:: 6.0 Stabilized from preview.
     """

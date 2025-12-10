@@ -390,18 +390,14 @@ class NotificationClassification(str, Enum):
     This alternative is provided for a consistent naming with
     :attr:`.GqlStatusObject.classification`.
 
-    **This is a preview**.
-    It might be changed without following the deprecation policy.
-
-    See also
-    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. seealso:: :attr:`.GqlStatusObject.classification`
 
     .. versionadded:: 5.22
 
     .. versionchanged:: 5.24
         Added classification :attr:`.SCHEMA`.
+
+    .. versionchanged:: 6.0 Stabilized from preview.
     """
 
     HINT = "HINT"
