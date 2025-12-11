@@ -326,7 +326,11 @@ class BoltSocket(BoltSocketBase):
             s = None
             try:
                 s = cls._connect_secure(
-                    resolved_address, tcp_timeout, keep_alive, ssl_context
+                    resolved_address,
+                    tcp_timeout,
+                    deadline,
+                    keep_alive,
+                    ssl_context,
                 )
                 agreed_version, handshake, response = s._handshake(
                     resolved_address, deadline
