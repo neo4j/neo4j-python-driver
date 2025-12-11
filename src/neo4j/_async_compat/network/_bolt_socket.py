@@ -205,13 +205,14 @@ class AsyncBoltSocketBase(abc.ABC):
 
     @classmethod
     async def _connect_secure(
-        cls, resolved_address, timeout, keep_alive, ssl_context
+        cls, resolved_address, timeout, deadline, keep_alive, ssl_context
     ) -> t.Self:
         """
         Connect to the address and return the socket.
 
         :param resolved_address:
         :param timeout: seconds
+        :param deadline: deadline for the whole operation
         :param keep_alive: True or False
         :param ssl_context: SSLContext or None
 
@@ -242,7 +243,11 @@ class AsyncBoltSocketBase(abc.ABC):
             if ssl_context is not None:
                 hostname = resolved_address._host_name or None
                 sni_host = hostname if HAS_SNI and hostname else None
-                ssl_kwargs.update(ssl=ssl_context, server_hostname=sni_host)
+                ssl_kwargs.update(
+                    ssl=ssl_context,
+                    server_hostname=sni_host,
+                    ssl_handshake_timeout=deadline.to_timeout(),
+                )
                 log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
 
             reader = asyncio.StreamReader(
@@ -463,13 +468,14 @@ class BoltSocketBase:
 
     @classmethod
     def _connect_secure(
-        cls, resolved_address, timeout, keep_alive, ssl_context
+        cls, resolved_address, timeout, deadline, keep_alive, ssl_context
     ):
         """
         Connect to the address and return the socket.
 
         :param resolved_address:
         :param timeout: seconds
+        :param deadline: deadline for the whole operation
         :param keep_alive: True or False
         :returns: socket object
         """
@@ -531,7 +537,11 @@ class BoltSocketBase:
                 sni_host = hostname if HAS_SNI and hostname else None
                 log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
                 try:
+                    t = s.gettimeout()
+                    if timeout:
+                        s.settimeout(deadline.to_timeout())
                     s = ssl_context.wrap_socket(s, server_hostname=sni_host)
+                    s.settimeout(t)
                 except (OSError, SSLError, CertificateError) as cause:
                     log.debug(
                         "[#0000]  S: <SECURE FAILURE> %s: %s",

@@ -327,7 +327,11 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
             s = None
             try:
                 s = await cls._connect_secure(
-                    resolved_address, tcp_timeout, keep_alive, ssl_context
+                    resolved_address,
+                    tcp_timeout,
+                    deadline,
+                    keep_alive,
+                    ssl_context,
                 )
                 agreed_version = await s._handshake(resolved_address, deadline)
                 return s, agreed_version
