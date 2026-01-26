@@ -2652,7 +2652,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             t = self.time().to_clock_time() + ClockTime(
                 other.seconds, other.nanoseconds
             )
-            days, seconds = symmetric_divmod(t.seconds, 86400)
+            days, seconds = divmod(t.seconds, 86400)
             date_ = self.date() + Duration(
                 months=other.months, days=days + other.days
             )
