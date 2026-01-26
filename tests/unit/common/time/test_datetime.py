@@ -312,6 +312,11 @@ class TestDateTime:
                 DateTime(2024, 4, 1, 0, 30, 0),
             ),
             (
+                DateTime(2025, 1, 1, 13, 45, 30, 123456789),
+                Duration(seconds=-50400),
+                DateTime(2024, 12, 31, 23, 45, 30, 123456789),
+            ),
+            (
                 DateTime(2024, 3, 31, 0, 30, 0),
                 timedelta(microseconds=1),
                 DateTime(2024, 3, 31, 0, 30, 0, 1000),
@@ -320,6 +325,11 @@ class TestDateTime:
                 DateTime(2024, 3, 31, 0, 30, 0),
                 timedelta(hours=24),
                 DateTime(2024, 4, 1, 0, 30, 0),
+            ),
+            (
+                DateTime(2025, 1, 1, 13, 45, 30, 123456789),
+                timedelta(seconds=-50400),
+                DateTime(2024, 12, 31, 23, 45, 30, 123456789),
             ),
         ),
     )
