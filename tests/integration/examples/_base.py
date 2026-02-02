@@ -13,5 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# unused import required to patch driver with mock _Clock implementation
-from . import _patch  # noqa: F401
+
+class DriverSetupExample:
+    driver = None
+
+    def close(self):
+        if self.driver:
+            self.driver.close()
+
+    @classmethod
+    def test(cls, *args, **kwargs):
+        example = cls(*args, **kwargs)
+        try:
+            with example.driver.session() as session:
+                assert session.run("RETURN 1").single().value() == 1
+        finally:
+            example.close()

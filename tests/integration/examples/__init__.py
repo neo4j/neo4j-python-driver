@@ -90,20 +90,3 @@
 #
 # Example 4.11.Reactive consuming results
 #     ---
-
-
-class DriverSetupExample:
-    driver = None
-
-    def close(self):
-        if self.driver:
-            self.driver.close()
-
-    @classmethod
-    def test(cls, *args, **kwargs):
-        example = cls(*args, **kwargs)
-        try:
-            with example.driver.session() as session:
-                assert session.run("RETURN 1").single().value() == 1
-        finally:
-            example.close()

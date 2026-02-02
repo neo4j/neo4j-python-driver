@@ -15,7 +15,7 @@
 
 import pytest
 
-from . import DriverSetupExample
+from ._base import DriverSetupExample
 
 
 # isort: off
