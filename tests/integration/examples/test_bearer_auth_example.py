@@ -17,7 +17,7 @@
 import neo4j
 from neo4j._sync.auth_management import StaticAuthManager
 
-from . import DriverSetupExample
+from ._base import DriverSetupExample
 
 
 # isort: off
