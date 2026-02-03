@@ -102,9 +102,16 @@ _TIME_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
     r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$"
 )
 _DURATION_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
-    r"^P(?!$)(([+-]?\d+)Y)?(([+-]?\d+)M)?(([+-]?\d+)D)?"
-    r"(T(?!$)(([+-]?\d+)H)?(([+-]?\d+)M)?((([+-]?\d+)(.\d+)?)?S)?)?$"
-    r"|^P([+-]?\d+)W$"
+    r"^P(?!$)"
+    r"(?:(?P<years>[+-]?\d+)Y)?"
+    r"(?:(?P<months>[+-]?\d+)M)?"
+    r"(?:(?P<days>[+-]?\d+)D)?"
+    r"(T(?!$)"
+    r"(?:(?P<hours>[+-]?\d+)H)?"
+    r"(?:(?P<minutes>[+-]?\d+)M)?"
+    r"(?:(?P<seconds>[+-]?\d+)(?P<sub_seconds>[.,]\d+)?S)?"
+    r")?$"
+    r"|^P(?P<weeks>[+-]?\d+)W$"
 )
 
 _NANO_SECONDS: _t.Final[int] = 1000000000
@@ -686,7 +693,7 @@ class Duration(  # type: ignore[misc]
             'P', a zero length duration
             'PyY', y being a number of years
             'PmM', m being a number of months
-            'PdW', d being a number of weeks
+            'PwW', d being a number of weeks
             'PdD', d being a number of days
 
             Any combination of the above, e.g., 'P25Y1D' for 25 years and 1
@@ -712,20 +719,20 @@ class Duration(  # type: ignore[misc]
         """
         match = _DURATION_ISO_PATTERN.match(s)
         if match:
-            if match.group(16):
-                return cls(weeks=int(match.group(16)))
+            if match.group("weeks"):
+                return cls(weeks=int(match.group("weeks")))
             ns = 0
-            if match.group(15):
-                ns = int(match.group(15)[1:10].ljust(9, "0"))
-            seconds = int(match.group(14) or 0)
+            if match.group("sub_seconds"):
+                ns = int(match.group("sub_seconds")[1:10].ljust(9, "0"))
+            seconds = int(match.group("seconds") or 0)
             if seconds < 0:
                 ns *= -1
             return cls(
-                years=int(match.group(2) or 0),
-                months=int(match.group(4) or 0),
-                days=int(match.group(6) or 0),
-                hours=int(match.group(9) or 0),
-                minutes=int(match.group(11) or 0),
+                years=int(match.group("years") or 0),
+                months=int(match.group("months") or 0),
+                days=int(match.group("days") or 0),
+                hours=int(match.group("hours") or 0),
+                minutes=int(match.group("minutes") or 0),
                 seconds=seconds,
                 nanoseconds=ns,
             )
