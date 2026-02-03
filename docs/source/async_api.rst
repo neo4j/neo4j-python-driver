@@ -748,6 +748,34 @@ Read example:
         return numbers
 
 
+.. _async-auto-commit-caveats-ref:
+
+Auto-commit Usage Caveats
+-------------------------
+
+.. Note::
+
+    A common pitfall with auto-commit transactions is misunderstanding the
+    transactional guarantees it gives and which it doesn't.
+    It guarantees:
+
+    The transaction guaranteed to be committed anywhere between the start of
+    it (i.e., calling :meth:`neo4j.AsyncSession.run`) and fully consuming the
+    returned :class:`neo4j.AsyncResult`. Consuming means either fully iterating
+    over all records of the result or calling a consuming method, e.g.,
+    :meth:`neo4j.AsyncResult.consume`. Anywhere in between these two events, the
+    transaction might or might not be committed yet.
+
+    If the Result isn't fully consumed by the time the client code moves on
+    (e.g., by closing the containing session or starting another auto-commit
+    transaction within the same session), the driver will automatically consume
+    the outstanding Result. **However**, any exception during this will be
+    silences. This means a failure to commit the transaction might go unnoticed.
+
+    It is therefore strongly encouraged to always explicitly consume the Result
+    fully.
+
+
 .. _async-explicit-transactions-ref:
 
 Explicit Transactions (Unmanaged Transactions)
