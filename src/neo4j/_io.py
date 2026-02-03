@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 
-from .. import _typing as t  # noqa: TC001
+from . import _typing as t  # noqa: TC001
 
 
 __all__ = [

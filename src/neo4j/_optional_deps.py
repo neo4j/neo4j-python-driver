@@ -13,5 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# unused import required to patch driver with mock _Clock implementation
-from . import _patch  # noqa: F401
+
+from __future__ import annotations
+
+from contextlib import suppress
+
+from . import _typing as t  # noqa: TC001
+
+
+np: t.Any = None
+
+with suppress(ImportError):
+    import numpy as np  # type: ignore[no-redef]
+
+pd: t.Any = None
+
+with suppress(ImportError):
+    import pandas as pd  # type: ignore[no-redef]
+
+pa: t.Any = None
+
+with suppress(ImportError):
+    import pyarrow as pa  # type: ignore[no-redef]
+
+
+__all__ = [
+    "np",
+    "pa",
+    "pd",
+]

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: RUF067 - might clean up in the future
+
 
 """Spatial data types for interchange with the DBMS."""
 
