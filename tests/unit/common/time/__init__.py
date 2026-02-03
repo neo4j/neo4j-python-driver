@@ -21,7 +21,7 @@ from neo4j.time import (
 
 
 # The existence of this class will make the driver's custom date time
-# implementation use it instead of a real clock since its precision is higher
+# implementation use it instead of a real clock since its precision it higher
 # than all the other clocks (only up to nanoseconds).
 class FixedClock(_Clock):
     @classmethod
