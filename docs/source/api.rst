@@ -1944,6 +1944,14 @@ Temporal Data Types
 See topic :ref:`temporal-data-types` for more details.
 
 
+Vector Data Types
+=================
+
+.. include:: types/_vector_overview.rst
+
+See topic :ref:`vector-data-types` for more details.
+
+
 *********
 Bookmarks
 *********
