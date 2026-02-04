@@ -430,25 +430,116 @@ class TestDuration:
         assert expected == actual
         assert expected.foo == actual.foo  # type: ignore[attr-defined]
 
-    def test_from_iso_format(self) -> None:
-        assert Duration() == Duration.from_iso_format("PT0S")
-        assert Duration(
-            hours=12, minutes=34, seconds=56.789
-        ) == Duration.from_iso_format("PT12H34M56.789S")
-        assert Duration(years=1, months=2, days=3) == Duration.from_iso_format(
-            "P1Y2M3D"
-        )
-        assert Duration(
-            years=1, months=2, days=3, hours=12, minutes=34, seconds=56.789
-        ) == Duration.from_iso_format("P1Y2M3DT12H34M56.789S")
-        # test for float precision issues
-        for i in range(500006000, 500010000, 1000):
-            assert Duration(
-                years=1, months=2, days=3, hours=12, minutes=34, nanoseconds=i
-            ) == Duration.from_iso_format(f"P1Y2M3DT12H34M00.{i!s}S")
-            assert Duration(
-                years=1, months=2, days=3, hours=12, minutes=34, nanoseconds=i
-            ) == Duration.from_iso_format(f"P1Y2M3DT12H34M00.{str(i)[:-3]}S")
+    @pytest.mark.parametrize(
+        ("iso_format", "expected"),
+        (
+            ("PT0S", Duration()),
+            ("PT0.0S", Duration()),
+            ("PT0M", Duration()),
+            ("PT0H", Duration()),
+            ("P0D", Duration()),
+            ("P0M", Duration()),
+            ("P0W", Duration()),
+            ("P0Y", Duration()),
+            ("PT1S", Duration(seconds=1)),
+            ("PT1.000123000S", Duration(seconds=1, nanoseconds=123_000)),
+            ("PT1.010S", Duration(seconds=1, nanoseconds=10_000_000)),
+            ("PT1,010S", Duration(seconds=1, nanoseconds=10_000_000)),
+            ("PT1.00000000090000000000000000000S", Duration(seconds=1)),
+            ("PT-1S", Duration(seconds=-1)),
+            ("PT-1.000123000S", Duration(seconds=-1, nanoseconds=-123_000)),
+            ("PT-1.010S", Duration(seconds=-1, nanoseconds=-10_000_000)),
+            ("PT-1.00000000090000000000000000000S", Duration(seconds=-1)),
+            ("PT1M", Duration(minutes=1)),
+            ("PT-1M", Duration(minutes=-1)),
+            ("PT1H", Duration(hours=1)),
+            ("PT-1H", Duration(hours=-1)),
+            ("P1D", Duration(days=1)),
+            ("P-1D", Duration(days=-1)),
+            ("P1W", Duration(weeks=1)),
+            ("P-1W", Duration(weeks=-1)),
+            ("P1M", Duration(months=1)),
+            ("P-1M", Duration(months=-1)),
+            ("P1Y", Duration(years=1)),
+            ("P-1Y", Duration(years=-1)),
+            ("P1MT2M", Duration(months=1, minutes=2)),
+            ("P-1M2DT-3S", Duration(months=-1, days=2, seconds=-3)),
+            ("P1M-2DT3S", Duration(months=1, days=-2, seconds=3)),
+            ("PT9223372036854775807.0S", Duration(seconds=time.MAX_INT64)),
+            ("PT-9223372036854775808.0S", Duration(seconds=time.MIN_INT64)),
+            # test for float precision issues
+            *(
+                (
+                    formatted,
+                    Duration(
+                        years=1,
+                        months=2,
+                        days=3,
+                        hours=12,
+                        minutes=34,
+                        nanoseconds=i,
+                    ),
+                )
+                for i in range(500006000, 500010000, 1000)
+                for formatted in (
+                    f"P1Y2M3DT12H34M00.{i!s}S",
+                    f"P1Y2M3DT12H34M00.{str(i)[:-3]}S",
+                )
+            ),
+        ),
+    )
+    def test_from_iso_format(
+        self, iso_format: str, expected: Duration
+    ) -> None:
+        parsed = Duration.from_iso_format(iso_format)
+        assert parsed == expected
+
+    @pytest.mark.parametrize(
+        ("iso_format", "expected"),
+        (
+            ("", ValueError),
+            ("P", ValueError),
+            ("PT", ValueError),
+            ("PD", ValueError),
+            ("PTS", ValueError),
+            ("P0", ValueError),
+            ("PT0", ValueError),
+            ("PT0|0S", ValueError),
+            ("PT0;0S", ValueError),
+            ("P0S", ValueError),
+            ("P0ST0M", ValueError),
+            # ISO compliant, but neo4j's Duration class rejects float values
+            # for all but the seconds component. This is due to the nature of
+            # neo4j's Duration type: it tracks months, days, seconds and
+            # nanoseconds as separate integers only ever intermingles seconds
+            # and nanoseconds.
+            # Therefore, float semantics become unintuitive:
+            # How many seconds are in 0.5 days? That depends on whether the
+            # day hat a DST shift or not.
+            # "PT0.5M" is a much clearer case. However, for simplicity and
+            # consistency, it's not allowed either.
+            ("P0.5D", ValueError),
+            ("P1.5M", ValueError),
+            ("P2.5Y", ValueError),
+            ("PT0.5H", ValueError),
+            ("PT0.5M", ValueError),
+            # Overflowing values
+            ("PT9223372036854775808S", ValueError),
+            ("PT-9223372036854775809S", ValueError),
+            # Weeks must not be combined with anything else
+            ("P1Y1W", ValueError),
+            ("P1M1W", ValueError),
+            ("P1W1D", ValueError),
+            ("P1WT1H", ValueError),
+            ("P1WT1M", ValueError),
+            ("P1WT1S", ValueError),
+        ),
+    )
+    def test_from_iso_format_failure(
+        self, iso_format: str, expected: type[Exception]
+    ) -> None:
+        with pytest.raises(expected):
+            Duration.from_iso_format(iso_format)
 
     @pytest.mark.parametrize("with_day", (True, False))
     @pytest.mark.parametrize("with_month", (True, False))
