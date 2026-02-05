@@ -14,15 +14,19 @@
 # limitations under the License.
 
 
-import abc
-
-from .._common import DehydrationHooks
+from functools import wraps as _wraps
 
 
-class HydrationHandlerABC(abc.ABC):
-    def __init__(self):
-        self.struct_hydration_functions = {}
-        self.dehydration_hooks = DehydrationHooks(exact_types={}, subtypes={})
+__all__ = [
+    "wrap_async",
+]
 
-    @abc.abstractmethod
-    def new_hydration_scope(self): ...
+
+def wrap_async(func):
+    @_wraps(func)
+    async def wrapper(*args, **kwargs):  # noqa: RUF029
+        # [noqa] the hole point of this wrapper is to turn a sync function into
+        # an async one for testing purposes
+        return func(*args, **kwargs)
+
+    return wrapper

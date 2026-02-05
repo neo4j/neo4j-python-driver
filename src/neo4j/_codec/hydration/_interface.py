@@ -14,31 +14,15 @@
 # limitations under the License.
 
 
-from __future__ import annotations
+import abc
 
-from contextlib import suppress
-
-from .. import _typing as t  # noqa: TC001
+from ._common import DehydrationHooks
 
 
-np: t.Any = None
+class HydrationHandlerABC(abc.ABC):
+    def __init__(self):
+        self.struct_hydration_functions = {}
+        self.dehydration_hooks = DehydrationHooks(exact_types={}, subtypes={})
 
-with suppress(ImportError):
-    import numpy as np  # type: ignore[no-redef]
-
-pd: t.Any = None
-
-with suppress(ImportError):
-    import pandas as pd  # type: ignore[no-redef]
-
-pa: t.Any = None
-
-with suppress(ImportError):
-    import pyarrow as pa  # type: ignore[no-redef]
-
-
-__all__ = [
-    "np",
-    "pa",
-    "pd",
-]
+    @abc.abstractmethod
+    def new_hydration_scope(self): ...

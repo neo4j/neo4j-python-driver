@@ -13,5 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# unused import required to patch driver with mock _Clock implementation
-from . import _patch  # noqa: F401
+from neo4j.time import (
+    _Clock,
+    _ClockTime,
+)
+
+
+# The existence of this class will make the driver's custom date time
+# implementation use it instead of a real clock since its precision is higher
+# than all the other clocks (only up to nanoseconds).
+class FixedClock(_Clock):
+    @classmethod
+    def available(cls):
+        return True
+
+    @classmethod
+    def precision(cls):
+        return 12
+
+    @classmethod
+    def local_offset(cls):
+        return _ClockTime()
+
+    def utc_time(self):
+        return _ClockTime(45296, 789000001)

@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
     hooks:
       - id: check-case-conflict
       - id: check-docstring-first
@@ -11,8 +11,6 @@ repos:
       - id: end-of-file-fixer
         exclude_types:
           - image
-      - id: fix-encoding-pragma
-        args: [ --remove ]
       - id: mixed-line-ending
         args: [ --fix=lf ]
         exclude_types:
@@ -27,11 +25,11 @@ repos:
         types_or: [ python, pyi ]
         language: system
   - repo: https://github.com/sphinx-contrib/sphinx-lint
-    rev: ff671d6a030a3141634793e6d1e8909ab6091830  # v1.0.0
+    rev: c883505f64b59c3c5c9375191e4ad9f98e727ccd  # v1.0.2
     hooks:
       - id: sphinx-lint
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: aad66557af3b56ba6d4d69cd1b6cba87cef50cbb  # v0.14.3
+    rev: 45ef068da5f21267bb2a7ec4a623092959f09ce5  # v0.14.14
     hooks:
       - id: ruff-format
       - id: ruff-check
