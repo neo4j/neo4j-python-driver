@@ -210,9 +210,6 @@ class Vector:
             yield
         except TypeError:
             signature = _inspect.signature(setter)
-            signature = signature.replace(
-                return_annotation=_inspect.Signature.empty
-            )
             try:
                 signature.bind(data, *args, **kwargs)
             except TypeError as bind_error:
