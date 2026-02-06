@@ -51,7 +51,7 @@ from . import (
 )
 
 
-class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
+class HydrationHandler(HydrationHandlerABC):
     def __init__(self):
         super().__init__()
         self._created_scope = False

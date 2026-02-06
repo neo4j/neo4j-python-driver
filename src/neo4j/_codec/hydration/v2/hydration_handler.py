@@ -48,7 +48,7 @@ from ..v1.hydration_handler import _GraphHydrator
 from . import temporal as temporal_v2
 
 
-class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
+class HydrationHandler(HydrationHandlerABC):
     def __init__(self):
         super().__init__()
         self._created_scope = False

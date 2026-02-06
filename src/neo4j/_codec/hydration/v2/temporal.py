@@ -30,7 +30,7 @@ from ...packstream import Structure
 from ..v1.temporal import get_date_unix_epoch_ordinal
 
 
-def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
+def hydrate_datetime(seconds, nanoseconds, tz=None):
     """
     Hydrator for ``DateTime`` and ``LocalDateTime`` values.
 
@@ -59,7 +59,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
     return t.as_timezone(zone)
 
 
-def dehydrate_datetime(value):  # type: ignore[no-redef]
+def dehydrate_datetime(value):
     """
     Dehydrator for ``datetime`` values.
 

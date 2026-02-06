@@ -57,7 +57,7 @@ Discord = "https://discord.com/invite/neo4j"
 [project.optional-dependencies]
 numpy = ["numpy >= 1.21.2, < 3.0.0"]
 pandas = [
-    "pandas >= 1.1.0, < 3.0.0",
+    "pandas[timezone] >= 1.1.0, < 4.0.0",
     "numpy >= 1.21.2, < 3.0.0",
 ]
 pyarrow = ["pyarrow >= 6.0.0, < 23.0.0"]
@@ -115,6 +115,7 @@ test = [
 typing = [
     "mypy >= 1.18.2",
     "types-pytz >= 2025.2.0.20250809",
+    "pandas-stubs >= 1.0.0, < 4.0.0",
     {include-group = "dep-typing-extensions"},
     {include-group = "dep-project-dependencies"},
     # tests are also type-checked
@@ -151,7 +152,7 @@ dep-freezegun = ["freezegun >= 1.5.5"]
 dep-project-dependencies = [
     "pytz",
     "numpy >= 1.7.0, < 3.0.0",
-    "pandas >= 1.1.0, < 3.0.0",
+    "pandas[timezone] >= 1.1.0, < 4.0.0",
     "pyarrow >= 6.0.0, < 23.0.0",
 ]
 
@@ -212,7 +213,6 @@ asyncio_default_fixture_loop_scope="function"
 
 [[tool.mypy.overrides]]
 module = [
-    "pandas.*",
     "pyarrow.*",
     "neo4j._rust",
     "neo4j._rust.*",

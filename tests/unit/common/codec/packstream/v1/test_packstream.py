@@ -15,6 +15,7 @@
 
 
 import struct
+from contextlib import suppress
 from io import BytesIO
 from math import (
     isnan,
@@ -24,6 +25,7 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 
 from neo4j._codec.packstream import Structure
@@ -177,7 +179,26 @@ def str_type(request):
 
 
 @pytest.fixture(
-    params=(list, tuple, np.array, pd.Series, pd.array, pd.arrays.SparseArray)
+    params=(
+        list,
+        tuple,
+        np.array,
+        pd.Series,
+        pd.array,
+        pd.arrays.SparseArray,
+        pd.arrays.NumpyExtensionArray,
+        pd.arrays.ArrowExtensionArray,
+    ),
+    ids=(
+        "list",
+        "tuple",
+        "np.array",
+        "pd.Series",
+        "pd.array",
+        "pd.arrays.SparseArray",
+        "pd.arrays.NumpyExtensionArray",
+        "pd.arrays.ArrowExtensionArray",
+    ),
 )
 def sequence_type(request):
     if request.param is pd.Series:
@@ -187,8 +208,35 @@ def sequence_type(request):
                 return pd.Series(dtype=object)
             return pd.Series(value)
 
-        return constructor
-    return request.param
+    elif request.param is pd.array and pd.__version__ >= "3":
+
+        def constructor(value):
+            with suppress(ValueError):
+                return pd.array(value)
+            return pd.array(value, dtype=object)
+
+    elif request.param is pd.arrays.NumpyExtensionArray:
+
+        def constructor(value):
+            return pd.arrays.NumpyExtensionArray(np.array(value))
+
+    elif request.param is pd.arrays.ArrowExtensionArray:
+
+        def constructor(value):
+            def _map_value(v):
+                if isinstance(v, pd.arrays.ArrowExtensionArray):
+                    v = pa.array(v)
+                if isinstance(v, pa.Array):
+                    v = v.to_pylist()
+                return v
+
+            value = map(_map_value, value)
+            return pd.arrays.ArrowExtensionArray(pa.array(value))
+
+    else:
+        constructor = request.param
+
+    return constructor
 
 
 class TestPackStream:
@@ -536,9 +584,13 @@ class TestPackStream:
             nums_typed, b"\xd6\x00\x01\x38\x80" + (b"\x01" * 80000), nums
         )
 
-    def test_nested_lists(self, sequence_type, assert_packable):
+    @pytest.mark.parametrize("inner_as_list", (True, False))
+    def test_nested_lists(self, sequence_type, inner_as_list, assert_packable):
         list_ = [[[]]]
-        l_typed = sequence_type([sequence_type([sequence_type([])])])
+        if inner_as_list:
+            l_typed = sequence_type(list_)
+        else:
+            l_typed = sequence_type([sequence_type([sequence_type([])])])
         assert_packable(l_typed, b"\x91\x91\x90", list_)
 
     @pytest.mark.parametrize("as_series", (True, False))

@@ -60,14 +60,14 @@ from ..io import ConnectionErrorHandler
 
 
 if t.TYPE_CHECKING:
-    import pandas  # type: ignore[import]
+    import pandas
 
     from ..._addressing import Address
     from ...graph import Graph
 
 
 if False:
-    # Ugly work-around to make sphinx understand `@_t.overload`
+    # Ugly work-around to make sphinx understand `@t.overload`
     import typing as t  # type: ignore[no-redef]
 
 
@@ -908,7 +908,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             was obtained has been closed or the Result has been explicitly
             consumed.
         """
-        import pandas as pd  # type: ignore[import]
+        import pandas as pd
         import pytz
 
         if not expand:
