@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import logging
 import typing as t
 import uuid
@@ -1381,6 +1382,9 @@ def test_notification_warning(
             ]
         },
     )
+    result_frame = inspect.currentframe()
+    assert result_frame is not None
+    result_frame_info = inspect.getframeinfo(result_frame)
     result = Result(
         connection, 1, warn_notification_severity, noop, noop, None
     )
@@ -1396,7 +1400,10 @@ def test_notification_warning(
             result._run("CYPHER", {}, None, None, "r", None, None, None)
             result.consume()
         assert len(recording.list) == 1
-        assert recording.list[0].category is expected_warning
+        warning = recording.list[0]
+        assert warning.category is expected_warning
+        assert warning.filename == result_frame_info.filename
+        assert warning.lineno == result_frame_info.lineno + 1
 
 
 @pytest.mark.parametrize("notification_severity", ("INFORMATION", "WARNING"))
