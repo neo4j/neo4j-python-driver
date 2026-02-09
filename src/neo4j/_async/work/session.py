@@ -78,7 +78,7 @@ class AsyncSession(AsyncWorkspace):
 
         async with driver.session(database="neo4j") as session:
             result = await session.run("MATCH (n:Person) RETURN n.name AS name")
-            ...  # do something with the result
+            ...  # consume the result
     """  # noqa: E501 example code isn't too long
 
     # The current connection.
@@ -285,6 +285,9 @@ class AsyncSession(AsyncWorkspace):
 
         :raises TransactionError: if a transaction is already open.
         :raises SessionError: if the session has been closed.
+
+        .. note::
+            See recommended usage: :ref:`async-auto-commit-caveats-ref`
         """
         self._check_state()
         if not query:
