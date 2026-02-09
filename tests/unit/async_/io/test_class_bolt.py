@@ -20,6 +20,7 @@ import random
 import pytest
 
 import neo4j.auth_management
+from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io import AsyncBolt
 from neo4j._async.io._bolt5 import AsyncBolt5x8
 from neo4j._async.io._bolt_socket import AsyncBoltSocket
@@ -133,6 +134,38 @@ async def test_cancel_hello_in_open(mocker, none_auth):
         await AsyncBolt.open(address, auth_manager=none_auth)
 
     bolt_mock.kill.assert_called_once_with()
+
+
+@AsyncTestDecorators.mark_async_only_test
+async def test_set_write_timeout(mocker, none_auth):
+    write_timeout_value = object()
+    pool_config = AsyncPoolConfig()
+    pool_config.connection_write_timeout = write_timeout_value
+
+    address = ("localhost", 7687)
+    socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)
+
+    socket_cls_mock = mocker.patch(
+        "neo4j._async.io._bolt.AsyncBoltSocket", autospec=True
+    )
+    socket_cls_mock.connect.return_value = (socket_mock, (6, 0))
+    socket_mock.getpeername.return_value = address
+    bolt_cls_mock = mocker.patch(
+        "neo4j._async.io._bolt6.AsyncBolt6x0", autospec=True
+    )
+    bolt_mock = bolt_cls_mock.return_value
+    bolt_mock.socket = socket_mock
+    bolt_mock.local_port = 1234
+    mocker.patch.dict(
+        AsyncBolt.protocol_handlers,
+        {(6, 0): bolt_cls_mock},
+    )
+
+    _ = await AsyncBolt.open(
+        address, auth_manager=none_auth, pool_config=pool_config
+    )
+
+    socket_mock.set_write_timeout.assert_called_once_with(write_timeout_value)
 
 
 # [bolt-version-bump] search tag when changing bolt version support
