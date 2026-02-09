@@ -75,7 +75,9 @@ if t.TYPE_CHECKING:
 
 
 # https://pandas.pydata.org/docs/user_guide/migration-3-strings.html
-PD_STR_DTYPE = "object" if pd.__version__ < "3" else "string"
+PD_STR_DTYPE = (
+    "object" if int(pd.__version__.split(".", 1)[0]) < 3 else "string"
+)
 
 
 class Records:
