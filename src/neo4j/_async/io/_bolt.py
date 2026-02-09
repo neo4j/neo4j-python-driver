@@ -320,8 +320,6 @@ class AsyncBolt:
             (
                 s,
                 protocol_version,
-                _handshake,
-                _data,
             ) = await AsyncBoltSocket.connect(
                 address,
                 tcp_timeout=pool_config.connection_timeout,
@@ -416,6 +414,9 @@ class AsyncBolt:
             notifications_min_severity=pool_config.notifications_min_severity,
             notifications_disabled_classifications=pool_config.notifications_disabled_classifications,
             telemetry_disabled=pool_config.telemetry_disabled,
+        )
+        connection.socket.set_write_timeout(
+            pool_config.connection_write_timeout
         )
 
         try:
