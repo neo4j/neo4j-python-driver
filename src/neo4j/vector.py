@@ -18,6 +18,8 @@
 from __future__ import annotations as _
 
 import abc as _abc
+import contextlib as _contextlib
+import inspect as _inspect
 import struct as _struct
 import sys as _sys
 from enum import Enum as _Enum
@@ -176,13 +178,51 @@ class Vector:
 
     def __init__(self, data, *args, **kwargs) -> None:
         if isinstance(data, (bytes, bytearray)):
-            self._set_bytes(bytes(data), *args, **kwargs)
+            with self._checked_init_overload(
+                self._set_bytes, data, args, kwargs
+            ):
+                self._set_bytes(bytes(data), *args, **kwargs)
         elif _np is not None and isinstance(data, _np.ndarray):
-            self._set_numpy(data, *args, **kwargs)
+            with self._checked_init_overload(
+                self._set_numpy, data, args, kwargs
+            ):
+                self._set_numpy(data, *args, **kwargs)
         elif _pa is not None and isinstance(data, _pa.Array):
-            self._set_pyarrow(data, *args, **kwargs)
+            with self._checked_init_overload(
+                self._set_pyarrow, data, args, kwargs
+            ):
+                self._set_pyarrow(data, *args, **kwargs)
         else:
-            self._set_native(data, *args, **kwargs)
+            with self._checked_init_overload(
+                self._set_native, data, args, kwargs
+            ):
+                self._set_native(data, *args, **kwargs)
+
+    @staticmethod
+    @_contextlib.contextmanager
+    def _checked_init_overload(
+        setter: _t.Callable[..., None],
+        data,
+        args: tuple,
+        kwargs: dict[str, _t.Any],
+    ) -> _t.Generator[None, None, None]:
+        try:
+            yield
+        except TypeError:
+            signature = _inspect.signature(setter)
+            try:
+                signature.bind(data, *args, **kwargs)
+            except TypeError as bind_error:
+                type_name_module = type(data).__module__
+                if type_name_module == "builtins":
+                    type_name = type(data).__qualname__
+                else:
+                    type_name = f"{type_name_module}.{type(data).__qualname__}"
+                raise TypeError(
+                    "Invalid arguments for Vector initialization with "
+                    f"data of type {type_name}: {bind_error}"
+                ) from None
+            raise
 
     def raw(self, /, *, byteorder: _T_VectorEndian = "big") -> bytes:
         """

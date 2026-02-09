@@ -75,8 +75,9 @@ notification_log = getLogger("neo4j.notifications")
 
 
 _driver_dir = Path(__file__)
-for _ in range(__package__.count(".") + 1):
-    _driver_dir = _driver_dir.parent
+if __spec__ is not None and __spec__.parent is not None:
+    for _ in range(__spec__.parent.count(".") + 1):
+        _driver_dir = _driver_dir.parent
 
 _T = t.TypeVar("_T")
 _TResultKey: t.TypeAlias = int | str
