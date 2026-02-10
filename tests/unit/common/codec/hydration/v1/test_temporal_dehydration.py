@@ -189,13 +189,41 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             dt, Structure(b"f", 1539344261, 474716000, "Europe/Stockholm")
         )
 
-    def test_pandas_date_time_zone_id(self, assert_transforms):
-        dt = pd.Timestamp(
-            "2018-10-12T11:37:41.474716862+0200", tz="Europe/Stockholm"
-        )
-        assert_transforms(
-            dt, Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
-        )
+    @pytest.mark.parametrize(
+        ("dt", "fields"),
+        (
+            (
+                pd.Timestamp(
+                    "2018-10-12T11:37:41.474716862+0200", tz="Europe/Stockholm"
+                ),
+                (1539344261, 474716862, "Europe/Stockholm"),
+            ),
+            (
+                pd.Timestamp(
+                    "2018-10-12T10:37:41.474716+0100", tz="Europe/Stockholm"
+                ),
+                (1539344261, 474716000, "Europe/Stockholm"),
+            ),
+            (
+                # 1972-10-29 02:00:01.001000001+0100 pre DST change
+                pd.Timestamp(
+                    (1032 * 24 + 2) * 3600 * 1000000000 + 1001000001,
+                    tz="Europe/London",
+                ),
+                ((1032 * 24 + 2) * 3600 + 1, 1000001, "Europe/London"),
+            ),
+            (
+                # 1972-10-29 02:00:01.001000001+0000 post DST change
+                pd.Timestamp(
+                    (1032 * 24 + 1) * 3600 * 1000000000 + 1001000001,
+                    tz="Europe/London",
+                ),
+                ((1032 * 24 + 2) * 3600 + 1, 1000001, "Europe/London"),
+            ),
+        ),
+    )
+    def test_pandas_date_time_zone_id(self, dt, fields, assert_transforms):
+        assert_transforms(dt, Structure(b"f", *fields))
 
     def test_duration(self, assert_transforms):
         duration = Duration(months=1, days=2, seconds=3, nanoseconds=4)
@@ -277,12 +305,22 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         ("value", "expected_fields"),
         (
             (
-                pd.Timedelta(days=1, seconds=2, microseconds=3, nanoseconds=4),
+                pd.Timedelta(
+                    days=1,
+                    seconds=2,
+                    microseconds=3,
+                    # pandas stubs omit nanoseconds args
+                    nanoseconds=4,  # type: ignore[call-arg]
+                ),
                 (0, 0, _AVERAGE_SECONDS_IN_DAY + 2, 3004),
             ),
             (
                 pd.Timedelta(
-                    days=-1, seconds=2, microseconds=3, nanoseconds=4
+                    days=-1,
+                    seconds=2,
+                    microseconds=3,
+                    # pandas stubs omit nanoseconds args
+                    nanoseconds=4,  # type: ignore[call-arg]
                 ),
                 (
                     0,

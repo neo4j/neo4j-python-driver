@@ -112,6 +112,12 @@ class TestTimeDehydration(_TestTemporalDehydration):
                 (1539337061, 474716862, "Europe/Stockholm"),
             ),
             (
+                pd.Timestamp(
+                    "2018-10-12T10:37:41.474716+0100", tz="Europe/Stockholm"
+                ),
+                (1539337061, 474716000, "Europe/Stockholm"),
+            ),
+            (
                 # 1972-10-29 02:00:01.001000001+0100 pre DST change
                 pd.Timestamp(
                     (1032 * 24 + 2) * 3600 * 1000000000 + 1001000001,

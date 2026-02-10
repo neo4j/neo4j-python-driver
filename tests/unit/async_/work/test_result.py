@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import logging
 import typing as t
 import uuid
@@ -72,6 +73,12 @@ if t.TYPE_CHECKING:
         TStatusNotificationFactory,
         TStatusNotificationLegacyFactory,
     )
+
+
+# https://pandas.pydata.org/docs/user_guide/migration-3-strings.html
+PD_STR_DTYPE = (
+    "object" if int(pd.__version__.split(".", 1)[0]) < 3 else "string"
+)
 
 
 class Records:
@@ -795,7 +802,7 @@ async def test_to_eager_result(records):
         (
             ["s"],
             list(zip(("foo", "bar", "baz", "foobar"), strict=True)),
-            ["object"],
+            [PD_STR_DTYPE],
             None,
         ),
         (["l"], list(zip(([1, 2], [3, 4]), strict=True)), ["object"], None),
@@ -909,7 +916,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             list(zip(("foo", "bar", "baz", "foobar"), strict=True)),
             ["s"],
             [["foo"], ["bar"], ["baz"], ["foobar"]],
-            ["object"],
+            [PD_STR_DTYPE],
         ),
         (
             ["l"],
@@ -963,7 +970,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             ),
             ["x[].0{}.foo", "x[].0{}.baz[].0", "x[].0{}.baz[].1", "x[].1"],
             [["bar", 42, 0.1, "foobar"]],
-            ["object", "int64", "float64", "object"],
+            [PD_STR_DTYPE, "int64", "float64", PD_STR_DTYPE],
         ),
         (
             ["n"],
@@ -1015,7 +1022,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
                     3,
                 ],
             ],
-            ["object", "object", "object", "float64", "float64", "int64"],
+            [PD_STR_DTYPE, "object", "object", "float64", "float64", "int64"],
         ),
         (
             ["r"],
@@ -1060,7 +1067,14 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
                 ["r-0", "r-1", "r-2", "TYPE", 1, False],
                 ["r-420", "r-1337", "r-69", "HYPE", None, True],
             ],
-            ["object", "object", "object", "object", "float64", "bool"],
+            [
+                PD_STR_DTYPE,
+                PD_STR_DTYPE,
+                PD_STR_DTYPE,
+                PD_STR_DTYPE,
+                "float64",
+                "bool",
+            ],
         ),
         (
             ["dt"],
@@ -1149,7 +1163,7 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                 [
                     [
                         pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01")
+                            pd.Timestamp("1970-01-01").as_unit("ns")
                         )
                     ]
                 ],
@@ -1381,6 +1395,9 @@ async def test_notification_warning(
             ]
         },
     )
+    result_frame = inspect.currentframe()
+    assert result_frame is not None
+    result_frame_info = inspect.getframeinfo(result_frame)
     result = AsyncResult(
         connection, 1, warn_notification_severity, noop, noop, None
     )
@@ -1396,7 +1413,10 @@ async def test_notification_warning(
             await result._run("CYPHER", {}, None, None, "r", None, None, None)
             await result.consume()
         assert len(recording.list) == 1
-        assert recording.list[0].category is expected_warning
+        warning = recording.list[0]
+        assert warning.category is expected_warning
+        assert warning.filename == result_frame_info.filename
+        assert warning.lineno == result_frame_info.lineno + 1
 
 
 @pytest.mark.parametrize("notification_severity", ("INFORMATION", "WARNING"))

@@ -60,14 +60,14 @@ from ..io import ConnectionErrorHandler
 
 
 if t.TYPE_CHECKING:
-    import pandas  # type: ignore[import]
+    import pandas
 
     from ..._addressing import Address
     from ...graph import Graph
 
 
 if False:
-    # Ugly work-around to make sphinx understand `@_t.overload`
+    # Ugly work-around to make sphinx understand `@t.overload`
     import typing as t  # type: ignore[no-redef]
 
 
@@ -75,8 +75,9 @@ notification_log = getLogger("neo4j.notifications")
 
 
 _driver_dir = Path(__file__)
-for _ in range(__package__.count(".") + 1):
-    _driver_dir = _driver_dir.parent
+if __spec__ is not None and __spec__.parent is not None:
+    for _ in range(__spec__.parent.count(".") + 1):
+        _driver_dir = _driver_dir.parent
 
 _T = t.TypeVar("_T")
 _TResultKey: t.TypeAlias = int | str
@@ -908,7 +909,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             was obtained has been closed or the Result has been explicitly
             consumed.
         """
-        import pandas as pd  # type: ignore[import]
+        import pandas as pd
         import pytz
 
         if not expand:
