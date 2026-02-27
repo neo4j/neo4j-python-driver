@@ -54,7 +54,7 @@ class Record(tuple, t.Mapping):
     values rather than keys.
     """
 
-    __keys: tuple[str]
+    __keys: tuple[str, ...]
 
     def __new__(cls, iterable=()):
         keys = []
@@ -62,6 +62,17 @@ class Record(tuple, t.Mapping):
         for key, value in iter_items(iterable):
             keys.append(key)
             values.append(value)
+        inst = tuple.__new__(cls, values)
+        inst.__keys = tuple(keys)
+        return inst
+
+    @classmethod
+    def _new(
+        cls,
+        keys: t.Collection[str],
+        values: t.Collection[t.Any],
+    ) -> t.Self:
+        assert len(keys) == len(values)
         inst = tuple.__new__(cls, values)
         inst.__keys = tuple(keys)
         return inst

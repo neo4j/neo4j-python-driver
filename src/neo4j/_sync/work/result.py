@@ -249,8 +249,7 @@ class Result(NonConcurrentMethodChecker):
                     for record in records
                 )
                 self._record_buffer.extend(
-                    Record(zip(self._keys, record, strict=True))
-                    for record in records
+                    Record._new(self._keys, record) for record in records
                 )
 
         def _on_summary():
@@ -459,10 +458,9 @@ class Result(NonConcurrentMethodChecker):
             record_buffer.append(record)
             if n is not None and len(record_buffer) >= n:
                 break
-        if n is None:
-            self._record_buffer = record_buffer
-        else:
-            self._record_buffer.extend(record_buffer)
+        if self._record_buffer:
+            record_buffer.extend(self._record_buffer)
+        self._record_buffer = record_buffer
         self._exhausted = not self._record_buffer
 
     def _buffer_all(self):
