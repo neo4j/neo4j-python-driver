@@ -47,14 +47,47 @@ from neo4j.time import (
 # python -m pytest -s -v tests/unit/test_record.py
 
 
-def test_record_equality() -> None:
-    record1 = Record(
+TMakeRecord: t.TypeAlias = t.Callable[[t.Iterable[tuple[str, t.Any]]], Record]
+
+
+@pytest.fixture(params=("__new__", "_new"))
+def make_record(request) -> TMakeRecord:
+    def make__new__(input: t.Iterable[tuple[str, t.Any]]) -> Record:
+        return Record.__new__(Record, input)
+
+    def make_new(input: t.Iterable[tuple[str, t.Any]]) -> Record:
+        keys_value = list(zip(*input, strict=True))
+        if not keys_value:
+            # when input is empty, zip returns no elements
+            keys_value = [(), ()]
+        keys, values = keys_value
+        return Record._new(keys, values)
+
+    if request.param == "__new__":
+        return make__new__
+    elif request.param == "_new":
+        return make_new
+    else:
+        raise ValueError(f"Unknown record constructor: {request.param}")
+
+
+@pytest.mark.parametrize("keys", ((), ("x"), ("\x00", " \t\n👻")))
+def test_record_new(keys: tuple[str, ...]) -> None:
+    values = list(range(len(keys)))
+    record = Record._new(keys, values)
+
+    assert record.keys() == list(keys)
+    assert record.values() == values
+
+
+def test_record_equality(make_record: TMakeRecord) -> None:
+    record1 = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
-    record2 = Record(
+    record2 = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
-    record3 = Record(
+    record3 = make_record(
         zip(["name", "empire"], ["Stefan", "Das Deutschland"], strict=True)
     )
     assert record1 == record2
@@ -62,14 +95,14 @@ def test_record_equality() -> None:
     assert record2 != record3
 
 
-def test_record_hashing() -> None:
-    record1 = Record(
+def test_record_hashing(make_record: TMakeRecord) -> None:
+    record1 = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
-    record2 = Record(
+    record2 = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
-    record3 = Record(
+    record3 = make_record(
         zip(["name", "empire"], ["Stefan", "Das Deutschland"], strict=True)
     )
     assert hash(record1) == hash(record2)
@@ -77,36 +110,36 @@ def test_record_hashing() -> None:
     assert hash(record2) != hash(record3)
 
 
-def test_record_iter() -> None:
-    a_record = Record(
+def test_record_iter(make_record: TMakeRecord) -> None:
+    a_record = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
     assert list(iter(a_record)) == ["Nigel", "The British Empire"]
 
 
-def test_record_as_dict() -> None:
-    a_record = Record(
+def test_record_as_dict(make_record: TMakeRecord) -> None:
+    a_record = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
     assert dict(a_record) == {"name": "Nigel", "empire": "The British Empire"}
 
 
-def test_record_as_list() -> None:
-    a_record = Record(
+def test_record_as_list(make_record: TMakeRecord) -> None:
+    a_record = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
     assert list(a_record) == ["Nigel", "The British Empire"]
 
 
-def test_record_len() -> None:
-    a_record = Record(
+def test_record_len(make_record: TMakeRecord) -> None:
+    a_record = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
     assert len(a_record) == 2
 
 
-def test_record_repr() -> None:
-    a_record = Record(
+def test_record_repr(make_record: TMakeRecord) -> None:
+    a_record = make_record(
         zip(["name", "empire"], ["Nigel", "The British Empire"], strict=True)
     )
     assert (
@@ -179,8 +212,8 @@ def _record_data_make_path() -> Path:
         ),
     ),
 )
-def test_record_data_keys(keys, expected) -> None:
-    record = Record(
+def test_record_data_keys(keys, expected, make_record: TMakeRecord) -> None:
+    record = make_record(
         zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES, strict=True)
     )
     assert record.data(*keys) == expected
@@ -272,31 +305,33 @@ def test_record_data_keys(keys, expected) -> None:
     ),
 )
 @pytest.mark.parametrize("wrapper", (None, lambda x: [x], lambda x: {"x": x}))
-def test_record_data_types(value, expected, wrapper) -> None:
+def test_record_data_types(
+    value, expected, wrapper, make_record: TMakeRecord
+) -> None:
     if wrapper is not None:
         value = wrapper(value)
         expected = wrapper(expected)
-    record = Record([("key", value)])
+    record = make_record([("key", value)])
     assert record.data("key") == {"key": expected}
 
 
-def test_record_index_error() -> None:
-    record = Record(
+def test_record_index_error(make_record: TMakeRecord) -> None:
+    record = make_record(
         zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES, strict=True)
     )
     with pytest.raises(IndexError):
         record.data(1, 0, 999)
 
 
-def test_record_keys() -> None:
-    r = Record(
+def test_record_keys(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r.keys() == ["name", "age", "married"]
 
 
-def test_record_values() -> None:
-    r = Record(
+def test_record_values(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r.values() == ["Alice", 33, True]
@@ -310,8 +345,8 @@ def test_record_values() -> None:
         _ = r.values(1, 0, 999)
 
 
-def test_record_items() -> None:
-    r = Record(
+def test_record_items(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r.items() == [("name", "Alice"), ("age", 33), ("married", True)]
@@ -329,8 +364,8 @@ def test_record_items() -> None:
         _ = r.items(1, 0, 999)
 
 
-def test_record_index() -> None:
-    r = Record(
+def test_record_index(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r.index("name") == 0
@@ -347,8 +382,8 @@ def test_record_index() -> None:
         _ = r.index(None)  # type: ignore[arg-type]
 
 
-def test_record_value() -> None:
-    r = Record(
+def test_record_value(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r.value() == "Alice"
@@ -366,8 +401,8 @@ def test_record_value() -> None:
         _ = r.value(None)  # type: ignore[arg-type]
 
 
-def test_record_value_kwargs() -> None:
-    r = Record(
+def test_record_value_kwargs(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r.value() == "Alice"
@@ -383,8 +418,8 @@ def test_record_value_kwargs() -> None:
     assert r.value(key=3, default=6) == 6
 
 
-def test_record_contains() -> None:
-    r = Record(
+def test_record_contains(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert "Alice" in r
@@ -401,36 +436,38 @@ def test_record_from_dict() -> None:
     assert r["age"] == 33
 
 
-def test_record_get_slice() -> None:
-    r = Record(
+def test_record_get_slice(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
-    assert Record(zip(["name", "age"], ["Alice", 33], strict=True)) == r[0:2]
+    assert (
+        make_record(zip(["name", "age"], ["Alice", 33], strict=True)) == r[0:2]
+    )
 
 
-def test_record_get_by_index() -> None:
-    r = Record(
+def test_record_get_by_index(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r[0] == "Alice"
 
 
-def test_record_get_by_name() -> None:
-    r = Record(
+def test_record_get_by_name(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r["name"] == "Alice"
 
 
-def test_record_get_by_out_of_bounds_index() -> None:
-    r = Record(
+def test_record_get_by_out_of_bounds_index(make_record: TMakeRecord) -> None:
+    r = make_record(
         zip(["name", "age", "married"], ["Alice", 33, True], strict=True)
     )
     assert r[9] is None
 
 
-def test_record_get_item() -> None:
-    r = Record(zip(["x", "y"], ["foo", "bar"], strict=True))
+def test_record_get_item(make_record: TMakeRecord) -> None:
+    r = make_record(zip(["x", "y"], ["foo", "bar"], strict=True))
     assert r["x"] == "foo"
     assert r["y"] == "bar"
     with pytest.raises(KeyError):
@@ -440,14 +477,14 @@ def test_record_get_item() -> None:
 
 
 @pytest.mark.parametrize("len_", (0, 1, 2, 42))
-def test_record_len_generic(len_: int) -> None:
-    r = Record((f"key_{i}", f"val_{i}") for i in range(len_))
+def test_record_len_generic(len_: int, make_record: TMakeRecord) -> None:
+    r = make_record((f"key_{i}", f"val_{i}") for i in range(len_))
     assert len(r) == len_
 
 
 @pytest.mark.parametrize("len_", range(3))
-def test_record_repr_generic(len_: int) -> None:
-    r = Record((f"key_{i}", f"val_{i}") for i in range(len_))
+def test_record_repr_generic(len_: int, make_record: TMakeRecord) -> None:
+    r = make_record((f"key_{i}", f"val_{i}") for i in range(len_))
     assert repr(r)
 
 
@@ -455,79 +492,83 @@ def test_record_repr_generic(len_: int) -> None:
     ("raw", "keys", "serialized"),
     (
         (
-            zip(["x", "y", "z"], [1, 2, 3], strict=True),
+            list(zip(["x", "y", "z"], [1, 2, 3], strict=True)),
             (),
             {"x": 1, "y": 2, "z": 3},
         ),
         (
-            zip(["x", "y", "z"], [1, 2, 3], strict=True),
+            list(zip(["x", "y", "z"], [1, 2, 3], strict=True)),
             (1, 2),
             {"y": 2, "z": 3},
         ),
         (
-            zip(["x", "y", "z"], [1, 2, 3], strict=True),
+            list(zip(["x", "y", "z"], [1, 2, 3], strict=True)),
             ("z", "x"),
             {"x": 1, "z": 3},
         ),
         (
-            zip(["x"], [None], strict=True),
+            list(zip(["x"], [None], strict=True)),
             (),
             {"x": None},
         ),
         (
-            zip(["x", "y"], [True, False], strict=True),
+            list(zip(["x", "y"], [True, False], strict=True)),
             (),
             {"x": True, "y": False},
         ),
         (
-            zip(["x", "y", "z"], [0.0, 1.0, 3.141592653589], strict=True),
+            list(
+                zip(["x", "y", "z"], [0.0, 1.0, 3.141592653589], strict=True)
+            ),
             (),
             {"x": 0.0, "y": 1.0, "z": 3.141592653589},
         ),
         (
-            zip(["x"], ["hello, world"], strict=True),
+            list(zip(["x"], ["hello, world"], strict=True)),
             (),
             {"x": "hello, world"},
         ),
         (
-            zip(["x"], [bytearray([1, 2, 3])], strict=True),
+            list(zip(["x"], [bytearray([1, 2, 3])], strict=True)),
             (),
             {"x": bytearray([1, 2, 3])},
         ),
         (
-            zip(["x"], [[1, 2, 3]], strict=True),
+            list(zip(["x"], [[1, 2, 3]], strict=True)),
             (),
             {"x": [1, 2, 3]},
         ),
         (
-            zip(["x"], [{"one": 1, "two": 2}], strict=True),
+            list(zip(["x"], [{"one": 1, "two": 2}], strict=True)),
             (),
             {"x": {"one": 1, "two": 2}},
         ),
         (
-            zip(
-                ["a"],
-                [
-                    Node(
-                        None,  # type: ignore[arg-type]
-                        "42",
-                        42,
-                        "Person",
-                        {"name": "Alice"},
-                    )
-                ],
-                strict=True,
+            list(
+                zip(
+                    ["a"],
+                    [
+                        Node(
+                            None,  # type: ignore[arg-type]
+                            "42",
+                            42,
+                            "Person",
+                            {"name": "Alice"},
+                        )
+                    ],
+                    strict=True,
+                )
             ),
             (),
             {"a": {"name": "Alice"}},
         ),
     ),
 )
-def test_data(raw, keys, serialized) -> None:
-    assert Record(raw).data(*keys) == serialized
+def test_data(raw, keys, serialized, make_record: TMakeRecord) -> None:
+    assert make_record(raw).data(*keys) == serialized
 
 
-def test_data_relationship() -> None:
+def test_data_relationship(make_record: TMakeRecord) -> None:
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
@@ -535,7 +576,7 @@ def test_data_relationship() -> None:
     alice_knows_bob = gh.hydrate_relationship(
         1, 1, 2, "KNOWS", {"since": 1999}
     )
-    record = Record(
+    record = make_record(
         zip(["a", "b", "r"], [alice, bob, alice_knows_bob], strict=True)
     )
     assert record.data() == {
@@ -549,18 +590,18 @@ def test_data_relationship() -> None:
     }
 
 
-def test_data_unbound_relationship() -> None:
+def test_data_unbound_relationship(make_record: TMakeRecord) -> None:
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     some_one_knows_some_one = gh.hydrate_relationship(
         1, 42, 43, "KNOWS", {"since": 1999}
     )
-    record = Record(zip(["r"], [some_one_knows_some_one], strict=True))
+    record = make_record(zip(["r"], [some_one_knows_some_one], strict=True))
     assert record.data() == {"r": ({}, "KNOWS", {})}
 
 
 @pytest.mark.parametrize("cyclic", (True, False))
-def test_data_path(cyclic) -> None:
+def test_data_path(cyclic, make_record: TMakeRecord) -> None:
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
@@ -575,7 +616,7 @@ def test_data_path(cyclic) -> None:
     ]
     path = gh.hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
 
-    record = Record(zip(["r"], [path], strict=True))
+    record = make_record(zip(["r"], [path], strict=True))
     assert record.data() == {
         "r": [dict(alice), "KNOWS", dict(bob), "DISLIKES", dict(carol)]
     }
@@ -636,7 +677,9 @@ def test_data_path(cyclic) -> None:
         (lambda r: r.index(2), False),
     ),
 )
-def test_record_with_error(accessor, should_raise) -> None:
+def test_record_with_error(
+    accessor, should_raise, make_record: TMakeRecord
+) -> None:
     class TestError(Exception):
         pass
 
@@ -646,7 +689,9 @@ def test_record_with_error(accessor, should_raise) -> None:
     except TestError as e:
         exc = e
     frames = list(traceback.walk_tb(exc.__traceback__))
-    r = Record((("a", 1), ("b", BrokenHydrationObject(exc, None)), ("c", 3)))
+    r = make_record(
+        (("a", 1), ("b", BrokenHydrationObject(exc, None)), ("c", 3))
+    )
     if not should_raise:
         accessor(r)
         return
