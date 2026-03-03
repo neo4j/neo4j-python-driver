@@ -72,7 +72,12 @@ class Record(tuple, t.Mapping):
         keys: t.Collection[str],
         values: t.Collection[t.Any],
     ) -> t.Self:
-        assert len(keys) == len(values)
+        if len(keys) != len(values):
+            raise ValueError(
+                f"keys and values have different length ({keys=}, {values=}); "
+                "this is either a bug in the driver or a protocol violation "
+                "by the server"
+            )
         inst = tuple.__new__(cls, values)
         inst.__keys = tuple(keys)
         return inst

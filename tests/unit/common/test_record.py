@@ -701,3 +701,19 @@ def test_record_with_error(
     assert exc_value.__cause__ is not None
     assert exc_value.__cause__ is exc
     assert list(traceback.walk_tb(exc_value.__cause__.__traceback__)) == frames
+
+
+@pytest.mark.parametrize(
+    ("keys", "values"),
+    (
+        ((), (1,)),
+        (("a",), ()),
+        (("a", "b"), (1,)),
+        (("a",), (1, 2)),
+    ),
+)
+def test_record_new_rejects_unequal_lengths(
+    keys: tuple[str], values: tuple
+) -> None:
+    with pytest.raises(ValueError):
+        Record._new(keys, values)
