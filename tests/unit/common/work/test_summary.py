@@ -81,8 +81,8 @@ def test_summary_server(summary_args_kwargs) -> None:
     summary = ResultSummary(*args, **kwargs)
     server_info: ServerInfo = summary.server
 
-    assert server_info is server_info_mock
     assert not server_info_mock.method_calls
+    assert server_info is server_info_mock
 
 
 @pytest.mark.parametrize("exists", (True, False))
