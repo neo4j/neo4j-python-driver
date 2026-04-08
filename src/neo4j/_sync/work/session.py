@@ -301,37 +301,66 @@ class Session(Workspace):
             )
 
         if self._auto_result:
-            # This will buffer upp all records for the previous auto-commit tx
+            # This will buffer up all records for the previous auto-commit tx
             self._auto_result._buffer_all()
 
-        if not self._connection:
-            self._connect(self._config.default_access_mode)
-            assert self._connection is not None
-        cx = self._connection
+        telemetry_sent = False
+        retry_count = 0
 
-        cx.telemetry(TelemetryAPI.AUTO_COMMIT)
-        self._auto_result = Result(
-            cx,
-            self._config.fetch_size,
-            self._config.warn_notification_severity,
-            self._result_closed,
-            self._result_error,
-            self._make_db_resolution_callback(),
-        )
-        bookmarks = self._get_bookmarks()
-        parameters = dict(parameters or {}, **kwargs)
-        self._auto_result._run(
-            query,
-            parameters,
-            self._config.database,
-            self._config.impersonated_user,
-            self._config.default_access_mode,
-            bookmarks,
-            self._config.notifications_min_severity,
-            self._config.notifications_disabled_classifications,
-        )
+        def api_success_cb(meta):
+            nonlocal telemetry_sent
+            telemetry_sent = True
 
-        return self._auto_result
+        while True:
+            if not self._connection:
+                self._connect(self._config.default_access_mode)
+                assert self._connection is not None
+            cx = self._connection
+
+            if not telemetry_sent:
+                cx.telemetry(
+                    TelemetryAPI.AUTO_COMMIT,
+                    on_success=api_success_cb,
+                )
+            self._auto_result = auto_result = Result(
+                cx,
+                self._config.fetch_size,
+                self._config.warn_notification_severity,
+                self._result_closed,
+                self._result_error,
+                self._make_db_resolution_callback(),
+            )
+            bookmarks = self._get_bookmarks()
+            parameters = dict(parameters or {}, **kwargs)
+            try:
+                auto_result._run(
+                    query,
+                    parameters,
+                    self._config.database,
+                    self._config.impersonated_user,
+                    self._config.default_access_mode,
+                    bookmarks,
+                    self._config.notifications_min_severity,
+                    self._config.notifications_disabled_classifications,
+                )
+            except Neo4jError as error:
+                if (
+                    self._config.disable_auto_commit_retries
+                    or not auto_result._attach_failed
+                    or retry_count > 0
+                    or error.diagnostic_record.get("_idempotent") is not True
+                ):
+                    raise
+                retry_count += 1
+                log.warning(
+                    (
+                        "Auto-commit transaction failed "
+                        "and will be retried (%s)"
+                    ),
+                    "; ".join(error.args),
+                )
+            else:
+                return self._auto_result
 
     @NonConcurrentMethodChecker._non_concurrent_method
     def last_bookmarks(self) -> Bookmarks:

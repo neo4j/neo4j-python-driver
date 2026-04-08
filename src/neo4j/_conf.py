@@ -389,6 +389,9 @@ class WorkspaceConfig(Config):
     #: Turn warning received by the server into native Python warnings
     warn_notification_severity = None
 
+    #: Disable retries on session.run
+    disable_auto_commit_retries = False
+
 
 class SessionConfig(WorkspaceConfig):
     """Session configuration."""
