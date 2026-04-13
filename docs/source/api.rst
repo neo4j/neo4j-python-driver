@@ -811,7 +811,18 @@ The driver transmits the following information:
 
 ``disable_auto_commit_retries``
 -------------------------------
-TODO
+Disables retries using :meth:`neo4j.Session.run`.
+
+Retries on :meth:`neo4j.Session.run` are limited to a specific set of errors.
+Namely those errors marked as *idempotent* by the DBMS, i.e.,
+errors that are guaranteed to not have altered the state of any database.
+At the time of writing, this set encompasses only admission control errors.
+
+When set to :data:`True`, calls to :meth:`neo4j.Session.run` will fail
+without retrying when receiving an error from the server,
+even when only idempotent work has occurred.
+By default, these calls will be rerun with a one-shot retry to avoid friction
+when encountering rate limiting and other errors that can be safely retried.
 
 :Type: :class:`bool`
 :Default: :data:`False`
@@ -1295,7 +1306,18 @@ If specified together with :ref:`session-notifications-disabled-categories-ref`,
 
 ``disable_auto_commit_retries``
 -------------------------------
-TODO
+Allows session level override of the driver config :ref:`disable-auto-commit-retries-ref`.
+
+Retries on :meth:`neo4j.Session.run` are limited to a specific set of errors.
+Namely those errors marked as *idempotent* by the DBMS, i.e.,
+errors that are guaranteed to not have altered the state of any database.
+At the time of writing, this set encompasses only admission control errors.
+
+When set to :data:`True`, calls to :meth:`neo4j.Session.run` will fail
+without retrying when receiving an error from the server,
+even when only idempotent work has occurred.
+By default, these calls will be rerun with a one-shot retry to avoid friction
+when encountering rate limiting and other errors that can be safely retried.
 
 :data:`None` will apply the driver's configuration setting (:ref:`disable-auto-commit-retries-ref`).
 
