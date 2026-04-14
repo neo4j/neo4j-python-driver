@@ -357,7 +357,7 @@ class Session(Workspace):
                         "Auto-commit transaction failed "
                         "and will be retried (%s)"
                     ),
-                    "; ".join(error.args),
+                    error,
                 )
             else:
                 return self._auto_result
@@ -602,7 +602,7 @@ class Session(Workspace):
             log.warning(
                 "Transaction failed and will be retried in %ss (%s)",
                 delay,
-                "; ".join(errors[-1].args),
+                errors[-1],
             )
             try:
                 sleep(delay)
