@@ -12,6 +12,7 @@ isort>=5.11.5  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 mypy>=1.4.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 typing-extensions>=4.7.1
 types-pytz>=2023.3.1.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+types-mock>=5.1.0.3  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 ruff>=0.8.2
 
 # needed for running tests
