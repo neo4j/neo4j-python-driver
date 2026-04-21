@@ -63,6 +63,8 @@ if t.TYPE_CHECKING:
     from ..._async.io import AsyncBolt
     from ..._sync.io import Bolt
 
+    _P = te.ParamSpec("_P")
+
 
 log = logging.getLogger("neo4j.io")
 
@@ -76,6 +78,25 @@ def _sanitize_deadline(deadline):
     return deadline
 
 
+def _validate_timeout(timeout):
+    if timeout is not None and timeout < 0:
+        raise ValueError("Timeout value out of range")
+
+
+def _non_expired_timeout(
+    deadline: Deadline | None,
+    operation: str,
+) -> float | None:
+    if deadline is None:
+        return None
+    timeout = deadline.to_timeout()
+    if timeout is None:
+        return None
+    if timeout <= 0:
+        raise SocketDeadlineExceededError(f"{operation} timed out")
+    return timeout
+
+
 class AsyncBoltSocketBase(abc.ABC):
     Bolt: te.Final[type[AsyncBolt]] = None  # type: ignore[assignment]
 
@@ -86,24 +107,28 @@ class AsyncBoltSocketBase(abc.ABC):
         # 0 - non-blocking
         # None infinitely blocking
         # int - seconds to wait for data
-        self._timeout = None
-        self._deadline = None
+        self._timeout: float | None = None
+        self._deadline: Deadline | None = None
 
-    async def _wait_for_io(self, io_async_fn, *args, **kwargs):
+    async def _wait_for_io(
+        self,
+        io_async_fn: t.Callable[_P, t.Coroutine],
+        *args: _P.args,
+        **kwargs: _P.kwargs,
+    ) -> None:
         timeout = self._timeout
-        to_raise = SocketTimeout
-        if self._deadline is not None:
-            deadline_timeout = self._deadline.to_timeout()
-            if deadline_timeout <= 0:
-                raise SocketDeadlineExceededError("timed out")
-            if timeout is None or deadline_timeout <= timeout:
-                timeout = deadline_timeout
-                to_raise = SocketDeadlineExceededError
+        to_raise: type[Exception] = SocketTimeout
+        deadline_timeout = _non_expired_timeout(self._deadline, "IO operation")
+        if deadline_timeout is not None and (
+            timeout is None or deadline_timeout <= timeout
+        ):
+            timeout = deadline_timeout
+            to_raise = SocketDeadlineExceededError
 
-        io_fut = io_async_fn(*args, **kwargs)
+        io_fut: t.Awaitable
         if timeout is not None and timeout <= 0:
             # give the io-operation time for one loop cycle to do its thing
-            io_fut = asyncio.create_task(io_fut)
+            io_fut = asyncio.create_task(io_async_fn(*args, **kwargs))
             try:
                 await asyncio.sleep(0)
             except asyncio.CancelledError:
@@ -111,7 +136,11 @@ class AsyncBoltSocketBase(abc.ABC):
                 # Still, we don't want to silently swallow the cancellation.
                 # Hence, we flag this task as cancelled again, so that the next
                 # `await` will raise the CancelledError.
-                asyncio.current_task().cancel()
+                current_task = asyncio.current_task()
+                if current_task is not None:
+                    current_task.cancel()
+        else:
+            io_fut = io_async_fn(*args, **kwargs)
         try:
             return await wait_for(io_fut, timeout)
         except asyncio.TimeoutError as e:
@@ -197,6 +226,9 @@ class AsyncBoltSocketBase(abc.ABC):
                 raise ValueError(f"Unsupported address {resolved_address!r}")
             s.setblocking(False)  # asyncio + blocking = no-no!
             log.debug("[#0000]  C: <OPEN> %s", resolved_address)
+            _validate_timeout(timeout)
+            if timeout == 0:  # socket timeout of 0 => non-blocking
+                timeout = None
             await wait_for(loop.sock_connect(s, resolved_address), timeout)
             local_port = s.getsockname()[1]
 
@@ -208,11 +240,7 @@ class AsyncBoltSocketBase(abc.ABC):
             if ssl_context is not None:
                 hostname = resolved_address._host_name or None
                 sni_host = hostname if HAS_SNI and hostname else None
-                ssl_kwargs.update(
-                    ssl=ssl_context,
-                    server_hostname=sni_host,
-                    ssl_handshake_timeout=deadline.to_timeout(),
-                )
+                ssl_kwargs.update(ssl=ssl_context, server_hostname=sni_host)
                 log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
 
             reader = asyncio.StreamReader(
@@ -220,6 +248,18 @@ class AsyncBoltSocketBase(abc.ABC):
                 loop=loop,
             )
             protocol = asyncio.StreamReaderProtocol(reader, loop=loop)
+            if ssl_context is not None:
+                try:
+                    ssl_timeout = _non_expired_timeout(
+                        deadline, "SSL handshake"
+                    )
+                except SocketDeadlineExceededError as error:
+                    raise BoltSecurityError(
+                        message="Failed to establish encrypted connection.",
+                        address=(hostname, local_port),
+                    ) from error
+                if ssl_timeout is not None:
+                    ssl_kwargs["ssl_handshake_timeout"] = ssl_timeout
             transport, _ = await loop.create_connection(
                 lambda: protocol, sock=s, **ssl_kwargs
             )
@@ -262,6 +302,16 @@ class AsyncBoltSocketBase(abc.ABC):
                 message="Failed to establish encrypted connection.",
                 address=(resolved_address._host_name, local_port),
             ) from error
+        except BoltSecurityError as error:
+            log.debug(
+                "[#0000]  S: <SECURE FAILURE> %s: %r",
+                resolved_address,
+                error,
+            )
+            if s:
+                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                cls._kill_raw_socket(s)
+            raise
         except Exception as error:
             log.debug(
                 "[#0000]  S: <ERROR> %s %s",
@@ -315,14 +365,14 @@ class BoltSocketBase:
 
     def __init__(self, socket_: socket):
         self._socket = socket_
-        self._deadline = None
+        self._deadline: Deadline | None = None
 
     @property
-    def _socket(self):
+    def _socket(self) -> socket | SSLSocket:
         return self.__socket
 
     @_socket.setter
-    def _socket(self, socket_: socket | SSLSocket):
+    def _socket(self, socket_: socket | SSLSocket) -> None:
         self.__socket = socket_
         self.getsockname = socket_.getsockname
         self.getpeername = socket_.getpeername
@@ -339,14 +389,18 @@ class BoltSocketBase:
     gettimeout: t.Callable = None  # type: ignore
     settimeout: t.Callable = None  # type: ignore
 
-    def _wait_for_io(self, func, *args, **kwargs):
-        if self._deadline is None:
-            return func(*args, **kwargs)
-        timeout = self._socket.gettimeout()
-        deadline_timeout = self._deadline.to_timeout()
-        if deadline_timeout <= 0:
-            raise SocketDeadlineExceededError("timed out")
-        if timeout is None or deadline_timeout <= timeout:
+    def _wait_for_io(
+        self,
+        deadline: Deadline | None,
+        func: t.Callable[_P, t.Any],
+        *args: _P.args,
+        **kwargs: _P.kwargs,
+    ) -> None:
+        timeout: float | None = self._socket.gettimeout()
+        deadline_timeout = _non_expired_timeout(deadline, "IO operation")
+        if deadline_timeout is not None and (
+            timeout is None or deadline_timeout <= timeout
+        ):
             self._socket.settimeout(deadline_timeout)
             try:
                 return func(*args, **kwargs)
@@ -443,11 +497,19 @@ class BoltSocketBase:
                 log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
                 try:
                     t = s.gettimeout()
-                    if timeout:
-                        s.settimeout(deadline.to_timeout())
+                    ssl_timeout = _non_expired_timeout(
+                        deadline, "SSL handshake"
+                    )
+                    if ssl_timeout is not None:
+                        s.settimeout(ssl_timeout)
                     s = ssl_context.wrap_socket(s, server_hostname=sni_host)
                     s.settimeout(t)
-                except (OSError, SSLError, CertificateError) as cause:
+                except (
+                    OSError,
+                    SSLError,
+                    CertificateError,
+                    SocketDeadlineExceededError,
+                ) as cause:
                     raise BoltSecurityError(
                         message="Failed to establish encrypted connection.",
                         address=(hostname, local_port),
