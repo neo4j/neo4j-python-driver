@@ -14,12 +14,21 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 from contextlib import contextmanager
 from time import monotonic
 
+from . import _typing as t
+
+
+if t.TYPE_CHECKING:
+    from ._async.io import AsyncBolt
+    from ._sync.io import Bolt
+
 
 class Deadline:
-    def __init__(self, timeout):
+    def __init__(self, timeout: float | None) -> None:
         if timeout is None or timeout == float("inf"):
             self._deadline = float("inf")
         else:
@@ -27,63 +36,74 @@ class Deadline:
         self._original_timeout = timeout
 
     @property
-    def original_timeout(self):
+    def original_timeout(self) -> float | None:
         return self._original_timeout
 
-    def expired(self):
+    def expired(self) -> bool:
         return self.to_timeout() == 0
 
-    def to_timeout(self):
+    def to_timeout(self) -> float | None:
         if self._deadline == float("inf"):
             return None
         timeout = self._deadline - monotonic()
         return max(0, timeout)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if isinstance(other, Deadline):
             return self._deadline == other._deadline
         return NotImplemented
 
-    def __gt__(self, other):
+    def __gt__(self, other) -> bool:
         if isinstance(other, Deadline):
             return self._deadline > other._deadline
         return NotImplemented
 
-    def __ge__(self, other):
+    def __ge__(self, other) -> bool:
         if isinstance(other, Deadline):
             return self._deadline >= other._deadline
         return NotImplemented
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         if isinstance(other, Deadline):
             return self._deadline < other._deadline
         return NotImplemented
 
-    def __le__(self, other):
+    def __le__(self, other) -> bool:
         if isinstance(other, Deadline):
             return self._deadline <= other._deadline
         return NotImplemented
 
     @classmethod
-    def from_timeout_or_deadline(cls, timeout):
-        if isinstance(timeout, cls):
-            return timeout
-        return cls(timeout)
+    def from_timeout_or_deadline(
+        cls, timeout: t.Self | float | None
+    ) -> t.Self:
+        if isinstance(timeout, (float, int)) or timeout is None:
+            return cls(timeout)
+        return timeout
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Deadline(timeout={self._original_timeout})"
+
+    def __bool__(self) -> bool:
+        """Whether a deadline is set (:data:`True`) or not (:data:`False`)."""
+        return self._deadline != float("inf")
 
 
 merge_deadlines = min
 
 
-def merge_deadlines_and_timeouts(*deadline):
+def merge_deadlines_and_timeouts(
+    *deadline: Deadline | None,
+) -> Deadline:
     deadlines = map(Deadline.from_timeout_or_deadline, deadline)
     return merge_deadlines(deadlines)
 
 
 @contextmanager
-def connection_deadline(connection, deadline):
+def connection_deadline(
+    connection: AsyncBolt | Bolt,
+    deadline: Deadline | None,
+) -> t.Generator[None]:
     with (
         connection_read_deadline(connection, deadline),
         connection_write_deadline(connection, deadline),
@@ -91,7 +111,10 @@ def connection_deadline(connection, deadline):
         yield
 
 
-def connection_read_deadline(connection, deadline):
+def connection_read_deadline(
+    connection: AsyncBolt | Bolt,
+    deadline: Deadline | None,
+) -> t.AbstractContextManager[None]:
     return _connection_deadline_wrapper(
         deadline,
         connection.socket.get_read_deadline,
@@ -99,7 +122,10 @@ def connection_read_deadline(connection, deadline):
     )
 
 
-def connection_write_deadline(connection, deadline):
+def connection_write_deadline(
+    connection: AsyncBolt | Bolt,
+    deadline: Deadline | None,
+) -> t.AbstractContextManager[None]:
     return _connection_deadline_wrapper(
         deadline,
         connection.socket.get_write_deadline,
@@ -108,7 +134,11 @@ def connection_write_deadline(connection, deadline):
 
 
 @contextmanager
-def _connection_deadline_wrapper(deadline, deadline_getter, deadline_setter):
+def _connection_deadline_wrapper(
+    deadline: Deadline | None,
+    deadline_getter: t.Callable[[], Deadline],
+    deadline_setter: t.Callable[[Deadline | None], None],
+) -> t.Generator[None]:
     if deadline is None:
         # nothing to do here
         yield
