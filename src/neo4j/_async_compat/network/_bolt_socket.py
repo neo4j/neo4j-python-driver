@@ -391,13 +391,12 @@ class BoltSocketBase:
 
     def _wait_for_io(
         self,
-        deadline: Deadline | None,
         func: t.Callable[_P, t.Any],
         *args: _P.args,
         **kwargs: _P.kwargs,
     ) -> None:
         timeout: float | None = self._socket.gettimeout()
-        deadline_timeout = _non_expired_timeout(deadline, "IO operation")
+        deadline_timeout = _non_expired_timeout(self._deadline, "IO operation")
         if deadline_timeout is not None and (
             timeout is None or deadline_timeout <= timeout
         ):
