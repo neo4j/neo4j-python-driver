@@ -6,6 +6,10 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - No breaking or major changes.
 
 
+## Version 6.2
+- No breaking or major changes.
+
+
 ## Version 6.1
 - Python 3.14 support added.
 
@@ -44,7 +48,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
     - `ValueError` on invalid value (instead of `ClientError`)
     - Consistently check the value (also for non-routing drivers)
   - `neo4j.exceptions.UnsupportedServerProduct` if no common bolt protocol version could be negotiated with the server
-   (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
+    (instead of internal `neo4j._exceptions.BoltHandshakeError`).  
     `UnsupportedServerProduct` is now a subclass of `ConfigurationError` (instead of `Exception` directly).
   - `connection_acquisition_timeout` configuration option
     - Raise `ValueError` on invalid values (instead of `ClientError`).

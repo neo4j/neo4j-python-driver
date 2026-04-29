@@ -29,7 +29,7 @@ if t.TYPE_CHECKING:
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "6.1.dev0"
+version = "6.2.dev0"
 
 
 def _compute_bolt_agent() -> dict[str, str]:
