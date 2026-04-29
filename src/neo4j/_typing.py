@@ -21,6 +21,7 @@ from collections.abc import (
     Awaitable,
     Callable,
     Collection,
+    Coroutine,
     Generator,
     Hashable,
     ItemsView,
@@ -33,6 +34,7 @@ from collections.abc import (
     Sized,
     ValuesView,
 )
+from contextlib import AbstractContextManager
 from importlib.util import find_spec as _find_spec
 from typing import (
     Any,
@@ -58,6 +60,7 @@ from typing import (
 
 __all__: tuple[str, ...] = (
     "TYPE_CHECKING",
+    "AbstractContextManager",
     "Any",
     "AsyncIterator",
     "Awaitable",
@@ -65,6 +68,7 @@ __all__: tuple[str, ...] = (
     "ClassVar",
     "Collection",
     "Concatenate",
+    "Coroutine",
     "Final",
     "Generator",
     "Generic",

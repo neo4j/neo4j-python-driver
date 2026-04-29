@@ -319,7 +319,7 @@ class BoltSocket(BoltSocketBase):
         )
         for resolved_address in resolved_addresses:
             deadline_timeout = deadline.to_timeout()
-            if (
+            if tcp_timeout is None or (
                 deadline_timeout is not None
                 and deadline_timeout <= tcp_timeout
             ):
