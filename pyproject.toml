@@ -60,12 +60,12 @@ pandas = [
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     "numpy >= 1.21.2, < 3.0.0",
 ]
-pyarrow = ["pyarrow >= 6.0.0, < 23.0.0"]
+pyarrow = ["pyarrow >= 6.0.0, < 25.0.0"]
 
 
 [build-system]
 requires = [
-    "setuptools == 80.9.0",
+    "setuptools == 82.0.1",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -157,7 +157,7 @@ dep-project-dependencies = [
     "pytz",
     "numpy >= 1.7.0, < 3.0.0",
     "pandas[timezone] >= 1.1.0, < 4.0.0",
-    "pyarrow >= 6.0.0, < 23.0.0",
+    "pyarrow >= 6.0.0, < 25.0.0",
 ]
 
 [tool.setuptools.dynamic]
