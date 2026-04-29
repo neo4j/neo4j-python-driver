@@ -59,6 +59,8 @@ if t.TYPE_CHECKING:
 
 log = getLogger("neo4j.session")
 
+MAX_AUTO_COMMIT_RETRIES = 1
+
 
 class AsyncSession(AsyncWorkspace):
     """
@@ -347,7 +349,7 @@ class AsyncSession(AsyncWorkspace):
                 if (
                     self._config.disable_auto_commit_retries
                     or not auto_result._attach_failed
-                    or retry_count > 0
+                    or retry_count >= MAX_AUTO_COMMIT_RETRIES
                     or error.diagnostic_record.get("_idempotent") is not True
                 ):
                     raise
