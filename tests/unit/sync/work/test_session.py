@@ -14,6 +14,10 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
+
 import pytest
 
 from neo4j import (
@@ -39,6 +43,7 @@ from neo4j.api import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
+from neo4j.exceptions import Neo4jError
 
 from ...._async_compat import mark_sync_test
 
@@ -884,3 +889,139 @@ def test_work_connections_are_prepared_connection(
         fake_pool.acquire.assert_called_once()
         unprepared = fake_pool.acquire.call_args.kwargs.get("unprepared")
         assert unprepared is False or unprepared is None
+
+
+def _make_on_failure(idempotent: t.Any = ...) -> dict:
+    diagnostic_record = {}
+    if idempotent is not ...:
+        diagnostic_record["_idempotent"] = idempotent
+    return {
+        "neo4j_code": "Neo.ClientError.Made.Up",
+        "gql_status": "50N42",
+        "message": "The test case said boom!",
+        "description": f"{idempotent=}",
+        "diagnostic_record": diagnostic_record,
+    }
+
+
+def _make_idempotent_script(
+    *,
+    ok: bool = False,
+    idempotent: t.Any = ...,
+    fail_telemetry: bool = False,
+    send_telemetry: bool = True,
+) -> list[tuple[str, dict[str, tuple | None]]]:
+    telemetry: list[tuple[str, dict[str, tuple | None]]] = []
+    if send_telemetry:
+        telemetry.append(
+            ("telemetry", {"on_success": None, "on_summary": None})
+        )
+    if ok:
+        return [
+            *telemetry,
+            ("run", {"on_success": None, "on_summary": None}),
+            ("pull", {"on_success": None, "on_summary": None}),
+        ]
+    on_failure = (_make_on_failure(idempotent),)
+    if fail_telemetry:
+        return [
+            ("telemetry", {"on_failure": on_failure, "on_summary": None}),
+            ("run", {"on_ignored": None, "on_summary": None}),
+            ("pull", {"on_ignored": None, "on_summary": None}),
+            ("reset", {"on_success": None, "on_summary": None}),
+        ]
+    return [
+        *telemetry,
+        ("run", {"on_failure": on_failure, "on_summary": None}),
+        ("pull", {"on_ignored": None, "on_summary": None}),
+        ("reset", {"on_success": None, "on_summary": None}),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("script1_type", "script1", "script2_type", "script2"),
+    (
+        (
+            *("ok", _make_idempotent_script(ok=True)),
+            *("ok", _make_idempotent_script(ok=True, send_telemetry=False)),
+        ),
+        (
+            *("error", _make_idempotent_script(idempotent=False)),
+            *("ok", _make_idempotent_script(ok=True, send_telemetry=False)),
+        ),
+        (
+            *("error", _make_idempotent_script()),
+            *("ok", _make_idempotent_script(ok=True, send_telemetry=False)),
+        ),
+        (
+            *("telemetry_error", _make_idempotent_script(fail_telemetry=True)),
+            *("ok", _make_idempotent_script(ok=True, send_telemetry=False)),
+        ),
+        (
+            *(
+                "telemetry_error",
+                _make_idempotent_script(fail_telemetry=True, idempotent=True),
+            ),
+            *("ok", _make_idempotent_script(ok=True, send_telemetry=False)),
+        ),
+        (
+            *("idempotent", _make_idempotent_script(idempotent=True)),
+            *("ok", _make_idempotent_script(ok=True, send_telemetry=False)),
+        ),
+        (
+            *("idempotent", _make_idempotent_script(idempotent=True)),
+            *(
+                "error",
+                _make_idempotent_script(
+                    idempotent=False, send_telemetry=False
+                ),
+            ),
+        ),
+    ),
+)
+@pytest.mark.parametrize("opt_out", (True, False, None))
+@mark_sync_test
+def test_session_run_idempotent_retry(
+    script1_type: str,
+    script1: list[tuple[str, dict]],
+    script2_type: str,
+    script2: list[tuple[str, dict]],
+    opt_out: bool | None,
+    fake_pool,
+    scripted_connection_generator,
+) -> None:
+    connection_1 = scripted_connection_generator()
+    connection_1.set_script(script1)
+    connection_1.enable_telemetry_matching()
+    connection_2 = scripted_connection_generator()
+    connection_2.set_script(script2)
+    connection_2.enable_telemetry_matching()
+
+    fake_pool.buffered_connection_mocks.append(connection_2)
+    fake_pool.buffered_connection_mocks.append(connection_1)
+
+    should_succeed = script1_type == "ok" or (
+        script1_type == "idempotent" and script2_type == "ok" and not opt_out
+    )
+    should_use_connection2 = script1_type == "idempotent" and not opt_out
+
+    session_config = SessionConfig(disable_auto_commit_retries=opt_out)
+    with Session(fake_pool, session_config) as session:
+        if should_succeed:
+            session.run("RETURN 1")
+        else:
+            with pytest.raises(Neo4jError) as exc:
+                session.run("RETURN 1")
+            assert exc.value.code == "Neo.ClientError.Made.Up"
+        if should_use_connection2:
+            assert len(fake_pool.acquired_connection_mocks) == 2
+            connection_2.run.assert_called_once()
+            call_args = connection_2.run.call_args.args
+            assert call_args[0] == "RETURN 1"
+        else:
+            assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_1.run.assert_called_once()
+        call_args = connection_1.run.call_args.args
+        assert call_args[0] == "RETURN 1"
+        connection_1.telemetry.assert_called_once()
+        connection_2.telemetry.assert_not_called()

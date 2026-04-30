@@ -141,6 +141,7 @@ def fake_connection_generator(session_mocker):
                 "pull",
                 "rollback",
                 "discard",
+                "telemetry",
             }:
                 method_mock.side_effect = build_message_handler(name)
             return method_mock
@@ -158,6 +159,7 @@ def scripted_connection_generator(fake_connection_generator):
     class ScriptedConnection(fake_connection_generator):
         _script: list
         _script_pos: int
+        _telemetry_matching_enabled: bool = False
 
         def set_script(self, callbacks):
             """
@@ -182,7 +184,12 @@ def scripted_connection_generator(fake_connection_generator):
                 arguments.
             """  # noqa: E501 example code isn't too long
             self._script = callbacks
+            if any(name for name, _ in callbacks if name == "telemetry"):
+                self._telemetry_matching_enabled = True
             self._script_pos = 0
+
+        def enable_telemetry_matching(self, value=True):
+            self._telemetry_matching_enabled = value
 
         def __getattr__(self, name):
             parent = super()
@@ -210,17 +217,16 @@ def scripted_connection_generator(fake_connection_generator):
                             ("on_summary", ()),
                         ):
                             cb = kwargs.get(cb_name)
-                            if (
-                                not callable(cb)
-                                or cb_name not in scripted_callbacks
-                            ):
+                            if cb_name not in scripted_callbacks:
                                 continue
                             cb_args = scripted_callbacks[cb_name]
                             if cb_args is None:
                                 cb_args = default_cb_args
-                            res = cb(*cb_args)
                             if cb_name == "on_failure":
                                 error = Neo4jError._hydrate_gql(**cb_args[0])
+                            if not callable(cb):
+                                continue
+                            res = cb(*cb_args)
                             # suppress in case the callback is not async
                             with suppress(TypeError):
                                 res
@@ -240,6 +246,8 @@ def scripted_connection_generator(fake_connection_generator):
                 "rollback",
                 "discard",
             }:
+                method_mock.side_effect = build_message_handler(name)
+            if name == "telemetry" and self._telemetry_matching_enabled:
                 method_mock.side_effect = build_message_handler(name)
             return method_mock
 

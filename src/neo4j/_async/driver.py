@@ -156,6 +156,7 @@ class AsyncGraphDatabase:
             telemetry_disabled: bool = ...,
             max_transaction_retry_time: float = ...,
             connection_acquisition_timeout: float = ...,
+            disable_auto_commit_retries: bool = ...,
             # undocumented/unsupported options
             # they may be changed or removed any time without prior notice
             initial_retry_delay: float = ...,
@@ -550,6 +551,7 @@ class AsyncDriver:
             notifications_disabled_classifications: (
                 t.Iterable[T_NotificationDisabledClassification] | None
             ) = ...,
+            disable_auto_commit_retries: bool | None = ...,
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
             initial_retry_delay: float = ...,
@@ -602,6 +604,8 @@ class AsyncDriver:
 
     @classmethod
     def _prepare_session_config(cls, config_kwargs):
+        if config_kwargs.get("disable_auto_commit_retries", ...) is None:
+            config_kwargs.pop("disable_auto_commit_retries")
         _normalize_notifications_config(config_kwargs)
         return config_kwargs
 

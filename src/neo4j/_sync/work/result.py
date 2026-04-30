@@ -145,7 +145,8 @@ class Result(NonConcurrentMethodChecker):
 
         # states
         self._discarding = False  # discard the remainder of records
-        self._attached = False  # attached to a connection
+        self._attached = False  # attached to a record stream
+        self._attach_failed = False  # failed attempt to attach
         # there are still more response messages we wait for
         self._streaming = False
         # there ar more records available to pull from the server
@@ -216,6 +217,7 @@ class Result(NonConcurrentMethodChecker):
         def on_failed_attach(metadata):
             self._metadata.update(metadata)
             self._attached = False
+            self._attach_failed = True
             Util.callback(self._on_closed)
 
         self._connection.run(

@@ -46,6 +46,7 @@ test_session_config = {
     "notifications_min_severity": None,
     "notifications_disabled_classifications": None,
     "warn_notification_severity": None,
+    "disable_auto_commit_retries": None,
 }
 
 

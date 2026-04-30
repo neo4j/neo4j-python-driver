@@ -202,7 +202,10 @@ def new_driver(backend, data):
     ):
         if data.get(data_name):
             kwargs[conf_name] = data[data_name]
-    for conf_name, data_name in (("encrypted", "encrypted"),):
+    for conf_name, data_name in (
+        ("encrypted", "encrypted"),
+        ("disable_auto_commit_retries", "disableAutoCommitRetries"),
+    ):
         if data_name in data:
             kwargs[conf_name] = data[data_name]
     if "trustedCertificates" in data:
@@ -755,6 +758,7 @@ def new_session(backend, data):
     for conf_name, data_name in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),
+        ("disable_auto_commit_retries", "disableAutoCommitRetries"),
     ):
         if data_name in data:
             config[conf_name] = data[data_name]
