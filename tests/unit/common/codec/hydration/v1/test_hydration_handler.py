@@ -21,8 +21,6 @@ from datetime import (
     timedelta,
 )
 
-import numpy as np
-import pandas as pd
 import pytest
 
 from neo4j._codec.hydration import (
@@ -31,6 +29,10 @@ from neo4j._codec.hydration import (
 )
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
+from neo4j._optional_deps import (
+    np,
+    pd,
+)
 from neo4j.graph import Graph
 from neo4j.spatial import (
     CartesianPoint,
@@ -46,6 +48,10 @@ from neo4j.time import (
 from neo4j.vector import Vector
 
 from .._base import HydrationHandlerTestBase
+
+
+HAS_NP = np is not None
+HAS_PD = pd is not None
 
 
 class TestHydrationHandler(HydrationHandlerTestBase):
@@ -81,11 +87,23 @@ class TestHydrationHandler(HydrationHandlerTestBase):
             CartesianPoint,
             Point,
             WGS84Point,
-            np.datetime64,
-            np.timedelta64,
-            pd.Timestamp,
-            pd.Timedelta,
-            type(pd.NaT),
+            *(
+                (
+                    np.datetime64,
+                    np.timedelta64,
+                )
+                if HAS_NP
+                else ()
+            ),
+            *(
+                (
+                    pd.Timestamp,
+                    pd.Timedelta,
+                    type(pd.NaT),
+                )
+                if HAS_PD
+                else ()
+            ),
             Vector,
         }
         assert not hooks.subtypes

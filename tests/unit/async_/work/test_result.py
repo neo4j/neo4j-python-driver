@@ -25,7 +25,6 @@ import warnings
 from contextlib import suppress
 from unittest import mock
 
-import pandas as pd
 import pytest
 import pytz
 
@@ -47,6 +46,7 @@ from neo4j._data import (
     Relationship,
 )
 from neo4j._debug import NotificationPrinter
+from neo4j._optional_deps import pd
 from neo4j.exceptions import (
     BrokenRecordError,
     ResultNotSingleError,
@@ -75,9 +75,14 @@ if t.TYPE_CHECKING:
     )
 
 
+HAS_PD = pd is not None
+
+
 # https://pandas.pydata.org/docs/user_guide/migration-3-strings.html
 PD_STR_DTYPE = (
-    "object" if int(pd.__version__.split(".", 1)[0]) < 3 else "string"
+    "object"
+    if not HAS_PD or int(pd.__version__.split(".", 1)[0]) < 3
+    else "string"
 )
 
 
@@ -789,6 +794,16 @@ async def test_to_eager_result(records):
     assert eager_result.keys == list(records.fields)
 
 
+@pytest.mark.skipif(HAS_PD, reason="pandas installed")
+@mark_async_test
+async def test_to_df_requires_pandas():
+    connection = AsyncConnectionStub(records=Records(["x"], [[1], [2]]))
+    result = AsyncResult(connection, 1, None, noop, noop, None)
+    with pytest.raises(ImportError):
+        await result.to_df()
+
+
+@pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
 @pytest.mark.parametrize(
     ("keys", "values", "types", "instances"),
     (
@@ -886,6 +901,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         assert df.equals(expected_df)
 
 
+@pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
 @pytest.mark.parametrize(
     ("keys", "values", "expected_columns", "expected_rows", "expected_types"),
     (
@@ -1124,6 +1140,7 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
 )
 
 
+@pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
 @pytest.mark.parametrize(
     ("keys", "values", "expected_df"),
     (
@@ -1322,7 +1339,9 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
             )
             for add_ns in (0, 1)
         ),
-    ),
+    )
+    if HAS_PD
+    else (),
 )
 @pytest.mark.parametrize("expand", [True, False])
 @mark_async_test
