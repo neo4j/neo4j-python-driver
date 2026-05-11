@@ -43,4 +43,4 @@ def chunking(bencher: Bencher) -> None:
 
 
 def _work(driver: Driver, parameters: dict[str, Any], db: str) -> None:
-    driver.execute_query("RETURN $data", parameters, database=db)
+    driver.execute_query("RETURN $data", parameters, database_=db)
