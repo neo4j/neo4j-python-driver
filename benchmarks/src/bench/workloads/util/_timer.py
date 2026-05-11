@@ -27,15 +27,15 @@ if TYPE_CHECKING:
 
 
 class Timer:
-    _n: int
+    _n_timed: int
     _warmup: int
     _start_time: float | None
     _runs: int
     _timings: list[_Timing]
 
-    def __init__(self, n: int, warmup: int) -> None:
-        self._n = n
-        self._warmup = warmup
+    def __init__(self, n_timed: int, n_warmup: int) -> None:
+        self._n_timed = n_timed
+        self._warmup = n_warmup
         self._start_time = None
         self._runs = 0
         self._timings = []
@@ -65,9 +65,10 @@ class Timer:
         self._timings = []
 
     def flush_csv(self, file_path: Path) -> None:
-        if self._n != len(self._timings):
+        if self._n_timed != len(self._timings):
             raise RuntimeError(
-                f"Expected {self._n} timings, but got {len(self._timings)}"
+                f"Expected {self._n_timed} timings, "
+                f"but got {len(self._timings)}"
             )
         with file_path.open("w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)

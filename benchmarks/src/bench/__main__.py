@@ -79,13 +79,16 @@ def _parse_args():
         "--iterations",
         required=True,
         type=int,
-        help="Number of iterations to run the workload",
+        help="Number of iterations to run and time the workload",
     )
     parser.add_argument(
         "--warmup",
         required=True,
         type=int,
-        help="Number of warmup iterations before recording results",
+        help=(
+            "Number of warmup iterations before recording results "
+            "(in addition to --iterations)"
+        ),
     )
     parser.add_argument(
         "--output",

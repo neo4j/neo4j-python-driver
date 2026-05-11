@@ -37,15 +37,20 @@ class RetriesExceededError(BaseExceptionGroup):
 
 
 class Bencher:
-    n: int
-    warmup: int
+    n_total: int
+    n_warmup: int
     timer: Timer
     ctx: BenchmarkContext
 
-    def __init__(self, n: int, warmup: int, ctx: BenchmarkContext) -> None:
-        self.n = n + warmup
-        self.warmup = warmup
-        self.timer = Timer(n, warmup)
+    def __init__(
+        self,
+        n_timed: int,
+        n_warmup: int,
+        ctx: BenchmarkContext,
+    ) -> None:
+        self.n_total = n_timed + n_warmup
+        self.n_warmup = n_warmup
+        self.timer = Timer(n_timed, n_warmup)
         self.ctx = ctx
 
     def reset(self) -> None:
@@ -58,7 +63,7 @@ class Bencher:
         **kwargs: P.kwargs,
     ) -> None:
         timed_work = self.timed_work(work)
-        for _ in range(self.n):
+        for _ in range(self.n_total):
             self.iteration(timed_work, *args, **kwargs)
 
     def timed_work(self, work: Callable[P, None]) -> Callable[P, None]:
@@ -75,7 +80,7 @@ class Bencher:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
-        for _ in range(self.n):
+        for _ in range(self.n_total):
             self.iteration(work, *args, **kwargs)
 
     def iteration(
