@@ -20,14 +20,17 @@ import struct
 from typing import Final
 
 
-__all__ = ["DATA_SMALL"]
+__all__ = [
+    "DATA_SMALL",
+    "bytes_list_to_float_list",
+]
 
 
-def _bytes_list_to_float_list(raw: list[int]) -> list[float]:
+def bytes_list_to_float_list(raw: list[int]) -> list[float]:
     return [struct.unpack("=d", struct.pack("=Q", b))[0] for b in raw]
 
 
-DATA_SMALL: Final[list[float]] = _bytes_list_to_float_list(
+DATA_SMALL: Final[list[float]] = bytes_list_to_float_list(
     [
         0x0000000000000000,
         0xFFFFFFFFFFFFFFFF,

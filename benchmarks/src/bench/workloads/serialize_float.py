@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-import struct
 from typing import TYPE_CHECKING
 
 from ._data_float import DATA_SMALL
@@ -32,10 +31,6 @@ if TYPE_CHECKING:
     import neo4j
 
     from .util import Bencher
-
-
-def _bytes_list_to_float_list(raw: list[int]) -> list[float]:
-    return [struct.unpack("=d", struct.pack("=Q", b))[0] for b in raw]
 
 
 @benchmark
