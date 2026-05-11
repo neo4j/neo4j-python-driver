@@ -16,6 +16,7 @@
 
 import re
 import struct
+import sys
 import typing
 import uuid
 from contextlib import suppress
@@ -36,7 +37,7 @@ from neo4j._codec.packstream._common import (
     PackableBuffer,
     UnpackableBuffer,
 )
-from neo4j._codec.packstream.v1 import (
+from neo4j._codec.packstream.v2 import (
     Packer,
     Unpacker,
 )
@@ -277,7 +278,7 @@ def sequence_type(request):
     return constructor
 
 
-class TestPackStreamV1:
+class TestPackStreamV2:
     @pytest.mark.parametrize(
         "value",
         (None, *((pd.NA,) if HAS_PD else ())),
@@ -814,13 +815,27 @@ class TestPackStreamV1:
             fields = [1] * 16
             pack(Structure(b"X", *fields))
 
-    def test_illegal_uuid(self, pack):
-        with pytest.raises(ValueError) as exc:
-            pack(uuid.uuid4())
-
-        msg = str(exc.value)
-        assert str(uuid.UUID) in msg
-        assert re.search(r"\bbolt\b.*\b6\.1\b", msg, re.IGNORECASE)
+    @pytest.mark.parametrize(
+        "value",
+        (
+            uuid.UUID("{12345678-1234-5678-1234-567812345678}"),
+            uuid.UUID(int=0),
+            uuid.uuid3(uuid.uuid1(), "name"),
+            uuid.uuid4(),
+            uuid.uuid5(uuid.uuid1(), "name"),
+            *(
+                (
+                    uuid.uuid6(uuid.uuid1(), "name"),  # type: ignore[attr-defined]
+                    uuid.uuid7(),  # type: ignore[attr-defined]
+                    uuid.uuid8(),  # type: ignore[attr-defined]
+                )
+                if sys.version_info >= (3, 14)
+                else ()
+            ),
+        ),
+    )
+    def test_uuid(self, value, assert_packable):
+        assert_packable(value, b"\xe0" + value.bytes)
 
     @pytest.mark.parametrize(
         "value",
@@ -853,7 +868,6 @@ class TestPackStreamV1:
             b"\xdd",
             b"\xde",
             b"\xdf",
-            b"\xe0",
             b"\xe1",
             b"\xe2",
             b"\xe3",

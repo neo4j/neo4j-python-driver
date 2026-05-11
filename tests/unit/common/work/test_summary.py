@@ -1479,6 +1479,7 @@ def test_summary_counter_str(stats: dict, expected: str) -> None:
         ((5, 7), "t_first"),
         ((5, 8), "t_first"),
         ((6, 0), "t_first"),
+        ((6, 1), "t_first"),
     ),
 )
 def test_summary_result_available_after(
@@ -1518,6 +1519,7 @@ def test_summary_result_available_after(
         ((5, 7), "t_last"),
         ((5, 8), "t_last"),
         ((6, 0), "t_last"),
+        ((6, 1), "t_last"),
     ),
 )
 def test_summary_result_consumed_after(

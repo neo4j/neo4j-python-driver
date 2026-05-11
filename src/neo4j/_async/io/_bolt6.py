@@ -21,6 +21,7 @@ from ... import _typing as t
 from ..._api import TelemetryAPI
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v3 as hydration_v3
+from ..._codec.packstream import v2 as packstream_v2
 from ..._exceptions import BoltProtocolError
 from ..._io import BoltProtocolVersion
 from ..._meta import BOLT_AGENT_DICT
@@ -613,3 +614,11 @@ class AsyncBolt6x0(AsyncBolt):
             await AsyncUtil.callback(wrapped_handler, metadata)
 
         return handler
+
+
+class AsyncBolt6x1(AsyncBolt6x0):
+    """Protocol handler for Bolt 6.1."""
+
+    PROTOCOL_VERSION = BoltProtocolVersion(6, 1)
+    PACKER_CLS = packstream_v2.Packer
+    UNPACKER_CLS = packstream_v2.Unpacker

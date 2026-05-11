@@ -9,7 +9,7 @@ Bolt protocol versions supported:
 
 .. # [bolt-version-bump] search tag when changing bolt version support
 
-* Bolt 6.0
+* Bolt 6.0 - 6.1
 * Bolt 5.0 - 5.8
 * Bolt 4.4
 

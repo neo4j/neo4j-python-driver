@@ -63,12 +63,21 @@ def test_handshake(bolt_socket_factory, caplog, log_level):
 # [bolt-version-bump] search tag when changing bolt version support
 @mark_sync_test
 @pytest.mark.parametrize("log_level", (1, logging.DEBUG, logging.CRITICAL))
+@pytest.mark.parametrize(
+    ("offered_versions", "chosen_version"),
+    (
+        (b"\x00\x00\x00\x06", (6, 0)),
+        (b"\x00\x00\x01\x06", (6, 1)),
+        (b"\x00\x01\x01\x06", (6, 1)),
+    ),
+)
 def test_handshake_manifest_v1(
+    offered_versions,
+    chosen_version,
     bolt_socket_factory,
     caplog,
     log_level,
 ):
-    chosen_version = (6, 0)
     expected_feature_bits = b"\x00"  # varint(0)
 
     caplog.set_level(log_level)
@@ -77,7 +86,7 @@ def test_handshake_manifest_v1(
         (
             *b"\x00\x00\x01\xff",  # manifest v1
             *b"\x01",  # varint(1) number of versions offered
-            *chosen_version_bytes,
+            *offered_versions,
             *expected_feature_bits,
         )
     )

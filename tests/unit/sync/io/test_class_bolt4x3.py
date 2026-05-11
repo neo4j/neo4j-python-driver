@@ -21,6 +21,10 @@ import pytest
 
 import neo4j
 from neo4j._api import TelemetryAPI
+from neo4j._codec.packstream.v1 import (
+    Packer as PackerV1,
+    Unpacker as UnpackerV1,
+)
 from neo4j._meta import USER_AGENT
 from neo4j._sync.config import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x3
@@ -734,3 +738,8 @@ def test_ssr_enabled(ssr_hint, fake_socket_pair):
     assert connection.ssr_enabled is False
     connection.hello()
     assert connection.ssr_enabled is False
+
+
+def test_uses_packstream_v1():
+    assert Bolt4x3.PACKER_CLS is PackerV1
+    assert Bolt4x3.UNPACKER_CLS is UnpackerV1

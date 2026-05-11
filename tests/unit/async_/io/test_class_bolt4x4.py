@@ -23,6 +23,10 @@ import neo4j
 from neo4j._api import TelemetryAPI
 from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io._bolt4 import AsyncBolt4x4
+from neo4j._codec.packstream.v1 import (
+    Packer as PackerV1,
+    Unpacker as UnpackerV1,
+)
 from neo4j._meta import USER_AGENT
 from neo4j.exceptions import ConfigurationError
 
@@ -696,3 +700,8 @@ async def test_ssr_enabled(ssr_hint, fake_socket_pair):
     assert connection.ssr_enabled is False
     await connection.hello()
     assert connection.ssr_enabled is False
+
+
+def test_uses_packstream_v1():
+    assert AsyncBolt4x4.PACKER_CLS is PackerV1
+    assert AsyncBolt4x4.UNPACKER_CLS is UnpackerV1
