@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 def serialize_integer(bencher: Bencher) -> None:
     with bencher.ctx.new_driver() as driver:
         # 20.5 - 49.5 kB of data
-        # (depending on integer representations chose by driver)
+        # (depending on integer representations chosen by driver)
         data_small = [
             0,
             -16,
