@@ -54,6 +54,7 @@ def benchmark(func: _TBench) -> _TBench:
             else:
                 return
             attempt_left -= 1
+            bencher.reset()
             time.sleep(0.5)
         raise ExceptionGroup("Benchmark failed after 30 attempts.", exceptions)
 
