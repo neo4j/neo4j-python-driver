@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     P = ParamSpec("P")
 
 
-class RetriesExceededError(BaseExceptionGroup):
+class RetriesExceededError(ExceptionGroup):
     pass
 
 

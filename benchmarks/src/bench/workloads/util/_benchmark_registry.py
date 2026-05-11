@@ -23,6 +23,8 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from ._bencher import RetriesExceededError
+
 
 if TYPE_CHECKING:
     from ._bencher import Bencher
@@ -49,6 +51,8 @@ def benchmark(func: _TBench) -> _TBench:
         while attempt_left > 0:
             try:
                 func(bencher)
+            except RetriesExceededError:
+                raise
             except Exception as e:
                 exceptions.append(e)
             else:

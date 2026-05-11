@@ -65,6 +65,19 @@ class Timer:
         self._timings = []
 
     def flush_csv(self, file_path: Path) -> None:
+        """
+        Write the measurements to the CSV file.
+
+        The CSV has 3 columns as expected by the benchmarking framework:
+
+        * ``scheduled_at`` epoch ms: the instant of the scheduled measurement
+        * ``started_at`` epoch ms: the instant of the measurement start time,
+        * ``stopped_at`` epoch ms: the instant of the measurement finish time.
+
+        Since this benchmark implementation does not really have the notion of
+        workload scheduling, the ``scheduled_at`` column is currently always
+        filled with the same value as the ``started_at`` column.
+        """
         if self._n_timed != len(self._timings):
             raise RuntimeError(
                 f"Expected {self._n_timed} timings, "
