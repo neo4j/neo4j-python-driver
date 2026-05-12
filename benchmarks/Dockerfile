@@ -22,4 +22,4 @@ WORKDIR /home/root/benchmarks
 COPY --from=build /root/.local/share/uv/python /root/.local/share/uv/python
 COPY --from=build /home/root/neo4j-python-driver/benchmarks/.venv .venv
 
-ENTRYPOINT ["uv", "run", "--no-sync", "python", "-m", "bench"]
+ENTRYPOINT ["uv", "run", "python", "-m", "bench"]
