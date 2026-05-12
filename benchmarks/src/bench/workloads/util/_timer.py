@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class Timer:
     _n_timed: int
     _warmup: int
-    _start_time: float | None
+    _start_time: int | None
     _runs: int
     _timings: list[_Timing]
 
@@ -43,14 +43,14 @@ class Timer:
     def __enter__(self) -> None:
         if self._start_time is not None:
             raise RuntimeError("Timer is already running")
-        self._start_time = time.perf_counter()
+        self._start_time = time.time_ns()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         if exc_type is not None:
             # Don't record timings if an exception was raised
             self._start_time = None
             return
-        end_time = time.perf_counter()
+        end_time = time.time_ns()
         if self._start_time is None:
             raise RuntimeError("Timer is not running")
         if self._runs >= self._warmup:
@@ -86,10 +86,20 @@ class Timer:
         with file_path.open("w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
             for timing in self._timings:
-                writer.writerow([timing.start, timing.start, timing.end])
+                start = timing.format_start()
+                end = timing.format_end()
+                writer.writerow([start, start, end])
 
 
 @dataclass(frozen=True)
 class _Timing:
-    start: float
-    end: float
+    start_ns: int
+    end_ns: int
+
+    def format_start(self) -> str:
+        ms, ns = divmod(self.start_ns, 1_000_000)
+        return f"{ms}.{ns:06d}"
+
+    def format_end(self) -> str:
+        ms, ns = divmod(self.end_ns, 1_000_000)
+        return f"{ms}.{ns:06d}"
