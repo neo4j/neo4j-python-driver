@@ -1,6 +1,11 @@
-.*/
-build
-dist
-venv*/
-.coverage
-tests/
+**/.*
+**/build
+**/dist
+**/target
+**/venv*
+**/*.egg-info
+**/Dockerfile
+tests
+testkit
+testkitbackend
+benchmarks/results
