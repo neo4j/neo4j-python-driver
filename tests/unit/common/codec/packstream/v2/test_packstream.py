@@ -825,7 +825,7 @@ class TestPackStreamV2:
             uuid.uuid5(uuid.uuid1(), "name"),
             *(
                 (
-                    uuid.uuid6(uuid.uuid1(), "name"),  # type: ignore[attr-defined]
+                    uuid.uuid6(),  # type: ignore[attr-defined]
                     uuid.uuid7(),  # type: ignore[attr-defined]
                     uuid.uuid8(),  # type: ignore[attr-defined]
                 )
