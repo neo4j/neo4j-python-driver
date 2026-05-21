@@ -793,9 +793,11 @@ class _InnerVector(_abc.ABC):
 
     @classmethod
     def from_pyarrow(cls, data: _pa.Array, /) -> _t.Self:
+        import pyarrow.compute as pa_comp
+
         width = data.type.byte_width
         assert cls.size == width
-        if _pa.compute.count(data, mode="only_null").as_py():
+        if pa_comp.count(data, mode="only_null").as_py():
             raise ValueError("PyArrow array must not contain any null values.")
         _, buffer = data.buffers()
         buffer = buffer[
