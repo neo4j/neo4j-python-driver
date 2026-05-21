@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import typing as t
+import uuid
 
 from neo4j.exceptions import (
     GqlError,
@@ -324,6 +325,11 @@ def field(v):
         return {
             "name": "CypherUnsupportedType",
             "data": data,
+        }
+    if isinstance(v, uuid.UUID):
+        return {
+            "name": "CypherUUID",
+            "data": {"value": str(v)},
         }
 
     raise ValueError("Unhandled type:" + str(type(v)))

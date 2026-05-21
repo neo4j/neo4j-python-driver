@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import timedelta
 
 import pytz
@@ -194,6 +195,8 @@ def to_param(m):
             bytes([int(byte, 16) for byte in data["data"].split()]),
             VectorDType(data["dtype"]),
         )
+    if name == "CypherUUID":
+        return uuid.UUID(data["value"])
     raise ValueError("Unknown param type " + name)
 
 
