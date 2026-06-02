@@ -16,13 +16,15 @@
 
 import datetime
 
-import numpy as np
-import pandas as pd
 import pytest
 import pytz
 
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
+from neo4j._optional_deps import (
+    np,
+    pd,
+)
 from neo4j.time import (
     _AVERAGE_SECONDS_IN_DAY,
     _NANO_SECONDS,
@@ -35,6 +37,10 @@ from neo4j.time import (
 )
 
 from .._base import HydrationHandlerTestBase
+
+
+HAS_NP = np is not None
+HAS_PD = pd is not None
 
 
 class TestTimeDehydration(HydrationHandlerTestBase):
@@ -93,14 +99,17 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716)
         assert_transforms(dt, Structure(b"d", 1539344261, 474716000))
 
+    @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     def test_numpy_local_date_time(self, assert_transforms):
         dt = np.datetime64("2018-10-12T11:37:41.474716862")
         assert_transforms(dt, Structure(b"d", 1539344261, 474716862))
 
+    @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     def test_numpy_nat_local_date_time(self, assert_transforms):
         dt = np.datetime64("NaT")
         assert_transforms(dt, None)
 
+    @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     @pytest.mark.parametrize(
         ("value", "error"),
         (
@@ -108,16 +117,20 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             (np.datetime64("+10000-01-01"), ValueError),
             (np.datetime64(-1970, "Y"), ValueError),
             (np.datetime64("0000-12-31"), ValueError),
-        ),
+        )
+        if HAS_NP
+        else (),
     )
     def test_numpy_invalid_local_date_time(self, value, error, transformer):
         with pytest.raises(error):
             transformer(value)
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_pandas_local_date_time(self, assert_transforms):
         dt = pd.Timestamp("2018-10-12T11:37:41.474716862")
         assert_transforms(dt, Structure(b"d", 1539344261, 474716862))
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_pandas_nat_local_date_time(self, assert_transforms):
         dt = pd.NaT
         assert_transforms(dt, None)
@@ -144,6 +157,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, 3600))
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_pandas_date_time_fixed_offset(self, assert_transforms):
         dt = pd.Timestamp("2018-10-12T11:37:41.474716862+0100")
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, 3600))
@@ -170,6 +184,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, -3600))
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_pandas_date_time_fixed_negative_offset(self, assert_transforms):
         dt = pd.Timestamp("2018-10-12T11:37:41.474716862-0100")
         assert_transforms(dt, Structure(b"F", 1539344261, 474716862, -3600))
@@ -189,6 +204,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             dt, Structure(b"f", 1539344261, 474716000, "Europe/Stockholm")
         )
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         ("dt", "fields"),
         (
@@ -220,7 +236,9 @@ class TestTimeDehydration(HydrationHandlerTestBase):
                 ),
                 ((1032 * 24 + 2) * 3600 + 1, 1000001, "Europe/London"),
             ),
-        ),
+        )
+        if HAS_PD
+        else (),
     )
     def test_pandas_date_time_zone_id(self, dt, fields, assert_transforms):
         assert_transforms(dt, Structure(b"f", *fields))
@@ -241,6 +259,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         duration = datetime.timedelta(days=-1, seconds=2, microseconds=3)
         assert_transforms(duration, Structure(b"E", 0, -1, 2, 3000))
 
+    @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     @pytest.mark.parametrize(
         ("value", "expected_fields"),
         (
@@ -281,26 +300,33 @@ class TestTimeDehydration(HydrationHandlerTestBase):
             (np.timedelta64(-1, "fs"), (0, 0, 0, -1)),
             (np.timedelta64(-1000000000, "as"), (0, 0, 0, -1)),
             (np.timedelta64(-1, "as"), (0, 0, 0, -1)),
-        ),
+        )
+        if HAS_NP
+        else (),
     )
     def test_numpy_duration(self, value, expected_fields, assert_transforms):
         assert_transforms(value, Structure(b"E", *expected_fields))
 
+    @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     def test_numpy_nat_duration(self, assert_transforms):
         duration = np.timedelta64("NaT")
         assert_transforms(duration, None)
 
+    @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     @pytest.mark.parametrize(
         ("value", "error"),
         (
             (np.timedelta64((MAX_INT64 // 60) + 1, "m"), ValueError),
             (np.timedelta64((MIN_INT64 // 60), "m"), ValueError),
-        ),
+        )
+        if HAS_NP
+        else (),
     )
     def test_numpy_invalid_durations(self, value, error, transformer):
         with pytest.raises(error):
             transformer(value)
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         ("value", "expected_fields"),
         (
@@ -329,7 +355,9 @@ class TestTimeDehydration(HydrationHandlerTestBase):
                     -_NANO_SECONDS + 3004,
                 ),
             ),
-        ),
+        )
+        if HAS_PD
+        else (),
     )
     def test_pandas_duration(self, value, expected_fields, assert_transforms):
         assert_transforms(value, Structure(b"E", *expected_fields))

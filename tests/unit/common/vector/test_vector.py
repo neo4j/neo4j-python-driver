@@ -229,7 +229,7 @@ def _mock_mask_extensions(
 
     match used_ext:
         case "numpy":
-            if _swap_endian_unchecked_np is None:
+            if np is None:
                 pytest.skip("numpy not installed")
             mocker.patch(
                 "neo4j.vector._swap_endian_unchecked",

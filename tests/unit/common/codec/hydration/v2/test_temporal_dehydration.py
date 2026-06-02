@@ -16,17 +16,20 @@
 
 import datetime
 
-import pandas as pd
 import pytest
 import pytz
 
 from neo4j._codec.hydration.v2 import HydrationHandler
 from neo4j._codec.packstream import Structure
+from neo4j._optional_deps import pd
 from neo4j.time import DateTime
 
 from ..v1.test_temporal_dehydration import (
     TestTimeDehydration as _TestTemporalDehydration,
 )
+
+
+HAS_PD = pd is not None
 
 
 class TestTimeDehydration(_TestTemporalDehydration):
@@ -54,6 +57,7 @@ class TestTimeDehydration(_TestTemporalDehydration):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"I", 1539340661, 474716000, 3600))
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_pandas_date_time_fixed_offset(self, assert_transforms):
         dt = pd.Timestamp("2018-10-12T11:37:41.474716862+0100")
         assert_transforms(dt, Structure(b"I", 1539340661, 474716862, 3600))
@@ -82,6 +86,7 @@ class TestTimeDehydration(_TestTemporalDehydration):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"I", 1539347861, 474716000, -3600))
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_pandas_date_time_fixed_negative_offset(self, assert_transforms):
         dt = pd.Timestamp("2018-10-12T11:37:41.474716862-0100")
         assert_transforms(dt, Structure(b"I", 1539347861, 474716862, -3600))
@@ -102,6 +107,7 @@ class TestTimeDehydration(_TestTemporalDehydration):
             dt, Structure(b"i", 1539337061, 474716000, "Europe/Stockholm")
         )
 
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         ("dt", "fields"),
         (
@@ -133,7 +139,9 @@ class TestTimeDehydration(_TestTemporalDehydration):
                 ),
                 ((1032 * 24 + 1) * 3600 + 1, 1000001, "Europe/London"),
             ),
-        ),
+        )
+        if HAS_PD
+        else (),
     )
     def test_pandas_date_time_zone_id(self, dt, fields, assert_transforms):
         assert_transforms(dt, Structure(b"i", *fields))

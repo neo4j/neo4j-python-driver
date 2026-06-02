@@ -15,7 +15,6 @@
 
 
 import struct
-import typing
 from contextlib import suppress
 from io import BytesIO
 from math import (
@@ -24,8 +23,6 @@ from math import (
 )
 from uuid import uuid4
 
-import numpy as np
-import pyarrow as pa
 import pytest
 
 from neo4j._codec.packstream import Structure
@@ -35,17 +32,17 @@ from neo4j._codec.packstream.v1 import (
     UnpackableBuffer,
     Unpacker,
 )
+from neo4j._optional_deps import (
+    np,
+    pa,
+    pd,
+)
 
 
-HAS_PD = True
-if typing.TYPE_CHECKING:
-    import pandas as pd
-else:
-    try:
-        import pandas as pd
-    except ImportError:
-        pd = None
-        HAS_PD = False
+HAS_PD = pd is not None
+HAS_PA = pa is not None
+HAS_NP = np is not None
+
 
 standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
@@ -129,6 +126,8 @@ def assert_packable(packer_with_buffer, unpacker_with_buffer):
 
 @pytest.fixture(params=(True, False))
 def np_float_overflow_as_error(request):
+    if not HAS_NP:
+        pytest.skip("numpy not installed")
     should_raise = request.param
     if should_raise:
         old_err = np.seterr(over="raise")
@@ -141,20 +140,26 @@ def np_float_overflow_as_error(request):
 @pytest.fixture(
     params=(
         int,
-        np.int8,
-        np.int16,
-        np.int32,
-        np.int64,
-        np.longlong,
-        np.uint8,
-        np.uint16,
-        np.uint32,
-        np.uint64,
-        np.ulonglong,
+        *(
+            (
+                np.int8,
+                np.int16,
+                np.int32,
+                np.int64,
+                np.longlong,
+                np.uint8,
+                np.uint16,
+                np.uint32,
+                np.uint64,
+                np.ulonglong,
+            )
+            if HAS_NP
+            else ()
+        ),
     )
 )
 def int_type(request):
-    if issubclass(request.param, np.number):
+    if HAS_NP and issubclass(request.param, np.number):
 
         def _int_type(value):
             # this avoids deprecation warning from NEP50 and forces
@@ -167,23 +172,51 @@ def int_type(request):
 
 
 @pytest.fixture(
-    params=(float, np.float16, np.float32, np.float64, np.longdouble)
+    params=(
+        float,
+        *(
+            (
+                np.float16,
+                np.float32,
+                np.float64,
+                np.longdouble,
+            )
+            if HAS_NP
+            else ()
+        ),
+    )
 )
 def float_type(request, np_float_overflow_as_error):
     return request.param
 
 
-@pytest.fixture(params=(bool, np.bool_))
+@pytest.fixture(
+    params=(
+        bool,
+        *((np.bool_,) if HAS_NP else ()),
+    )
+)
 def bool_type(request):
     return request.param
 
 
-@pytest.fixture(params=(bytes, bytearray, np.bytes_))
+@pytest.fixture(
+    params=(
+        bytes,
+        bytearray,
+        *((np.bytes_,) if HAS_NP else ()),
+    )
+)
 def bytes_type(request):
     return request.param
 
 
-@pytest.fixture(params=(str, np.str_))
+@pytest.fixture(
+    params=(
+        str,
+        *((np.str_,) if HAS_NP else ()),
+    )
+)
 def str_type(request):
     return request.param
 
@@ -192,7 +225,7 @@ def str_type(request):
     params=(
         pytest.param(list, id="list"),
         pytest.param(tuple, id="tuple"),
-        pytest.param(np.array, id="np.array"),
+        *((pytest.param(np.array, id="np.array"),) if HAS_NP else ()),
         *(
             (
                 pytest.param(
@@ -207,16 +240,28 @@ def str_type(request):
                     pd.arrays.SparseArray,
                     id="pd.arrays.SparseArray",
                 ),
+            )
+            if HAS_PD
+            else ()
+        ),
+        *(
+            (
                 pytest.param(
                     pd.arrays.NumpyExtensionArray,
                     id="pd.arrays.NumpyExtensionArray",
                 ),
+            )
+            if HAS_PD and HAS_NP
+            else ()
+        ),
+        *(
+            (
                 pytest.param(
                     pd.arrays.ArrowExtensionArray,
                     id="pd.arrays.ArrowExtensionArray",
                 ),
             )
-            if HAS_PD
+            if HAS_PD and HAS_PA
             else ()
         ),
     )
@@ -236,12 +281,12 @@ def sequence_type(request):
                 return pd.array(value)
             return pd.array(value, dtype=object)
 
-    elif HAS_PD and request.param is pd.arrays.NumpyExtensionArray:
+    elif HAS_PD and HAS_NP and request.param is pd.arrays.NumpyExtensionArray:
 
         def constructor(value):
             return pd.arrays.NumpyExtensionArray(np.array(value))
 
-    elif HAS_PD and request.param is pd.arrays.ArrowExtensionArray:
+    elif HAS_PD and HAS_PA and request.param is pd.arrays.ArrowExtensionArray:
 
         def constructor(value):
             def _map_value(v):
@@ -272,7 +317,7 @@ class TestPackStream:
         assert_packable(bool_type(True), b"\xc3")
         assert_packable(bool_type(False), b"\xc2")
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         "dtype",
         (bool, *((pd.BooleanDtype(),) if HAS_PD else ())),
@@ -289,16 +334,22 @@ class TestPackStream:
                 continue  # not representable
             assert_packable(z_typed, bytes(bytearray([z + 0x100])))
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         "dtype",
         (
             int,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.longlong,
+            *(
+                (
+                    np.int8,
+                    np.int16,
+                    np.int32,
+                    np.int64,
+                    np.longlong,
+                )
+                if HAS_NP
+                else ()
+            ),
             *(
                 (
                     pd.Int8Dtype(),
@@ -373,15 +424,21 @@ class TestPackStream:
             expected = b"\xcb" + struct.pack(">q", z)
             assert_packable(z_typed, expected)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         "dtype",
         (
             int,
-            np.int64,
-            np.longlong,
-            np.uint64,
-            np.ulonglong,
+            *(
+                (
+                    np.int64,
+                    np.longlong,
+                    np.uint64,
+                    np.ulonglong,
+                )
+                if HAS_NP
+                else ()
+            ),
             *(
                 (
                     pd.Int64Dtype(),
@@ -408,13 +465,19 @@ class TestPackStream:
             expected = b"\xcb" + struct.pack(">q", z)
             assert_packable(z_typed, expected)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         "dtype",
         (
             int,
-            np.int64,
-            np.longlong,
+            *(
+                (
+                    np.int64,
+                    np.longlong,
+                )
+                if HAS_NP
+                else ()
+            ),
             *((pd.Int64Dtype(),) if HAS_PD else ()),
         ),
     )
@@ -460,15 +523,21 @@ class TestPackStream:
             expected = b"\xc1" + struct.pack(">d", float(z_typed))
             assert_packable(z_typed, expected)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         "dtype",
         (
             float,
-            np.float16,
-            np.float32,
-            np.float64,
-            np.longdouble,
+            *(
+                (
+                    np.float16,
+                    np.float32,
+                    np.float64,
+                    np.longdouble,
+                )
+                if HAS_NP
+                else ()
+            ),
             *(
                 (
                     pd.Float32Dtype(),
@@ -525,7 +594,7 @@ class TestPackStream:
         b_typed = bytes_type(b)
         assert_packable(b_typed, b"\xce\x00\x01\x38\x80" + b)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_bytes_pandas_series(self, assert_packable):
         for b, header in (
             (b"", b"\xcc\x00"),
@@ -574,12 +643,12 @@ class TestPackStream:
         t_typed = str_type(t)
         assert_packable(t_typed, bytes(bytearray([0x80 + len(b)])) + b)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize(
         "dtype",
         (
             str,
-            np.str_,
+            *((np.str_,) if HAS_NP else ()),
             *(
                 (
                     pd.StringDtype("python"),
@@ -651,7 +720,7 @@ class TestPackStream:
             l_typed = sequence_type([sequence_type([sequence_type([])])])
         assert_packable(l_typed, b"\x91\x91\x90", list_)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize("as_series", (True, False))
     def test_list_pandas_categorical(self, as_series, pack, assert_packable):
         animals = ["cat", "dog", "cat", "cat", "dog", "horse"]
@@ -734,12 +803,12 @@ class TestPackStream:
         data_out = b"\xa1\xd2\x00\x01\x38\x80" + key.encode("utf-8") + b"\x01"
         assert_packable(d, data_out)
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     def test_empty_dataframe_maps(self, assert_packable):
         df = pd.DataFrame()
         assert_packable(df, b"\xa0", {})
 
-    @pytest.mark.skipif(pd is None, reason="pandas not installed")
+    @pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
     @pytest.mark.parametrize("size", range(0x10))
     def test_tiny_dataframes_maps(self, assert_packable, size):
         data_in = {}
