@@ -506,7 +506,8 @@ class BoltSocketBase(abc.ABC):
         return self._wait_for_write(self._socket.sendall, data)
 
     def close(self):
-        self.close_socket(self._socket)
+        with suppress(SocketDeadlineExceededError):
+            self._wait_for_write(self.close_socket, self._socket)
 
     def kill(self):
         self._socket.close()
