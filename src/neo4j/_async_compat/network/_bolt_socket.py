@@ -60,6 +60,7 @@ if t.TYPE_CHECKING:
     from ..._sync.io import Bolt
 
     _P = t.ParamSpec("_P")
+    _R = t.TypeVar("_R")
 
 
 log = logging.getLogger("neo4j.io")
@@ -87,7 +88,7 @@ def _validate_timeout(timeout):
         raise ValueError("Timeout value out of range")
 
 
-def _non_expired_timeout(
+def _deadline_timeout_fail_fast(
     deadline: Deadline | None,
     operation: str,
 ) -> float | None:
@@ -98,6 +99,20 @@ def _non_expired_timeout(
         return None
     if timeout <= 0:
         raise SocketDeadlineExceededError(f"{operation} timed out")
+    return timeout
+
+
+def _deadline_timeout_safe_expiration(
+    deadline: Deadline | None,
+    _operation: str,
+) -> float | None:
+    if deadline is None:
+        return None
+    timeout = deadline.to_timeout()
+    if timeout is None:
+        return None
+    if timeout <= 0:
+        return 0.001  # use a very brief timeout instead
     return timeout
 
 
@@ -141,12 +156,12 @@ class AsyncBoltSocketBase(abc.ABC):
         name: str,
         timeout: float | None,
         deadline: Deadline | None,
-        io_async_fn: t.Callable[_P, t.Coroutine],
+        io_async_fn: t.Callable[_P, t.Coroutine[t.Any, t.Any, _R]],
         *args: _P.args,
         **kwargs: _P.kwargs,
-    ) -> None:
+    ) -> _R:
         to_raise: type[Exception] = TimeoutError
-        deadline_timeout = _non_expired_timeout(deadline, name)
+        deadline_timeout = _deadline_timeout_fail_fast(deadline, name)
         if deadline_timeout is not None and (
             timeout is None or deadline_timeout <= timeout
         ):
@@ -303,7 +318,7 @@ class AsyncBoltSocketBase(abc.ABC):
 
             try:
                 if ssl_context is not None:
-                    ssl_timeout = _non_expired_timeout(
+                    ssl_timeout = _deadline_timeout_fail_fast(
                         deadline, "SSL handshake"
                     )
                     if ssl_timeout is not None:
@@ -432,6 +447,7 @@ class BoltSocketBase(abc.ABC):
             "read",
             self._read_timeout,
             self._read_deadline,
+            _deadline_timeout_fail_fast,
             func,
             *args,
             **kwargs,
@@ -442,6 +458,18 @@ class BoltSocketBase(abc.ABC):
             "write",
             self._write_timeout,
             self._write_deadline,
+            _deadline_timeout_fail_fast,
+            func,
+            *args,
+            **kwargs,
+        )
+
+    def _wait_for_guaranteed_write(self, func, *args, **kwargs):
+        return self._wait_for_io(
+            "write",
+            self._write_timeout,
+            self._write_deadline,
+            _deadline_timeout_safe_expiration,
             func,
             *args,
             **kwargs,
@@ -452,12 +480,13 @@ class BoltSocketBase(abc.ABC):
         name: str,
         timeout: float | None,
         deadline: Deadline | None,
-        func: t.Callable[_P, t.Any],
+        deadline_conversion: t.Callable[[Deadline | None, str], float | None],
+        func: t.Callable[_P, _R],
         *args: _P.args,
         **kwargs: _P.kwargs,
-    ) -> None:
+    ) -> _R:
         rewrite_error = False
-        deadline_timeout = _non_expired_timeout(deadline, name)
+        deadline_timeout = deadline_conversion(deadline, name)
         if deadline_timeout is not None and (
             timeout is None or deadline_timeout <= timeout
         ):
@@ -507,7 +536,7 @@ class BoltSocketBase(abc.ABC):
 
     def close(self):
         with suppress(SocketDeadlineExceededError):
-            self._wait_for_write(self.close_socket, self._socket)
+            self._wait_for_guaranteed_write(self.close_socket, self._socket)
 
     def kill(self):
         self._socket.close()
@@ -575,7 +604,7 @@ class BoltSocketBase(abc.ABC):
                 log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
                 try:
                     t = s.gettimeout()
-                    ssl_timeout = _non_expired_timeout(
+                    ssl_timeout = _deadline_timeout_fail_fast(
                         deadline, "SSL handshake"
                     )
                     if ssl_timeout is not None:
