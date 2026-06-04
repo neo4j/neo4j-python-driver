@@ -331,7 +331,7 @@ class AsyncBolt:
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
         else:
-            await AsyncBoltSocket.close_socket(s)
+            AsyncBoltSocket.close_socket(s)
             return protocol_version
 
     @staticmethod
@@ -377,7 +377,7 @@ class AsyncBolt:
         bolt_cls = protocol_handlers.get(protocol_version)
         if bolt_cls is None:
             log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
-            await AsyncBoltSocket.close_socket(s)
+            AsyncBoltSocket.close_socket(s)
             raise UnsupportedServerProduct(
                 "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "

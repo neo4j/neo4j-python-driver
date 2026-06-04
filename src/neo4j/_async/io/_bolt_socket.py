@@ -350,7 +350,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                     err_str,
                 )
                 if s:
-                    await cls.close_socket(s)
+                    cls.close_socket(s)
                 errors.append(error)
                 failed_addresses.append(resolved_address)
             except asyncio.CancelledError:
@@ -366,7 +366,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                 raise
             except Exception:
                 if s:
-                    await cls.close_socket(s)
+                    cls.close_socket(s)
                 raise
         address_strs = tuple(map(str, failed_addresses))
         # TODO: 7.0 - when Python 3.11+ is the minimum, use exception groups

@@ -227,7 +227,7 @@ class AsyncBoltSocketBase(abc.ABC):
         self._writer.write(data)
         return await self._wait_for_write(self._writer.drain)
 
-    def close(self):
+    def close(self) -> None:
         # Simulate `SO_LINGER` off:
         # flush data and close socket in the background, don't block
         with suppress(OSError):
@@ -383,14 +383,14 @@ class AsyncBoltSocketBase(abc.ABC):
     ) -> tuple[t.Self, BoltProtocolVersion]: ...
 
     @classmethod
-    async def close_socket(cls, socket_):
+    def close_socket(cls, socket_: t.Self | socket) -> None:
         if isinstance(socket_, AsyncBoltSocketBase):
             socket_.close()
         else:
             cls._kill_raw_socket(socket_)
 
     @classmethod
-    def _kill_raw_socket(cls, socket_):
+    def _kill_raw_socket(cls, socket_: socket) -> None:
         with suppress(OSError):
             socket_.shutdown(SHUT_RDWR)
         with suppress(OSError):
@@ -506,7 +506,7 @@ class BoltSocketBase(abc.ABC):
     def sendall(self, data):
         return self._wait_for_write(self._socket.sendall, data)
 
-    def close(self):
+    def close(self) -> None:
         self.close_socket(self._socket)
 
     @classmethod
@@ -642,13 +642,14 @@ class BoltSocketBase(abc.ABC):
     ) -> tuple[t.Self, BoltProtocolVersion]: ...
 
     @classmethod
-    def close_socket(cls, socket_):
+    def close_socket(cls, socket_: t.Self | socket) -> None:
         if isinstance(socket_, BoltSocketBase):
-            socket_ = socket_._socket
-        cls._kill_raw_socket(socket_)
+            cls._kill_raw_socket(socket_._socket)
+        else:
+            cls._kill_raw_socket(socket_)
 
     @classmethod
-    def _kill_raw_socket(cls, socket_):
+    def _kill_raw_socket(cls, socket_: socket) -> None:
         with suppress(OSError):
             socket_.shutdown(SHUT_RDWR)
         with suppress(OSError):
