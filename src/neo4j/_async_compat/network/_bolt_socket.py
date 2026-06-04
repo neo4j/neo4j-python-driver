@@ -88,7 +88,7 @@ def _validate_timeout(timeout):
         raise ValueError("Timeout value out of range")
 
 
-def _deadline_timeout_fail_fast(
+def _non_expired_timeout(
     deadline: Deadline | None,
     operation: str,
 ) -> float | None:
@@ -147,7 +147,7 @@ class AsyncBoltSocketBase(abc.ABC):
         **kwargs: _P.kwargs,
     ) -> _R:
         to_raise: type[Exception] = TimeoutError
-        deadline_timeout = _deadline_timeout_fail_fast(deadline, name)
+        deadline_timeout = _non_expired_timeout(deadline, name)
         if deadline_timeout is not None and (
             timeout is None or deadline_timeout <= timeout
         ):
@@ -302,7 +302,7 @@ class AsyncBoltSocketBase(abc.ABC):
 
             try:
                 if ssl_context is not None:
-                    ssl_timeout = _deadline_timeout_fail_fast(
+                    ssl_timeout = _non_expired_timeout(
                         deadline, "SSL handshake"
                     )
                     if ssl_timeout is not None:
@@ -430,7 +430,7 @@ class BoltSocketBase(abc.ABC):
             "read",
             self._read_timeout,
             self._read_deadline,
-            _deadline_timeout_fail_fast,
+            _non_expired_timeout,
             func,
             *args,
             **kwargs,
@@ -441,7 +441,7 @@ class BoltSocketBase(abc.ABC):
             "write",
             self._write_timeout,
             self._write_deadline,
-            _deadline_timeout_fail_fast,
+            _non_expired_timeout,
             func,
             *args,
             **kwargs,
@@ -572,7 +572,7 @@ class BoltSocketBase(abc.ABC):
                 log.debug("[#%04X]  C: <SECURE> %s", local_port, hostname)
                 try:
                     t = s.gettimeout()
-                    ssl_timeout = _deadline_timeout_fail_fast(
+                    ssl_timeout = _non_expired_timeout(
                         deadline, "SSL handshake"
                     )
                     if ssl_timeout is not None:
