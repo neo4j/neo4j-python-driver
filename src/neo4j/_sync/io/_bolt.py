@@ -386,7 +386,7 @@ class Bolt:
 
         try:
             auth = Util.callback(auth_manager.get_auth)
-        except Exception as e:
+        except (Exception, asyncio.CancelledError) as e:
             log.debug(
                 "[#%04X]  C: <CLOSE> open auth manager failed: %r",
                 s.getsockname()[1],

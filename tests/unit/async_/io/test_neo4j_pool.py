@@ -314,7 +314,7 @@ async def test_closes_stale_connections(opener, break_on_close):
     if break_on_close:
         cx1.close.assert_called()
     else:
-        cx1.close.assert_called_once()
+        cx1.close.assert_awaited_once()
     assert cx2 is not cx1
     assert cx2.unresolved_address == cx1.unresolved_address
     assert cx1 not in pool.connections[cx1.unresolved_address]
@@ -344,7 +344,7 @@ async def test_does_not_close_stale_connections_in_use(opener):
 
     cx3 = await pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
     await pool.release(cx3)
-    cx1.close.assert_called_once()
+    cx1.close.assert_awaited_once()
     assert cx2 is cx3
     assert cx3.unresolved_address == cx1.unresolved_address
     assert cx1 not in pool.connections[cx1.unresolved_address]
