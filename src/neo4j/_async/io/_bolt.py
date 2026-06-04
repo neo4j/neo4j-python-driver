@@ -386,21 +386,13 @@ class AsyncBolt:
 
         try:
             auth = await AsyncUtil.callback(auth_manager.get_auth)
-        except asyncio.CancelledError as e:
-            log.debug(
-                "[#%04X]  C: <KILL> open auth manager failed: %r",
-                s.getsockname()[1],
-                e,
-            )
-            s.kill()
-            raise
         except Exception as e:
             log.debug(
                 "[#%04X]  C: <CLOSE> open auth manager failed: %r",
                 s.getsockname()[1],
                 e,
             )
-            await s.close()
+            s.close()
             raise
 
         connection = bolt_cls(
@@ -998,17 +990,20 @@ class AsyncBolt:
             self.goodbye()
             try:
                 await self._send_all()
-            except (OSError, BoltError, DriverError) as exc:
+            except (
+                OSError,
+                BoltError,
+                DriverError,
+                SocketDeadlineExceededError,
+            ) as exc:
                 log.debug(
-                    "[#%04X]  _: <CONNECTION> ignoring failed close %r",
+                    "[#%04X]  _: <CONNECTION> ignoring failed final flush %r",
                     self.local_port,
                     exc,
                 )
         log.debug("[#%04X]  C: <CLOSE>", self.local_port)
         try:
-            await self.socket.close()
-        except OSError:
-            pass
+            self.socket.close()
         finally:
             self._closed = True
 
@@ -1019,13 +1014,7 @@ class AsyncBolt:
         log.debug("[#%04X]  C: <KILL>", self.local_port)
         self._closing = True
         try:
-            self.socket.kill()
-        except OSError as exc:
-            log.debug(
-                "[#%04X]  _: <CONNECTION> ignoring failed kill %r",
-                self.local_port,
-                exc,
-            )
+            self.socket.close()
         finally:
             self._closed = True
 

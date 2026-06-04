@@ -362,8 +362,7 @@ class BoltSocket(BoltSocketBase):
                     "[#%04X]  C: <CANCELED> %s", local_port, resolved_address
                 )
                 if s:
-                    with suppress(OSError):
-                        s.kill()
+                    s.close()
                 raise
             except Exception:
                 if s:

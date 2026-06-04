@@ -102,20 +102,6 @@ def _deadline_timeout_fail_fast(
     return timeout
 
 
-def _deadline_timeout_safe_expiration(
-    deadline: Deadline | None,
-    _operation: str,
-) -> float | None:
-    if deadline is None:
-        return None
-    timeout = deadline.to_timeout()
-    if timeout is None:
-        return None
-    if timeout <= 0:
-        return 0.001  # use a very brief timeout instead
-    return timeout
-
-
 class AsyncBoltSocketBase(abc.ABC):
     Bolt: t.Final[type[AsyncBolt]] = None  # type: ignore[assignment]
 
@@ -241,13 +227,11 @@ class AsyncBoltSocketBase(abc.ABC):
         self._writer.write(data)
         return await self._wait_for_write(self._writer.drain)
 
-    async def close(self):
-        self._writer.close()
-        with suppress(OSError, SocketDeadlineExceededError):
-            await self._wait_for_write(self._writer.drain)
-
-    def kill(self):
-        self._writer.close()
+    def close(self):
+        # Simulate `SO_LINGER` off:
+        # flush data and close socket in the background, don't block
+        with suppress(OSError):
+            self._writer.close()
 
     @classmethod
     async def _connect_secure(
@@ -401,8 +385,7 @@ class AsyncBoltSocketBase(abc.ABC):
     @classmethod
     async def close_socket(cls, socket_):
         if isinstance(socket_, AsyncBoltSocketBase):
-            with suppress(OSError):
-                await socket_.close()
+            socket_.close()
         else:
             cls._kill_raw_socket(socket_)
 
@@ -459,17 +442,6 @@ class BoltSocketBase(abc.ABC):
             self._write_timeout,
             self._write_deadline,
             _deadline_timeout_fail_fast,
-            func,
-            *args,
-            **kwargs,
-        )
-
-    def _wait_for_guaranteed_write(self, func, *args, **kwargs):
-        return self._wait_for_io(
-            "write",
-            self._write_timeout,
-            self._write_deadline,
-            _deadline_timeout_safe_expiration,
             func,
             *args,
             **kwargs,
@@ -535,11 +507,7 @@ class BoltSocketBase(abc.ABC):
         return self._wait_for_write(self._socket.sendall, data)
 
     def close(self):
-        with suppress(SocketDeadlineExceededError):
-            self._wait_for_guaranteed_write(self.close_socket, self._socket)
-
-    def kill(self):
-        self._socket.close()
+        self.close_socket(self._socket)
 
     @classmethod
     def _connect_secure(
