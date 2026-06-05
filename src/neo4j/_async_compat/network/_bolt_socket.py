@@ -192,7 +192,6 @@ class AsyncBoltSocketBase(abc.ABC):
 
     async def close(self):
         self._writer.close()
-        await self._writer.wait_closed()
 
     def kill(self):
         self._writer.close()
