@@ -71,13 +71,6 @@ def async_bolt_socket_factory(mocker) -> _SocketFactory[AsyncBoltSocket]:
                 bytes_written.extend(write_buffer)
             write_buffer.clear()
 
-        def transport_get_extra(key):
-            if key == "sockname":
-                return "localhost", 0x1234
-            if key == "peername":
-                return "peer_name"
-            raise KeyError(f"not mocked: {key}")
-
         reader = mocker.Mock(spec=asyncio.StreamReader)
         writer = mocker.Mock(spec=asyncio.StreamWriter)
         protocol = mocker.Mock(spec=asyncio.StreamReaderProtocol)
@@ -85,9 +78,11 @@ def async_bolt_socket_factory(mocker) -> _SocketFactory[AsyncBoltSocket]:
         reader.read.side_effect = read
         writer.write.side_effect = write
         writer.drain.side_effect = drain
-        writer.transport.get_extra_info.side_effect = transport_get_extra
 
-        return AsyncBoltSocket(reader, protocol, writer)
+        sockname = "localhost", 0x1234
+        peername = "peer_name"
+
+        return AsyncBoltSocket(reader, protocol, writer, sockname, peername)
 
     return factory
 
@@ -120,10 +115,10 @@ def bolt_socket_factory(mocker) -> _SocketFactory[BoltSocket]:
         socket_mock.recv.side_effect = recv
         socket_mock.recv_into.side_effect = recv_into
         socket_mock.sendall.side_effect = send_all
-        socket_mock.getsockname.return_value = ("localhost", 0x1234)
-        socket_mock.getpeername.return_value = "peer_name"
+        sockname = "localhost", 0x1234
+        peername = "peer_name"
         socket_mock.gettimeout.return_value = None
 
-        return BoltSocket(socket_mock)
+        return BoltSocket(socket_mock, sockname, peername)
 
     return factory

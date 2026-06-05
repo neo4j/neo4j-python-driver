@@ -100,7 +100,7 @@ def _non_expired_timeout(
 class AsyncBoltSocketBase(abc.ABC):
     Bolt: te.Final[type[AsyncBolt]] = None  # type: ignore[assignment]
 
-    def __init__(self, reader, protocol, writer) -> None:
+    def __init__(self, reader, protocol, writer, sockname, peername) -> None:
         self._reader = reader  # type: asyncio.StreamReader
         self._protocol = protocol  # type: asyncio.StreamReaderProtocol
         self._writer = writer  # type: asyncio.StreamWriter
@@ -109,6 +109,8 @@ class AsyncBoltSocketBase(abc.ABC):
         # int - seconds to wait for data
         self._timeout: float | None = None
         self._deadline: Deadline | None = None
+        self._sockname = sockname
+        self._peername = peername
 
     async def _wait_for_io(
         self,
@@ -157,10 +159,10 @@ class AsyncBoltSocketBase(abc.ABC):
         return self._writer.transport.get_extra_info("socket")
 
     def getsockname(self):
-        return self._writer.transport.get_extra_info("sockname")
+        return self._sockname
 
     def getpeername(self):
-        return self._writer.transport.get_extra_info("peername")
+        return self._peername
 
     def getpeercert(self, *args, **kwargs):
         return self._writer.transport.get_extra_info("ssl_object").getpeercert(
@@ -230,7 +232,10 @@ class AsyncBoltSocketBase(abc.ABC):
             if timeout == 0:  # socket timeout of 0 => non-blocking
                 timeout = None
             await wait_for(loop.sock_connect(s, resolved_address), timeout)
-            local_port = s.getsockname()[1]
+
+            sockname = s.getsockname()
+            peername = s.getpeername()
+            local_port = sockname[1]
 
             keep_alive = 1 if keep_alive else 0
             s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
@@ -271,14 +276,13 @@ class AsyncBoltSocketBase(abc.ABC):
                     "ssl_object"
                 ).getpeercert(binary_form=True)
                 if der_encoded_server_certificate is None:
-                    local_port = s.getsockname()[1]
                     raise BoltProtocolError(
                         "When using an encrypted socket, the server should "
                         "always provide a certificate",
                         address=(resolved_address._host_name, local_port),
                     )
 
-            return cls(reader, protocol, writer)
+            return cls(reader, protocol, writer, sockname, peername)
 
         except asyncio.TimeoutError:
             log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
@@ -363,8 +367,10 @@ class AsyncBoltSocketBase(abc.ABC):
 class BoltSocketBase:
     Bolt: te.Final[type[Bolt]] = None  # type: ignore[assignment]
 
-    def __init__(self, socket_: socket):
+    def __init__(self, socket_: socket, sockname, peername):
         self._socket = socket_
+        self._sockname = sockname
+        self._peername = peername
         self._deadline: Deadline | None = None
 
     @property
@@ -374,20 +380,23 @@ class BoltSocketBase:
     @_socket.setter
     def _socket(self, socket_: socket | SSLSocket) -> None:
         self.__socket = socket_
-        self.getsockname = socket_.getsockname
-        self.getpeername = socket_.getpeername
         if hasattr(socket, "getpeercert"):
             self.getpeercert = t.cast(SSLSocket, socket_).getpeercert
         elif "getpeercert" in self.__dict__:
             del self.__dict__["getpeercert"]
+            socket_.getsockname()
         self.gettimeout = socket_.gettimeout
         self.settimeout = socket_.settimeout
 
-    getsockname: t.Callable = None  # type: ignore
-    getpeername: t.Callable = None  # type: ignore
     getpeercert: t.Callable = None  # type: ignore
     gettimeout: t.Callable = None  # type: ignore
     settimeout: t.Callable = None  # type: ignore
+
+    def getsockname(self):
+        return self._sockname
+
+    def getpeername(self):
+        return self._peername
 
     def _wait_for_io(
         self,
@@ -488,7 +497,9 @@ class BoltSocketBase:
                     ) from error
                 raise
 
-            local_port = s.getsockname()[1]
+            sockname = s.getsockname()
+            peername = s.getpeername()
+            local_port = sockname[1]
             # Secure the connection if an SSL context has been provided
             if ssl_context:
                 hostname = resolved_address._host_name or None
@@ -529,7 +540,7 @@ class BoltSocketBase:
                 cls._kill_raw_socket(s)
             raise
 
-        return cls(s)
+        return cls(s, sockname, peername)
 
     @abc.abstractmethod
     def _handshake(self, resolved_address, deadline): ...
