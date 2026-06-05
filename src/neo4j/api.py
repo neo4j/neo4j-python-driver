@@ -444,7 +444,7 @@ class Version(_version_base):
         return bytes(b)
 
     @classmethod
-    def from_bytes(cls, b: bytes) -> Version:
+    def from_bytes(cls, b: bytes | bytearray) -> Version:
         b = bytearray(b)
         if len(b) != 4:
             raise ValueError("Byte representation must be exactly four bytes")
