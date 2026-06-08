@@ -384,7 +384,6 @@ class BoltSocketBase:
             self.getpeercert = t.cast(SSLSocket, socket_).getpeercert
         elif "getpeercert" in self.__dict__:
             del self.__dict__["getpeercert"]
-            socket_.getsockname()
         self.gettimeout = socket_.gettimeout
         self.settimeout = socket_.settimeout
 
