@@ -225,6 +225,13 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# https://github.com/apache/arrow/issues/50123
+module = [
+    "pyarrow.*",
+]
+follow_imports = "skip"
+
 [tool.ruff]
 line-length = 79
 extend-exclude = [

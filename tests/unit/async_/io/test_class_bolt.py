@@ -275,7 +275,7 @@ async def test_cancel_auth_manager_in_open(mocker):
     with pytest.raises(asyncio.CancelledError):
         await AsyncBolt.open(address, auth_manager=auth_manager)
 
-    socket_mock.kill.assert_called_once_with()
+    socket_mock.close.assert_called_once_with()
 
 
 @AsyncTestDecorators.mark_async_only_test
@@ -326,11 +326,7 @@ async def test_error_handler_bubbling(
         await handler(error)
     assert exc.value is error
 
-    if isinstance(error, asyncio.CancelledError):
-        connection.socket.kill.assert_called_once()
-        connection.socket.close.assert_not_called()
-    else:
-        connection.socket.close.assert_awaited_once()
+    connection.socket.close.assert_called_once()
 
     assert connection.closed()
     assert connection.defunct()
@@ -370,7 +366,7 @@ async def test_error_handler_rewritten(
     with pytest.raises(expected_error) as exc:
         await handler(error)
     assert exc.value.__cause__ is error
-    connection.socket.close.assert_awaited_once()
+    connection.socket.close.assert_called_once()
 
     assert connection.closed()
     assert connection.defunct()
