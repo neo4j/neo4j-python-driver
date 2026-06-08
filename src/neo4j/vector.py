@@ -32,10 +32,12 @@ if _t.TYPE_CHECKING:
     # This beautiful construct helps sphinx to properly resolve the type hints.
     import numpy as _np
     import pyarrow as _pa
+    import pyarrow.compute as _pa_compute
 else:
     from ._optional_deps import (
         np as _np,
         pa as _pa,
+        pa_compute as _pa_compute,
     )
 
 
@@ -795,7 +797,7 @@ class _InnerVector(_abc.ABC):
     def from_pyarrow(cls, data: _pa.Array, /) -> _t.Self:
         width = data.type.byte_width
         assert cls.size == width
-        if _pa.compute.count(data, mode="only_null").as_py():
+        if _pa_compute.count(data, mode="only_null").as_py():
             raise ValueError("PyArrow array must not contain any null values.")
         _, buffer = data.buffers()
         buffer = buffer[

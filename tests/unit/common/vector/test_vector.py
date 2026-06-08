@@ -28,6 +28,7 @@ import pytest
 from neo4j._optional_deps import (
     np,
     pa,
+    pa_compute,
 )
 from neo4j.vector import (
     _swap_endian,
@@ -1044,7 +1045,7 @@ def test_to_pyarrow_random(
         v = _vector_from_data(data_be, dtype, endian)
         array = v.to_pyarrow()
         assert array.type == pa_type
-        assert pa.compute.count(array, mode="only_null").as_py() == 0
+        assert pa_compute.count(array, mode="only_null").as_py() == 0
         buffers = array.buffers()
         assert len(buffers) == 2
         assert buffers[0] is None
@@ -1076,7 +1077,7 @@ def test_to_pyarrow_special_values(
     v = _vector_from_data(data_be, dtype, endian)
     array = v.to_pyarrow()
     assert array.type == pa_type
-    assert pa.compute.count(array, mode="only_null").as_py() == 0
+    assert pa_compute.count(array, mode="only_null").as_py() == 0
     buffers = array.buffers()
     assert len(buffers) == 2
     assert buffers[0] is None
