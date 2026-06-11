@@ -847,7 +847,7 @@ There are different *mutually exclusive* ways of configuring TLS/SSL encryption 
 
 All options except for configuring a custom :ref:`ssl-context-ref` will check the
 environment variable ``SSLKEYLOGFILE``.
-If the variable is set, it's value will be assinged to
+If the variable is set, its value will be assinged to
 :attr:`ssl.SSLContext.keylog_filename` to enable keyfile logging.
 
 
