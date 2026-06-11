@@ -60,6 +60,7 @@ if t.TYPE_CHECKING:
     from ..._sync.io import Bolt
 
     _P = t.ParamSpec("_P")
+    _R = t.TypeVar("_R")
 
 
 log = logging.getLogger("neo4j.io")
@@ -141,10 +142,10 @@ class AsyncBoltSocketBase(abc.ABC):
         name: str,
         timeout: float | None,
         deadline: Deadline | None,
-        io_async_fn: t.Callable[_P, t.Coroutine],
+        io_async_fn: t.Callable[_P, t.Coroutine[t.Any, t.Any, _R]],
         *args: _P.args,
         **kwargs: _P.kwargs,
-    ) -> None:
+    ) -> _R:
         to_raise: type[Exception] = TimeoutError
         deadline_timeout = _non_expired_timeout(deadline, name)
         if deadline_timeout is not None and (
@@ -226,12 +227,11 @@ class AsyncBoltSocketBase(abc.ABC):
         self._writer.write(data)
         return await self._wait_for_write(self._writer.drain)
 
-    async def close(self):
-        self._writer.close()
-        await self._writer.wait_closed()
-
-    def kill(self):
-        self._writer.close()
+    def close(self) -> None:
+        # Simulate `SO_LINGER` off:
+        # flush data and close socket in the background, don't block
+        with suppress(OSError):
+            self._writer.close()
 
     @classmethod
     async def _connect_secure(
@@ -383,15 +383,14 @@ class AsyncBoltSocketBase(abc.ABC):
     ) -> tuple[t.Self, BoltProtocolVersion]: ...
 
     @classmethod
-    async def close_socket(cls, socket_):
+    def close_socket(cls, socket_: t.Self | socket) -> None:
         if isinstance(socket_, AsyncBoltSocketBase):
-            with suppress(OSError):
-                await socket_.close()
+            socket_.close()
         else:
             cls._kill_raw_socket(socket_)
 
     @classmethod
-    def _kill_raw_socket(cls, socket_):
+    def _kill_raw_socket(cls, socket_: socket) -> None:
         with suppress(OSError):
             socket_.shutdown(SHUT_RDWR)
         with suppress(OSError):
@@ -431,6 +430,7 @@ class BoltSocketBase(abc.ABC):
             "read",
             self._read_timeout,
             self._read_deadline,
+            _non_expired_timeout,
             func,
             *args,
             **kwargs,
@@ -441,6 +441,7 @@ class BoltSocketBase(abc.ABC):
             "write",
             self._write_timeout,
             self._write_deadline,
+            _non_expired_timeout,
             func,
             *args,
             **kwargs,
@@ -451,12 +452,13 @@ class BoltSocketBase(abc.ABC):
         name: str,
         timeout: float | None,
         deadline: Deadline | None,
-        func: t.Callable[_P, t.Any],
+        deadline_conversion: t.Callable[[Deadline | None, str], float | None],
+        func: t.Callable[_P, _R],
         *args: _P.args,
         **kwargs: _P.kwargs,
-    ) -> None:
+    ) -> _R:
         rewrite_error = False
-        deadline_timeout = _non_expired_timeout(deadline, name)
+        deadline_timeout = deadline_conversion(deadline, name)
         if deadline_timeout is not None and (
             timeout is None or deadline_timeout <= timeout
         ):
@@ -504,11 +506,8 @@ class BoltSocketBase(abc.ABC):
     def sendall(self, data):
         return self._wait_for_write(self._socket.sendall, data)
 
-    def close(self):
+    def close(self) -> None:
         self.close_socket(self._socket)
-
-    def kill(self):
-        self._socket.close()
 
     @classmethod
     def _connect_secure(
@@ -643,13 +642,14 @@ class BoltSocketBase(abc.ABC):
     ) -> tuple[t.Self, BoltProtocolVersion]: ...
 
     @classmethod
-    def close_socket(cls, socket_):
+    def close_socket(cls, socket_: t.Self | socket) -> None:
         if isinstance(socket_, BoltSocketBase):
-            socket_ = socket_._socket
-        cls._kill_raw_socket(socket_)
+            cls._kill_raw_socket(socket_._socket)
+        else:
+            cls._kill_raw_socket(socket_)
 
     @classmethod
-    def _kill_raw_socket(cls, socket_):
+    def _kill_raw_socket(cls, socket_: socket) -> None:
         with suppress(OSError):
             socket_.shutdown(SHUT_RDWR)
         with suppress(OSError):

@@ -32,13 +32,16 @@ with suppress(ImportError):
     import pandas as pd  # type: ignore[no-redef]
 
 pa: t.Any = None
+pa_compute: t.Any = None
 
 with suppress(ImportError):
     import pyarrow as pa  # type: ignore[no-redef]
+    import pyarrow.compute as pa_compute  # type: ignore[no-redef]
 
 
 __all__ = [
     "np",
     "pa",
+    "pa_compute",
     "pd",
 ]

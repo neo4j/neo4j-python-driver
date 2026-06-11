@@ -177,7 +177,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
             # If no data is returned after a successful select
             # response, the server has closed the connection
             log.debug("[#%04X]  S: <CLOSE>", ctx.local_port)
-            await self.close()
+            self.close()
             raise ServiceUnavailable(
                 f"Connection to {ctx.resolved_address} closed with incomplete "
                 f"handshake response"
@@ -185,7 +185,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
         if data_size != n:
             # Some garbled data has been received
             log.debug("[#%04X]  S: @*#!", ctx.local_port)
-            await self.close()
+            self.close()
             raise BoltProtocolError(
                 f"Expected {ctx.ctx} from {ctx.resolved_address!r}, received "
                 f"{response!r} instead (so far {ctx.full_response!r}); "
@@ -264,7 +264,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
 
         if response == b"HTTP":
             log.debug("[#%04X]  C: <CLOSE> (received b'HTTP')", local_port)
-            await self.close()
+            self.close()
             raise ServiceUnavailable(
                 f"Cannot to connect to Bolt service on {resolved_address!r} "
                 "(looks like HTTP)"
@@ -350,7 +350,7 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                     err_str,
                 )
                 if s:
-                    await cls.close_socket(s)
+                    cls.close_socket(s)
                 errors.append(error)
                 failed_addresses.append(resolved_address)
             except asyncio.CancelledError:
@@ -362,12 +362,11 @@ class AsyncBoltSocket(AsyncBoltSocketBase):
                     "[#%04X]  C: <CANCELED> %s", local_port, resolved_address
                 )
                 if s:
-                    with suppress(OSError):
-                        s.kill()
+                    s.close()
                 raise
             except Exception:
                 if s:
-                    await cls.close_socket(s)
+                    cls.close_socket(s)
                 raise
         address_strs = tuple(map(str, failed_addresses))
         # TODO: 7.0 - when Python 3.11+ is the minimum, use exception groups
