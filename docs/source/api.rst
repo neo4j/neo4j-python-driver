@@ -845,6 +845,10 @@ There are different *mutually exclusive* ways of configuring TLS/SSL encryption 
   * or set :ref:`ssl-context-ref` to gain full control (and responsibility) over the TLS configuration.
   * or set ``encrypted=False`` (default) to disable TLS.
 
+All options except for configuring a custom :ref:`ssl-context-ref` will check the
+environment variable ``SSLKEYLOGFILE``.
+If the variable is set, its value will be assinged to
+:attr:`ssl.SSLContext.keylog_filename` to enable key logging.
 
 
 Driver Object Lifetime

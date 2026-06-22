@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import os
+
 from .. import _typing as t
 from .._async_compat.concurrency import AsyncLock
 from .._conf import (
@@ -153,6 +155,12 @@ class AsyncPoolConfig(Config):
             # For recommended security options see
             # https://docs.python.org/3.10/library/ssl.html#protocol-versions
             ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+            # Follow Python's `create_default_context` and respect the
+            # `SSLKEYLOGFILE` environment variable for key logging if present.
+            ssl_keylog_file = os.getenv("SSLKEYLOGFILE")
+            if ssl_keylog_file:
+                ssl_context.keylog_filename = ssl_keylog_file
 
             if isinstance(self.trusted_certificates, TrustAll):
                 # trust any certificate
