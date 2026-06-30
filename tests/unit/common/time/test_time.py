@@ -389,24 +389,26 @@ class TestTime:
 
     @pytest.mark.parametrize(
         ("t1", "t2"),
-        itertools.product(
-            (
-                time(12, 34, 56, 789123),
-                Time(12, 34, 56, 789123000),
-                time(12, 34, 56, 789123, FixedOffset(0)),
-                Time(12, 34, 56, 789123456, FixedOffset(0)),
-                time(12, 35, 56, 789123, FixedOffset(1)),
-                Time(12, 35, 56, 789123456, FixedOffset(1)),
-                time(12, 34, 56, 789123, FixedOffset(-1)),
-                Time(12, 34, 56, 789123456, FixedOffset(-1)),
-                time(12, 34, 56, 789123, FixedOffset(60 * -16)),
-                Time(12, 34, 56, 789123000, FixedOffset(60 * -16)),
-                time(11, 34, 56, 789123, FixedOffset(60 * -17)),
-                Time(11, 34, 56, 789123000, FixedOffset(60 * -17)),
-                Time(12, 34, 56, 789123456, FixedOffset(60 * -16)),
-                Time(11, 34, 56, 789123456, FixedOffset(60 * -17)),
-            ),
-            repeat=2,
+        tuple(
+            itertools.product(
+                (
+                    time(12, 34, 56, 789123),
+                    Time(12, 34, 56, 789123000),
+                    time(12, 34, 56, 789123, FixedOffset(0)),
+                    Time(12, 34, 56, 789123456, FixedOffset(0)),
+                    time(12, 35, 56, 789123, FixedOffset(1)),
+                    Time(12, 35, 56, 789123456, FixedOffset(1)),
+                    time(12, 34, 56, 789123, FixedOffset(-1)),
+                    Time(12, 34, 56, 789123456, FixedOffset(-1)),
+                    time(12, 34, 56, 789123, FixedOffset(60 * -16)),
+                    Time(12, 34, 56, 789123000, FixedOffset(60 * -16)),
+                    time(11, 34, 56, 789123, FixedOffset(60 * -17)),
+                    Time(11, 34, 56, 789123000, FixedOffset(60 * -17)),
+                    Time(12, 34, 56, 789123456, FixedOffset(60 * -16)),
+                    Time(11, 34, 56, 789123456, FixedOffset(60 * -17)),
+                ),
+                repeat=2,
+            )
         ),
     )
     def test_hashed_equality(self, t1, t2) -> None:
@@ -427,7 +429,7 @@ class TestTime:
 
     @pytest.mark.parametrize(
         ("t1", "t2"),
-        (
+        tuple(
             itertools.product(
                 (
                     time(12, 34, 56, 789123),
@@ -465,13 +467,15 @@ class TestTime:
 
     @pytest.mark.parametrize(
         ("t1", "t2"),
-        itertools.product(
-            (
-                time(12, 34, 56, 789123),
-                Time(12, 34, 56, 789123000),
-                Time(12, 34, 56, 789123001),
-            ),
-            repeat=2,
+        tuple(
+            itertools.product(
+                (
+                    time(12, 34, 56, 789123),
+                    Time(12, 34, 56, 789123000),
+                    Time(12, 34, 56, 789123001),
+                ),
+                repeat=2,
+            )
         ),
     )
     @pytest.mark.parametrize(

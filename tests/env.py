@@ -20,6 +20,9 @@ import typing as t
 from os import environ
 
 
+_TRUE_ENV_VALUES = {"1", "y", "yes", "true", "t", "on"}
+
+
 class _LazyEval(abc.ABC):
     @abc.abstractmethod
     def eval(self):
@@ -43,7 +46,7 @@ class _LazyEvalEnv(_LazyEval):
                     f"Missing environment variable {self.env_key}"
                 ) from e
         if self.type_ is bool:
-            return value.lower() in {"yes", "y", "1", "on", "true"}
+            return value.lower() in _TRUE_ENV_VALUES
         return self.type_(value)
 
 
@@ -86,9 +89,10 @@ NEO4J_SERVER_URI = _LazyEvalFunc(
         f"{_module.NEO4J_PORT}"
     )
 )
-
+IS_WIN = sys.platform in {"win32", "cygwin"}
 
 __all__ = (
+    "IS_WIN",
     "NEO4J_EDITION",
     "NEO4J_HOST",
     "NEO4J_IS_CLUSTER",

@@ -425,13 +425,15 @@ async def test_re_auth_noop(auth, fake_socket, mocker):
 
 @pytest.mark.parametrize(
     ("auth1", "auth2"),
-    itertools.permutations(
-        (
-            None,
-            neo4j.Auth("scheme", "principal", "credentials", "realm"),
-            ("user", "password"),
-        ),
-        2,
+    tuple(
+        itertools.permutations(
+            (
+                None,
+                neo4j.Auth("scheme", "principal", "credentials", "realm"),
+                ("user", "password"),
+            ),
+            2,
+        )
     ),
 )
 @mark_async_test
@@ -623,18 +625,24 @@ async def test_tx_timeout(
 
 @pytest.mark.parametrize(
     "sent_diag_records",
-    powerset(
-        (
-            ...,
-            None,
-            {},
-            [],
-            "1",
-            1,
-            {"OPERATION_CODE": "0"},
-            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
-        ),
-        upper_limit=3,
+    tuple(
+        powerset(
+            (
+                ...,
+                None,
+                {},
+                [],
+                "1",
+                1,
+                {"OPERATION_CODE": "0"},
+                {
+                    "OPERATION": "",
+                    "OPERATION_CODE": "0",
+                    "CURRENT_SCHEMA": "/",
+                },
+            ),
+            upper_limit=3,
+        )
     ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))

@@ -116,7 +116,7 @@ def test_static_manager(
 
 @mark_sync_test
 @pytest.mark.parametrize(
-    ("auth1", "auth2"), list(itertools.product(SAMPLE_AUTHS, repeat=2))
+    ("auth1", "auth2"), tuple(itertools.product(SAMPLE_AUTHS, repeat=2))
 )
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 def test_basic_manager_manual_expiry(
@@ -141,7 +141,7 @@ def test_basic_manager_manual_expiry(
 
 @mark_sync_test
 @pytest.mark.parametrize(
-    ("auth1", "auth2"), itertools.product(SAMPLE_AUTHS, repeat=2)
+    ("auth1", "auth2"), tuple(itertools.product(SAMPLE_AUTHS, repeat=2))
 )
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 @pytest.mark.parametrize("expires_at", (None, 0.001, 1, 1000.0))
@@ -170,7 +170,7 @@ def test_bearer_manager_manual_expiry(
 
 @mark_sync_test
 @pytest.mark.parametrize(
-    ("auth1", "auth2"), itertools.product(SAMPLE_AUTHS, repeat=2)
+    ("auth1", "auth2"), tuple(itertools.product(SAMPLE_AUTHS, repeat=2))
 )
 @pytest.mark.parametrize("expires_at", (None, -1, 1.0, 1, 1000.0))
 def test_bearer_manager_time_expiry(

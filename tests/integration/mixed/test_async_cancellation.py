@@ -107,7 +107,7 @@ REPETITIONS = 250
 @mark_async_test
 @pytest.mark.parametrize(
     ("i", "read_func", "waits", "cancel_count"),
-    (
+    tuple(
         (
             f"{i + 1:0{len(str(REPETITIONS))}}/{REPETITIONS}",
             random.choice(

@@ -24,6 +24,7 @@ pytest-asyncio~=0.21.2  # TODO: 6.0 - bump when support for Python 3.7 is droppe
 pytest-benchmark>=4.0.0
 pytest-cov>=4.1.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 pytest-mock>=3.11.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+pytest-timeout>=2.4.0    # TODO: 6.0 - bump when support for Python 3.7 is dropped
 tox>=4.8.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 
 # needed for building docs

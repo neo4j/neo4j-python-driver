@@ -34,6 +34,7 @@ from neo4j.time import (
     Time,
 )
 
+from ......_pandas_util import pd_timedelta
 from ._base import HydrationHandlerTestBase
 
 
@@ -98,7 +99,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         assert_transforms(dt, Structure(b"d", 1539344261, 474716862))
 
     def test_numpy_nat_local_date_time(self, assert_transforms):
-        dt = np.datetime64("NaT")
+        dt = np.datetime64("NaT", "ns")
         assert_transforms(dt, None)
 
     @pytest.mark.parametrize(
@@ -259,7 +260,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         assert_transforms(value, Structure(b"E", *expected_fields))
 
     def test_numpy_nat_duration(self, assert_transforms):
-        duration = np.timedelta64("NaT")
+        duration = np.timedelta64("NaT", "ns")
         assert_transforms(duration, None)
 
     @pytest.mark.parametrize(
@@ -277,11 +278,11 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         ("value", "expected_fields"),
         (
             (
-                pd.Timedelta(days=1, seconds=2, microseconds=3, nanoseconds=4),
+                pd_timedelta(days=1, seconds=2, microseconds=3, nanoseconds=4),
                 (0, 0, AVERAGE_SECONDS_IN_DAY + 2, 3004),
             ),
             (
-                pd.Timedelta(
+                pd_timedelta(
                     days=-1, seconds=2, microseconds=3, nanoseconds=4
                 ),
                 (0, 0, -AVERAGE_SECONDS_IN_DAY + 2 + 1, -NANO_SECONDS + 3004),
