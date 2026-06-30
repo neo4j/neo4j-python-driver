@@ -108,7 +108,7 @@ def test_bookmarks_repr(values, expected_repr) -> None:
 
 @pytest.mark.parametrize(
     ("values1", "values2"),
-    (
+    tuple(
         values
         for values in itertools.combinations_with_replacement(
             (

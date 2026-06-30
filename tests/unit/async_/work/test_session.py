@@ -660,7 +660,7 @@ async def test_session_custom_api_telemetry(async_fake_pool, mode):
 
 @pytest.mark.parametrize(
     ("db", "pool_ssr", "pool_routing", "expect_cache_usage"),
-    (
+    tuple(
         (db, ssr, routing, ssr and routing and not db)
         for ssr in (True, False)
         for routing in (True, False)
@@ -740,7 +740,7 @@ async def test_uses_home_db_cache_when_expected(
 
 @pytest.mark.parametrize(
     ("db", "pool_ssr", "pool_routing", "expect_cache_usage"),
-    (
+    tuple(
         (db, ssr, routing, ssr and routing and not db)
         for ssr in (True, False)
         for routing in (True, False)

@@ -14,9 +14,20 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import abc
 import sys
 from os import environ
+
+from neo4j import _typing as t
+
+
+if t.TYPE_CHECKING:
+    from types import ModuleType
+
+
+_TRUE_ENV_VALUES = {"1", "y", "yes", "true", "t", "on"}
 
 
 class _LazyEval(abc.ABC):
@@ -26,7 +37,7 @@ class _LazyEval(abc.ABC):
 
 
 class _LazyEvalEnv(_LazyEval):
-    def __init__(self, env_key, type_: type = str, default=...):
+    def __init__(self, env_key, type_: type = str, default: t.Any = ...):
         self.env_key = env_key
         self.type_ = type_
         self.default = default
@@ -42,7 +53,7 @@ class _LazyEvalEnv(_LazyEval):
                     f"Missing environment variable {self.env_key}"
                 ) from e
         if self.type_ is bool:
-            return value.lower() in {"yes", "y", "1", "on", "true"}
+            return value.lower() in _TRUE_ENV_VALUES
         return self.type_(value)
 
 
@@ -55,6 +66,8 @@ class _LazyEvalFunc(_LazyEval):
 
 
 class _Module:
+    _module: ModuleType
+
     def __init__(self, module):
         self._module = module
 
@@ -84,9 +97,13 @@ NEO4J_SERVER_URI = _LazyEvalFunc(
         f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:{_module.NEO4J_PORT}"
     )
 )
+IS_WIN = sys.platform in {"win32", "cygwin"}
+IS_GHA = _LazyEvalEnv("GITHUB_ACTIONS", bool, default="false")
 
 
 __all__ = (
+    "IS_GHA",
+    "IS_WIN",
     "NEO4J_EDITION",
     "NEO4J_HOST",
     "NEO4J_IS_CLUSTER",

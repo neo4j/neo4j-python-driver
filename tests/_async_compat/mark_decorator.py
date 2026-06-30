@@ -14,11 +14,27 @@
 # limitations under the License.
 
 
+import sys
+
 import pytest
 import pytest_asyncio
 
+from ..env import (
+    IS_GHA,
+    IS_WIN,
+)
 
-mark_async_test = pytest.mark.asyncio
+
+# On Windows + Python 3.14 a per-test asyncio event loop exhausts the ephemeral
+# port range. Heavily parametrized async tests churn thousands of short-lived
+# sockets into TIME_WAIT (OSError WinError 10055 / WSAENOBUFS),
+# which manifests as a hung or failing Windows CI job. Sharing one event loop
+# per module on that platform removes the churn; every other platform keeps the
+# default per-test loop.
+if IS_GHA and IS_WIN and (3, 14) <= sys.version_info < (3, 15):
+    mark_async_test = pytest.mark.asyncio(loop_scope="module")
+else:
+    mark_async_test = pytest.mark.asyncio
 
 async_fixture = pytest_asyncio.fixture
 

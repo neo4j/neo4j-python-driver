@@ -1007,32 +1007,38 @@ def test_inequality(dt1, dt2) -> None:
 
 @pytest.mark.parametrize(
     ("dt1", "dt2"),
-    itertools.product(
-        (
-            datetime(2022, 11, 25, 12, 34, 56, 789123),
-            DateTime(2022, 11, 25, 12, 34, 56, 789123000),
-            datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(0)),
-            DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0)),
-            datetime(2022, 11, 25, 12, 35, 56, 789123, FixedOffset(1)),
-            DateTime(2022, 11, 25, 12, 35, 56, 789123456, FixedOffset(1)),
-            datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(-1)),
-            DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-1)),
-            datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(60 * -16)),
-            DateTime(
-                2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(60 * -16)
+    tuple(
+        itertools.product(
+            (
+                datetime(2022, 11, 25, 12, 34, 56, 789123),
+                DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+                datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(0)),
+                DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0)),
+                datetime(2022, 11, 25, 12, 35, 56, 789123, FixedOffset(1)),
+                DateTime(2022, 11, 25, 12, 35, 56, 789123456, FixedOffset(1)),
+                datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(-1)),
+                DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-1)),
+                datetime(
+                    2022, 11, 25, 12, 34, 56, 789123, FixedOffset(60 * -16)
+                ),
+                DateTime(
+                    2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(60 * -16)
+                ),
+                datetime(
+                    2022, 11, 25, 11, 34, 56, 789123, FixedOffset(60 * -17)
+                ),
+                DateTime(
+                    2022, 11, 25, 11, 34, 56, 789123000, FixedOffset(60 * -17)
+                ),
+                DateTime(
+                    2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(60 * -16)
+                ),
+                DateTime(
+                    2022, 11, 25, 11, 34, 56, 789123456, FixedOffset(60 * -17)
+                ),
             ),
-            datetime(2022, 11, 25, 11, 34, 56, 789123, FixedOffset(60 * -17)),
-            DateTime(
-                2022, 11, 25, 11, 34, 56, 789123000, FixedOffset(60 * -17)
-            ),
-            DateTime(
-                2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(60 * -16)
-            ),
-            DateTime(
-                2022, 11, 25, 11, 34, 56, 789123456, FixedOffset(60 * -17)
-            ),
-        ),
-        repeat=2,
+            repeat=2,
+        )
     ),
 )
 def test_hashed_equality(dt1, dt2) -> None:
@@ -1054,7 +1060,7 @@ def test_hashed_equality(dt1, dt2) -> None:
 
 @pytest.mark.parametrize(
     ("dt1", "dt2"),
-    (
+    tuple(
         itertools.product(
             (
                 datetime(2022, 11, 25, 12, 34, 56, 789123),
@@ -1081,13 +1087,15 @@ def test_comparison_with_only_one_naive_fails(dt1, dt2, tz, op) -> None:
 
 @pytest.mark.parametrize(
     ("dt1", "dt2"),
-    itertools.product(
-        (
-            datetime(2022, 11, 25, 12, 34, 56, 789123),
-            DateTime(2022, 11, 25, 12, 34, 56, 789123000),
-            DateTime(2022, 11, 25, 12, 34, 56, 789123001),
-        ),
-        repeat=2,
+    tuple(
+        itertools.product(
+            (
+                datetime(2022, 11, 25, 12, 34, 56, 789123),
+                DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+                DateTime(2022, 11, 25, 12, 34, 56, 789123001),
+            ),
+            repeat=2,
+        )
     ),
 )
 @pytest.mark.parametrize(

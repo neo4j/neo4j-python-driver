@@ -97,7 +97,7 @@ def test_node_with_null_properties():
 
 @pytest.mark.parametrize(
     ("g1", "id1", "eid1", "props1", "g2", "id2", "eid2", "props2"),
-    (
+    tuple(
         (*n1, *n2)
         for n1, n2 in product(
             (  # type: ignore

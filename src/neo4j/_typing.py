@@ -36,6 +36,7 @@ from collections.abc import (
 )
 from contextlib import AbstractContextManager
 from importlib.util import find_spec as _find_spec
+from types import EllipsisType
 from typing import (
     Any,
     cast,
@@ -69,6 +70,7 @@ __all__: tuple[str, ...] = (
     "Collection",
     "Concatenate",
     "Coroutine",
+    "EllipsisType",
     "Final",
     "Generator",
     "Generic",

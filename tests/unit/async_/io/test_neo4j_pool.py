@@ -749,9 +749,9 @@ async def test_failed_discovery_chains_errors(custom_routing_opener) -> None:
 
 @pytest.mark.parametrize(
     "error",
-    map(
-        lambda args: Neo4jError._hydrate_neo4j(code=args[0], message=args[1]),
-        (
+    tuple(
+        Neo4jError._hydrate_neo4j(code=code, message=message)
+        for code, message in (
             ("Neo.ClientError.Database.DatabaseNotFound", "message"),
             ("Neo.ClientError.Transaction.InvalidBookmark", "message"),
             ("Neo.ClientError.Transaction.InvalidBookmarkMixture", "message"),
@@ -764,7 +764,7 @@ async def test_failed_discovery_chains_errors(custom_routing_opener) -> None:
             ("Neo.ClientError.Security.TokenExpired", "message"),
             ("Neo.ClientError.Security.Unauthorized", "message"),
             ("Neo.ClientError.Security.MadeUpError", "message"),
-        ),
+        )
     ),
 )
 @mark_async_test
@@ -798,7 +798,7 @@ async def test_fast_failing_discovery(custom_routing_opener, error):
 
 @pytest.mark.parametrize(
     ("error", "marks_unauthenticated", "fetches_new"),
-    (
+    tuple(
         (Neo4jError._hydrate_neo4j(code=args[0], message="message"), *args[1:])
         for args in (
             ("Neo.ClientError.Database.DatabaseNotFound", False, False),

@@ -106,7 +106,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
 
     @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     def test_numpy_nat_local_date_time(self, assert_transforms):
-        dt = np.datetime64("NaT")
+        dt = np.datetime64("NaT", "ns")
         assert_transforms(dt, None)
 
     @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
@@ -309,7 +309,7 @@ class TestTimeDehydration(HydrationHandlerTestBase):
 
     @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
     def test_numpy_nat_duration(self, assert_transforms):
-        duration = np.timedelta64("NaT")
+        duration = np.timedelta64("NaT", "ns")
         assert_transforms(duration, None)
 
     @pytest.mark.skipif(not HAS_NP, reason="numpy not installed")
