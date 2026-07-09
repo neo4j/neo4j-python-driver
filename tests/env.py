@@ -98,11 +98,8 @@ NEO4J_SERVER_URI = _LazyEvalFunc(
     )
 )
 IS_WIN = sys.platform in {"win32", "cygwin"}
-IS_GHA = _LazyEvalEnv("GITHUB_ACTIONS", bool, default="false")
-
 
 __all__ = (
-    "IS_GHA",
     "IS_WIN",
     "NEO4J_EDITION",
     "NEO4J_HOST",
