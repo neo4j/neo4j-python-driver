@@ -32,7 +32,6 @@ from neo4j.auth_management import (
     ClientCertificate,
     ClientCertificateProviders,
 )
-from neo4j.debug import watch
 from neo4j.exceptions import ConfigurationError
 
 from ..._async_compat import mark_sync_test
@@ -40,8 +39,6 @@ from ..common.test_conf import test_session_config
 
 
 # python -m pytest tests/unit/test_conf.py -s -v
-
-watch("neo4j")
 
 test_pool_config = {
     "connection_timeout": 30.0,
