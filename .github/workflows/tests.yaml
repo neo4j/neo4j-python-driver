@@ -38,7 +38,7 @@ jobs:
       - name: Run install tox
         run: python -m pip install -U --group tox
       - name: Run unit tests
-        run: python -m tox -vv -f unit ${{ matrix.python-version.tox-factor }}
+        run: python -m tox -vv -f unit ${{ matrix.python-version.tox-factor }} -- -vv --showlocals --tb=long --log-level DEBUG
 
   gha-conclusion:
     name: gha-conclusion
