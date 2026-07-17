@@ -161,6 +161,18 @@ def _report_skip(test_id: str, reason: str | None) -> None:
         _message("testIgnored", name=test_id, message=reason)
 
 
+def _silence_report(report: pytest.TestReport) -> None:
+    """
+    Make sure the report omits details in the test suite summary.
+
+    All relevant output was already included in the TeamCity service messages.
+    """
+    report.longrepr = None
+    report.sections = [
+        section for section in report.sections if "log" not in section[0]
+    ]
+
+
 def pytest_runtest_logreport(report: pytest.TestReport) -> None:
     if not _ENABLED:
         return
@@ -169,6 +181,7 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
 
     test_stdouts = []
     test_stderrs = []
+    test_logs = []
     for section_name, section_data in report.sections:
         if not section_data:
             continue
@@ -180,6 +193,8 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
             test_stderrs.append(
                 f"===== [{section_name}] =====\n{section_data}"
             )
+        if "log" in section_name:
+            test_logs.append(f"===== [{section_name}] =====\n{section_data}")
     test_stdout = "\n".join(test_stdouts)
     test_stderr = "\n".join(test_stderrs)
 
@@ -195,13 +210,15 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
     if report.when in {"setup", "teardown"} and report.outcome == "failed":
         test_stage_id = f"{test_id}__{report.when}"
         _message("testStarted", name=test_stage_id)
-        _report_output(test_stage_id, test_stdout, test_stderr)
+        report_stdout = "\n".join((test_stdout, *test_logs))
+        _report_output(test_stage_id, report_stdout, test_stderr)
         _message(
             "testFailed",
             name=test_stage_id,
             message=f"{report.when.capitalize()} failed",
             details=report.longreprtext,
         )
+        _silence_report(report)
         _message("testFinished", name=test_stage_id)
 
     if report.when == "setup":
@@ -211,6 +228,9 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
 
     if report.when == "call":
         if report.outcome == "failed":
+            report_stdout = "\n".join((test_stdout, *test_logs))
+            _report_output(test_id, report_stdout, test_stderr)
             _message("testFailed", name=test_id, message=report.longreprtext)
+            _silence_report(report)
         elif report.outcome == "skipped":
             _report_skip(test_id, _skip_reason(report))
