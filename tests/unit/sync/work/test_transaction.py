@@ -16,12 +16,12 @@
 
 from __future__ import annotations
 
+import typing as t
 from unittest.mock import MagicMock
 
 import pytest
 
 from neo4j import (
-    _typing as t,
     NotificationMinimumSeverity,
     Query,
     Transaction,
