@@ -12,6 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+from __future__ import annotations
+
+import typing as t
 from unittest.mock import MagicMock
 
 import pytest
@@ -369,6 +374,8 @@ def test_on_database_callback(
     scripted_connection, cb, resolved_db
 ):
     cb_calls = []
+
+    db_callback: t.Callable[[str], None] | t.Callable[[str], t.Union[None]]
 
     if cb:
 

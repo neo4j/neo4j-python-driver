@@ -402,11 +402,15 @@ def _assert_notifications_in_extra(extra, expected):
 )
 @pytest.mark.parametrize(
     ("cls_min_sev", "method_min_sev"),
-    itertools.product((None, "WARNING", "OFF"), repeat=2),
+    tuple(itertools.product((None, "WARNING", "OFF"), repeat=2)),
 )
 @pytest.mark.parametrize(
     ("cls_dis_clss", "method_dis_clss"),
-    itertools.product((None, [], ["HINT"], ["HINT", "DEPRECATION"]), repeat=2),
+    tuple(
+        itertools.product(
+            (None, [], ["HINT"], ["HINT", "DEPRECATION"]), repeat=2
+        )
+    ),
 )
 @mark_async_test
 async def test_supports_notification_filters(
@@ -600,13 +604,15 @@ async def test_tx_timeout(
 
 @pytest.mark.parametrize(
     "actions",
-    itertools.combinations_with_replacement(
-        itertools.product(
-            ("run", "begin", "begin_run"),
-            ("reset", "commit", "rollback"),
-            (None, "some_db", "another_db"),
-        ),
-        2,
+    tuple(
+        itertools.combinations_with_replacement(
+            itertools.product(
+                ("run", "begin", "begin_run"),
+                ("reset", "commit", "rollback"),
+                (None, "some_db", "another_db"),
+            ),
+            2,
+        )
     ),
 )
 @mark_async_test
@@ -665,18 +671,24 @@ async def test_tracks_last_database(fake_socket_pair, actions):
 
 @pytest.mark.parametrize(
     "sent_diag_records",
-    powerset(
-        (
-            ...,
-            None,
-            {},
-            [],
-            "1",
-            1,
-            {"OPERATION_CODE": "0"},
-            {"OPERATION": "", "OPERATION_CODE": "0", "CURRENT_SCHEMA": "/"},
-        ),
-        upper_limit=3,
+    tuple(
+        powerset(
+            (
+                ...,
+                None,
+                {},
+                [],
+                "1",
+                1,
+                {"OPERATION_CODE": "0"},
+                {
+                    "OPERATION": "",
+                    "OPERATION_CODE": "0",
+                    "CURRENT_SCHEMA": "/",
+                },
+            ),
+            upper_limit=3,
+        )
     ),
 )
 @pytest.mark.parametrize("method", ("pull", "discard"))
