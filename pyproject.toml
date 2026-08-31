@@ -60,7 +60,7 @@ pandas = [
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     "numpy >= 1.21.2, < 3.0.0",
 ]
-pyarrow = ["pyarrow >= 6.0.0, < 25.0.0"]
+pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
 
 
 [build-system]
@@ -160,7 +160,7 @@ dep-project-dependencies = [
     "pytz",
     "numpy >= 1.7.0, < 3.0.0",
     "pandas[timezone] >= 1.1.0, < 4.0.0",
-    "pyarrow >= 6.0.0, < 25.0.0",
+    "pyarrow >= 6.0.0, < 26.0.0",
 ]
 
 [tool.setuptools.dynamic]
