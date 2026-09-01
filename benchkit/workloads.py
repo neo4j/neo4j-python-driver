@@ -560,7 +560,7 @@ class _WorkloadConfig:
         routing: t.Literal["r", "w"] = "w"
         if "routing" in data:
             raw_routing = data["routing"]
-            if not isinstance(routing, str):
+            if not isinstance(raw_routing, str):
                 raise TypeError("Workload routing must be a string")
             if raw_routing == "read":
                 routing = "r"
