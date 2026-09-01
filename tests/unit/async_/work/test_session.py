@@ -58,6 +58,10 @@ def assert_warns_tx_func_deprecation(tx_func_name):
         yield
 
 
+class ApplicationError(RuntimeError):
+    pass
+
+
 @mark_async_test
 async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
@@ -939,3 +943,47 @@ async def test_work_connections_are_prepared_connection(
         async_fake_pool.acquire.assert_awaited_once()
         unprepared = async_fake_pool.acquire.call_args.kwargs.get("unprepared")
         assert unprepared is False or unprepared is None
+
+
+@mark_async_test
+async def test_auto_commit_is_consumed_on_application_error(
+    async_fake_pool,
+    async_scripted_connection_generator,
+) -> None:
+    bookmark = "res:bm1"
+    conn = async_scripted_connection_generator()
+    conn.set_script(
+        (
+            ("run", {"on_success": ({"fields": ["n"]},), "on_summary": None}),
+            (
+                "pull",
+                {
+                    "on_records": ([[1]],),
+                    "on_success": ({"has_more": True},),
+                    "on_summary": None,
+                },
+            ),
+            (
+                "discard",
+                {
+                    "on_success": ({"bookmark": bookmark},),
+                    "on_summary": None,
+                },
+            ),
+        )
+    )
+    async_fake_pool.buffered_connection_mocks.append(conn)
+    async_fake_pool.pool_config.telemetry_disabled = True
+
+    with pytest.raises(ApplicationError):
+        async with AsyncSession(async_fake_pool, SessionConfig()) as session:
+            res = await session.run("RETURN 1")
+            raise ApplicationError("boom")
+
+    assert not res._attached
+    assert session._auto_result is None
+    assert res._bookmark == bookmark
+    assert set(session._bookmarks) == {bookmark}
+
+    received_bookmarks = await session.last_bookmarks()
+    assert received_bookmarks.raw_values == {bookmark}
