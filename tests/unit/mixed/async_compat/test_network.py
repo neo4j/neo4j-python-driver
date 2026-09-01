@@ -516,3 +516,55 @@ async def test_bolt_ssl_timeout(
         ssl_context_mock.wrap_socket.assert_called_once()
 
         assert last_ssl_timeout == expected_timeout
+
+
+@pytest.mark.parametrize(
+    "property", ("getsockname", "getpeername", "getpeercert")
+)
+@pytest.mark.parametrize("is_ssl", [False, True])
+def test_bolt_socket_forwards_to_tcp_socket(property: str, is_ssl: bool):
+    class FakeSocket:
+        def __init__(self, with_ssl: bool) -> None:
+            self.getsockname = object()
+            self.getpeername = object()
+            if with_ssl:
+                self.getpeercert = object()
+
+    sock: socket.socket | SSLSocket = t.cast(t.Any, FakeSocket(is_ssl))
+    bolt_sock = BoltSocket(sock)
+
+    if not is_ssl and property == "getpeercert":
+        assert not hasattr(bolt_sock, property)
+        with pytest.raises(AttributeError):
+            getattr(bolt_sock, property)
+    else:
+        assert getattr(bolt_sock, property) is getattr(sock, property)
+
+
+@pytest.mark.parametrize(
+    "property", ("getsockname", "getpeername", "getpeercert")
+)
+@pytest.mark.parametrize("ssl1", [False, True])
+@pytest.mark.parametrize("ssl2", [False, True])
+def test_bolt_socket_setter_forwards_to_tcp_socket(
+    property: str, ssl1: bool, ssl2: bool
+):
+    class FakeSocket:
+        def __init__(self, with_ssl: bool) -> None:
+            self.getsockname = object()
+            self.getpeername = object()
+            if with_ssl:
+                self.getpeercert = object()
+
+    sock1: socket.socket | SSLSocket = t.cast(t.Any, FakeSocket(ssl1))
+    bolt_sock = BoltSocket(sock1)
+
+    sock2: socket.socket | SSLSocket = t.cast(t.Any, FakeSocket(ssl2))
+    bolt_sock._socket = sock2
+
+    if not ssl2 and property == "getpeercert":
+        assert not hasattr(bolt_sock, property)
+        with pytest.raises(AttributeError):
+            getattr(bolt_sock, property)
+    else:
+        assert getattr(bolt_sock, property) is getattr(sock2, property)
