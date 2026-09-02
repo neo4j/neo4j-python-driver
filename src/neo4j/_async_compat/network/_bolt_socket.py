@@ -362,7 +362,7 @@ class AsyncBoltSocketBase(abc.ABC):
 class BoltSocketBase:
     Bolt: te.Final[type[Bolt]] = None  # type: ignore[assignment]
 
-    def __init__(self, socket_: socket):
+    def __init__(self, socket_: socket | SSLSocket):
         self._socket = socket_
         self._deadline: Deadline | None = None
 
@@ -375,8 +375,8 @@ class BoltSocketBase:
         self.__socket = socket_
         self.getsockname = socket_.getsockname
         self.getpeername = socket_.getpeername
-        if hasattr(socket, "getpeercert"):
-            self.getpeercert = t.cast(SSLSocket, socket_).getpeercert
+        if hasattr(socket_, "getpeercert"):
+            self.getpeercert = socket_.getpeercert
         elif "getpeercert" in self.__dict__:
             del self.__dict__["getpeercert"]
         self.gettimeout = socket_.gettimeout
@@ -384,7 +384,8 @@ class BoltSocketBase:
 
     getsockname: t.Callable = None  # type: ignore
     getpeername: t.Callable = None  # type: ignore
-    getpeercert: t.Callable = None  # type: ignore
+    # only exists if the wrapped socket is an SSLSocket
+    getpeercert: t.Callable
     gettimeout: t.Callable = None  # type: ignore
     settimeout: t.Callable = None  # type: ignore
 
