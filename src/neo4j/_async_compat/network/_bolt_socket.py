@@ -414,18 +414,25 @@ class BoltSocketBase(abc.ABC):
     @_socket.setter
     def _socket(self, socket_: socket | SSLSocket):
         self.__socket = socket_
-        self.getsockname = socket_.getsockname
-        self.getpeername = socket_.getpeername
+        self.getsockname = socket_.getsockname  # type: ignore[method-assign]
+        self.getpeername = socket_.getpeername  # type: ignore[method-assign]
         if hasattr(socket_, "getpeercert"):
-            self.getpeercert = socket_.getpeercert
+            self.getpeercert = socket_.getpeercert  # type: ignore[method-assign]
         elif "getpeercert" in self.__dict__:
             del self.__dict__["getpeercert"]
 
-    def __unimplemented(*args, **kwargs):
-        raise NotImplementedError
+    def getsockname(self, *args, **kwargs) -> t.Any:
+        raise NotImplementedError(
+            "Programming error in BoltSocketBase: should forward getsockname "
+            "to wrapped socket"
+        )
 
-    getsockname: t.Callable = __unimplemented
-    getpeername: t.Callable = __unimplemented
+    def getpeername(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Programming error in BoltSocketBase: should forward getpeername "
+            "to wrapped socket"
+        )
+
     # only exists if the wrapped socket is an SSLSocket
     getpeercert: t.Callable
 
