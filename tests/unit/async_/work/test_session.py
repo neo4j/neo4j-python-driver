@@ -48,6 +48,10 @@ from neo4j.exceptions import Neo4jError
 from ...._async_compat import mark_async_test
 
 
+class ApplicationError(RuntimeError):
+    pass
+
+
 @mark_async_test
 async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
@@ -1025,3 +1029,47 @@ async def test_session_run_idempotent_retry(
         assert call_args[0] == "RETURN 1"
         connection_1.telemetry.assert_called_once()
         connection_2.telemetry.assert_not_called()
+
+
+@mark_async_test
+async def test_auto_commit_is_consumed_on_application_error(
+    async_fake_pool,
+    async_scripted_connection_generator,
+) -> None:
+    bookmark = "res:bm1"
+    conn = async_scripted_connection_generator()
+    conn.set_script(
+        (
+            ("run", {"on_success": ({"fields": ["n"]},), "on_summary": None}),
+            (
+                "pull",
+                {
+                    "on_records": ([[1]],),
+                    "on_success": ({"has_more": True},),
+                    "on_summary": None,
+                },
+            ),
+            (
+                "discard",
+                {
+                    "on_success": ({"bookmark": bookmark},),
+                    "on_summary": None,
+                },
+            ),
+        )
+    )
+    async_fake_pool.buffered_connection_mocks.append(conn)
+    async_fake_pool.pool_config.telemetry_disabled = True
+
+    with pytest.raises(ApplicationError):
+        async with AsyncSession(async_fake_pool, SessionConfig()) as session:
+            res = await session.run("RETURN 1")
+            raise ApplicationError("boom")
+
+    assert not res._attached
+    assert session._auto_result is None
+    assert res._bookmark == bookmark
+    assert set(session._bookmarks) == {bookmark}
+
+    received_bookmarks = await session.last_bookmarks()
+    assert received_bookmarks.raw_values == {bookmark}
