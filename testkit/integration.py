@@ -18,4 +18,17 @@ from _common import run_python
 
 
 if __name__ == "__main__":
-    run_python(["-m", "tox", "-vv", "-f", "integration"])
+    run_python(
+        [
+            "-m",
+            "tox",
+            "-vv",
+            "-f",
+            "integration",
+            "--",
+            "-vv",
+            "--showlocals",
+            "--tb=long",
+            "--log-level=DEBUG",
+        ]
+    )
