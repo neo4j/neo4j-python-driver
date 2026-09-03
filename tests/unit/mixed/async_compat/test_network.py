@@ -84,7 +84,11 @@ def writer_factory(mocker):
 def socket_factory(reader_factory, writer_factory):
     def factory():
         protocol = None
-        return AsyncBoltSocket(reader_factory(), protocol, writer_factory())
+        sockname = "localhost", 0x1234
+        peername = "peer_name"
+        return AsyncBoltSocket(
+            reader_factory(), protocol, writer_factory(), sockname, peername
+        )
 
     return factory
 
