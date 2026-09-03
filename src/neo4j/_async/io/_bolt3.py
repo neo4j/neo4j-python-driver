@@ -19,7 +19,6 @@ from __future__ import annotations
 import typing as t
 from enum import Enum
 from logging import getLogger
-from ssl import SSLSocket
 
 from ..._exceptions import BoltProtocolError
 from ...api import (
@@ -197,10 +196,6 @@ class AsyncBolt3(AsyncBolt):
         if self.responses:
             return self.responses[-1] and self.responses[-1].message == "reset"
         return self._server_state_manager.state == BoltStates.READY
-
-    @property
-    def encrypted(self):
-        return isinstance(self.socket, SSLSocket)
 
     @property
     def der_encoded_server_certificate(self):
