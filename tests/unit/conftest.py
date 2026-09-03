@@ -15,10 +15,10 @@
 
 
 import logging
+import typing as t
 
 import pytest
 
-from neo4j import _typing as t  # noqa: TCH001
 from neo4j.debug import (
     ColourFormatter,
     TaskIdFilter,
@@ -47,9 +47,13 @@ from .sync.fixtures import (
 )
 
 
+if t.TYPE_CHECKING:
+    from collections.abc import Callable
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_configure(config):
-    formatter_cls: t.Callable[[str], logging.Formatter] = ColourFormatter
+    formatter_cls: Callable[[str], logging.Formatter] = ColourFormatter
     if _ENABLED:
         formatter_cls = logging.Formatter
     logging_plugin = config.pluginmanager.get_plugin("logging-plugin")
