@@ -24,11 +24,8 @@ from neo4j.api import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
-from neo4j.debug import watch
 from neo4j.exceptions import ConfigurationError
 
-
-watch("neo4j")
 
 test_session_config = {
     "connection_acquisition_timeout": 60.0,

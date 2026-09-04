@@ -432,11 +432,6 @@ class Bolt:
 
     @property
     @abc.abstractmethod
-    def encrypted(self):
-        pass
-
-    @property
-    @abc.abstractmethod
     def der_encoded_server_certificate(self):
         pass
 

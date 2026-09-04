@@ -16,7 +16,6 @@
 
 from enum import Enum
 from logging import getLogger
-from ssl import SSLSocket
 
 from ... import _typing as t
 from ..._api import TelemetryAPI
@@ -116,10 +115,6 @@ class AsyncBolt5x0(AsyncBolt):
         if self.responses:
             return self.responses[-1] and self.responses[-1].message == "reset"
         return self._server_state_manager.state == self.bolt_states.READY
-
-    @property
-    def encrypted(self):
-        return isinstance(self.socket, SSLSocket)
 
     @property
     def der_encoded_server_certificate(self):

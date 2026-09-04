@@ -400,7 +400,7 @@ class AsyncBoltSocketBase(abc.ABC):
 class BoltSocketBase(abc.ABC):
     Bolt: t.Final[type[Bolt]] = None  # type: ignore[assignment]
 
-    def __init__(self, socket_: socket):
+    def __init__(self, socket_: socket | SSLSocket):
         self._socket = socket_
         self._read_deadline = None
         self._write_deadline = None
@@ -414,16 +414,27 @@ class BoltSocketBase(abc.ABC):
     @_socket.setter
     def _socket(self, socket_: socket | SSLSocket):
         self.__socket = socket_
-        self.getsockname = socket_.getsockname
-        self.getpeername = socket_.getpeername
-        if hasattr(socket, "getpeercert"):
-            self.getpeercert = t.cast(SSLSocket, socket_).getpeercert
+        self.getsockname = socket_.getsockname  # type: ignore[method-assign]
+        self.getpeername = socket_.getpeername  # type: ignore[method-assign]
+        if hasattr(socket_, "getpeercert"):
+            self.getpeercert = socket_.getpeercert  # type: ignore[method-assign]
         elif "getpeercert" in self.__dict__:
             del self.__dict__["getpeercert"]
 
-    getsockname: t.Callable = None  # type: ignore
-    getpeername: t.Callable = None  # type: ignore
-    getpeercert: t.Callable = None  # type: ignore
+    def getsockname(self, *args, **kwargs) -> t.Any:
+        raise NotImplementedError(
+            "Programming error in BoltSocketBase: should forward getsockname "
+            "to wrapped socket"
+        )
+
+    def getpeername(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Programming error in BoltSocketBase: should forward getpeername "
+            "to wrapped socket"
+        )
+
+    # only exists if the wrapped socket is an SSLSocket
+    getpeercert: t.Callable
 
     def _wait_for_read(self, func, *args, **kwargs):
         return self._wait_for_io(

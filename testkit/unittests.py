@@ -31,5 +31,10 @@ if __name__ == "__main__":
             "--parallel-no-spinner",
             "-f",
             "unit",
+            "--",
+            "-vv",
+            "--showlocals",
+            "--tb=long",
+            "--log-level=DEBUG",
         ]
     )

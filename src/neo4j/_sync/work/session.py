@@ -92,9 +92,6 @@ class Session(Workspace):
     # The current auto-commit transaction result, if any.
     _auto_result = None
 
-    # The state this session is in.
-    _state_failed = False
-
     _config: SessionConfig
     _bookmark_manager: Bookmarks | None
     _pipelined_begin: ContextBool
@@ -113,12 +110,12 @@ class Session(Workspace):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if exception_type:
-            if issubclass(exception_type, asyncio.CancelledError):
-                self._handle_cancellation(message="__exit__")
-                self._closed = True
-                return
-            self._state_failed = True
+        if exception_type and issubclass(
+            exception_type, asyncio.CancelledError
+        ):
+            self._handle_cancellation(message="__exit__")
+            self._closed = True
+            return
         self.close()
 
     def _connect(self, access_mode, **acquire_kwargs):
@@ -195,14 +192,21 @@ class Session(Workspace):
         if self._closed:
             return
         if self._connection:
-            if self._auto_result and self._state_failed is False:
+            if self._auto_result:
                 try:
+                    # The user didn't consume the auto-commit result.
+                    # Therefore, we try to consume it on a best-effort basis
+                    # before closing the parent session.
                     self._auto_result.consume()
-                    self._update_bookmark(self._auto_result._bookmark)
-                except Exception:
-                    # TODO: Investigate potential non graceful close states
-                    self._auto_result = None
-                    self._state_failed = True
+                except (Neo4jError, DriverError) as e:
+                    # Consume failed, we'll swallow the error.
+                    # Best practice is to consume the result before closing the
+                    # session.
+                    log.warning(
+                        "Failed to consume outstanding auto-commit "
+                        "transaction result before closing session: %s",
+                        e,
+                    )
 
             if self._transaction:
                 if self._transaction._closed() is False:
@@ -215,18 +219,16 @@ class Session(Workspace):
                     self._connection.send_all()
                     self._connection.fetch_all()
                     # TODO: Investigate potential non graceful close states
-            except Neo4jError:
-                pass
-            except TransactionError:
-                pass
-            except ServiceUnavailable:
-                pass
-            except SessionExpired:
+            except (
+                Neo4jError,
+                TransactionError,
+                ServiceUnavailable,
+                SessionExpired,
+            ):
                 pass
             finally:
                 self._disconnect()
 
-            self._state_failed = False
         self._closed = True
 
     if Util.is_async_code:

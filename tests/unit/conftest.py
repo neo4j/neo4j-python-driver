@@ -14,6 +14,17 @@
 # limitations under the License.
 
 
+import logging
+
+import pytest
+
+from neo4j import _typing as t  # noqa: TC001
+from neo4j.debug import (
+    _ColourFormatter,
+    _TaskIdFilter,
+)
+
+from .._teamcity import _ENABLED
 from .async_.fixtures import (
     async_fake_connection,
     async_fake_connection_generator,
@@ -37,6 +48,23 @@ from .sync.fixtures import (
     scripted_connection,
     scripted_connection_generator,
 )
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config):
+    formatter_cls: t.Callable[[str], logging.Formatter] = _ColourFormatter
+    if _ENABLED:
+        formatter_cls = logging.Formatter
+    logging_plugin = config.pluginmanager.get_plugin("logging-plugin")
+    logging_plugin.formatter = formatter_cls(
+        "[%(levelname)-8s] [Thread %(thread)d] [Task %(task)-15s] "
+        "%(asctime)s  %(message)s"
+    )
+    for attr_name in vars(logging_plugin):
+        attr = getattr(logging_plugin, attr_name)
+        if isinstance(attr, logging.Handler):
+            attr.addFilter(_TaskIdFilter())
+            attr.setFormatter(logging_plugin.formatter)
 
 
 __all__ = [

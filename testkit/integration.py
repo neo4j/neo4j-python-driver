@@ -22,4 +22,17 @@ if __name__ == "__main__":
         ["-m", "pip", "install", "-U", "--group", "tox"],
         warning_as_error=False,
     )
-    run_python(["-m", "tox", "-vv", "-f", "integration"])
+    run_python(
+        [
+            "-m",
+            "tox",
+            "-vv",
+            "-f",
+            "integration",
+            "--",
+            "-vv",
+            "--showlocals",
+            "--tb=long",
+            "--log-level=DEBUG",
+        ]
+    )
