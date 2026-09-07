@@ -1107,10 +1107,10 @@ class AsyncHttpV2(AsyncHttpConnection):
                 self._defunct = True
                 if user_cancelled:
                     raise
-                if protocol_error or not connection_failed:
-                    raise
                 if isinstance(self._current_request, _CommitRequest):
                     raise IncompleteCommit(message) from error
+                if protocol_error or not connection_failed:
+                    raise
                 raise SessionExpired(message) from error
 
         return inner
