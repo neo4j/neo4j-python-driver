@@ -24,8 +24,8 @@ from socket import socket
 
 import pytest
 
-from neo4j._async.io._bolt_socket import AsyncBoltSocket
-from neo4j._sync.io._bolt_socket import BoltSocket
+from neo4j._async.io._bolt._bolt_socket import AsyncBoltSocket
+from neo4j._sync.io._bolt._bolt_socket import BoltSocket
 
 
 if t.TYPE_CHECKING:

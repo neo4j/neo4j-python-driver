@@ -25,26 +25,21 @@ __all__ = [
     "AcquisitionAuth",
     "AcquisitionDatabase",
     "Bolt",
-    "BoltPool",
-    "Neo4jPool",
+    "DirectBoltPool",
+    "HttpV2Pool",
+    "RoutedBoltPool",
     "ConnectionErrorHandler",
     "acquisition_timeout_to_deadline",
 ]
 
 
-# [bolt-version-bump] search tag when changing bolt version support
-from . import (  # noqa - imports needed to register protocol handlers
-    _bolt3,
-    _bolt4,
-    _bolt5,
-    _bolt6,
-)
 from ._bolt import Bolt
 from ._common import ConnectionErrorHandler
 from ._pool import (
     acquisition_timeout_to_deadline,
     AcquisitionAuth,
     AcquisitionDatabase,
-    BoltPool,
-    Neo4jPool,
+    DirectBoltPool,
+    HttpV2Pool,
+    RoutedBoltPool,
 )

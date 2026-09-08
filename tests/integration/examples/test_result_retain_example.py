@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+from ...conftest import mark_requires_tx_support
+
+
 # tag::result-retain-import[]
 # end::result-retain-import[]
 
@@ -80,6 +83,7 @@ def result_retain_example(driver):
     return employees, head_count
 
 
+@mark_requires_tx_support
 def test_example(driver):
     employees, head_count = result_retain_example(driver)
     assert employees == 2

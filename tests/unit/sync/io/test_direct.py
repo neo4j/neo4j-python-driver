@@ -17,14 +17,19 @@
 import pytest
 
 import neo4j
+from neo4j._addressing import ResolvedAddress
 from neo4j._conf import (
     Config,
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
 from neo4j._sync.config import PoolConfig
-from neo4j._sync.io import Bolt
-from neo4j._sync.io._pool import IOPool
+from neo4j._sync.io import (
+    AcquisitionDatabase,
+    Bolt,
+)
+from neo4j._sync.io._pool import DirectBoltPool
+from neo4j.api import READ_ACCESS
 from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
     ConnectionAcquisitionTimeoutError,
@@ -37,7 +42,12 @@ from ...._async_compat import (
 )
 
 
-class FakeBoltPool(IOPool):
+TEST_DB1 = AcquisitionDatabase("test_db1")
+ADDRESS1 = ResolvedAddress(("127.0.0.1", 7687), host_name="localhost")
+ADDRESS2 = ResolvedAddress(("127.0.0.1", 7474), host_name="host")
+
+
+class FakeBoltPool(DirectBoltPool):
     is_direct_pool = False
 
     def __init__(self, connection_gen, address, *, auth=None, **config):
@@ -59,23 +69,13 @@ class FakeBoltPool(IOPool):
                 mock.address = addr
             return mock
 
-        super().__init__(opener, self.pool_config, self.workspace_config)
-        self.address = address
-
-    def acquire(
-        self,
-        access_mode,
-        timeout,
-        database,
-        bookmarks,
-        auth,
-        liveness_check_timeout,
-        unprepared=False,
-        database_callback=None,
-    ):
-        return self._acquire(
-            self.address, auth, timeout, liveness_check_timeout, unprepared
+        super().__init__(
+            opener, self.pool_config, self.workspace_config, address
         )
+
+    @classmethod
+    def open(cls, *args, **kwargs):
+        raise NotImplementedError
 
 
 def static_auth(auth):
@@ -90,16 +90,24 @@ def auth_manager():
 @mark_sync_test
 def test_bolt_connection_open(auth_manager):
     with pytest.raises(ServiceUnavailable):
-        Bolt.open(("localhost", 9999), auth_manager=auth_manager)
+        Bolt.open(
+            neo4j.Address(("localhost", 9999)),
+            auth_manager=auth_manager,
+            deadline=Deadline(None),
+            routing_context=None,
+            pool_config=None,
+        )
 
 
 @mark_sync_test
 def test_bolt_connection_open_timeout(auth_manager):
     with pytest.raises(ServiceUnavailable):
         Bolt.open(
-            ("localhost", 9999),
+            neo4j.Address(("localhost", 999)),
             auth_manager=auth_manager,
             deadline=Deadline(1),
+            routing_context=None,
+            pool_config=None,
         )
 
 
@@ -120,7 +128,7 @@ def test_bolt_connection_ping_timeout():
 @fixture
 def pool(fake_connection_generator):
     with FakeBoltPool(
-        fake_connection_generator, ("127.0.0.1", 7687)
+        fake_connection_generator, ADDRESS1
     ) as pool:
         yield pool
 
@@ -140,62 +148,55 @@ def assert_pool_size(address, expected_active, expected_inactive, pool):
 
 @mark_sync_test
 def test_pool_can_acquire(pool):
-    address = neo4j.Address(("127.0.0.1", 7687))
-    connection = pool._acquire(address, None, Deadline(3), None)
-    assert connection.address == address
-    assert_pool_size(address, 1, 0, pool)
+    connection = pool._acquire(ADDRESS1, None, Deadline(3), None)
+    assert connection.address == ADDRESS1
+    assert_pool_size(ADDRESS1, 1, 0, pool)
 
 
 @mark_sync_test
 def test_pool_can_acquire_twice(pool):
-    address = neo4j.Address(("127.0.0.1", 7687))
-    connection_1 = pool._acquire(address, None, Deadline(3), None)
-    connection_2 = pool._acquire(address, None, Deadline(3), None)
-    assert connection_1.address == address
-    assert connection_2.address == address
+    connection_1 = pool._acquire(ADDRESS1, None, Deadline(3), None)
+    connection_2 = pool._acquire(ADDRESS1, None, Deadline(3), None)
+    assert connection_1.address == ADDRESS1
+    assert connection_2.address == ADDRESS1
     assert connection_1 is not connection_2
-    assert_pool_size(address, 2, 0, pool)
+    assert_pool_size(ADDRESS1, 2, 0, pool)
 
 
 @mark_sync_test
 def test_pool_can_acquire_two_addresses(pool):
-    address_1 = neo4j.Address(("127.0.0.1", 7687))
-    address_2 = neo4j.Address(("127.0.0.1", 7474))
-    connection_1 = pool._acquire(address_1, None, Deadline(3), None)
-    connection_2 = pool._acquire(address_2, None, Deadline(3), None)
-    assert connection_1.address == address_1
-    assert connection_2.address == address_2
-    assert_pool_size(address_1, 1, 0, pool)
-    assert_pool_size(address_2, 1, 0, pool)
+    connection_1 = pool._acquire(ADDRESS1, None, Deadline(3), None)
+    connection_2 = pool._acquire(ADDRESS2, None, Deadline(3), None)
+    assert connection_1.address == ADDRESS1
+    assert connection_2.address == ADDRESS2
+    assert_pool_size(ADDRESS1, 1, 0, pool)
+    assert_pool_size(ADDRESS2, 1, 0, pool)
 
 
 @mark_sync_test
 def test_pool_can_acquire_and_release(pool):
-    address = neo4j.Address(("127.0.0.1", 7687))
-    connection = pool._acquire(address, None, Deadline(3), None)
-    assert_pool_size(address, 1, 0, pool)
+    connection = pool._acquire(ADDRESS1, None, Deadline(3), None)
+    assert_pool_size(ADDRESS1, 1, 0, pool)
     pool.release(connection)
-    assert_pool_size(address, 0, 1, pool)
+    assert_pool_size(ADDRESS1, 0, 1, pool)
 
 
 @mark_sync_test
 def test_pool_releasing_twice(pool):
-    address = neo4j.Address(("127.0.0.1", 7687))
-    connection = pool._acquire(address, None, Deadline(3), None)
+    connection = pool._acquire(ADDRESS1, None, Deadline(3), None)
     pool.release(connection)
-    assert_pool_size(address, 0, 1, pool)
+    assert_pool_size(ADDRESS1, 0, 1, pool)
     pool.release(connection)
-    assert_pool_size(address, 0, 1, pool)
+    assert_pool_size(ADDRESS1, 0, 1, pool)
 
 
 @mark_sync_test
 def test_pool_in_use_count(pool):
-    address = neo4j.Address(("127.0.0.1", 7687))
-    assert pool.in_use_connection_count(address) == 0
-    connection = pool._acquire(address, None, Deadline(3), None)
-    assert pool.in_use_connection_count(address) == 1
+    assert pool.in_use_connection_count(ADDRESS1) == 0
+    connection = pool._acquire(ADDRESS1, None, Deadline(3), None)
+    assert pool.in_use_connection_count(ADDRESS1) == 1
     pool.release(connection)
-    assert pool.in_use_connection_count(address) == 0
+    assert pool.in_use_connection_count(ADDRESS1) == 0
 
 
 @mark_sync_test
@@ -203,12 +204,11 @@ def test_pool_max_conn_pool_size(fake_connection_generator):
     with FakeBoltPool(
         fake_connection_generator, (), max_connection_pool_size=1
     ) as pool:
-        address = neo4j.Address(("127.0.0.1", 7687))
-        pool._acquire(address, None, Deadline(float("inf")), None)
-        assert pool.in_use_connection_count(address) == 1
+        pool._acquire(ADDRESS1, None, Deadline(float("inf")), None)
+        assert pool.in_use_connection_count(ADDRESS1) == 1
         with pytest.raises(ConnectionAcquisitionTimeoutError):
-            pool._acquire(address, None, Deadline(0), None)
-        assert pool.in_use_connection_count(address) == 1
+            pool._acquire(ADDRESS1, None, Deadline(0), None)
+        assert pool.in_use_connection_count(ADDRESS1) == 1
 
 
 @pytest.mark.parametrize("is_reset", (True, False))
@@ -218,11 +218,10 @@ def test_pool_reset_when_released(
 ):
     connection_mock = fake_connection_generator()
     pool.buffered_connection_mocks.append(connection_mock)
-    address = neo4j.Address(("127.0.0.1", 7687))
     is_reset_mock = connection_mock.is_reset_mock
     reset_mock = connection_mock.reset
     is_reset_mock.return_value = is_reset
-    connection = pool._acquire(address, None, Deadline(3), None)
+    connection = pool._acquire(ADDRESS1, None, Deadline(3), None)
     assert is_reset_mock.call_count == 0
     assert reset_mock.call_count == 0
     pool.release(connection)
@@ -241,12 +240,11 @@ def test_liveness_check(
         effective_timeout = acquire_timeout
     with FakeBoltPool(
         fake_connection_generator,
-        ("127.0.0.1", 7687),
+        ADDRESS1,
         liveness_check_timeout=config_timeout,
     ) as pool:
-        address = neo4j.Address(("127.0.0.1", 7687))
         # pre-populate pool
-        cx1 = pool._acquire(address, None, Deadline(3), None)
+        cx1 = pool._acquire(ADDRESS1, None, Deadline(3), None)
         pool.release(cx1)
         cx1.reset.assert_not_called()
         cx1.is_idle_for.assert_not_called()
@@ -254,7 +252,7 @@ def test_liveness_check(
         # simulate just before timeout
         cx1.is_idle_for.return_value = False
 
-        cx2 = pool._acquire(address, None, Deadline(3), acquire_timeout)
+        cx2 = pool._acquire(ADDRESS1, None, Deadline(3), acquire_timeout)
         assert cx2 is cx1
         if effective_timeout is not None:
             cx1.is_idle_for.assert_called_once_with(effective_timeout)
@@ -267,7 +265,7 @@ def test_liveness_check(
         cx1.is_idle_for.return_value = True
         cx1.is_idle_for.reset_mock()
 
-        cx2 = pool._acquire(address, None, Deadline(3), acquire_timeout)
+        cx2 = pool._acquire(ADDRESS1, None, Deadline(3), acquire_timeout)
         assert cx2 is cx1
         if effective_timeout is not None:
             cx1.is_idle_for.assert_called_once_with(effective_timeout)
@@ -285,21 +283,43 @@ def test_liveness_check(
 def test_reauth(fake_connection_generator, unprepared):
     with FakeBoltPool(
         fake_connection_generator,
-        ("127.0.0.1", 7687),
+        ADDRESS1,
     ) as pool:
-        address = neo4j.Address(("127.0.0.1", 7687))
         # pre-populate pool
-        cx = pool._acquire(address, None, Deadline(3), None)
+        cx = pool._acquire(ADDRESS1, None, Deadline(3), None)
         pool.release(cx)
         cx.reset_mock()
 
         kwargs = {}
         if unprepared is not None:
             kwargs["unprepared"] = unprepared
-        cx = pool._acquire(address, None, Deadline(3), None, **kwargs)
+        cx = pool._acquire(ADDRESS1, None, Deadline(3), None, **kwargs)
         if unprepared:
             cx.re_auth.assert_not_called()
         else:
             cx.re_auth.assert_called_once()
 
         pool.release(cx)
+
+
+@mark_sync_test
+def test_connection_acquisition_timeout(fake_connection_generator):
+    pool_max_size = 5
+
+    with FakeBoltPool(
+        fake_connection_generator,
+        ADDRESS1,
+        max_connection_pool_size=pool_max_size,
+    ) as pool:
+        connections = []
+        for _ in range(pool_max_size):
+            connection = pool.acquire(
+                READ_ACCESS, 0.5, TEST_DB1, None, None, None
+            )
+            connections.append(connection)
+
+        with pytest.raises(ConnectionAcquisitionTimeoutError):
+            pool.acquire(READ_ACCESS, 0.5, TEST_DB1, None, None, None)
+
+        assert set(pool.connections.keys()) == {ADDRESS1}
+        assert len(pool.connections[ADDRESS1]) == pool_max_size

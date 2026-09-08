@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import abc
+import enum
+import re
 import sys
 from os import environ
 
@@ -79,31 +81,56 @@ class _Module:
         return val
 
 
+def _get_url() -> str:
+    return (
+        f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:{_module.NEO4J_PORT}"
+    )
+
+
+class Scheme(str, enum.Enum):
+    BOLT = "bolt"
+    NEO4J = "neo4j"
+    HTTP = "http"
+
+
+def _parse_scheme() -> Scheme:
+    scheme = _module.NEO4J_SCHEME
+    if re.match(r"^bolt(\+s(sc)?)?", scheme):
+        return Scheme.BOLT
+    if re.match(r"^neo4j(\+s(sc)?)?", scheme):
+        return Scheme.NEO4J
+    if re.match(r"^http(s)?", scheme):
+        return Scheme.HTTP
+    raise ValueError(f"Unknown scheme: {scheme!r}")
+
+
 _module = _Module(sys.modules[__name__])
 
 sys.modules[__name__] = _module  # type: ignore[assignment]
 
 
-NEO4J_HOST = _LazyEvalEnv("TEST_NEO4J_HOST")
-NEO4J_PORT = _LazyEvalEnv("TEST_NEO4J_PORT", int)
-NEO4J_USER = _LazyEvalEnv("TEST_NEO4J_USER")
-NEO4J_PASS = _LazyEvalEnv("TEST_NEO4J_PASS")
-NEO4J_SCHEME = _LazyEvalEnv("TEST_NEO4J_SCHEME")
-NEO4J_EDITION = _LazyEvalEnv("TEST_NEO4J_EDITION")
-NEO4J_VERSION = _LazyEvalEnv("TEST_NEO4J_VERSION")
-NEO4J_IS_CLUSTER = _LazyEvalEnv("TEST_NEO4J_IS_CLUSTER", bool)
-NEO4J_SERVER_URI = _LazyEvalFunc(
-    lambda: (
-        f"{_module.NEO4J_SCHEME}://{_module.NEO4J_HOST}:{_module.NEO4J_PORT}"
-    )
+NEO4J_HOST = t.cast(str, _LazyEvalEnv("TEST_NEO4J_HOST"))
+NEO4J_PORT = t.cast(int, _LazyEvalEnv("TEST_NEO4J_PORT", int))
+NEO4J_USER = t.cast(str, _LazyEvalEnv("TEST_NEO4J_USER"))
+NEO4J_PASS = t.cast(str, _LazyEvalEnv("TEST_NEO4J_PASS"))
+NEO4J_SCHEME = t.cast(str, _LazyEvalEnv("TEST_NEO4J_SCHEME"))
+NEO4J_PARSED_SCHEME = t.cast(Scheme, _LazyEvalFunc(_parse_scheme))
+NEO4J_EDITION = t.cast(str, _LazyEvalEnv("TEST_NEO4J_EDITION"))
+NEO4J_VERSION = t.cast(str, _LazyEvalEnv("TEST_NEO4J_VERSION"))
+NEO4J_IS_CLUSTER = t.cast(bool, _LazyEvalEnv("TEST_NEO4J_IS_CLUSTER", bool))
+NEO4J_SERVER_URI = t.cast(str, _LazyEvalFunc(_get_url))
+NEO4J_DEFAULT_DB = t.cast(
+    str, _LazyEvalEnv("TEST_NEO4J_DEFAULT_DB", default="neo4j")
 )
 IS_WIN = sys.platform in {"win32", "cygwin"}
+
 
 __all__ = (
     "IS_WIN",
     "NEO4J_EDITION",
     "NEO4J_HOST",
     "NEO4J_IS_CLUSTER",
+    "NEO4J_PARSED_SCHEME",
     "NEO4J_PASS",
     "NEO4J_PORT",
     "NEO4J_SCHEME",

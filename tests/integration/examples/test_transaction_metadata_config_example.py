@@ -13,8 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from neo4j import unit_of_work
+
+from ...conftest import (
+    mark_requires_tx_support,
+    mark_skip_if_scheme,
+)
+from ...env import Scheme
 
 
 # tag::transaction-metadata-config[]
@@ -48,6 +53,10 @@ def work(tx, query, **parameters):
     return [rec.values() for rec in res], res.consume()
 
 
+@mark_skip_if_scheme(
+    Scheme.HTTP, reason="TX metadata & timeout not supported via HTTP(S)"
+)
+@mark_requires_tx_support
 def test_example(driver):
     eg = TransactionMetadataConfigExample(driver)
     with eg.driver.session() as session:

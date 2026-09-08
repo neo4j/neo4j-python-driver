@@ -20,8 +20,8 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
-from unittest import mock
 
+import mock
 import pytest
 
 from neo4j import Address

@@ -58,7 +58,8 @@ def add_person(name):
 # end::custom-resolver[]
 
 
-def test_example(uri, auth):
+def test_example(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         add_person("testing_resolver")
     except ServiceUnavailable as error:

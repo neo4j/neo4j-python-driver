@@ -33,7 +33,11 @@ from pytz import (
     utc,
 )
 
-from neo4j.time import Time
+from neo4j.time import (
+    MAX_INT64,
+    MIN_INT64,
+    Time,
+)
 from neo4j.time._arithmetic import (
     nano_add,
     nano_div,
@@ -225,6 +229,19 @@ class TestTime:
     def test_from_iso_format_with_hour_only_tz(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(120))
         actual = Time.from_iso_format("12:34:56.123456789+02:00")
+        assert expected == actual
+
+    @pytest.mark.parametrize(
+        "iso",
+        (
+            "12:34:56.123456789Z",
+            "12:34:56.123456789+00:00",
+            "12:34:56.123456789-00:00",
+        ),
+    )
+    def test_from_iso_format_with_zulu_tz(self, iso: str) -> None:
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(0))
+        actual = Time.from_iso_format(iso)
         assert expected == actual
 
     def test_utc_offset_fixed(self) -> None:
@@ -649,3 +666,11 @@ def test_format() -> None:
     assert (
         f"{t:%Y-%m-%d %H:%M:%S.%f}" == f"{time():%Y-%m-%d} 12:34:56.789123001"
     )
+
+
+def test_min_int():
+    assert MIN_INT64 == -9223372036854775808
+
+
+def test_max_int():
+    assert MAX_INT64 == 9223372036854775807

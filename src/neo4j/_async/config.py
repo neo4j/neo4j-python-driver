@@ -26,12 +26,17 @@ from .._conf import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from .auth_management import AsyncAuthManagers
 
 
 if t.TYPE_CHECKING:
     import ssl
 
-    from .._auth_management import ClientCertificate
+    from .._auth_management import (
+        AsyncAuthManager,
+        AuthManager,
+        ClientCertificate,
+    )
 
 
 class AsyncPoolConfig(Config):
@@ -96,7 +101,7 @@ class AsyncPoolConfig(Config):
     # Specify whether TCP keep-alive should be enabled.
 
     #: Authentication provider
-    auth = None
+    auth: AsyncAuthManager | AuthManager = AsyncAuthManagers.static(None)
 
     #: Lowest notification severity for the server to return
     notifications_min_severity = None

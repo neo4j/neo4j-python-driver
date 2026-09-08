@@ -23,6 +23,7 @@ from .. import _typing as t
 from .._addressing import Address
 from .._api import (
     DRIVER_BOLT,
+    DRIVER_HTTP,
     DRIVER_NEO4J,
     NotificationMinimumSeverity,
     parse_neo4j_uri,
@@ -61,6 +62,8 @@ from ..api import (
     URI_SCHEME_BOLT,
     URI_SCHEME_BOLT_SECURE,
     URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+    URI_SCHEME_HTTP,
+    URI_SCHEME_HTTPS,
     URI_SCHEME_NEO4J,
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
@@ -231,12 +234,14 @@ class GraphDatabase:
                         [
                             URI_SCHEME_BOLT,
                             URI_SCHEME_NEO4J,
+                            URI_SCHEME_HTTP,
                         ],
                         [
                             URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
                             URI_SCHEME_BOLT_SECURE,
                             URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
                             URI_SCHEME_NEO4J_SECURE,
+                            URI_SCHEME_HTTPS,
                         ],
                     )
                 )
@@ -266,20 +271,16 @@ class GraphDatabase:
                     f"{liveness_check_timeout}."
                 )
 
-            assert driver_type in {DRIVER_BOLT, DRIVER_NEO4J}
-            if driver_type == DRIVER_BOLT:
-                if parse_routing_context(parsed.query):
-                    raise ConfigurationError(
-                        "Routing context (URI query parameters) are not "
-                        "supported by direct drivers "
-                        f'("bolt[+s[sc]]://" scheme). Given URI: {uri!r}.'
-                    )
+            assert driver_type in {DRIVER_BOLT, DRIVER_NEO4J, DRIVER_HTTP}
+            if driver_type == DRIVER_NEO4J:
+                routing_context = parse_routing_context(parsed.query)
+                return cls._neo4j_driver(
+                    parsed.netloc, routing_context=routing_context, **config
+                )
+            elif driver_type == DRIVER_BOLT:
                 return cls._bolt_driver(parsed.netloc, **config)
-            # else driver_type == DRIVER_NEO4J
-            routing_context = parse_routing_context(parsed.query)
-            return cls._neo4j_driver(
-                parsed.netloc, routing_context=routing_context, **config
-            )
+            else:  # driver_type == DRIVER_HTTP
+                return cls._http_driver(parsed.netloc, parsed.path, **config)
 
     @classmethod
     def bookmark_manager(
@@ -430,6 +431,26 @@ class GraphDatabase:
 
             raise ServiceUnavailable(str(error)) from error
 
+    @classmethod
+    def _http_driver(cls, target, path, **config):
+        """
+        Create an HTTP driver.
+
+        Create a driver for accessing a Neo4j service via the HTTP v2/Query
+        API.
+        """
+        from .._exceptions import (
+            BoltHandshakeError,
+            BoltSecurityError,
+        )
+
+        try:
+            return HttpDriver._open(target, path, **config)
+        except (BoltHandshakeError, BoltSecurityError) as error:
+            from ..exceptions import ServiceUnavailable
+
+            raise ServiceUnavailable(str(error)) from error
+
 
 class _Direct:
     _default_host = "localhost"
@@ -478,6 +499,10 @@ class _Routing:
             default_host=cls._default_host,
             default_port=cls._default_port,
         )
+
+
+class _Http(_Direct):
+    _default_port = 7474
 
 
 class Driver:
@@ -776,7 +801,7 @@ class Driver:
             :data:`None` (default) uses the database configured on the server
             side.
 
-            .. Note::
+            .. note::
                 It is recommended to always specify the database explicitly
                 when possible. This allows the driver to work more efficiently,
                 as it will not have to resolve the default database first.
@@ -1319,13 +1344,13 @@ class BoltDriver(_Direct, Driver):
 
     @classmethod
     def _open(cls, target, **config):
-        from .io import BoltPool
+        from .io import DirectBoltPool
 
         address = cls._parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(
             config, PoolConfig, WorkspaceConfig
         )
-        pool = BoltPool.open(
+        pool = DirectBoltPool.open(
             address,
             pool_config=pool_config,
             workspace_config=default_workspace_config,
@@ -1353,13 +1378,13 @@ class Neo4jDriver(_Routing, Driver):
 
     @classmethod
     def _open(cls, *targets, routing_context=None, **config):
-        from .io import Neo4jPool
+        from .io import RoutedBoltPool
 
         addresses = cls._parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(
             config, PoolConfig, WorkspaceConfig
         )
-        pool = Neo4jPool.open(
+        pool = RoutedBoltPool.open(
             *addresses,
             routing_context=routing_context,
             pool_config=pool_config,
@@ -1369,6 +1394,117 @@ class Neo4jDriver(_Routing, Driver):
 
     def __init__(self, pool, default_workspace_config):
         _Routing.__init__(self, [pool.address])
+        Driver.__init__(self, pool, default_workspace_config)
+
+
+class HttpDriver(_Http, Driver):
+    """
+    :class:`.HttpDriver` is instantiated for ``http`` URIs.
+
+    This driver connects to a Neo4j server through the server's HTTP API v2
+    also called Query API.
+
+    Unavailable Features
+    ---------------------
+    .. note::
+        Some features of the driver API are not available when connected via
+        ``http`` or ``https``.
+
+    Configuration settings that behave differently:
+
+    * :ref:`driver-configuration-ref`:
+        * :ref:`max-connection-lifetime-ref`:
+          Has no effect *for the sync driver*.
+        * :ref:`user-agent-ref`:
+          Has no effect.
+        * :ref:`liveness-check-timeout-ref`:
+          Has no effect.
+        * :ref:`resolver-ref`:
+          Has no effect.
+        * :ref:`driver-notifications-min-severity-ref`:
+          Has no effect. *(The server always sends all notifications.)*
+        * :ref:`driver-notifications-disabled-categories-ref`:
+          Has no effect. *(The server always sends all notifications.)*
+        * :ref:`driver-notifications-disabled-classifications-ref`:
+          Has no effect. *(The server always sends all notifications.)*
+        * :ref:`telemetry-disabled-ref`:
+          Has no effect. *(Telemetry is always disabled.)*
+    * :ref:`session-configuration-ref`:
+        * :ref:`database-ref`:
+          The database name must *always* be specified.
+          *(The HTTP API does not support home/default database resolution.)*
+        * :ref:`fetch-size-ref`:
+          Has no effect.
+          *(The server always sends all records at once.
+          This is equivalent to a* ``fetch_size=-1`` *.)*
+        * :ref:`session-notifications-min-severity-ref`:
+          Has no effect. *(The server always sends all notifications.)*
+        * :ref:`session-notifications-disabled-categories-ref`:
+          Has no effect. *(The server always sends all notifications.)*
+        * :ref:`session-notifications-disabled-classifications-ref`:
+          Has no effect. *(The server always sends all notifications.)*
+
+    Other differences:
+
+    * Transaction metadata and timeouts are not supported.
+      If provided, they'll be ignored. E.g.
+
+        * ``metadata`` and ``timeout`` arguments to
+          :meth:`.Session.begin_transaction`
+        * ``metadata`` and ``timeout`` arguments to
+          :class:`.Query`
+        * ``metadata`` and ``timeout`` arguments to
+          :func:`.unit_of_work`
+
+    * Summary information may differ:
+
+        * :attr:`.ResultSummary.result_available_after` and
+          :attr:`.ResultSummary.result_consumed_after` will be :data:`None`
+          for servers older than 2026.07 as this information is not provided
+          such servers.
+        * :attr:`.ServerInfo.agent` is being computed from the DBMS's
+          advertised version. Further, it is being cached to reduce
+          round-trips and overloading the DBMS's HTTP endpoints.
+        * :attr:`.ResultSummary.query_type` will always be :data:`None`.
+
+    * Transmitting and receiving :class:`Vector` values is currently not
+      supported.
+
+    * The only supported auth schemes (see :ref:`auth-ref`) are ``"basic"`` and
+      ``"bearer"``.
+
+    * Transactions, if not interacted with regularly, will time out.
+      How long the server keeps idle transactions around can be configured on
+      the server.
+
+    Preview
+    -------
+    **This is a preview**.
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. versionadded:: 6.4.0
+    """
+
+    @classmethod
+    def _open(cls, target, path, **config) -> t.Self:
+        from .io import HttpV2Pool
+
+        address = cls._parse_target(target)
+        pool_config, default_workspace_config = Config.consume_chain(
+            config, PoolConfig, WorkspaceConfig
+        )
+        pool = HttpV2Pool.open(
+            address,
+            path=path,
+            pool_config=pool_config,
+            workspace_config=default_workspace_config,
+        )
+        return cls(pool, default_workspace_config)
+
+    def __init__(self, pool, default_workspace_config) -> None:
+        _Http.__init__(self, pool.address)
         Driver.__init__(self, pool, default_workspace_config)
 
 

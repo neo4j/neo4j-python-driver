@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+from ... import _typing as t
 from ._bolt_socket import (
     AsyncBoltSocketBase,
     BoltSocketBase,
@@ -24,9 +24,42 @@ from ._util import (
 )
 
 
+if t.TYPE_CHECKING:
+    from ._http_query_api import (  # noqa: F401
+        AsyncHTTPQueryAPI,
+        AsyncHTTPQueryAPIFactory,
+        HTTPQueryAPI,
+        HTTPQueryAPIFactory,
+        HTTPQueryAPIResponse,
+        HTTPVerb,
+        NO_DATA,
+    )
+
+
 __all__ = [
     "AsyncBoltSocketBase",
     "AsyncNetworkUtil",
     "BoltSocketBase",
     "NetworkUtil",
 ]
+
+_http_query_api_exports = {  # noqa: RUF067
+    "AsyncHTTPQueryAPI",
+    "AsyncHTTPQueryAPIFactory",
+    "HTTPQueryAPI",
+    "HTTPQueryAPIFactory",
+    "HTTPQueryAPIResponse",
+    "HTTPVerb",
+    "NO_DATA",
+}
+__all__.extend(_http_query_api_exports)  # noqa: RUF067
+
+
+def __getattr__(name):
+    if name in _http_query_api_exports:
+        from . import _http_query_api
+
+        for export in _http_query_api_exports:
+            globals()[export] = getattr(_http_query_api, export)
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -23,8 +23,8 @@ import typing as t
 import uuid
 import warnings
 from contextlib import suppress
-from unittest import mock
 
+import mock
 import pytest
 import pytz
 
@@ -39,14 +39,13 @@ from neo4j import (
     time as neo4j_time,
 )
 from neo4j._async_compat.util import AsyncUtil
-from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j._codec.hydration.bolt.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j._data import (
     Node,
     Relationship,
 )
 from neo4j._debug import NotificationPrinter
-from neo4j._optional_deps import pd
 from neo4j.exceptions import (
     BrokenRecordError,
     ResultNotSingleError,
@@ -64,6 +63,12 @@ from ...._async_compat import (
     mark_async_test,
     wrap_async,
 )
+from ...._optional_deps import (
+    HAS_PD,
+    mark_skip_with_optional_dependency,
+    mark_skip_without_optional_dependency,
+    pd,
+)
 
 
 if t.TYPE_CHECKING:
@@ -73,9 +78,6 @@ if t.TYPE_CHECKING:
         TStatusNotificationFactory,
         TStatusNotificationLegacyFactory,
     )
-
-
-HAS_PD = pd is not None
 
 
 # https://pandas.pydata.org/docs/user_guide/migration-3-strings.html
@@ -156,7 +158,6 @@ class AsyncConnectionStub:
             self._use_qid = force_qid
         self.fetch_idx = 0
         self._qid = -1
-        self.most_recent_qid = None
         self.record_idxs = [0] * len(self._records)
         self.to_pull = [None] * len(self._records)
         self._exhausted = [False] * len(self._records)
@@ -794,7 +795,7 @@ async def test_to_eager_result(records):
     assert eager_result.keys == list(records.fields)
 
 
-@pytest.mark.skipif(HAS_PD, reason="pandas installed")
+@mark_skip_with_optional_dependency(pd)
 @mark_async_test
 async def test_to_df_requires_pandas():
     connection = AsyncConnectionStub(records=Records(["x"], [[1], [2]]))
@@ -803,7 +804,7 @@ async def test_to_df_requires_pandas():
         await result.to_df()
 
 
-@pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
+@mark_skip_without_optional_dependency(pd)
 @pytest.mark.parametrize(
     ("keys", "values", "types", "instances"),
     (
@@ -875,6 +876,7 @@ async def test_to_df_requires_pandas():
     ),
 )
 @pytest.mark.parametrize("test_default_expand", (True, False))
+@mark_skip_without_optional_dependency(pd)
 @mark_async_test
 async def test_to_df(keys, values, types, instances, test_default_expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
@@ -901,7 +903,6 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         assert df.equals(expected_df)
 
 
-@pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
 @pytest.mark.parametrize(
     ("keys", "values", "expected_columns", "expected_rows", "expected_types"),
     (
@@ -1101,6 +1102,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         ),
     ),
 )
+@mark_skip_without_optional_dependency(pd)
 @mark_async_test
 async def test_to_df_expand(
     keys, values, expected_columns, expected_rows, expected_types
@@ -1140,7 +1142,12 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
 )
 
 
-@pytest.mark.skipif(not HAS_PD, reason="pandas not installed")
+def _localize(tz: pytz.BaseTzInfo, dt: t.Any) -> t.Any:
+    if isinstance(dt, mock.Mock):
+        return dt
+    return tz.localize(dt)
+
+
 @pytest.mark.parametrize(
     ("keys", "values", "expected_df"),
     (
@@ -1179,8 +1186,9 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
             pd.DataFrame(
                 [
                     [
-                        pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01").as_unit("ns")
+                        _localize(
+                            pytz.timezone("Europe/Stockholm"),
+                            pd.Timestamp("1970-01-01").as_unit("ns"),
                         )
                     ]
                 ],
@@ -1206,9 +1214,10 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                     [pd.Timestamp("2022-01-02 03:04:05.000000006")],
                     [pd.Timestamp("2222-02-22")],
                     [
-                        pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01")
-                        )
+                        _localize(
+                            pytz.timezone("Europe/Stockholm"),
+                            pd.Timestamp("1970-01-01"),
+                        ),
                     ],
                 ],
                 columns=["mixed"],
@@ -1233,9 +1242,10 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                     [pd.Timestamp("2222-02-22")],
                     [pd.NaT],
                     [
-                        pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01")
-                        )
+                        _localize(
+                            pytz.timezone("Europe/Stockholm"),
+                            pd.Timestamp("1970-01-01"),
+                        ),
                     ],
                 ],
                 columns=["mixed"],
@@ -1259,9 +1269,10 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                     [pd.Timestamp("2022-01-02 03:04:05.000000006")],
                     [pd.Timestamp("2222-02-22")],
                     [
-                        pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01")
-                        )
+                        _localize(
+                            pytz.timezone("Europe/Stockholm"),
+                            pd.Timestamp("1970-01-01"),
+                        ),
                     ],
                     [pd.NaT],
                 ],
@@ -1327,7 +1338,7 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                 pd.DataFrame(
                     [
                         [
-                            pytz.UTC.localize(pd.Timestamp(dt)).astimezone(
+                            _localize(pytz.UTC, pd.Timestamp(dt)).astimezone(
                                 pytz.timezone("Europe/Stockholm")
                             )
                             + pd.Timedelta(add_ns, unit="ns")
@@ -1339,11 +1350,10 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
             )
             for add_ns in (0, 1)
         ),
-    )
-    if HAS_PD
-    else (),
+    ),
 )
 @pytest.mark.parametrize("expand", [True, False])
+@mark_skip_without_optional_dependency(pd)
 @mark_async_test
 async def test_to_df_parse_dates(keys, values, expected_df, expand):
     connection = AsyncConnectionStub(records=Records(keys, values))

@@ -14,7 +14,24 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import pytest
+
+from neo4j import (
+    _typing as t,
+    AsyncGraphDatabase,
+    GraphDatabase,
+)
+
+from ..conftest import (
+    async_driver_factory,
+    driver_factory,
+)
+
+
+if t.TYPE_CHECKING:
+    from pytest_mock import MockFixture
 
 
 class ForcedRollback(Exception):  # noqa: N818 not really an error
@@ -39,3 +56,16 @@ def cypher_eval(driver):
                 return e.return_value
 
     return f
+
+
+@pytest.fixture
+def patch_driver_factory(mocker: MockFixture) -> t.Callable[[object], None]:
+    def factory(obj: object):
+        if obj is AsyncGraphDatabase:
+            mocker.patch.object(obj, "driver", async_driver_factory)
+        elif obj is GraphDatabase:
+            mocker.patch.object(obj, "driver", driver_factory)
+        else:
+            raise ValueError(f"Unsupported object type: {type(obj)}")
+
+    return factory

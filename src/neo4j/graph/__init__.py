@@ -148,7 +148,7 @@ class Entity(_t.Mapping[str, _t.Any]):
         """The :class:`.Graph` to which this entity belongs."""
         return self._graph
 
-    @property  # type: ignore
+    @property
     @_deprecated("`id` is deprecated, use `element_id` instead")
     def id(self) -> int:
         """

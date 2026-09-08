@@ -39,7 +39,8 @@ class DriverLifecycleExample:
 # end::driver-lifecycle[]
 
 
-def test_example(uri, auth):
+def test_example(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         eg = DriverLifecycleExample(uri, auth)
         eg.close()

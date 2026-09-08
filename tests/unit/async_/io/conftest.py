@@ -16,7 +16,7 @@
 
 import pytest
 
-from neo4j._async.io._common import (
+from neo4j._async.io._bolt._common import (
     AsyncInbox,
     AsyncOutbox,
 )

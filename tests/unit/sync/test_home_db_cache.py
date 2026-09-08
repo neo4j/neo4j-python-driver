@@ -31,7 +31,7 @@ import pytz
 from neo4j._conf import WorkspaceConfig
 from neo4j._sync.config import PoolConfig
 from neo4j._sync.home_db_cache import HomeDbCache
-from neo4j._sync.io._pool import Neo4jPool
+from neo4j._sync.io._pool import RoutedBoltPool
 from neo4j.time import DateTime
 
 
@@ -251,7 +251,7 @@ def test_cache_max_size_empty_cache() -> None:
 
 def test_clean_up_time() -> None:
     def get_default_cache():
-        pool = Neo4jPool(
+        pool = RoutedBoltPool(
             lambda: None, PoolConfig(), WorkspaceConfig(), None
         )
         return pool.home_db_cache

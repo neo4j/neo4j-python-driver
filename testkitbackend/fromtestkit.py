@@ -110,9 +110,9 @@ def to_param(m):
     if name == "CypherMap":
         return {k: to_param(data["value"][k]) for k in data["value"]}
     if name == "CypherPoint":
-        coords = [data["x"], data["y"]]
+        coords = [float(data["x"]), float(data["y"])]
         if data.get("z") is not None:
-            coords.append(data["z"])
+            coords.append(float(data["z"]))
         if data["system"] == "cartesian":
             return CartesianPoint(coords)
         if data["system"] == "wgs84":
@@ -153,17 +153,21 @@ def to_param(m):
         if timezone_id is not None:
             utc_offset = timedelta(seconds=utc_offset_s)
             tz = pytz.timezone(timezone_id)
+            offsets = []
             try:
                 localized_datetime = tz.localize(datetime, is_dst=None)
                 if localized_datetime.utcoffset() == utc_offset:
                     return localized_datetime
+                offsets.append(localized_datetime.utcoffset())
             except pytz.AmbiguousTimeError:
                 localized_datetime = tz.localize(datetime, is_dst=False)
                 if localized_datetime.utcoffset() == utc_offset:
                     return localized_datetime
+                offsets.append(localized_datetime.utcoffset())
                 localized_datetime = tz.localize(datetime, is_dst=True)
                 if localized_datetime.utcoffset() == utc_offset:
                     return localized_datetime
+                offsets.append(localized_datetime.utcoffset())
             except pytz.NonExistentTimeError as e:
                 raise ValueError(
                     f"local datetime {datetime} does not exist in timezone "
@@ -171,7 +175,8 @@ def to_param(m):
                 ) from e
             raise ValueError(
                 f"cannot localize datetime {datetime} to timezone "
-                f"{timezone_id} with UTC offset {utc_offset}"
+                f"{timezone_id} with UTC offset {utc_offset}; known offsets: "
+                f"{list(map(str, offsets))!r}"
             )
         elif utc_offset_s is not None:
             utc_offset_m = utc_offset_s // 60

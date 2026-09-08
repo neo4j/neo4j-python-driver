@@ -16,10 +16,16 @@
 
 from __future__ import annotations
 
+import dataclasses
 import math
+import re
 
-from . import _typing as t  # noqa: TC001
+from . import _typing as t
+from .api import ServerInfo
 
+
+if t.TYPE_CHECKING:
+    from .addressing import Address
 
 __all__ = [
     "BoltProtocolVersion",
@@ -27,6 +33,8 @@ __all__ = [
 
 
 class BoltProtocolVersion:
+    version: tuple[int, int]
+
     def __init__(self, major: int, minor: int) -> None:
         if major < 0 or minor < 0:
             raise ValueError(
@@ -96,6 +104,51 @@ class BoltProtocolVersion:
 
     def __str__(self) -> str:
         return f"{self.major}.{self.minor}"
+
+
+_VERSION_RE = re.compile(r"^(\d+)\.(\d+)")
+
+
+@dataclasses.dataclass(slots=True, frozen=True, kw_only=True)
+class HTTPServerInfo:
+    neo4j_version: str
+    parsed_neo4j_version: tuple[int, int] | None = dataclasses.field(
+        init=False, default=None
+    )
+    server_agent: str = dataclasses.field(init=False)
+    bolt_version: str | None
+    parsed_bolt_version: BoltProtocolVersion | None = dataclasses.field(
+        init=False, default=None
+    )
+
+    def __post_init__(self):
+        match = _VERSION_RE.match(self.neo4j_version)
+        if match is not None:
+            parsed_version = tuple(map(int, match.groups()))
+            object.__setattr__(self, "parsed_neo4j_version", parsed_version)
+        if self.bolt_version is not None:
+            match = _VERSION_RE.match(self.bolt_version)
+            if match is not None:
+                parsed_version = BoltProtocolVersion(*map(int, match.groups()))
+                object.__setattr__(self, "parsed_bolt_version", parsed_version)
+        server_agent = f"Neo4j/{self.neo4j_version}"
+        object.__setattr__(self, "server_agent", server_agent)
+
+    def as_server_info(
+        self, address: Address, connection_id: str
+    ) -> ServerInfo:
+        protocol_version = (0, 0)
+        if self.parsed_bolt_version is not None:
+            protocol_version = self.parsed_bolt_version.version
+        server_info = ServerInfo(address, protocol_version=protocol_version)
+        server_info.update(
+            {
+                "protocol_version": ".".join(map(str, protocol_version)),
+                "connection_id": connection_id,
+                "server": self.server_agent,
+            }
+        )
+        return server_info
 
 
 def min_timeout(*timeouts: float | None) -> float | None:

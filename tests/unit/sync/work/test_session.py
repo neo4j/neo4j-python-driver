@@ -35,8 +35,8 @@ from neo4j._conf import SessionConfig
 from neo4j._sync.home_db_cache import HomeDbCache
 from neo4j._sync.io import (
     AcquisitionDatabase,
-    BoltPool,
-    Neo4jPool,
+    DirectBoltPool,
+    RoutedBoltPool,
 )
 from neo4j.api import (
     BookmarkManager,
@@ -448,13 +448,13 @@ def test_with_bookmark_manager(
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
 
     if routing:
-        fake_pool.mock_add_spec(Neo4jPool)
+        fake_pool.mock_add_spec(RoutedBoltPool)
         fake_pool.update_routing_table.side_effect = (
             update_routing_table_side_effect
         )
         fake_pool.is_direct_pool = False
     else:
-        fake_pool.mock_add_spec(BoltPool)
+        fake_pool.mock_add_spec(DirectBoltPool)
         fake_pool.is_direct_pool = True
 
     config = SessionConfig()
@@ -547,7 +547,9 @@ def test_last_bookmarks_does_not_leak_bookmark_managers_bookmarks(
     def bmm_get_bookmarks():
         return ["bmm:bm1"]
 
-    fake_pool.mock_add_spec(Neo4jPool if routing else BoltPool)
+    fake_pool.mock_add_spec(
+        RoutedBoltPool if routing else DirectBoltPool
+    )
 
     bmm = mocker.Mock(spec=BookmarkManager)
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
@@ -571,7 +573,9 @@ def test_last_bookmarks_does_not_leak_bookmark_managers_bookmarks(
 @pytest.mark.parametrize("routing", (True, False))
 @mark_sync_test
 def test_run_notification_min_severity(fake_pool, routing):
-    fake_pool.mock_add_spec(Neo4jPool if routing else BoltPool)
+    fake_pool.mock_add_spec(
+        RoutedBoltPool if routing else DirectBoltPool
+    )
     min_sev = object()
     config = SessionConfig(notifications_min_severity=min_sev)
     with Session(fake_pool, config) as session:
@@ -588,7 +592,9 @@ def test_run_notification_min_severity(fake_pool, routing):
 def test_run_notification_disabled_classifications(
     fake_pool, routing
 ):
-    fake_pool.mock_add_spec(Neo4jPool if routing else BoltPool)
+    fake_pool.mock_add_spec(
+        RoutedBoltPool if routing else DirectBoltPool
+    )
     dis_clss = object()
     config = SessionConfig(notifications_disabled_classifications=dis_clss)
     with Session(fake_pool, config) as session:
@@ -693,7 +699,7 @@ def test_uses_home_db_cache_when_expected(
     fake_pool.ssr_enabled = pool_ssr
     if pool_routing:
         fake_pool.is_direct_pool = False
-        fake_pool.mock_add_spec(Neo4jPool)
+        fake_pool.mock_add_spec(RoutedBoltPool)
     cache_spy = mocker.Mock(spec=HomeDbCache, wraps=HomeDbCache())
     cached_db = "nice_cached_home_db"
     key = object()
@@ -790,7 +796,7 @@ def test_pinns_session_db_with_cache(
     fake_pool.ssr_enabled = pool_ssr
     if pool_routing:
         fake_pool.is_direct_pool = False
-        fake_pool.mock_add_spec(Neo4jPool)
+        fake_pool.mock_add_spec(RoutedBoltPool)
     cache_spy = mocker.Mock(spec=HomeDbCache, wraps=HomeDbCache())
     key = object()
     cache_spy.compute_key.return_value = key

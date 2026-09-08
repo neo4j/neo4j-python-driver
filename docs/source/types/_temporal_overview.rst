@@ -23,7 +23,7 @@ LocalDateTime  :class:`neo4j.time.DateTime`  :class:`python:datetime.datetime`  
 Duration       :class:`neo4j.time.Duration`  :class:`python:datetime.timedelta`
 =============  ============================  ==================================  ============
 
-.. Note::
+.. note::
     Cypher has built-in support for handling temporal values, and the underlying
     database supports storing these temporal values as properties on nodes and relationships,
     see https://neo4j.com/docs/cypher-manual/current/syntax/temporal/

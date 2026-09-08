@@ -22,6 +22,7 @@ import sys
 
 TEST_BACKEND_VERSION = os.getenv("TEST_BACKEND_VERSION", "python")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
+IS_HTTP = os.getenv("TEST_NEO4J_SCHEME") in {"http", "https"}
 
 
 def run(args, env=None):

@@ -78,3 +78,15 @@ class BoltProtocolError(BoltError):
 
 class SocketDeadlineExceededError(RuntimeError):
     """Raised from sockets with deadlines when a timeout occurs."""
+
+
+class QueryApiHttpError(Exception):
+    """
+    Raised when a protocol error over Query API/HTTP occurs.
+
+    Encountering this error is likely a bug in the driver or the server.
+    Please report the issue and attach driver logs if possible.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(f"protocol error: {message}")

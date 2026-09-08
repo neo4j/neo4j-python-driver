@@ -37,7 +37,8 @@ class ConfigUnencryptedExample(DriverSetupExample):
     # end::config-unencrypted[]
 
 
-def test_example(uri, auth):
+def test_example(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         ConfigUnencryptedExample.test(uri, auth)
     except ServiceUnavailable as error:

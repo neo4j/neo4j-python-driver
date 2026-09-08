@@ -10,8 +10,8 @@ Async API Documentation
 AsyncGraphDatabase
 ******************
 
-Async Driver Construction
-=========================
+AsyncDriver Construction
+========================
 
 The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the :class:`neo4j.AsyncGraphDatabase` class.
 
@@ -81,6 +81,8 @@ Available valid URIs:
 + ``neo4j://host[:port][?routing_context]``
 + ``neo4j+ssc://host[:port][?routing_context]``
 + ``neo4j+s://host[:port][?routing_context]``
++ ``http://host[:port]/db-name``
++ ``https://host[:port]/db-name``
 
 .. code-block:: python
 
@@ -89,6 +91,10 @@ Available valid URIs:
 .. code-block:: python
 
     uri = "neo4j://example.com:7687"
+
+.. code-block:: python
+
+    uri = "https://example.com/neo4j"
 
 Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass that implements a specific behaviour.
 
@@ -107,6 +113,10 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+s                | :ref:`async-neo4j-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.       |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| http                   | :ref:`async-http-driver-ref` with no encryption. (**preview**)                                                                              |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| https                  | :ref:`async-http-driver-ref` with encryption. (**preview**)                                                                                 |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
 
 
 .. note::
@@ -117,6 +127,10 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 .. note::
 
     See https://neo4j.com/docs/operations-manual/current/configuration/ports/ for Neo4j ports.
+
+
+.. versionchanged:: 6.2
+    Added support for ``http`` and ``https`` schemes.
 
 
 .. _async-auth-ref:
@@ -251,7 +265,7 @@ Closing a driver will immediately shut down all connections in the pool.
             :data:`None` (default) uses the database configured on the server
             side.
 
-            .. Note::
+            .. note::
                 It is recommended to always specify the database explicitly
                 when possible. This allows the driver to work more efficiently,
                 as it will not have to resolve the default database first.
@@ -380,8 +394,8 @@ Closing a driver will immediately shut down all connections in the pool.
 
 .. _async-driver-configuration-ref:
 
-Async Driver Configuration
-==========================
+AsyncDriver Configuration
+=========================
 
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
 (see :ref:`driver-configuration-ref`). The only differences are that the async
@@ -441,6 +455,12 @@ For example:
                                        resolver=custom_resolver)
 
 
+.. note::
+    This setting does not have any effect when connected
+    via ``http://`` or ``https://`` scheme.
+
+
+:Type: ``Callable`` or :data:`None`
 :Default: :data:`None`
 
 
@@ -451,7 +471,7 @@ For example:
 Specify a client certificate or certificate provider for mutual TLS (mTLS) authentication.
 
 This setting does not have any effect if ``encrypted`` is set to ``False``
-(and the URI scheme is ``bolt://`` or ``neo4j://``) or a custom ``ssl_context`` is configured.
+(and the URI scheme is ``bolt://``, ``neo4j://``, or ``http://``) or a custom ``ssl_context`` is configured.
 
 :Type: :class:`.ClientCertificate`, :class:`.AsyncClientCertificateProvider` or :data:`None`.
 :Default: :data:`None`
@@ -472,8 +492,8 @@ This setting does not have any effect if ``encrypted`` is set to ``False``
 
 
 
-Driver Object Lifetime
-======================
+AsyncDriver Object Lifetime
+===========================
 
 For general applications, it is recommended to create one top-level :class:`neo4j.AsyncDriver` object that lives for the lifetime of the application.
 
@@ -525,6 +545,19 @@ Will result in:
 .. autoclass:: neo4j.AsyncNeo4jDriver
 
 
+.. _async-http-driver-ref:
+
+AsyncHttpDriver
+===============
+
+URI schemes:
+    ``http``, ``https``
+
+Will result in:
+
+.. autoclass:: neo4j.AsyncHttpDriver
+
+
 *********************************
 AsyncSessions & AsyncTransactions
 *********************************
@@ -535,7 +568,7 @@ All database activity is co-ordinated through two mechanisms:
 A **session** is a logical container for any number of causally-related transactional units of work.
 Sessions automatically provide guarantees of causal consistency within a clustered environment but multiple sessions can also be causally chained if required.
 Sessions provide the top level of containment for database activity.
-Session creation is a lightweight operation and *sessions are not thread safe*.
+Session creation is a lightweight operation and *sessions are not thread-safe*.
 
 Connections are drawn from the :class:`neo4j.AsyncDriver` connection pool as required.
 
@@ -654,8 +687,8 @@ AsyncSession
 
 .. _async-session-configuration-ref:
 
-Session Configuration
-=====================
+AsyncSession Configuration
+==========================
 
 :class:`neo4j.AsyncSession` is configured exactly like :class:`neo4j.Session`
 (see :ref:`session-configuration-ref`). The only difference is the async session

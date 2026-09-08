@@ -144,7 +144,7 @@ class Session(Workspace):
         if connection:
             log.debug(
                 "[#%04X]  _: <SESSION> %s cancellation clean-up",
-                connection.local_port,
+                connection.log_id,
                 message,
             )
             self._pool.kill_and_release(connection)
@@ -473,6 +473,10 @@ class Session(Workspace):
 
         Note: For auto-commit transactions (:meth:`.Session.run`), this
         will trigger a :meth:`.Result.consume` for the current result.
+
+        .. note::
+            ``metadata`` and ``timeout`` do not have any effect when connected
+            via ``http://`` or ``https://`` scheme.
 
         :param metadata:
             a dictionary with metadata.

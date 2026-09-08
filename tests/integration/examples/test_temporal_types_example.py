@@ -14,10 +14,14 @@
 # limitations under the License.
 
 
+from ...conftest import mark_requires_tx_support
+
+
 def _echo(tx, x):
     return tx.run("RETURN $x AS fieldName", x=x).single()
 
 
+@mark_requires_tx_support
 def test_datetime(driver):
     # isort: off
     # tag::temporal-types-datetime-import[]
@@ -73,6 +77,7 @@ def test_datetime(driver):
     assert dt == in_dt.to_native()
 
 
+@mark_requires_tx_support
 def test_date(driver):
     # isort: off
     # tag::temporal-types-date-import[]
@@ -124,6 +129,7 @@ def test_date(driver):
     assert d == in_d.to_native()
 
 
+@mark_requires_tx_support
 def test_time(driver):
     # isort: off
     # tag::temporal-types-time-import[]
@@ -177,6 +183,7 @@ def test_time(driver):
     assert t == in_t.to_native()
 
 
+@mark_requires_tx_support
 def test_local_datetime(driver):
     # isort: off
     # tag::temporal-types-local-datetime-import[]
@@ -229,6 +236,7 @@ def test_local_datetime(driver):
     assert dt == in_dt.to_native()
 
 
+@mark_requires_tx_support
 def test_local_time(driver):
     # isort: off
     # tag::temporal-types-local-time-import[]
@@ -279,6 +287,7 @@ def test_local_time(driver):
     assert t == in_t.to_native()
 
 
+@mark_requires_tx_support
 def test_duration_example(driver):
     # isort: off
     # tag::temporal-types-duration-import[]

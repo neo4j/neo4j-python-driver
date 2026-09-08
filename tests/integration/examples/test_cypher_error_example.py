@@ -17,6 +17,8 @@
 from contextlib import redirect_stdout
 from io import StringIO
 
+from ...conftest import mark_requires_tx_support
+
 
 # isort: off
 # tag::cypher-error-import[]
@@ -48,6 +50,7 @@ class Neo4jErrorExample:
     # end::cypher-error[]
 
 
+@mark_requires_tx_support
 def test_example(driver):
     s = StringIO()
     with redirect_stdout(s):
