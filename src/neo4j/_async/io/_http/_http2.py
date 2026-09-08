@@ -58,7 +58,6 @@ from ....exceptions import (
     IncompleteCommit,
     Neo4jError,
     ServiceUnavailable,
-    SessionExpired,
 )
 from ._base import AsyncHttpConnection
 from ._common import (
@@ -1111,7 +1110,7 @@ class AsyncHttpV2(AsyncHttpConnection):
                     raise IncompleteCommit(message) from error
                 if protocol_error or not connection_failed:
                     raise
-                raise SessionExpired(message) from error
+                raise ServiceUnavailable(message) from error
 
         return inner
 

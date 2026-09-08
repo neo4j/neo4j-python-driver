@@ -39,7 +39,7 @@ from ..._async_compat.concurrency import (
 )
 from ..._exceptions import QueryApiHttpError
 from ..._meta import USER_AGENT
-from ...exceptions import SessionExpired
+from ...exceptions import ServiceUnavailable
 
 
 if t.TYPE_CHECKING:
@@ -259,7 +259,7 @@ class AsyncHTTPQueryAPI:
                 **kwargs,
             )
         except aiohttp.ClientError as e:
-            raise SessionExpired(str(e)) from e
+            raise ServiceUnavailable(str(e)) from e
 
         raw_body = await response.text()
         log.debug(
@@ -454,7 +454,7 @@ class HTTPQueryAPI:
                 **kwargs,
             )
         except urllib3.exceptions.HTTPError as e:
-            raise SessionExpired(str(e)) from e
+            raise ServiceUnavailable(str(e)) from e
 
         raw_body = response.data.decode("utf-8")
         log.debug(

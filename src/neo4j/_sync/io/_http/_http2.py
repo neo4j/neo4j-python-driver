@@ -58,7 +58,6 @@ from ....exceptions import (
     IncompleteCommit,
     Neo4jError,
     ServiceUnavailable,
-    SessionExpired,
 )
 from ._base import HttpConnection
 from ._common import (
@@ -1108,7 +1107,7 @@ class HttpV2(HttpConnection):
                     raise IncompleteCommit(message) from error
                 if protocol_error or not connection_failed:
                     raise
-                raise SessionExpired(message) from error
+                raise ServiceUnavailable(message) from error
 
         return inner
 
