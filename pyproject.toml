@@ -38,6 +38,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Database",
     "Topic :: Software Development",
     "Typing :: Typed",
@@ -55,11 +56,15 @@ Forum = "https://community.neo4j.com/c/drivers-stacks/python/"
 Discord = "https://discord.com/invite/neo4j"
 
 [project.optional-dependencies]
+# [bump-numpy] search tag when bumping numpy
 numpy = ["numpy >= 1.21.2, < 3.0.0"]
+# [bump-pandas] search tag when bumping pandas
+# [bump-numpy] search tag when bumping numpy
 pandas = [
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     "numpy >= 1.21.2, < 3.0.0",
 ]
+# [bump-pyarrow] search tag when bumping pyarrow
 pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
 
 
@@ -158,8 +163,11 @@ dep-typing-extensions = ["typing-extensions >= 4.15.0"]
 dep-freezegun = ["freezegun >= 1.5.5"]
 dep-project-dependencies = [
     "pytz",
+    # [bump-numpy] search tag when bumping numpy
     "numpy >= 1.7.0, < 3.0.0",
+    # [bump-pandas] search tag when bumping pandas
     "pandas[timezone] >= 1.1.0, < 4.0.0",
+    # [bump-pyarrow] search tag when bumping pyarrow
     "pyarrow >= 6.0.0, < 26.0.0",
 ]
 

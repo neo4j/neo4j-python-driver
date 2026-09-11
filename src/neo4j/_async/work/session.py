@@ -615,7 +615,7 @@ class AsyncSession(AsyncWorkspace):
                 raise
 
         if errors:
-            # TODO: 7.0 - when Python 3.11+ is the minimum,
+            # TODO: 7.0 - when dropping support for Python 3.10,
             #             use exception groups
             raise errors[-1]
         else:

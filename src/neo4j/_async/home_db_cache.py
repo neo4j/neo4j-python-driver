@@ -131,6 +131,7 @@ class AsyncHomeDbCache:
         return self._enabled
 
 
+# TODO: when dropping support for Python 3.14, use frozendict
 def _consolidate_auth_token(auth: dict) -> tuple | str:
     if auth.get("scheme") == "basic" and isinstance(
         auth.get("principal"), str

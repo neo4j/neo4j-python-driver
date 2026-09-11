@@ -59,6 +59,7 @@ __all__ = [
 ]
 
 
+# TODO: when dropping support for Python 3.14, use sentinel
 _DEFAULT = object()
 
 
