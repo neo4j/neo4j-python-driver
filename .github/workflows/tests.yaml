@@ -26,7 +26,7 @@ jobs:
             tox-factor: 'py313'
           - semver: '3.14'
             tox-factor: 'py314'
-          - semver: '3.15'
+          - semver: '3.15.0-rc.2'
             tox-factor: 'py315'
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
@@ -40,7 +40,7 @@ jobs:
       # [bump-pyarrow] search tag when bumping pyarrow
       - name: Set environment variables
         run: |
-          if [[ ${{ matrix.semver }} == '3.15' ]]; then
+          if [[ '${{ matrix.semver }}' =~ ^3\.15([^0-9].*)?$ ]]; then
             # Disable some tox features when building wheel locally
             echo "PYARROW_WITH_CUDA=OFF" >> $GITHUB_ENV
             echo "PYARROW_WITH_GANDIVA=OFF" >> $GITHUB_ENV
