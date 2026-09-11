@@ -40,7 +40,7 @@ jobs:
       # [bump-pyarrow] search tag when bumping pyarrow
       - name: Set environment variables
         run: |
-          if [[ '${{ matrix.semver }}' =~ ^3\.15([^0-9].*)?$ ]]; then
+          if [[ '${{ matrix.python-version.semver }}' =~ ^3\.15([^0-9].*)?$ ]]; then
             # Disable some tox features when building wheel locally
             echo "PYARROW_WITH_CUDA=OFF" >> $GITHUB_ENV
             echo "PYARROW_WITH_GANDIVA=OFF" >> $GITHUB_ENV
