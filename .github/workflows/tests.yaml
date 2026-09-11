@@ -45,6 +45,7 @@ jobs:
             echo "PYARROW_WITH_CUDA=OFF" >> $GITHUB_ENV
             echo "PYARROW_WITH_GANDIVA=OFF" >> $GITHUB_ENV
           fi
+        shell: bash
 
       - name: Run install tox
         run: python -m pip install -U --group tox
