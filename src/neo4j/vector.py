@@ -293,7 +293,7 @@ class Vector:
     @property
     def dtype(self) -> VectorDType:
         """
-        Get the type of the vector.
+        The type of the vector.
 
         :returns: The type of the vector.
         """

@@ -944,10 +944,12 @@ class Result(NonConcurrentMethodChecker):
             return df
         dt_columns = df.columns[
             df.apply(
-                lambda col: pd.api.types.infer_dtype(col) == "mixed"
-                and col.map(
-                    lambda x: isinstance(x, (DateTime, Date, type(None)))
-                ).all()
+                lambda col: (
+                    pd.api.types.infer_dtype(col) == "mixed"
+                    and col.map(
+                        lambda x: isinstance(x, (DateTime, Date, type(None)))
+                    ).all()
+                )
             )
         ]
 
