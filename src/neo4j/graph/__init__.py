@@ -266,23 +266,23 @@ class Relationship(Entity):
 
     @property
     def nodes(self) -> tuple[Node | None, Node | None]:
-        """Get the pair of nodes which this relationship connects."""
+        """The pair of nodes which this relationship connects."""
         return self._start_node, self._end_node
 
     @property
     def start_node(self) -> Node | None:
-        """Get the start node of this relationship."""
+        """The start node of this relationship."""
         return self._start_node
 
     @property
     def end_node(self) -> Node | None:
-        """Get the end node of this relationship."""
+        """The end node of this relationship."""
         return self._end_node
 
     @property
     def type(self) -> str:
         """
-        Get the type name of this relationship.
+        The type name of this relationship.
 
         This is functionally equivalent to ``type(relationship).__name__``.
         """
