@@ -242,6 +242,8 @@ extend-exclude = [
     "tests/integration/sync",
     "testkitbackend/_sync",
 ]
+# [ruff-rule-codes] search tag for switching from rule codes to rule names
+output-prefer-rule-codes = true
 
 [tool.ruff.lint]
 preview = true  # to get CPY lints
@@ -313,6 +315,7 @@ extend-ignore = [
     #  * con: tailored to ruff
     #  * con: a very noise change now
     # conclusion: not doing it now, but maybe in the future
+    # [ruff-rule-codes] search tag for switching from rule codes to rule names
     "RUF105",
 ]
 select = [
