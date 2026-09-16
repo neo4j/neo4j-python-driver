@@ -122,7 +122,7 @@ def pool(fake_connection_generator):
     with FakeBoltPool(
         fake_connection_generator, ("127.0.0.1", 7687)
     ) as pool:
-        yield pool
+        yield pool  # noqa: ASYNC119 - pytest-asyncio properly cleans up
 
 
 def assert_pool_size(address, expected_active, expected_inactive, pool):

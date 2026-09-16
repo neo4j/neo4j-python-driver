@@ -254,7 +254,7 @@ class ResultSummary:
     @property
     def gql_status_objects(self) -> t.Sequence[GqlStatusObject]:
         """
-        Get GqlStatusObjects that arose when executing the query.
+        The GqlStatusObjects that arose when executing the query.
 
         The sequence always contains at least 1 status representing the
         Success, No Data or Omitted Result.
