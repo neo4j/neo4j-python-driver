@@ -106,6 +106,7 @@ if t.TYPE_CHECKING:
     _default = _DefaultEnum.default
 
 else:
+    # TODO: when dropping support for Python 3.14, use sentinel
     _default = object()
 
 _T = t.TypeVar("_T")

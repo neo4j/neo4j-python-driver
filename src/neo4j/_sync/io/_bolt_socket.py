@@ -369,7 +369,8 @@ class BoltSocket(BoltSocketBase):
                     cls.close_socket(s)
                 raise
         address_strs = tuple(map(str, failed_addresses))
-        # TODO: 7.0 - when Python 3.11+ is the minimum, use exception groups
+        # TODO: 7.0 - when dropping support for Python 3.10,
+        #             use exception groups
         if not errors:
             raise ServiceUnavailable(
                 f"Couldn't connect to {address} (resolved to {address_strs})"
