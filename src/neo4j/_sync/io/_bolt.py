@@ -1017,6 +1017,14 @@ class Bolt:
         return self._closed
 
     def defunct(self):
+        if self._defunct:
+            return True
+        self._defunct = self.socket.at_eof()
+        if self._defunct:
+            log.debug(
+                "[#%04X]  _: <CONNECTION> defunct: reached EOF",
+                self.local_port,
+            )
         return self._defunct
 
     def is_idle_for(self, timeout):

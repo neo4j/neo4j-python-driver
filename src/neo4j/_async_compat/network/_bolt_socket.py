@@ -37,6 +37,7 @@ from ssl import (
     SSLContext,
     SSLError,
     SSLSocket,
+    SSLWantReadError,
 )
 
 from ... import _typing as t
@@ -396,6 +397,9 @@ class AsyncBoltSocketBase(abc.ABC):
         with suppress(OSError):
             socket_.close()
 
+    def at_eof(self) -> bool:
+        return self._reader.at_eof()
+
 
 class BoltSocketBase(abc.ABC):
     Bolt: t.Final[type[Bolt]] = None  # type: ignore[assignment]
@@ -406,6 +410,7 @@ class BoltSocketBase(abc.ABC):
         self._write_deadline = None
         self._read_timeout = None
         self._write_timeout = None
+        self._peeked = bytearray()
 
     @property
     def _socket(self):
@@ -509,15 +514,27 @@ class BoltSocketBase(abc.ABC):
         self._write_timeout = _sanitize_timeout(timeout)
 
     def recv(self, n):
+        if self._peeked:
+            data = self._peeked[:n]
+            self._peeked = self._peeked[n:]
+            return data
         return self._wait_for_read(self._socket.recv, n)
 
     def recv_into(self, buffer, nbytes):
+        if self._peeked:
+            if not nbytes:
+                nbytes = len(buffer)
+            data = self._peeked[:nbytes]
+            buffer[: len(data)] = data
+            self._peeked = self._peeked[nbytes:]
+            return len(data)
         return self._wait_for_read(self._socket.recv_into, buffer, nbytes)
 
     def sendall(self, data):
         return self._wait_for_write(self._socket.sendall, data)
 
     def close(self) -> None:
+        self._peeked.clear()
         self.close_socket(self._socket)
 
     @classmethod
@@ -665,3 +682,24 @@ class BoltSocketBase(abc.ABC):
             socket_.shutdown(SHUT_RDWR)
         with suppress(OSError):
             socket_.close()
+
+    def at_eof(self) -> bool:
+        if self._peeked:
+            # still have data buffered => not EOF
+            return False
+
+        blocking = self._socket.getblocking()
+        self._socket.setblocking(False)
+        try:
+            try:
+                read = self._socket.recv(1)
+                if not read:
+                    # didn't block, read 0 data => EOF
+                    return True
+                self._peeked.extend(read)
+            except (BlockingIOError, SSLWantReadError):
+                # would block, i.e., more data might still arrive
+                pass
+            return False
+        finally:
+            self._socket.setblocking(blocking)
