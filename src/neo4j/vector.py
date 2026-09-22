@@ -59,6 +59,7 @@ __all__ = [
 ]
 
 
+# TODO: when dropping support for Python 3.14, use sentinel
 _DEFAULT = object()
 
 
@@ -293,7 +294,7 @@ class Vector:
     @property
     def dtype(self) -> VectorDType:
         """
-        Get the type of the vector.
+        The type of the vector.
 
         :returns: The type of the vector.
         """

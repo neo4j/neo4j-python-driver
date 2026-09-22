@@ -38,6 +38,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Database",
     "Topic :: Software Development",
     "Typing :: Typed",
@@ -55,16 +56,20 @@ Forum = "https://community.neo4j.com/c/drivers-stacks/python/"
 Discord = "https://discord.com/invite/neo4j"
 
 [project.optional-dependencies]
-http = [
-    "aiohttp[speedups] >= 3.12.15, < 4.0.0",
-    "urllib3 >= 2.0.0, < 3.0.0",
-]
+# [bump-numpy] search tag when bumping numpy
 numpy = ["numpy >= 1.21.2, < 3.0.0"]
+# [bump-pandas] search tag when bumping pandas
+# [bump-numpy] search tag when bumping numpy
 pandas = [
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     "numpy >= 1.21.2, < 3.0.0",
 ]
+# [bump-pyarrow] search tag when bumping pyarrow
 pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
+http = [
+    "aiohttp[speedups] >= 3.12.15, < 4.0.0",
+    "urllib3 >= 2.0.0, < 3.0.0",
+]
 
 
 [build-system]
@@ -91,10 +96,10 @@ dev = [
     {include-group = "release"},
 ]
 # tool for runnig test matrix
-tox = ["tox >= 4.30.2"]
+tox = ["tox >= 4.61.2"]
 # run pre-commit hooks (includes linting, formatting, type checking, ...)
 precommit = [
-    "pre-commit >= 4.3.0",
+    "pre-commit >= 4.6.2",
     # runs unasync and type checker outside pre-commit's isolation
     {include-group = "unasync"},
     {include-group = "typing"},
@@ -102,29 +107,29 @@ precommit = [
 # auto-generate sync driver from async code
 unasync = [
     "unasync == 0.5.0",
-    "isort >= 6.0.1",
+    "isort >= 9.0.1",
 ]
 # dependencies for running tests
 test = [
-    "coverage[toml] >= 7.10.7",
+    "coverage[toml] >= 7.16.0",
     {include-group = "dep-freezegun"},
     "mock >= 5.2.0",
-    "pytest >= 8.4.2",
-    "pytest-asyncio >= 1.2.0",
-    "pytest-benchmark >= 5.1.0",
-    "pytest-cov >= 7.0.0",
+    "pytest >= 9.1.1",
+    "pytest-asyncio >= 1.4.0",
+    "pytest-benchmark >= 5.3.0",
+    "pytest-cov >= 7.1.0",
     "pytest-mock >= 3.15.1",
     "pytest-timeout >= 2.4.0",
     "mock >= 5.2.0",
-    "tzdata >= 2026.2",
+    "tzdata >= 2026.3",
 ]
 # type checker and type stubs for static type checking
 typing = [
-    "mypy >= 1.18.2",
-    "ty >= 0.0.32",
-    "types-pytz >= 2025.2.0.20250809",
+    "mypy >= 2.3.1",
+    "ty >= 0.0.78",
+    "types-pytz >= 2026.3.1.20260727",
     "pandas-stubs >= 1.0.0, < 4.0.0",
-    "types-mock >= 5.2.0.20260408",
+    "types-mock >= 5.2.0.20260518",
     {include-group = "dep-typing-extensions"},
     {include-group = "dep-project-dependencies"},
     # tests are also type-checked
@@ -148,23 +153,26 @@ testkit = [
     {include-group = "dep-http"},
 ]
 # running the benchkit backend for benchmarking
-benchkit = ["sanic >= 25.3.0"]
+benchkit = ["sanic >= 25.12.1"]
 # building and packaging the driver
 packaging = [
-    "build >= 1.3.0",
+    "build >= 1.6.0",
 ]
 # releasing the packaged driver to PyPI
 release = [
-    "twine >= 6.2.0",
+    "twine >= 7.0.0",
 ]
 
 # single dependencies and other include-groups (not really meant to be installed as a group, but to avoid duplication)
-dep-typing-extensions = ["typing-extensions >= 4.15.0"]
+dep-typing-extensions = ["typing-extensions >= 4.16.0"]
 dep-freezegun = ["freezegun >= 1.5.5"]
 dep-project-dependencies = [
     "pytz",
+    # [bump-numpy] search tag when bumping numpy
     "numpy >= 1.7.0, < 3.0.0",
+    # [bump-pandas] search tag when bumping pandas
     "pandas[timezone] >= 1.1.0, < 4.0.0",
+    # [bump-pyarrow] search tag when bumping pyarrow
     "pyarrow >= 6.0.0, < 26.0.0",
     {include-group = "dep-http"},
 ]
@@ -252,6 +260,8 @@ extend-exclude = [
     "tests/integration/sync",
     "testkitbackend/_sync",
 ]
+# [ruff-rule-codes] search tag for switching from rule codes to rule names
+output-prefer-rule-codes = true
 
 [tool.ruff.lint]
 preview = true  # to get CPY lints
@@ -315,6 +325,19 @@ extend-ignore = [
 
     # using mock package directly to get access to backported features
     "UP026",
+
+    # A try must contain as many statements as it must contain!
+    "PLW0717",
+
+    # using `# ruff: ignore[the-rule-name]` instead of `# noqa: ABC123` is
+    #  * pro: easier to read
+    #  * pro: can be placed on its own line
+    #  * con: much longer
+    #  * con: tailored to ruff
+    #  * con: a very noise change now
+    # conclusion: not doing it now, but maybe in the future
+    # [ruff-rule-codes] search tag for switching from rule codes to rule names
+    "RUF105",
 ]
 select = [
     # ruff
@@ -397,6 +420,7 @@ select = [
 ]
 "tests/**" = [
     "B011",  # allow `assert False` in tests, they won't be run with -O anyway
+    "RUF069",  # allow float equality checks in tests
 ]
 "bin/**" = [
     "T20",  # print statements are ok in our helper scripts

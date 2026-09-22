@@ -44,7 +44,7 @@ def _pop_read_n(d: deque, n: int, fn_name: str) -> bytes:
     res: str | bytes = f"Not enough data: {d}"
     try:
         res = bytes(d.popleft() for _ in range(n))
-        return res  # noqa: RET504 - false positive, res is used in finally
+        return res
     finally:
         log.debug("%s(%s): %s", fn_name, n, res)
 

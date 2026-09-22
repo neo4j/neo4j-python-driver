@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 
-# ruff: disable[RUF067]
+# ruff: disable[non-empty-init-module]
 # import all benchmark modules for them to be picked up by the registry
 def _load() -> None:
     import importlib
@@ -32,4 +32,4 @@ def _load() -> None:
 
 _load()
 del _load
-# ruff: enable[RUF067]
+# ruff: enable[non-empty-init-module]
