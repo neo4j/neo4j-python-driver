@@ -52,6 +52,9 @@ class AsyncFakeSocket:
     def close(self):
         return
 
+    def at_eof(self):
+        return False
+
     async def pop_message(self):
         assert self.messages
         return await self.messages.pop(None)
@@ -97,6 +100,9 @@ class AsyncFakeSocket2:
 
     def kill(self):
         return
+
+    def at_eof(self):
+        return False
 
     def inject(self, data):
         self.recv_buffer += data
