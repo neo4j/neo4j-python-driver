@@ -18,6 +18,7 @@
 
 from _common import (
     DRIVER_TIME_WARP,
+    get_python_version,
     run_python,
 )
 
@@ -28,7 +29,21 @@ if __name__ == "__main__":
             ["-m", "pip", "install", "-U", "pip", "build"],
             warning_as_error=False,
         )
-        run_python(["-m", "build", "."], warning_as_error=True)
+        # Builds on 3.9+ use setuptools 82.0.1+ which has support for
+        # PEP 639 and therefore emits a warning since the license metadata in
+        # our `pyproject.toml` follows the old format.
+        # Option 1 updating the `pyproject.toml` to the new format is not
+        #   viable, as on Python 3.7 and 3.8 no recent enough setuptools
+        #   version is available to support the new format.
+        # Option 2 to silence the warning specifically is not feasible because
+        #   of https://github.com/python/cpython/issues/66733
+        # Option 3 sticking to pre PEP 639 versions of setup-tools versions
+        #   across all Python versions is a valid alternative, but means no bug
+        #   fixes in the build backend for users on recent Python versions.
+        # Therefore, we will accept and silence the deprecation warning for
+        # now.
+        build_with_warnings = get_python_version() < (3, 9)
+        run_python(["-m", "build", "."], warning_as_error=build_with_warnings)
 
     run_python(
         ["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
