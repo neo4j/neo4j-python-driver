@@ -20,6 +20,7 @@
 import asyncio
 import threading
 import time
+import traceback
 from asyncio import Event as AsyncEvent
 from threading import (
     Event,
@@ -68,18 +69,25 @@ class TestMixedConnectionPoolTestCase:
         connections_lock = Lock()
         connections = []
         pre_populated_connections = []
+        thread_exceptions = []
 
         def acquire_release_conn(
             pool_, address_, acquired_counter_, release_event_
         ):
-            nonlocal connections, connections_lock
-            conn_ = pool_._acquire(address_, None, Deadline(3), None)
-            with connections_lock:
-                if connections is not None:
-                    connections.append(conn_)
-            acquired_counter_.increment()
-            release_event_.wait()
-            pool_.release(conn_)
+            nonlocal connections, connections_lock, thread_exceptions
+            try:
+                conn_ = pool_._acquire(address_, None, Deadline(3), None)
+                try:
+                    with connections_lock:
+                        if connections is not None:
+                            connections.append(conn_)
+                    acquired_counter_.increment()
+                    release_event_.wait()
+                finally:
+                    pool_.release(conn_)
+            except BaseException as e:
+                traceback.print_exception(e)
+                thread_exceptions.append(e)
 
         with FakeBoltPool(
             fake_connection_generator, (), max_connection_pool_size=5
@@ -126,6 +134,10 @@ class TestMixedConnectionPoolTestCase:
                 t.join(timeout=5)
                 if t.is_alive():
                     raise TimeoutError(f"Joining thread timed out: {t!r}")
+            if thread_exceptions:
+                raise RuntimeError(
+                    "thread raised an exception"
+                ) from thread_exceptions[0]
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool)
 
