@@ -397,6 +397,13 @@ class AsyncIOPool(abc.ABC):
                 return connection
             # all connections in pool are in-use
             with self.lock:
+                if any(not con.in_use for con in self.connections[address]):
+                    # between trying to acquire an idle connection and
+                    # acquiring the lock to wait for space in the pool, a
+                    # connection was released back into the pool.
+                    # => Try to acquire an idle connection again instead of
+                    #    waiting.
+                    continue
                 connection_creator = self._acquire_new_later(
                     address,
                     auth,
