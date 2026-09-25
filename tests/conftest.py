@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import sys
 from functools import wraps
@@ -25,10 +26,14 @@ import pytest
 import pytest_asyncio
 
 from neo4j import (
+    _typing as t,
+    AsyncDriver,
     AsyncGraphDatabase,
+    Driver,
     GraphDatabase,
 )
 from neo4j.debug import watch
+from neo4j.warnings import PreviewWarning
 
 from . import env
 from ._teamcity import *  # noqa - needed for pytest to pick up the hooks
@@ -37,6 +42,10 @@ from ._teamcity import *  # noqa - needed for pytest to pick up the hooks
 # from neo4j.debug import watch
 #
 # watch("neo4j")
+
+
+_driver = GraphDatabase.driver
+_async_driver = AsyncGraphDatabase.driver
 
 
 @pytest.fixture(scope="session")
@@ -75,54 +84,79 @@ def auth():
 
 @pytest.fixture
 def driver(uri, auth):
-    with GraphDatabase.driver(uri, auth=auth) as driver:
+    with driver_factory(uri, auth=auth) as driver:
         yield driver
 
 
 @pytest.fixture
 def bolt_driver(bolt_uri, auth):
-    with GraphDatabase.driver(bolt_uri, auth=auth) as driver:
+    with driver_factory(bolt_uri, auth=auth) as driver:
         yield driver
 
 
 @pytest.fixture
 def neo4j_driver(neo4j_uri, auth):
-    with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+    with driver_factory(neo4j_uri, auth=auth) as driver:
         yield driver
 
 
+def _is_http_uri(uri: str) -> bool:
+    return uri.split("://", maxsplit=1)[0] in {"http", "https"}
+
+
+def _silenced_query_api_preview_warning(
+    uri: str,
+) -> t.AbstractContextManager[t.Any]:
+    if _is_http_uri(uri):
+        return pytest.warns(PreviewWarning, match="Query API/HTTP support")
+    return contextlib.nullcontext()
+
+
+@wraps(GraphDatabase.driver)
+def driver_factory(uri: str, *args, **kwargs) -> Driver:
+    if _is_http_uri(uri) and kwargs.get("database") is None:
+        # HTTP/Query API requires an explicit database name to be configured
+        kwargs["database"] = env.NEO4J_DEFAULT_DB
+    with _silenced_query_api_preview_warning(uri):
+        return _driver(uri, *args, **kwargs)
+
+
 @wraps(AsyncGraphDatabase.driver)
-def get_async_driver(*args, **kwargs):
-    return AsyncGraphDatabase.driver(*args, **kwargs)
+def async_driver_factory(uri: str, *args, **kwargs) -> AsyncDriver:
+    if _is_http_uri(uri) and kwargs.get("database") is None:
+        # HTTP/Query API requires an explicit database name to be configured
+        kwargs["database"] = env.NEO4J_DEFAULT_DB
+    with _silenced_query_api_preview_warning(uri):
+        return _async_driver(uri, *args, **kwargs)
 
 
 @pytest_asyncio.fixture
 async def async_driver(uri, auth):
-    async with get_async_driver(uri, auth=auth) as driver:
+    async with async_driver_factory(uri, auth=auth) as driver:
         yield driver
 
 
 @pytest_asyncio.fixture
 async def async_bolt_driver(bolt_uri, auth):
-    async with get_async_driver(bolt_uri, auth=auth) as driver:
+    async with async_driver_factory(bolt_uri, auth=auth) as driver:
         yield driver
 
 
 @pytest_asyncio.fixture
 async def async_neo4j_driver(neo4j_uri, auth):
-    async with get_async_driver(neo4j_uri, auth=auth) as driver:
+    async with async_driver_factory(neo4j_uri, auth=auth) as driver:
         yield driver
 
 
 @pytest.fixture
 def _forced_bolt_driver(_forced_bolt_uri):
-    with GraphDatabase.driver(_forced_bolt_uri, auth=auth) as driver:
+    with driver_factory(_forced_bolt_uri, auth=auth) as driver:
         yield driver
 
 
 @pytest.fixture
 def _forced_neo4j_driver(_forced_neo4j_uri):
-    with GraphDatabase.driver(_forced_neo4j_uri, auth=auth) as driver:
+    with driver_factory(_forced_neo4j_uri, auth=auth) as driver:
         yield driver
 
 
@@ -162,6 +196,46 @@ def mark_requires_edition(edition):
             f"requires server edition '{edition}', found '{env.NEO4J_EDITION}'"
         ),
     )
+
+
+def mark_requires_scheme(*schemes: env.Scheme):
+    return pytest.mark.skipif(
+        env.NEO4J_PARSED_SCHEME not in schemes,
+        reason=(
+            f"requires scheme(s) {', '.join(s.value for s in schemes)}, "
+            f"found '{env.NEO4J_PARSED_SCHEME.value}'"
+        ),
+    )
+
+
+def mark_skip_if_scheme(*schemes: env.Scheme, reason: str | None = None):
+    if reason is None:
+        reason = (
+            f"skipping for scheme(s) {', '.join(s.value for s in schemes)}, "
+            f"found '{env.NEO4J_PARSED_SCHEME.value}'"
+        )
+    return pytest.mark.skipif(
+        env.NEO4J_PARSED_SCHEME in schemes,
+        reason=reason,
+    )
+
+
+def mark_requires_tx_support(f: t.Callable | None = None):
+    match env.NEO4J_PARSED_SCHEME:
+        case env.Scheme.BOLT | env.Scheme.NEO4J:
+            has_tx_support = True
+        case env.Scheme.HTTP:
+            has_tx_support = _parse_version(env.NEO4J_VERSION) >= (5, 26)
+        case _:
+            t.assert_never(env.NEO4J_PARSED_SCHEME)
+
+    skip_decorator = pytest.mark.skipif(
+        not has_tx_support,
+        reason="requires support for explicit transactions",
+    )
+    if f is None:
+        return skip_decorator
+    return skip_decorator(f)
 
 
 @pytest.fixture

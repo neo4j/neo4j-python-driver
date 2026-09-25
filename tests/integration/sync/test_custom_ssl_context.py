@@ -18,9 +18,8 @@ from ssl import SSLContext
 
 import pytest
 
-import neo4j
-
 from ..._async_compat import mark_sync_test
+from ...conftest import driver_factory
 
 
 @mark_sync_test
@@ -39,7 +38,7 @@ def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
     with (
-        neo4j.GraphDatabase.driver(
+        driver_factory(
             uri, auth=auth, ssl_context=fake_ssl_context
         ) as driver,
         driver.session() as session,

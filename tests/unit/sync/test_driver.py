@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 import ssl
 import warnings
 
@@ -42,9 +43,10 @@ from neo4j._debug import ENABLED as DEBUG_ENABLED
 from neo4j._sync.auth_management import _StaticClientCertificateProvider
 from neo4j._sync.config import PoolConfig
 from neo4j._sync.driver import _work
-from neo4j._sync.io import (
+from neo4j._sync.io._pool import (
     BoltPool,
-    Neo4jPool,
+    DirectBoltPool,
+    RoutedBoltPool,
 )
 from neo4j.api import (
     BookmarkManager,
@@ -66,10 +68,13 @@ from ..._async_compat import (
     TestDecorators,
 )
 from ..._deprecated_imports import NotificationDisabledCategory
+from ..._optional_deps import skip_if_unsupported_uri
 
 
 if t.TYPE_CHECKING:
     from types import EllipsisType
+
+    from neo4j import Driver
 
 
 @pytest.fixture
@@ -129,14 +134,16 @@ def test_routing_driver_constructor(
 
 
 @pytest.mark.parametrize(
-    "test_uri",
+    ("uri", "accepts_encryption_config"),
     (
-        "bolt+ssc://127.0.0.1:9001",
-        "bolt+s://127.0.0.1:9001",
-        "bolt://127.0.0.1:9001",
-        "neo4j+ssc://127.0.0.1:9001",
-        "neo4j+s://127.0.0.1:9001",
-        "neo4j://127.0.0.1:9001",
+        ("bolt+ssc://127.0.0.1:9001", False),
+        ("bolt+s://127.0.0.1:9001", False),
+        ("bolt://127.0.0.1:9001", True),
+        ("neo4j+ssc://127.0.0.1:9001", False),
+        ("neo4j+s://127.0.0.1:9001", False),
+        ("neo4j://127.0.0.1:9001", True),
+        ("https://127.0.0.1:9001", False),
+        ("http://127.0.0.1:9001", True),
     ),
 )
 @pytest.mark.parametrize(
@@ -174,22 +181,28 @@ def test_routing_driver_constructor(
 )
 @mark_sync_test
 def test_driver_config_error_uri_conflict(
-    test_uri, test_config, expected_failure, expected_failure_message
+    uri,
+    accepts_encryption_config,
+    test_config,
+    expected_failure,
+    expected_failure_message,
 ):
-    if "+" in test_uri:
+    skip_if_unsupported_uri(uri)
+
+    if not accepts_encryption_config:
         # `+s` and `+ssc` are shorthand syntax for not having to configure the
         # encryption behavior of the driver. Specifying both is invalid.
         with pytest.raises(expected_failure, match=expected_failure_message):
-            GraphDatabase.driver(test_uri, **test_config)
+            _make_driver(uri, **test_config)
     else:
-        driver = GraphDatabase.driver(test_uri, **test_config)
+        driver = _make_driver(uri, **test_config)
         driver.close()
 
 
 @pytest.mark.parametrize(
     "test_uri",
     (
-        "http://localhost:9001",
+        "smtp://localhost:9001",
         "ftp://localhost:9001",
         "x://localhost:9001",
     ),
@@ -646,12 +659,16 @@ def test_driver_factory_with_notification_filters(
     dis_cats: t.Iterable[_T_NotificationDisabledCategory] | None,
     dis_clss: t.Iterable[_T_NotificationDisabledClassification] | None,
 ) -> None:
-    pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
+    pool_cls = (
+        RoutedBoltPool
+        if uri.startswith("neo4j://")
+        else DirectBoltPool
+    )
     open_mock = mocker.patch.object(
         pool_cls, "open", return_value=mocker.MagicMock(spec=pool_cls)
     )
     open_mock.return_value.address = mocker.Mock()
-    mocker.patch.object(BoltPool, "open", new=open_mock)
+    mocker.patch.object(DirectBoltPool, "open", new=open_mock)
 
     filter_kwargs: NotificationFilter = {}
     if min_sev is not ...:
@@ -826,7 +843,11 @@ def test_session_factory_with_notification_filter(
     dis_cats: t.Iterable[_T_NotificationDisabledCategory] | None,
     dis_clss: t.Iterable[_T_NotificationDisabledClassification] | None,
 ) -> None:
-    pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
+    pool_cls = (
+        RoutedBoltPool
+        if uri.startswith("neo4j://")
+        else DirectBoltPool
+    )
     pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
     pool_mock.address = mocker.Mock()
@@ -880,7 +901,7 @@ def test_driver_factory_with_disable_auto_commit_retries(
     mocker,
     disable_auto_commit_retries: bool,
 ) -> None:
-    pool_cls = BoltPool if uri.startswith("bolt://") else Neo4jPool
+    pool_cls = _get_pool_cls_from_uri(uri)
     open_mock = mocker.patch.object(
         pool_cls,
         "open",
@@ -918,7 +939,7 @@ def test_session_factory_with_disable_auto_commit_retries(
     disable_auto_commit_retries_driver: bool,
     disable_auto_commit_retries_session: bool | EllipsisType | None,
 ) -> None:
-    pool_cls = BoltPool if uri.startswith("bolt://") else Neo4jPool
+    pool_cls = _get_pool_cls_from_uri(uri)
     pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
     pool_mock.address = mocker.Mock()
@@ -942,6 +963,15 @@ def test_session_factory_with_disable_auto_commit_retries(
             session_cls_mock.assert_called_once()
             (_, session_config), _ = session_cls_mock.call_args
             assert session_config.disable_auto_commit_retries == expected
+
+
+def _get_pool_cls_from_uri(uri: str) -> type[BoltPool]:
+    if uri.startswith("bolt://"):
+        return DirectBoltPool
+    elif uri.startswith("neo4j://"):
+        return RoutedBoltPool
+    else:
+        raise ValueError(f"Invalid URI scheme in {uri!r}")
 
 
 class SomeClass:
@@ -1390,3 +1420,134 @@ def test_using_closed_driver_where_no_op(
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         Util.callback(method, *args, **kwargs)
+
+
+@pytest.mark.parametrize(
+    ("uri", "driver_type", "message_scheme", "blocked_uri_part", "hard_block"),
+    (
+        *(
+            (
+                f"{http_scheme}://{uri}",
+                "Query API/HTTP",
+                "http[s]://",
+                blocked_uri_part,
+                True,
+            )
+            for http_scheme in ("http", "https")
+            for (uri, blocked_uri_part) in (
+                ("example.com", None),
+                ("example.com/", None),
+                ("a.b.c.d.example.com", None),
+                ("a.b.c.d.example.com/", None),
+                ("example.com/foo/bar", None),
+                ("example.com/foo/bar/", None),
+                ("me:secret@example.com/baz", "userinfo"),
+                ("me@example.com/baz", "userinfo"),
+                ("example.com?foo=bar", "query"),
+                ("example.com/?foo=bar", "query"),
+                ("example.com/baz?foo=bar", "query"),
+                ("example.com#foo", "fragment"),
+                ("example.com/#foo", "fragment"),
+                ("example.com/baz#foo", "fragment"),
+            )
+        ),
+        *(
+            (
+                f"{scheme}://{uri}",
+                "direct",
+                "bolt[+s[sc]]://",
+                blocked_uri_part,
+                False,
+            )
+            for scheme in ("bolt", "bolt", "bolt+s", "bolt+ssc")
+            for (uri, blocked_uri_part) in (
+                ("example.com", None),
+                ("example.com/", None),
+                ("a.b.c.d.example.com", None),
+                ("a.b.c.d.example.com/", None),
+                ("example.com/foo/bar", "path"),
+                ("example.com/foo/bar/", "path"),
+                ("me:secret@example.com", "userinfo"),
+                ("me@example.com", "userinfo"),
+                ("example.com?foo=bar", "query"),
+                ("example.com/?foo=bar", "query"),
+                ("example.com#foo", "fragment"),
+                ("example.com/#foo", "fragment"),
+            )
+        ),
+        *(
+            (
+                f"{scheme}://{uri}",
+                "routing",
+                "neo4j[+s[sc]]://",
+                blocked_uri_part,
+                False,
+            )
+            for scheme in ("neo4j", "neo4j", "neo4j+s", "neo4j+ssc")
+            for (uri, blocked_uri_part) in (
+                ("example.com", None),
+                ("example.com/", None),
+                ("a.b.c.d.example.com", None),
+                ("a.b.c.d.example.com/", None),
+                ("example.com?foo=bar", None),
+                ("example.com/?foo=bar", None),
+                ("example.com/foo/bar", "path"),
+                ("example.com/foo/bar/", "path"),
+                ("me:secret@example.com", "userinfo"),
+                ("me@example.com", "userinfo"),
+                ("example.com#foo", "fragment"),
+                ("example.com/#foo", "fragment"),
+            )
+        ),
+    ),
+)
+@mark_sync_test
+def test_url_with_unsupported_parts(
+    uri: str,
+    driver_type: str,
+    message_scheme: str,
+    blocked_uri_part: str | None,
+    hard_block: bool,
+) -> None:
+    skip_if_unsupported_uri(uri)
+
+    if blocked_uri_part in {"userinfo", "query"}:
+        # URL parts that are always hard blocked (if blocked)
+        hard_block = True
+    driver: Driver | None = None
+    try:
+        if blocked_uri_part is None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                driver = _make_driver(uri)
+        elif hard_block:
+            with pytest.raises(
+                ConfigurationError, match=re.escape(blocked_uri_part)
+            ) as recorded_exception:
+                driver = _make_driver(uri)
+            exc = recorded_exception
+            assert uri in str(exc.value)
+            assert driver_type in str(exc.value)
+            assert message_scheme in str(exc.value)
+            assert blocked_uri_part in str(exc.value)
+        else:
+            with pytest.warns(
+                DeprecationWarning, match=re.escape(blocked_uri_part)
+            ) as recoded_warnings:
+                driver = _make_driver(uri)
+            assert len(recoded_warnings) == 1
+            warning = recoded_warnings[0]
+            assert uri in str(warning.message)
+            assert driver_type in str(warning.message)
+            assert message_scheme in str(warning.message)
+            assert blocked_uri_part in str(warning.message)
+    finally:
+        if driver is not None:
+            driver.close()
+
+
+def _make_driver(uri: str, **kwargs) -> Driver:
+    if uri.startswith(("http://", "https://")):
+        with pytest.warns(PreviewWarning, match="Query API/HTTP support"):
+            return GraphDatabase.driver(uri, **kwargs)
+    return GraphDatabase.driver(uri, **kwargs)

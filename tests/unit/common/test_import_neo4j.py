@@ -19,6 +19,8 @@ import re
 
 import pytest
 
+from neo4j.warnings import PreviewWarning
+
 
 def test_import_neo4j():
     import neo4j  # noqa: F401 - unused import to test import works
@@ -31,6 +33,7 @@ NEO4J_ATTRIBUTES = (
     ("AsyncBoltDriver", None),
     ("AsyncDriver", None),
     ("AsyncGraphDatabase", None),
+    ("AsyncHttpDriver", PreviewWarning),
     ("AsyncManagedTransaction", None),
     ("AsyncNeo4jDriver", None),
     ("AsyncResult", None),
@@ -49,6 +52,7 @@ NEO4J_ATTRIBUTES = (
     ("get_user_agent", None),
     ("GqlStatusObject", None),
     ("GraphDatabase", None),
+    ("HttpDriver", PreviewWarning),
     ("IPv4Address", None),
     ("IPv6Address", None),
     ("kerberos_auth", None),
@@ -116,16 +120,21 @@ def test_dir():
 def test_import_star():
     # ignore PT029: purposefully capturing all warnings to then apply further
     # checks on them
+
+    warning_attrs: list[tuple[str, type[Warning]]] = [
+        attr for attr in NEO4J_ATTRIBUTES if attr[1] is not None
+    ]
+
     with pytest.warns() as warnings:  # noqa: PT029
         importlib.__import__("neo4j", fromlist=("*",))
-    assert len(warnings) == 4
+    assert len(warnings) == len(warning_attrs)
 
-    for name in ("PreviewWarning", "NotificationDisabledCategory"):
+    for name, warning_cls in warning_attrs:
         assert (
             sum(
                 bool(re.match(rf".*\b{name}\b.*", str(w.message)))
                 for w in warnings
-                if issubclass(w.category, DeprecationWarning)
+                if issubclass(w.category, warning_cls)
             )
             == 1
         )

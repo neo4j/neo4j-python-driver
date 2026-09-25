@@ -13,17 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from ... import _typing as t
 from ._common import (
     BrokenHydrationObject,
     DehydrationHooks,
     HydrationScope,
 )
-from ._interface import HydrationHandlerABC
+
+
+if t.TYPE_CHECKING:
+    from ._common import T_TYPE_MAP_DICT  # noqa: F401  # false positive
 
 
 __all__ = [
     "BrokenHydrationObject",
     "DehydrationHooks",
-    "HydrationHandlerABC",
     "HydrationScope",
 ]
+
+
+if t.TYPE_CHECKING:
+    __all__.extend(("T_TYPE_MAP_DICT",))

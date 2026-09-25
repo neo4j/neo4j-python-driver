@@ -134,7 +134,7 @@ class Result(NonConcurrentMethodChecker):
         self._summary: ResultSummary | None = None
         self._database = None
         self._bookmark = None
-        self._raw_qid = -1
+        self._qid = -1
         self._fetch_size = fetch_size
         self._warn_notification_severity = warn_notification_severity
         if warn_notification_severity is not None:
@@ -165,13 +165,6 @@ class Result(NonConcurrentMethodChecker):
         self._exception = exc
         self._attached = False
         Util.callback(self._on_error, exc)
-
-    @property
-    def _qid(self):
-        if self._raw_qid == self._connection.most_recent_qid:
-            return -1
-        else:
-            return self._raw_qid
 
     def _tx_ready_run(self, query, parameters):
         # BEGIN+RUN does not carry any extra on the RUN message.
@@ -205,9 +198,7 @@ class Result(NonConcurrentMethodChecker):
         def on_attached(metadata):
             self._metadata.update(metadata)
             # For auto-commit there is no qid and Bolt 3 does not support qid
-            self._raw_qid = metadata.get("qid", -1)
-            if self._raw_qid != -1:
-                self._connection.most_recent_qid = self._raw_qid
+            self._qid = metadata.get("qid", -1)
             self._keys = metadata.get("fields")
             self._attached = True
             db_ = metadata.get("db")
@@ -232,6 +223,7 @@ class Result(NonConcurrentMethodChecker):
             notifications_min_severity=notifications_min_severity,
             notifications_disabled_classifications=notifications_disabled_classifications,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
+            hydration_hooks=self._hydration_scope.hydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,
         )
@@ -276,6 +268,7 @@ class Result(NonConcurrentMethodChecker):
         self._connection.pull(
             n=self._fetch_size,
             qid=self._qid,
+            dehydration_hooks=self._hydration_scope.dehydration_hooks,
             hydration_hooks=self._hydration_scope.hydration_hooks,
             on_records=on_records,
             on_success=on_success,
@@ -311,6 +304,8 @@ class Result(NonConcurrentMethodChecker):
             qid=self._qid,
             on_success=on_success,
             on_failure=on_failure,
+            dehydration_hooks=self._hydration_scope.dehydration_hooks,
+            hydration_hooks=self._hydration_scope.hydration_hooks,
         )
         self._streaming = True
 

@@ -40,6 +40,8 @@ __all__ = [
     "URI_SCHEME_BOLT_ROUTING",
     "URI_SCHEME_BOLT_SECURE",
     "URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE",
+    "URI_SCHEME_HTTP",
+    "URI_SCHEME_HTTPS",
     "URI_SCHEME_NEO4J",
     "URI_SCHEME_NEO4J_SECURE",
     "URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE",
@@ -67,6 +69,10 @@ URI_SCHEME_BOLT_SECURE: _t.Final[str] = "bolt+s"
 URI_SCHEME_NEO4J: _t.Final[str] = "neo4j"
 URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: _t.Final[str] = "neo4j+ssc"
 URI_SCHEME_NEO4J_SECURE: _t.Final[str] = "neo4j+s"
+
+# TODO: mark preview
+URI_SCHEME_HTTP: _t.Final[str] = "http"
+URI_SCHEME_HTTPS: _t.Final[str] = "https"
 
 URI_SCHEME_BOLT_ROUTING: _t.Final[str] = "bolt+routing"
 
@@ -303,7 +309,22 @@ class ServerInfo:
 
     @property
     def agent(self) -> str:
-        """Server agent string by which the remote server identifies itself."""
+        """
+        Server agent string by which the remote server identifies itself.
+
+        .. note::
+            When connected via ``http://`` or ``https://`` scheme,
+            the server does not expose a server agent string.
+            Instead, this value is computed from the server's advertised
+            version.
+            Further, the value is cached (at driver instance level) as HTTP(S)
+            has no persistent connections.
+            This reduces round-trips and load of the DBMS's HTTP endpoints.
+
+            This is an implementation detail and thus should not be relied on.
+            It might be changed in the future without being considered a
+            breaking change.
+        """
         return str(self._metadata.get("server"))
 
     def update(self, metadata: dict) -> None:

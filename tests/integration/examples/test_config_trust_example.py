@@ -47,7 +47,8 @@ class ConfigTrustExample(DriverSetupExample):
     # end::config-trust[]
 
 
-def test_example(uri, auth):
+def test_example(uri, auth, patch_driver_factory):
     # TODO: re-enable when we can test with encrypted=True on Docker
     # ConfigTrustExample.test(uri, auth)
     pytest.skip("re-enable when we can test with encrypted=True on Docker")
+    patch_driver_factory(GraphDatabase)

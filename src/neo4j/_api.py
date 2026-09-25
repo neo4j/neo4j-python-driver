@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import (
     parse_qs,
@@ -26,7 +27,15 @@ from . import (
     _typing as t,
     api,
 )
+from ._warnings import (
+    deprecation_warn,
+    preview_warn,
+)
 from .exceptions import ConfigurationError
+
+
+if t.TYPE_CHECKING:
+    from urllib.parse import ParseResult
 
 
 __all__ = [
@@ -49,8 +58,12 @@ __all__ = [
 ]
 
 
-DRIVER_BOLT: t.Final[str] = "DRIVER_BOLT"
-DRIVER_NEO4J: t.Final[str] = "DRIVER_NEO4J"
+DRIVER_BOLT: t.Final[t.Literal["DRIVER_BOLT"]] = "DRIVER_BOLT"
+DRIVER_NEO4J: t.Final[t.Literal["DRIVER_NEO4J"]] = "DRIVER_NEO4J"
+DRIVER_HTTP: t.Final[t.Literal["DRIVER_HTTP"]] = "DRIVER_HTTP"
+
+if t.TYPE_CHECKING:
+    T_DRIVER_TYPE = t.Literal["DRIVER_BOLT", "DRIVER_NEO4J", "DRIVER_HTTP"]
 
 SECURITY_TYPE_NOT_SECURE: t.Final[str] = "SECURITY_TYPE_NOT_SECURE"
 SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: t.Final[str] = (
@@ -59,38 +72,41 @@ SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: t.Final[str] = (
 SECURITY_TYPE_SECURE: t.Final[str] = "SECURITY_TYPE_SECURE"
 
 
-def parse_neo4j_uri(uri):
+def parse_neo4j_uri(uri: str) -> tuple[T_DRIVER_TYPE, str, ParseResult]:
     parsed = urlparse(uri)
 
-    if parsed.username:
-        raise ConfigurationError("Username is not supported in the URI")
+    driver_type: T_DRIVER_TYPE
+    security_type: str
 
-    if parsed.password:
-        raise ConfigurationError("Password is not supported in the URI")
-
-    if parsed.scheme == api.URI_SCHEME_BOLT_ROUTING:
+    if parsed.scheme == api.URI_SCHEME_NEO4J:
+        driver_type = DRIVER_NEO4J
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == api.URI_SCHEME_NEO4J_SECURE:
+        driver_type = DRIVER_NEO4J
+        security_type = SECURITY_TYPE_SECURE
+    elif parsed.scheme == api.URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
+        driver_type = DRIVER_NEO4J
+        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+    elif parsed.scheme == api.URI_SCHEME_BOLT:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == api.URI_SCHEME_BOLT_SECURE:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_SECURE
+    elif parsed.scheme == api.URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+    elif parsed.scheme == api.URI_SCHEME_HTTP:
+        driver_type = DRIVER_HTTP
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == api.URI_SCHEME_HTTPS:
+        driver_type = DRIVER_HTTP
+        security_type = SECURITY_TYPE_SECURE
+    elif parsed.scheme == api.URI_SCHEME_BOLT_ROUTING:
         raise ConfigurationError(
             f"Uri scheme {parsed.scheme!r} has been renamed. "
             f"Use {api.URI_SCHEME_NEO4J!r}"
         )
-    elif parsed.scheme == api.URI_SCHEME_BOLT:
-        driver_type = DRIVER_BOLT
-        security_type = SECURITY_TYPE_NOT_SECURE
-    elif parsed.scheme == api.URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
-        driver_type = DRIVER_BOLT
-        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
-    elif parsed.scheme == api.URI_SCHEME_BOLT_SECURE:
-        driver_type = DRIVER_BOLT
-        security_type = SECURITY_TYPE_SECURE
-    elif parsed.scheme == api.URI_SCHEME_NEO4J:
-        driver_type = DRIVER_NEO4J
-        security_type = SECURITY_TYPE_NOT_SECURE
-    elif parsed.scheme == api.URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
-        driver_type = DRIVER_NEO4J
-        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
-    elif parsed.scheme == api.URI_SCHEME_NEO4J_SECURE:
-        driver_type = DRIVER_NEO4J
-        security_type = SECURITY_TYPE_SECURE
     else:
         supported_schemes = [
             api.URI_SCHEME_BOLT,
@@ -99,6 +115,8 @@ def parse_neo4j_uri(uri):
             api.URI_SCHEME_NEO4J,
             api.URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
             api.URI_SCHEME_NEO4J_SECURE,
+            api.URI_SCHEME_HTTP,
+            api.URI_SCHEME_HTTPS,
         ]
         raise ConfigurationError(
             f"URI scheme {parsed.scheme!r} is not supported. "
@@ -107,7 +125,135 @@ def parse_neo4j_uri(uri):
             "neo4j://host[:port][?routing_context]"
         )
 
+    if driver_type == DRIVER_BOLT:
+        _UriVerifier.bolt_verifier(parsed, uri).verify()
+    elif driver_type == DRIVER_NEO4J:
+        _UriVerifier.neo4j_verifier(parsed, uri).verify()
+    elif driver_type == DRIVER_HTTP:
+        preview_warn(
+            (
+                "The Query API/HTTP support in the Neo4j Python "
+                "driver is currently in preview."
+            ),
+            stack_level=3,
+        )
+        _UriVerifier.http_verifier(parsed, uri).verify()
+    else:
+        t.assert_never(driver_type)
+
     return driver_type, security_type, parsed
+
+
+@dataclass(frozen=True)
+class _UriVerifier:
+    _parsed: ParseResult
+    _driver_type: str
+    _scheme: str
+    _uri: str
+    _block_userinfo: bool = True
+    _block_path: bool = False
+    _block_fragment: bool = False
+    _block_query: bool = False
+    _hard_block: bool = False  # TODO: 7.0 - remove and always raise
+
+    @classmethod
+    def bolt_verifier(cls, parsed: ParseResult, uri: str) -> t.Self:
+        return cls(
+            _parsed=parsed,
+            _driver_type="direct",
+            _scheme="bolt[+s[sc]]://",
+            _uri=uri,
+            _block_path=True,
+            _block_fragment=True,
+            _block_query=True,
+        )
+
+    @classmethod
+    def neo4j_verifier(cls, parsed: ParseResult, uri: str) -> t.Self:
+        return cls(
+            _parsed=parsed,
+            _driver_type="routing",
+            _scheme="neo4j[+s[sc]]://",
+            _uri=uri,
+            _block_path=True,
+            _block_fragment=True,
+        )
+
+    @classmethod
+    def http_verifier(cls, parsed: ParseResult, uri: str) -> t.Self:
+        return cls(
+            _parsed=parsed,
+            _driver_type="Query API/HTTP",
+            _scheme="http[s]://",
+            _uri=uri,
+            _block_fragment=True,
+            _block_query=True,
+            _hard_block=True,
+        )
+
+    def verify(self) -> None:
+        if self._block_userinfo:
+            self._block_uri_userinfo()
+        if self._block_path:
+            self._block_uri_path()
+        if self._block_fragment:
+            self._block_uri_fragment()
+        if self._block_query:
+            self._block_uri_query()
+
+    def _block_uri_userinfo(self) -> None:
+        if self._parsed.password or self._parsed.username:
+            raise ConfigurationError(
+                f"URI userinfo is not supported by {self._driver_type} "
+                f'drivers ("{self._scheme}" scheme). '
+                f"Given URI: {self._uri!r}."
+            )
+
+    def _block_uri_path(self) -> None:
+        if self._parsed.path not in {"", "/"}:
+            # TODO: 7.0 - always raise
+            if not self._hard_block:
+                deprecation_warn(
+                    f"Creating {self._driver_type} drivers with "
+                    f'("{self._scheme}" scheme) with URI path is '
+                    "deprecated. The path will be ignored. "
+                    "This will raise an error in a future release. "
+                    f"Given URI: {self._uri!r}",
+                    stack_level=4,
+                )
+                return
+            raise ConfigurationError(
+                f"URI path is not supported by {self._driver_type} "
+                f'drivers ("{self._scheme}" scheme). '
+                f"Given URI: {self._uri!r}."
+            )
+
+    def _block_uri_fragment(self) -> None:
+        if self._parsed.fragment:
+            # TODO: 7.0 - always raise
+            if not self._hard_block:
+                deprecation_warn(
+                    f"Creating {self._driver_type} drivers with "
+                    f'("{self._scheme}" scheme) with URI fragment is '
+                    "deprecated. The fragments will be ignored. "
+                    "This will raise an error in a future release. "
+                    f"Given URI: {self._uri!r}",
+                    stack_level=4,
+                )
+                return
+            raise ConfigurationError(
+                f"URI fragment is not supported by {self._driver_type} "
+                f'drivers ("{self._scheme}" scheme). '
+                f"Given URI: {self._uri!r}."
+            )
+
+    def _block_uri_query(self) -> None:
+        if parse_routing_context(self._parsed.query):
+            raise ConfigurationError(
+                "Routing context (providing URI query parameters) is not "
+                f"supported by {self._driver_type} drivers "
+                f'("{self._scheme}" scheme). Given URI: {self._uri!r}.'
+            )
 
 
 def check_access_mode(access_mode):

@@ -27,18 +27,18 @@ from ssl import (
 
 import freezegun
 import pytest
-from mock import mock  # noqa UP026 - to use same mock classes as `mocker`
+from mock import mock
 
 import neo4j._async_compat.network._bolt_socket
 from neo4j import _typing as t
-from neo4j._async.io._bolt_socket import AsyncBoltSocket
+from neo4j._async.io._bolt._bolt_socket import AsyncBoltSocket
 from neo4j._deadline import Deadline
 from neo4j._exceptions import (
     BoltError,
     BoltSecurityError,
     SocketDeadlineExceededError,
 )
-from neo4j._sync.io._bolt_socket import BoltSocket
+from neo4j._sync.io._bolt._bolt_socket import BoltSocket
 from neo4j.addressing import Address
 from neo4j.exceptions import ServiceUnavailable
 

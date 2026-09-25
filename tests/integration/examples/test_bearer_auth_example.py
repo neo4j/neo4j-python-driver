@@ -41,17 +41,21 @@ class BearerAuthExample(DriverSetupExample):
     # end::bearer-auth[]
 
 
-def test_example(uri, mocker):
+def test_example(uri, patch_driver_factory, mocker):
+    patch_driver_factory(GraphDatabase)
+
     # Currently, there is no way of running the test against a server with SSO
     # setup.
     mocker.patch("neo4j.GraphDatabase._bolt_driver")
     mocker.patch("neo4j.GraphDatabase._neo4j_driver")
+    mocker.patch("neo4j.GraphDatabase._http_driver")
 
     token = "myToken"
     BearerAuthExample(uri, token)
     calls = (
         neo4j.GraphDatabase._bolt_driver.call_args_list
         + neo4j.GraphDatabase._neo4j_driver.call_args_list
+        + neo4j.GraphDatabase._http_driver.call_args_list
     )
     assert len(calls) == 1
     _args, kwargs = calls[0]

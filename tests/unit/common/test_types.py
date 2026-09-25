@@ -21,7 +21,11 @@ from itertools import product
 
 import pytest
 
-from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j._codec.hydration import HydrationScope
+from neo4j._codec.hydration.bolt.v1.hydration_handler import (
+    _GraphHydrator,
+    HydrationHandler,
+)
 from neo4j.graph import (
     Graph,
     Node,
@@ -45,8 +49,7 @@ from neo4j.graph import (
     ),
 )
 def test_can_create_node(id_, element_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
 
     fields = [id_, {"Person"}, {"name": "Alice", "age": 33}]
     if element_id is not None:
@@ -79,8 +82,7 @@ def test_can_create_node(id_, element_id):
 
 
 def test_node_with_null_properties():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     stuff = gh.hydrate_node(
         1, (), {"good": ["puppies", "kittens"], "bad": None}
     )
@@ -137,8 +139,7 @@ def test_node_hashing(legacy_id):
 
 
 def test_node_v1_repr():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     assert repr(alice) == (
         "<Node element_id='1' labels=frozenset({'Person'}) "
@@ -148,8 +149,7 @@ def test_node_v1_repr():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_node_v2_repr(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     id_ = 1234
     element_id = str(id_) if legacy_id else "foobar"
     alice = gh.hydrate_node(id_, {"Person"}, {"name": "Alice"}, element_id)
@@ -163,8 +163,7 @@ def test_node_v2_repr(legacy_id):
 
 
 def test_can_create_relationship_v1():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     alice_knows_bob = gh.hydrate_relationship(
@@ -183,8 +182,7 @@ def test_can_create_relationship_v1():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_can_create_relationship_v2(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(
         1,
         {"Person"},
@@ -216,8 +214,7 @@ def test_can_create_relationship_v2(legacy_id):
 
 
 def test_relationship_v1_repr():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     _alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
     alice_knows_bob = gh.hydrate_relationship(
@@ -234,8 +231,7 @@ def test_relationship_v1_repr():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_relationship_v2_repr(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     gh.hydrate_node(
         1, {"Person"}, {"name": "Alice"}, "1" if legacy_id else "alice"
     )
@@ -269,8 +265,7 @@ def test_relationship_v2_repr(legacy_id):
 
 
 def test_can_create_path_v1():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
@@ -289,8 +284,7 @@ def test_can_create_path_v1():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_can_create_path_v2(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(
         1,
         {"Person"},
@@ -337,8 +331,8 @@ def test_can_create_path_v2(legacy_id):
 
 @pytest.mark.parametrize("cyclic", (True, False))
 def test_can_hydrate_path(cyclic):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
+    assert isinstance(gh, _GraphHydrator)
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33}, "1")
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44}, "2")
     if cyclic:
@@ -377,8 +371,7 @@ def test_can_hydrate_path(cyclic):
 
 
 def test_path_v1_equality():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     _carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
@@ -394,8 +387,8 @@ def test_path_v1_equality():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_path_v2_equality(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
+    assert isinstance(gh, _GraphHydrator)
     alice = gh.hydrate_node(
         1,
         {"Person"},
@@ -438,8 +431,7 @@ def test_path_v2_equality(legacy_id):
 
 
 def test_path_v1_hashing():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     _carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
@@ -454,8 +446,7 @@ def test_path_v1_hashing():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_path_v2_hashing(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(
         1,
         {"Person"},
@@ -497,8 +488,7 @@ def test_path_v2_hashing(legacy_id):
 
 
 def test_path_v1_repr():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     _bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
     _carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"})
@@ -516,8 +506,7 @@ def test_path_v1_repr():
 
 @pytest.mark.parametrize("legacy_id", (True, False))
 def test_path_v2_repr(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    _, gh = get_graph_hydrator()
     alice = gh.hydrate_node(
         1, {"Person"}, {"name": "Alice"}, "1" if legacy_id else "alice"
     )
@@ -557,8 +546,7 @@ def test_path_v2_repr(legacy_id):
 
 
 def test_graph_views_v1():
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+    hydration_scope, gh = get_graph_hydrator()
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
     carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"})
@@ -594,8 +582,7 @@ class ExampleGraph:
 @pytest.fixture
 def example_graph_builder_v2() -> t.Callable[[bool], ExampleGraph]:
     def builder(legacy_id: bool) -> ExampleGraph:
-        hydration_scope = HydrationHandler().new_hydration_scope()
-        gh = hydration_scope._graph_hydrator
+        hydration_scope, gh = get_graph_hydrator()
 
         alice_element_id = "1" if legacy_id else "alice"
         bob_element_id = "2" if legacy_id else "bob"
@@ -721,3 +708,10 @@ def test_node_deep_copy(example_graph_builder_v2, legacy_id):
     a2_list = a2_dict["list"]
     assert a2_list == a_list
     assert a2_list is not a_list
+
+
+def get_graph_hydrator() -> tuple[HydrationScope, _GraphHydrator]:
+    hydration_scope = HydrationHandler().new_hydration_scope()
+    gh = hydration_scope._graph_hydrator
+    assert isinstance(gh, _GraphHydrator)
+    return hydration_scope, gh

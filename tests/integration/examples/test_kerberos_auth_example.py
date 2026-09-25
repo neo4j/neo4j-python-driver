@@ -36,5 +36,6 @@ class KerberosAuthExample(DriverSetupExample):
     # end::kerberos-auth[]
 
 
-def test_example():
+def test_example(patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     pytest.skip("Currently no way to test Kerberos auth")

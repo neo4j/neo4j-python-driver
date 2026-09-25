@@ -372,10 +372,9 @@ def test_server_error_propagates(scripted_connection, error):
 @mark_sync_test
 def test_on_database_callback(
     scripted_connection, cb, resolved_db
-):
-    cb_calls = []
-
-    db_callback: t.Callable[[str], None] | t.Callable[[str], t.Union[None]]
+) -> None:
+    cb_calls: list[str] = []
+    db_callback: t.Callable[[str], t.Union[None] | None]
 
     if cb:
 

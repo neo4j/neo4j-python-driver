@@ -372,10 +372,9 @@ async def test_server_error_propagates(async_scripted_connection, error):
 @mark_async_test
 async def test_on_database_callback(
     async_scripted_connection, async_cb, resolved_db
-):
-    cb_calls = []
-
-    db_callback: t.Callable[[str], None] | t.Callable[[str], t.Awaitable[None]]
+) -> None:
+    cb_calls: list[str] = []
+    db_callback: t.Callable[[str], t.Awaitable[None] | None]
 
     if async_cb:
 

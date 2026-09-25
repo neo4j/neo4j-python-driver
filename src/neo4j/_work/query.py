@@ -33,6 +33,10 @@ class Query:
     fulfilling a similar role as :func:`.unit_of_work` for transactions
     functions.
 
+    .. note::
+        ``metadata`` and ``timeout`` do not have any effect when connected
+        via ``http://`` or ``https://`` scheme.
+
     :param text: The query text.
     :type text: typing.LiteralString
     :param metadata:
@@ -93,6 +97,10 @@ def unit_of_work(
 
     This function is a decorator for transaction functions that allows extra
     control over how the transaction is carried out.
+
+    .. note::
+        ``metadata`` and ``timeout`` do not have any effect when connected
+        via ``http://`` or ``https://`` scheme.
 
     For example, a timeout may be applied::
 

@@ -23,9 +23,7 @@ from struct import (
 )
 from uuid import UUID
 
-from .. import v1
-from .._common import Structure
-from .types import (
+from ..._types import (
     BYTES_TYPES,
     FALSE_VALUES,
     FLOAT_TYPES,
@@ -35,6 +33,8 @@ from .types import (
     SEQUENCE_TYPES,
     TRUE_VALUES,
 )
+from .. import v1
+from .._common import Structure
 
 
 try:

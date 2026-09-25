@@ -19,6 +19,8 @@ import pytest
 from neo4j._exceptions import BoltHandshakeError
 from neo4j.exceptions import ServiceUnavailable
 
+from ...conftest import mark_requires_tx_support
+
 
 # isort: off
 # tag::pass-bookmarks-import[]
@@ -97,7 +99,9 @@ class BookmarksExample:
 # end::pass-bookmarks[]
 
 
-def test(uri, auth):
+@mark_requires_tx_support
+def test(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     eg = BookmarksExample(uri, auth)
     try:
         with eg.driver.session() as session:

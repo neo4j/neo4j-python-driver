@@ -23,7 +23,7 @@ from itertools import zip_longest
 import pytest
 
 from neo4j import _typing as t
-from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from neo4j._codec.hydration.bolt.v1.hydration_handler import _GraphHydrator
 from neo4j.graph import Path
 
 

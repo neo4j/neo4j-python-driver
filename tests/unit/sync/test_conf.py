@@ -27,6 +27,7 @@ from neo4j._conf import (
     Config,
     SessionConfig,
 )
+from neo4j._sync.auth_management import StaticAuthManager
 from neo4j._sync.config import PoolConfig
 from neo4j.auth_management import (
     ClientCertificate,
@@ -53,11 +54,17 @@ test_pool_config = {
     "trusted_certificates": TrustSystemCAs(),
     "client_certificate": None,
     "ssl_context": None,
-    "auth": None,
+    "auth": PoolConfig.auth,
     "notifications_min_severity": None,
     "notifications_disabled_classifications": None,
     "telemetry_disabled": False,
 }
+
+
+@mark_sync_test
+def test_pool_config_default_auth():
+    assert isinstance(PoolConfig.auth, StaticAuthManager)
+    assert PoolConfig.auth.get_auth() is None
 
 
 def test_pool_config_consume():

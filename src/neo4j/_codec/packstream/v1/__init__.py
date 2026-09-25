@@ -23,13 +23,7 @@ from struct import (
 )
 from uuid import UUID
 
-from ...hydration import DehydrationHooks
-from .._common import (
-    PackableBuffer,
-    Structure,
-    UnpackableBuffer,
-)
-from .types import (
+from ..._types import (
     BYTES_TYPES,
     FALSE_VALUES,
     FLOAT_TYPES,
@@ -38,6 +32,12 @@ from .types import (
     NONE_VALUES,
     SEQUENCE_TYPES,
     TRUE_VALUES,
+)
+from ...hydration import DehydrationHooks
+from .._common import (
+    PackableBuffer,
+    Structure,
+    UnpackableBuffer,
 )
 
 
@@ -83,8 +83,10 @@ class Packer:
     @classmethod
     def _inject_hooks(cls, dehydration_hooks=None):
         if dehydration_hooks is None:
-            return DehydrationHooks(exact_types={tuple: list}, subtypes={})
-        return dehydration_hooks.extend(exact_types={tuple: list}, subtypes={})
+            return DehydrationHooks(
+                exact_values={}, exact_types={tuple: list}, subtypes={}
+            )
+        return dehydration_hooks.extend(exact_types={tuple: list})
 
     def _py_pack(self, value, dehydration_hooks=None):
         write = self._write

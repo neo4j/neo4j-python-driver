@@ -26,11 +26,13 @@ from .shims import wait_for
 
 
 __all__ = [
+    "AsyncBoundedSemaphore",
     "AsyncCondition",
     "AsyncCooperativeLock",
     "AsyncCooperativeRLock",
     "AsyncLock",
     "AsyncRLock",
+    "BoundedSemaphore",
     "Condition",
     "CooperativeLock",
     "CooperativeRLock",
@@ -475,8 +477,48 @@ class AsyncCondition:
         self.notify(len(self._waiters))
 
 
+AsyncBoundedSemaphore: t.TypeAlias = asyncio.BoundedSemaphore
+
+
+async def async_acquire_bounded_semaphore(
+    semaphore: AsyncBoundedSemaphore, timeout: float | None = None
+) -> bool:
+    acquire_finished = False
+
+    async def _acquire() -> t.Literal[True]:
+        # Before Python 3.12, wait_for wraps the passed coroutine in a Task and
+        # thus can end up being cancelled after the completion of the wrapped
+        # coroutine.
+        # This helper function makes sure this scenario is detected and the
+        # successful, but timed-out acquisition, does not end up changing the
+        # semaphore's state.
+        nonlocal acquire_finished
+        acquired = await semaphore.acquire()
+        acquire_finished = True
+        return acquired
+
+    acquired = False
+    try:
+        acquired = await wait_for(_acquire(), timeout=timeout)
+    except asyncio.CancelledError:
+        if acquire_finished:
+            semaphore.release()
+        raise
+    except asyncio.TimeoutError:
+        if acquire_finished:
+            semaphore.release()
+    return acquired
+
+
 Condition: t.TypeAlias = threading.Condition
 CooperativeLock: t.TypeAlias = threading.Lock
 Lock: t.TypeAlias = threading.Lock
 CooperativeRLock: t.TypeAlias = threading.RLock
 RLock: t.TypeAlias = threading.RLock
+BoundedSemaphore: t.TypeAlias = threading.BoundedSemaphore
+
+
+def acquire_bounded_semaphore(
+    semaphore: BoundedSemaphore, timeout: float | None = None
+) -> bool:
+    return semaphore.acquire(timeout=timeout)

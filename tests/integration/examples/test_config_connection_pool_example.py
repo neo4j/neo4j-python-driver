@@ -43,7 +43,8 @@ class ConfigConnectionPoolExample(DriverSetupExample):
     # end::config-connection-pool[]
 
 
-def test(uri, auth):
+def test(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         ConfigConnectionPoolExample.test(uri, auth)
     except ServiceUnavailable as error:

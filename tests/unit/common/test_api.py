@@ -17,12 +17,16 @@
 from __future__ import annotations
 
 import itertools
+import re
+from contextlib import nullcontext
 
 import pytest
 
 import neo4j._api
+import neo4j._typing as t
 from neo4j.addressing import Address
 from neo4j.exceptions import ConfigurationError
+from neo4j.warnings import PreviewWarning
 
 
 standard_ascii = [chr(i) for i in range(128)]
@@ -206,6 +210,18 @@ def test_serverinfo_with_metadata(
             neo4j._api.SECURITY_TYPE_SECURE,
             None,
         ),
+        (
+            "http://localhost:7676",
+            neo4j._api.DRIVER_HTTP,
+            neo4j._api.SECURITY_TYPE_NOT_SECURE,
+            None,
+        ),
+        (
+            "https://localhost:7676",
+            neo4j._api.DRIVER_HTTP,
+            neo4j._api.SECURITY_TYPE_SECURE,
+            None,
+        ),
         ("undefined://localhost:7676", None, None, ConfigurationError),
         ("localhost:7676", None, None, ConfigurationError),
         ("://localhost:7676", None, None, ConfigurationError),
@@ -231,9 +247,14 @@ def test_uri_scheme(
         with pytest.raises(expected_error):
             neo4j._api.parse_neo4j_uri(test_input)
     else:
-        driver_type, security_type, _parsed = neo4j._api.parse_neo4j_uri(
-            test_input
-        )
+        warning_ctx: t.AbstractContextManager = nullcontext()
+        if re.match(r"https?://", test_input):
+            warning_ctx = pytest.warns(PreviewWarning, match="Query API/HTTP")
+
+        with warning_ctx:
+            driver_type, security_type, _parsed = neo4j._api.parse_neo4j_uri(
+                test_input
+            )
         assert driver_type == expected_driver_type
         assert security_type == expected_security_type
 

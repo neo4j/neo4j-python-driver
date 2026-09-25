@@ -11,7 +11,13 @@
     "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_should_echo_all_timezone_ids'":
       "test_subtest_skips.dt_conversion",
     "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id'":
-      "test_subtest_skips.tz_id"
+      "test_subtest_skips.tz_id",
+    "'stub.http_query.datatypes.test_temporal.TestTemporal.test_date'":
+      "test_subtest_skips.test_date",
+    "'stub.http_query.datatypes.test_temporal.TestTemporal.test_zoned_time'":
+      "test_subtest_skips.test_date_time",
+    "'stub.http_query.datatypes.test_temporal.TestTemporal.test_local_date_time'":
+      "test_subtest_skips.test_date_time"
   },
   "features": {
     "Feature:API:BookmarkManager": true,
@@ -65,6 +71,7 @@
     "Feature:Bolt:6.1": true,
     "Feature:Bolt:HandshakeManifestV1": true,
     "Feature:Bolt:Patch:UTC": true,
+    "Feature:HTTP:QueryAPI:2.0": true,
     "Feature:IdempotentRetries": true,
     "Feature:Impersonation": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",

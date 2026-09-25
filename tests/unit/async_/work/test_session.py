@@ -32,8 +32,8 @@ from neo4j._api import TelemetryAPI
 from neo4j._async.home_db_cache import AsyncHomeDbCache
 from neo4j._async.io import (
     AcquisitionDatabase,
-    AsyncBoltPool,
-    AsyncNeo4jPool,
+    AsyncDirectBoltPool,
+    AsyncRoutedBoltPool,
 )
 from neo4j._async_compat.util import AsyncUtil
 from neo4j._auth_management import to_auth_dict
@@ -448,13 +448,13 @@ async def test_with_bookmark_manager(
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
 
     if routing:
-        async_fake_pool.mock_add_spec(AsyncNeo4jPool)
+        async_fake_pool.mock_add_spec(AsyncRoutedBoltPool)
         async_fake_pool.update_routing_table.side_effect = (
             update_routing_table_side_effect
         )
         async_fake_pool.is_direct_pool = False
     else:
-        async_fake_pool.mock_add_spec(AsyncBoltPool)
+        async_fake_pool.mock_add_spec(AsyncDirectBoltPool)
         async_fake_pool.is_direct_pool = True
 
     config = SessionConfig()
@@ -547,7 +547,9 @@ async def test_last_bookmarks_does_not_leak_bookmark_managers_bookmarks(
     async def bmm_get_bookmarks():
         return ["bmm:bm1"]
 
-    async_fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
+    async_fake_pool.mock_add_spec(
+        AsyncRoutedBoltPool if routing else AsyncDirectBoltPool
+    )
 
     bmm = mocker.Mock(spec=AsyncBookmarkManager)
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
@@ -571,7 +573,9 @@ async def test_last_bookmarks_does_not_leak_bookmark_managers_bookmarks(
 @pytest.mark.parametrize("routing", (True, False))
 @mark_async_test
 async def test_run_notification_min_severity(async_fake_pool, routing):
-    async_fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
+    async_fake_pool.mock_add_spec(
+        AsyncRoutedBoltPool if routing else AsyncDirectBoltPool
+    )
     min_sev = object()
     config = SessionConfig(notifications_min_severity=min_sev)
     async with AsyncSession(async_fake_pool, config) as session:
@@ -588,7 +592,9 @@ async def test_run_notification_min_severity(async_fake_pool, routing):
 async def test_run_notification_disabled_classifications(
     async_fake_pool, routing
 ):
-    async_fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
+    async_fake_pool.mock_add_spec(
+        AsyncRoutedBoltPool if routing else AsyncDirectBoltPool
+    )
     dis_clss = object()
     config = SessionConfig(notifications_disabled_classifications=dis_clss)
     async with AsyncSession(async_fake_pool, config) as session:
@@ -693,7 +699,7 @@ async def test_uses_home_db_cache_when_expected(
     async_fake_pool.ssr_enabled = pool_ssr
     if pool_routing:
         async_fake_pool.is_direct_pool = False
-        async_fake_pool.mock_add_spec(AsyncNeo4jPool)
+        async_fake_pool.mock_add_spec(AsyncRoutedBoltPool)
     cache_spy = mocker.Mock(spec=AsyncHomeDbCache, wraps=AsyncHomeDbCache())
     cached_db = "nice_cached_home_db"
     key = object()
@@ -790,7 +796,7 @@ async def test_pinns_session_db_with_cache(
     async_fake_pool.ssr_enabled = pool_ssr
     if pool_routing:
         async_fake_pool.is_direct_pool = False
-        async_fake_pool.mock_add_spec(AsyncNeo4jPool)
+        async_fake_pool.mock_add_spec(AsyncRoutedBoltPool)
     cache_spy = mocker.Mock(spec=AsyncHomeDbCache, wraps=AsyncHomeDbCache())
     key = object()
     cache_spy.compute_key.return_value = key

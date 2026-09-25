@@ -66,6 +66,10 @@ pandas = [
 ]
 # [bump-pyarrow] search tag when bumping pyarrow
 pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
+http = [
+    "aiohttp[speedups] >= 3.12.15, < 4.0.0",
+    "urllib3 >= 2.0.0, < 3.0.0",
+]
 
 
 [build-system]
@@ -146,6 +150,7 @@ docs = [
 # running the testkit backend
 testkit = [
     {include-group = "dep-freezegun"},
+    {include-group = "dep-http"},
 ]
 # running the benchkit backend for benchmarking
 benchkit = ["sanic >= 25.12.1"]
@@ -169,6 +174,11 @@ dep-project-dependencies = [
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     # [bump-pyarrow] search tag when bumping pyarrow
     "pyarrow >= 6.0.0, < 26.0.0",
+    {include-group = "dep-http"},
+]
+dep-http = [
+    "aiohttp[speedups] >= 3.12.15, < 4.0.0",
+    "urllib3 >= 2.0.0, < 3.0.0",
 ]
 
 [tool.setuptools.dynamic]
@@ -221,7 +231,7 @@ use_parentheses = true
 [tool.pytest.ini_options]
 mock_use_standalone_module = true
 asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope="function"
+asyncio_default_fixture_loop_scope = "function"
 timeout = 120
 
 
@@ -312,6 +322,9 @@ extend-ignore = [
     # needs fixing in ruff to work with typing.Protocol
     # https://github.com/astral-sh/ruff/issues/13307
     "FURB180",
+
+    # using mock package directly to get access to backported features
+    "UP026",
 
     # A try must contain as many statements as it must contain!
     "PLW0717",

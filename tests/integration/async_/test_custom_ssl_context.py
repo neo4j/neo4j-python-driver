@@ -18,9 +18,8 @@ from ssl import SSLContext
 
 import pytest
 
-import neo4j
-
 from ..._async_compat import mark_async_test
+from ...conftest import async_driver_factory
 
 
 @mark_async_test
@@ -39,7 +38,7 @@ async def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
     async with (
-        neo4j.AsyncGraphDatabase.driver(
+        async_driver_factory(
             uri, auth=auth, ssl_context=fake_ssl_context
         ) as driver,
         driver.session() as session,

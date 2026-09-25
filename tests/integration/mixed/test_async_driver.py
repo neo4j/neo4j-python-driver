@@ -22,8 +22,15 @@ import asyncio
 import neo4j
 
 from ..._async_compat import mark_async_test
+from ...conftest import (
+    async_driver_factory,
+    mark_requires_tx_support,
+    mark_skip_if_scheme,
+)
+from ...env import Scheme
 
 
+@mark_requires_tx_support
 def test_can_create_async_driver_outside_of_loop(uri, auth):
     pool_size = 2
     # used to make sure the pool was full at least at some point
@@ -67,7 +74,7 @@ def test_can_create_async_driver_outside_of_loop(uri, auth):
                 if isinstance(r, Exception):
                     raise r
 
-    driver = neo4j.AsyncGraphDatabase.driver(
+    driver = async_driver_factory(
         uri, auth=auth, max_connection_pool_size=pool_size
     )
     coro = run(driver)
@@ -79,6 +86,7 @@ def test_can_create_async_driver_outside_of_loop(uri, auth):
 
 
 @mark_async_test
+@mark_skip_if_scheme(Scheme.HTTP, reason="HTTP(S) connections are not pooled")
 async def test_cancel_driver_close(uri, auth):
     class Signal:
         queried = False
@@ -113,7 +121,7 @@ async def test_cancel_driver_close(uri, auth):
     def connection_count(driver_):
         return sum(len(v) for v in driver_._pool.connections.values())
 
-    driver = neo4j.AsyncGraphDatabase.driver(uri, auth=auth)
+    driver = async_driver_factory(uri, auth=auth)
     await fill_pool(driver)
     # sanity check, there should be some connections
     assert connection_count(driver) >= 10
