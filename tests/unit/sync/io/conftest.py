@@ -52,6 +52,9 @@ class FakeSocket:
     def close(self):
         return
 
+    def at_eof(self):
+        return False
+
     def pop_message(self):
         assert self.messages
         return self.messages.pop(None)
@@ -94,6 +97,9 @@ class FakeSocket2:
 
     def close(self):
         return
+
+    def at_eof(self):
+        return False
 
     def inject(self, data):
         self.recv_buffer += data
