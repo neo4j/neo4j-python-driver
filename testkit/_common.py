@@ -21,6 +21,9 @@ import sys
 
 
 TEST_BACKEND_VERSION = os.getenv("TEST_BACKEND_VERSION", "python")
+# space-separated list of tox factor filters to apply.
+# Example: `f1-f2 f3` to add `-f f1-f2 -f f3` to each tox invocation.
+TEST_TOX_FACTORS = os.getenv("TEST_TOX_FACTORS", "")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
 
 
@@ -51,3 +54,11 @@ def run_python(args, env=None, warning_as_error=True):
         cmd += ["-W", "error"]
     cmd += list(args)
     run(cmd, env=env)
+
+
+def get_tox_factor_args(base_factor: str):
+    return tuple(
+        arg
+        for factor in TEST_TOX_FACTORS.split()
+        for arg in ("-f", f"{factor}-{base_factor}")
+    ) or ("-f", base_factor)

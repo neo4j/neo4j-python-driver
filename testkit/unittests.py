@@ -14,7 +14,10 @@
 # limitations under the License.
 
 
-from _common import run_python
+from _common import (
+    get_tox_factor_args,
+    run_python,
+)
 
 
 if __name__ == "__main__":
@@ -25,8 +28,7 @@ if __name__ == "__main__":
             "-vv",
             "--parallel",
             "--parallel-no-spinner",
-            "-f",
-            "unit",
+            *get_tox_factor_args("unit"),
             "--",
             "-vv",
             "--showlocals",
