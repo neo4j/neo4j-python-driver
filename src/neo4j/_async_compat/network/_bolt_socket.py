@@ -688,8 +688,8 @@ class BoltSocketBase(abc.ABC):
             # still have data buffered => not EOF
             return False
 
-        blocking = self._socket.getblocking()
-        self._socket.setblocking(False)
+        timeout = self._socket.gettimeout()
+        self._socket.settimeout(0)
         try:
             try:
                 read = self._socket.recv(1)
@@ -702,4 +702,4 @@ class BoltSocketBase(abc.ABC):
                 pass
             return False
         finally:
-            self._socket.setblocking(blocking)
+            self._socket.settimeout(timeout)
