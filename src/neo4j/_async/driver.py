@@ -1462,7 +1462,7 @@ class AsyncHttpDriver(_Http, AsyncDriver):
 
         * :attr:`.ResultSummary.result_available_after` and
           :attr:`.ResultSummary.result_consumed_after` will be :data:`None`
-          for servers older than 2026.07 as this information is not provided
+          for servers older than 2026.07 as this information is not provided by
           such servers.
         * :attr:`.ServerInfo.agent` is being computed from the DBMS's
           advertised version. Further, it is being cached to reduce
