@@ -321,6 +321,7 @@ async def test_default_host_and_port(
     expected_addr_value: t.Any,
     expected_class: type[AsyncDriver],
 ) -> None:
+    skip_if_unsupported_uri(uri)
     driver = _make_driver(uri)
     assert isinstance(driver, expected_class)
     assert getattr(driver, expected_addr_attr) == expected_addr_value
