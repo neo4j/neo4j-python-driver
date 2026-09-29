@@ -504,10 +504,10 @@ class _Routing:
 
 class _Http(_Direct):
     class _Http(_Direct):
-        _default_port = 7474
+        _default_port = 80
 
     class _Https(_Direct):
-        _default_port = 7473
+        _default_port = 443
 
     @classmethod
     def _parse_target(cls, target):

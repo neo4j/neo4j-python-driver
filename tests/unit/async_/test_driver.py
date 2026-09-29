@@ -278,7 +278,7 @@ async def test_driver_config_error_uri_conflict(
         ),
         *(
             conf
-            for (scheme, port) in (("http", 7474), ("https", 7473))
+            for (scheme, port) in (("http", 80), ("https", 443))
             for conf in (
                 (
                     f"{scheme}://",
