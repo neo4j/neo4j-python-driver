@@ -69,6 +69,7 @@ from ..._async_compat import (
 )
 from ..._deprecated_imports import NotificationDisabledCategory
 from ..._optional_deps import skip_if_unsupported_uri
+from ..._preview_imports import HttpDriver
 
 
 if t.TYPE_CHECKING:
@@ -197,6 +198,132 @@ def test_driver_config_error_uri_conflict(
     else:
         driver = _make_driver(uri, **test_config)
         driver.close()
+
+
+@pytest.mark.parametrize(
+    ("uri", "expected_addr_attr", "expected_addr_value", "expected_class"),
+    (
+        *(
+            conf
+            for scheme in ("bolt", "bolt+s", "bolt+ssc")
+            for conf in (
+                (
+                    f"{scheme}://",
+                    "_address",
+                    ("localhost", 7687),
+                    BoltDriver,
+                ),
+                (
+                    f"{scheme}://:",
+                    "_address",
+                    ("localhost", 7687),
+                    BoltDriver,
+                ),
+                (
+                    f"{scheme}://example.com",
+                    "_address",
+                    ("example.com", 7687),
+                    BoltDriver,
+                ),
+                (
+                    f"{scheme}://example.com:",
+                    "_address",
+                    ("example.com", 7687),
+                    BoltDriver,
+                ),
+                (
+                    f"{scheme}://:1234",
+                    "_address",
+                    ("localhost", 1234),
+                    BoltDriver,
+                ),
+            )
+        ),
+        *(
+            conf
+            for scheme in ("neo4j", "neo4j+s", "neo4j+ssc")
+            for conf in (
+                (
+                    f"{scheme}://",
+                    "_initial_addresses",
+                    [("localhost", 7687)],
+                    Neo4jDriver,
+                ),
+                (
+                    f"{scheme}://:",
+                    "_initial_addresses",
+                    [("localhost", 7687)],
+                    Neo4jDriver,
+                ),
+                (
+                    f"{scheme}://example.com",
+                    "_initial_addresses",
+                    [("example.com", 7687)],
+                    Neo4jDriver,
+                ),
+                (
+                    f"{scheme}://example.com:",
+                    "_initial_addresses",
+                    [("example.com", 7687)],
+                    Neo4jDriver,
+                ),
+                (
+                    f"{scheme}://:1234",
+                    "_initial_addresses",
+                    [("localhost", 1234)],
+                    Neo4jDriver,
+                ),
+            )
+        ),
+        *(
+            conf
+            for (scheme, port) in (("http", 7474), ("https", 7473))
+            for conf in (
+                (
+                    f"{scheme}://",
+                    "_address",
+                    ("localhost", port),
+                    HttpDriver,
+                ),
+                (
+                    f"{scheme}://:",
+                    "_address",
+                    ("localhost", port),
+                    HttpDriver,
+                ),
+                (
+                    f"{scheme}://example.com",
+                    "_address",
+                    ("example.com", port),
+                    HttpDriver,
+                ),
+                (
+                    f"{scheme}://example.com:",
+                    "_address",
+                    ("example.com", port),
+                    HttpDriver,
+                ),
+                (
+                    f"{scheme}://:1234",
+                    "_address",
+                    ("localhost", 1234),
+                    HttpDriver,
+                ),
+            )
+        ),
+    ),
+)
+@mark_sync_test
+def test_default_host_and_port(
+    uri: str,
+    expected_addr_attr: str,
+    expected_addr_value: t.Any,
+    expected_class: type[Driver],
+) -> None:
+    driver = _make_driver(uri)
+    assert isinstance(driver, expected_class)
+    assert getattr(driver, expected_addr_attr) == expected_addr_value
+    driver.close()
 
 
 @pytest.mark.parametrize(

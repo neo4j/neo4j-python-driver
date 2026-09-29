@@ -70,6 +70,7 @@ from ..._async_compat import (
 )
 from ..._deprecated_imports import NotificationDisabledCategory
 from ..._optional_deps import skip_if_unsupported_uri
+from ..._preview_imports import AsyncHttpDriver
 
 
 if t.TYPE_CHECKING:
@@ -198,6 +199,132 @@ async def test_driver_config_error_uri_conflict(
     else:
         driver = _make_driver(uri, **test_config)
         await driver.close()
+
+
+@pytest.mark.parametrize(
+    ("uri", "expected_addr_attr", "expected_addr_value", "expected_class"),
+    (
+        *(
+            conf
+            for scheme in ("bolt", "bolt+s", "bolt+ssc")
+            for conf in (
+                (
+                    f"{scheme}://",
+                    "_address",
+                    ("localhost", 7687),
+                    AsyncBoltDriver,
+                ),
+                (
+                    f"{scheme}://:",
+                    "_address",
+                    ("localhost", 7687),
+                    AsyncBoltDriver,
+                ),
+                (
+                    f"{scheme}://example.com",
+                    "_address",
+                    ("example.com", 7687),
+                    AsyncBoltDriver,
+                ),
+                (
+                    f"{scheme}://example.com:",
+                    "_address",
+                    ("example.com", 7687),
+                    AsyncBoltDriver,
+                ),
+                (
+                    f"{scheme}://:1234",
+                    "_address",
+                    ("localhost", 1234),
+                    AsyncBoltDriver,
+                ),
+            )
+        ),
+        *(
+            conf
+            for scheme in ("neo4j", "neo4j+s", "neo4j+ssc")
+            for conf in (
+                (
+                    f"{scheme}://",
+                    "_initial_addresses",
+                    [("localhost", 7687)],
+                    AsyncNeo4jDriver,
+                ),
+                (
+                    f"{scheme}://:",
+                    "_initial_addresses",
+                    [("localhost", 7687)],
+                    AsyncNeo4jDriver,
+                ),
+                (
+                    f"{scheme}://example.com",
+                    "_initial_addresses",
+                    [("example.com", 7687)],
+                    AsyncNeo4jDriver,
+                ),
+                (
+                    f"{scheme}://example.com:",
+                    "_initial_addresses",
+                    [("example.com", 7687)],
+                    AsyncNeo4jDriver,
+                ),
+                (
+                    f"{scheme}://:1234",
+                    "_initial_addresses",
+                    [("localhost", 1234)],
+                    AsyncNeo4jDriver,
+                ),
+            )
+        ),
+        *(
+            conf
+            for (scheme, port) in (("http", 7474), ("https", 7473))
+            for conf in (
+                (
+                    f"{scheme}://",
+                    "_address",
+                    ("localhost", port),
+                    AsyncHttpDriver,
+                ),
+                (
+                    f"{scheme}://:",
+                    "_address",
+                    ("localhost", port),
+                    AsyncHttpDriver,
+                ),
+                (
+                    f"{scheme}://example.com",
+                    "_address",
+                    ("example.com", port),
+                    AsyncHttpDriver,
+                ),
+                (
+                    f"{scheme}://example.com:",
+                    "_address",
+                    ("example.com", port),
+                    AsyncHttpDriver,
+                ),
+                (
+                    f"{scheme}://:1234",
+                    "_address",
+                    ("localhost", 1234),
+                    AsyncHttpDriver,
+                ),
+            )
+        ),
+    ),
+)
+@mark_async_test
+async def test_default_host_and_port(
+    uri: str,
+    expected_addr_attr: str,
+    expected_addr_value: t.Any,
+    expected_class: type[AsyncDriver],
+) -> None:
+    driver = _make_driver(uri)
+    assert isinstance(driver, expected_class)
+    assert getattr(driver, expected_addr_attr) == expected_addr_value
+    await driver.close()
 
 
 @pytest.mark.parametrize(

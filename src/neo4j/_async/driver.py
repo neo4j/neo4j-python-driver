@@ -504,7 +504,19 @@ class _Routing:
 
 
 class _Http(_Direct):
-    _default_port = 7474
+    class _Http(_Direct):
+        _default_port = 7474
+
+    class _Https(_Direct):
+        _default_port = 7473
+
+    @classmethod
+    def _parse_target(cls, target):
+        return cls._Http._parse_target(target)
+
+    @classmethod
+    def _parse_target_secure(cls, target):
+        return cls._Https._parse_target(target)
 
 
 class AsyncDriver:
@@ -1493,10 +1505,13 @@ class AsyncHttpDriver(_Http, AsyncDriver):
     def _open(cls, target, path, **config) -> t.Self:
         from .io import AsyncHttpV2Pool
 
-        address = cls._parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(
             config, AsyncPoolConfig, WorkspaceConfig
         )
+        if pool_config.encrypted:
+            address = cls._parse_target_secure(target)
+        else:
+            address = cls._parse_target(target)
         pool = AsyncHttpV2Pool.open(
             address,
             path=path,
