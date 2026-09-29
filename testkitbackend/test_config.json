@@ -74,6 +74,7 @@
     "AuthorizationExpiredTreatment": true,
     "Optimization:AuthPipelining": true,
     "Optimization:ConnectionReuse": true,
+    "Optimization:DeadConnectionDetection": true,
     "Optimization:EagerTransactionBegin": true,
     "Optimization:ExecuteQueryPipelining": true,
     "Optimization:HomeDatabaseCache": true,
