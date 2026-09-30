@@ -16,7 +16,7 @@
 
 import pytest
 
-from neo4j._sync.io._common import (
+from neo4j._sync.io._bolt._common import (
     Inbox,
     Outbox,
 )

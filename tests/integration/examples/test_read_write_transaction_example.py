@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+from ...conftest import mark_requires_tx_support
+
+
 # tag::read-write-transaction-import[]
 # end::read-write-transaction-import[]
 
@@ -48,6 +51,7 @@ def read_write_transaction_example(driver):
     return result
 
 
+@mark_requires_tx_support
 def test_example(driver):
     result = read_write_transaction_example(driver)
     assert result == 2

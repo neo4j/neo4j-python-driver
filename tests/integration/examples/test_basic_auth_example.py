@@ -40,7 +40,8 @@ class BasicAuthExample(DriverSetupExample):
     # end::basic-auth[]
 
 
-def test_example(uri, auth):
+def test_example(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         BasicAuthExample.test(uri, user=auth[0], password=auth[1])
     except ServiceUnavailable as error:

@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+from ...conftest import mark_requires_tx_support
+
+
 # tag::result-consume-import[]
 # end::result-consume-import[]
 
@@ -44,6 +47,7 @@ def result_consume_example(driver):
     return people
 
 
+@mark_requires_tx_support
 def test_example(driver):
     people = result_consume_example(driver)
     assert people == ["Alice", "Bob"]

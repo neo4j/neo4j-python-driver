@@ -15,6 +15,11 @@
 
 
 from . import _typing as _t
+from ._addressing import (
+    Address,
+    IPv4Address,
+    IPv6Address,
+)
 from ._api import (
     NotificationCategory as _NotificationCategory,
     NotificationDisabledCategory as _NotificationDisabledCategory,
@@ -23,10 +28,11 @@ from ._api import (
     NotificationSeverity,
     RoutingControl,
 )
-from ._async.driver import (
+from ._async.driver import (  # noqa: F401 dynamic attribute
     AsyncBoltDriver,
     AsyncDriver,
     AsyncGraphDatabase,
+    AsyncHttpDriver as _AsyncHttpDriver,
     AsyncNeo4jDriver,
 )
 from ._async.work import (
@@ -45,10 +51,11 @@ from ._meta import (
     get_user_agent,
     version as __version__,
 )
-from ._sync.driver import (
+from ._sync.driver import (  # noqa: F401 dynamic attribute
     BoltDriver,
     Driver,
     GraphDatabase,
+    HttpDriver as _HttpDriver,
     Neo4jDriver,
 )
 from ._sync.work import (
@@ -59,7 +66,7 @@ from ._sync.work import (
 )
 from ._warnings import (
     deprecation_warn as _deprecation_warn,
-    PreviewWarning as _PreviewWarning,
+    preview_warn as _preview_warn,
 )
 from ._work import (
     EagerResult,
@@ -71,23 +78,6 @@ from ._work import (
     SummaryInputPosition,
     SummaryNotification as _SummaryNotification,
     unit_of_work,
-)
-
-
-if _t.TYPE_CHECKING:
-    from ._api import (
-        NotificationCategory,
-        NotificationDisabledCategory,
-    )
-    from ._work import (
-        SummaryNotification,
-    )
-    from ._warnings import PreviewWarning
-
-from ._addressing import (
-    Address,
-    IPv4Address,
-    IPv6Address,
 )
 from .api import (
     Auth,  # TODO: Validate naming for Auth compared to other drivers.
@@ -105,7 +95,18 @@ from .api import (
     SYSTEM_DATABASE,
     WRITE_ACCESS,
 )
+from .warnings import PreviewWarning as _PreviewWarning
 
+
+if _t.TYPE_CHECKING:
+    from ._api import (
+        NotificationCategory,
+        NotificationDisabledCategory,
+    )
+    from ._async.driver import AsyncHttpDriver
+    from ._sync.driver import HttpDriver
+    from ._work import SummaryNotification
+    from .warnings import PreviewWarning
 
 __all__ = [
     "DEFAULT_DATABASE",
@@ -116,6 +117,7 @@ __all__ = [
     "AsyncBoltDriver",
     "AsyncDriver",
     "AsyncGraphDatabase",
+    "AsyncHttpDriver",
     "AsyncManagedTransaction",
     "AsyncNeo4jDriver",
     "AsyncResult",
@@ -129,6 +131,7 @@ __all__ = [
     "EagerResult",
     "GqlStatusObject",
     "GraphDatabase",
+    "HttpDriver",
     "IPv4Address",
     "IPv6Address",
     "ManagedTransaction",
@@ -195,6 +198,16 @@ def __getattr__(name) -> _t.Any:
             stack_level=2,
         )
         return _PreviewWarning
+
+    if name in {"HttpDriver", "AsyncHttpDriver"}:
+        _preview_warn(
+            (
+                f"{name} is part of Query API/HTTP support, "
+                "which is a preview feature."
+            ),
+            stack_level=2,
+        )
+        return globals()[f"_{name}"]
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 

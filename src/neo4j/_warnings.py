@@ -28,6 +28,15 @@ if t.TYPE_CHECKING:
     _FuncT = t.TypeVar("_FuncT", bound=t.Callable)
 
 
+__all__ = [
+    "deprecated",
+    "deprecation_warn",
+    "preview",
+    "preview_warn",
+    "unclosed_resource_warn",
+]
+
+
 # Copy globals as function locals to make sure that they are available
 # during Python shutdown when the Pool is destroyed.
 def deprecation_warn(message, stack_level=1, _warn=warn):
@@ -104,7 +113,7 @@ def _make_warning_decorator(
                 warning_func(message, stack_level=2)
                 return await f(*args, **kwargs)
 
-            inner._without_warning = f
+            inner._without_warning = f  # type: ignore
             return inner
 
         if inspect.isclass(f):
@@ -133,7 +142,7 @@ def _make_warning_decorator(
                 warning_func(message, stack_level=2)
                 return f(*args, **kwargs)
 
-            inner._without_warning = f
+            inner._without_warning = f  # type: ignore
             return inner
 
     return decorator

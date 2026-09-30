@@ -54,12 +54,13 @@ from typing import (
     TYPE_CHECKING,
     TypeAlias,
     TypedDict,
+    TypeGuard,
     TypeVar,
     Union,
 )
 
 
-__all__: tuple[str, ...] = (
+__all__: list[str] = [
     "TYPE_CHECKING",
     "AbstractContextManager",
     "Any",
@@ -90,25 +91,43 @@ __all__: tuple[str, ...] = (
     "SupportsIndex",
     "TextIO",
     "TypeAlias",
+    "TypeGuard",
     "TypeVar",
     "TypedDict",
     "Union",
     "ValuesView",
+    "assert_never",
     "cast",
     "overload",
-)
+]
 
 
 _te_available = _find_spec("typing_extensions") is not None
 
 if TYPE_CHECKING or _te_available:
+    from typing_extensions import assert_never  # Python 3.11+
     from typing_extensions import LiteralString  # Python 3.11+
+    from typing_extensions import Never  # Python 3.11+
     from typing_extensions import NotRequired  # Python 3.11+
     from typing_extensions import Self  # Python 3.11+
+    from typing_extensions import TypeVarTuple  # Python 3.11+
+    from typing_extensions import Unpack  # Python 3.11+
 
-    __all__ = (  # noqa: PLE0604 false positive
+    __all__ = [  # noqa: PLE0604 false positive
         *__all__,
         "LiteralString",
+        "Never",
         "Self",
         "NotRequired",
-    )
+        "Unpack",
+        "TypeVarTuple",
+    ]
+else:
+
+    def assert_never(arg: Any, /) -> None:
+        value = repr(arg)
+        if len(value) > 100:
+            value = value[:100] + "..."
+        raise AssertionError(
+            f"Expected code to be unreachable, but got: {value}"
+        )
