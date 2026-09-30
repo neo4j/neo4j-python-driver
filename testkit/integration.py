@@ -14,7 +14,10 @@
 # limitations under the License.
 
 
-from _common import run_python
+from _common import (
+    get_tox_factor_args,
+    run_python,
+)
 
 
 if __name__ == "__main__":
@@ -23,8 +26,7 @@ if __name__ == "__main__":
             "-m",
             "tox",
             "-vv",
-            "-f",
-            "integration",
+            *get_tox_factor_args("integration"),
             "--",
             "-vv",
             "--showlocals",
