@@ -36,6 +36,7 @@ from neo4j.auth_management import (
     ClientCertificateProvider,
     ExpiringAuth,
 )
+from neo4j.warnings import PreviewWarning
 
 from .. import (
     fromtestkit,
@@ -222,6 +223,8 @@ def new_driver(backend, data):
     fromtestkit.set_notifications_config(
         kwargs, data, expected_warnings=expected_warnings
     )
+    if data["uri"].startswith("http://") or data["uri"].startswith("https://"):
+        expected_warnings.append((PreviewWarning, r".*\bQuery API/HTTP\b.*"))
 
     with warnings_check(expected_warnings):
         driver = neo4j.GraphDatabase.driver(

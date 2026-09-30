@@ -26,12 +26,16 @@ from .._conf import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from .auth_management import AuthManagers
 
 
 if t.TYPE_CHECKING:
     import ssl
 
-    from .._auth_management import ClientCertificate
+    from .._auth_management import (
+        AuthManager,
+        ClientCertificate,
+    )
 
 
 class PoolConfig(Config):
@@ -96,7 +100,7 @@ class PoolConfig(Config):
     # Specify whether TCP keep-alive should be enabled.
 
     #: Authentication provider
-    auth = None
+    auth: AuthManager | AuthManager = AuthManagers.static(None)
 
     #: Lowest notification severity for the server to return
     notifications_min_severity = None

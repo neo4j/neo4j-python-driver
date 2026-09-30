@@ -652,7 +652,7 @@ class GqlStatusObject:
     .. versionadded:: 5.22
     """
 
-    # internal dictionaries, never handed to assure immutability
+    # internal dictionaries, never handed to the user to assure immutability
     _status_metadata: dict[str, t.Any]
     _status_diagnostic_record: dict[str, t.Any] | None = None
 

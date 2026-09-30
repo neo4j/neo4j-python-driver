@@ -39,7 +39,8 @@ class ConfigMaxRetryTimeExample(DriverSetupExample):
     # end::config-max-retry-time[]
 
 
-def test(uri, auth):
+def test(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         ConfigMaxRetryTimeExample.test(uri, auth)
     except ServiceUnavailable as error:

@@ -24,7 +24,12 @@ import neo4j
 from neo4j import exceptions as neo4j_exceptions
 
 from ..._async_compat import mark_async_test
-from ...conftest import get_async_driver
+from ...conftest import (
+    async_driver_factory,
+    mark_requires_tx_support,
+    mark_skip_if_scheme,
+)
+from ...env import Scheme
 
 
 def _get_work():
@@ -124,10 +129,11 @@ REPETITIONS = 250
         for i in range(REPETITIONS)
     ),
 )
+@mark_requires_tx_support
 async def test_async_cancellation(
     uri, auth, mocker, read_func, waits, cancel_count, i
 ):
-    async with get_async_driver(
+    async with async_driver_factory(
         uri, auth=auth, connection_acquisition_timeout=10
     ) as driver:
         async with driver.session() as session:
@@ -190,8 +196,9 @@ READS_PER_SESSION = 15
 
 
 @mark_async_test
+@mark_skip_if_scheme(Scheme.HTTP, reason="HTTP(S) connections are not pooled")
 async def test_async_cancellation_does_not_leak(uri, auth):
-    async with get_async_driver(
+    async with async_driver_factory(
         uri,
         auth=auth,
         connection_acquisition_timeout=10,

@@ -144,7 +144,7 @@ class AsyncSession(AsyncWorkspace):
         if connection:
             log.debug(
                 "[#%04X]  _: <SESSION> %s cancellation clean-up",
-                connection.local_port,
+                connection.log_id,
                 message,
             )
             self._pool.kill_and_release(connection)
@@ -473,6 +473,10 @@ class AsyncSession(AsyncWorkspace):
 
         Note: For auto-commit transactions (:meth:`.AsyncSession.run`), this
         will trigger a :meth:`.AsyncResult.consume` for the current result.
+
+        .. note::
+            ``metadata`` and ``timeout`` do not have any effect when connected
+            via ``http://`` or ``https://`` scheme.
 
         :param metadata:
             a dictionary with metadata.

@@ -25,6 +25,7 @@ TEST_BACKEND_VERSION = os.getenv("TEST_BACKEND_VERSION", "python")
 # Example: `f1-f2 f3` to add `-f f1-f2 -f f3` to each tox invocation.
 TEST_TOX_FACTORS = os.getenv("TEST_TOX_FACTORS", "")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
+IS_HTTP = os.getenv("TEST_NEO4J_SCHEME") in {"http", "https"}
 
 
 def run(args, env=None):

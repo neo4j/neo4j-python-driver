@@ -68,7 +68,8 @@ class DatabaseSelectionExample:
 
 @mark_requires_min_bolt_version("4")
 @mark_requires_edition("enterprise")
-def test_database_selection_example(uri, auth):
+def test_database_selection_example(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     s = StringIO()
     with redirect_stdout(s):
         example = DatabaseSelectionExample(uri, auth[0], auth[1])

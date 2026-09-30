@@ -101,7 +101,7 @@ _DATE_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
 )
 _TIME_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
     r"^(\d{2})(:(\d{2})(:((\d{2})"
-    r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$"
+    r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?|Z)?$"
 )
 _DURATION_ISO_PATTERN: _t.Final[_re.Pattern] = _re_compile(
     r"^P(?!$)"
@@ -121,6 +121,8 @@ _AVERAGE_SECONDS_IN_MONTH: _t.Final[int] = 2629746
 _AVERAGE_SECONDS_IN_DAY: _t.Final[int] = 86400
 
 _FORMAT_F_REPLACE: _t.Final[_re.Pattern] = _re.compile(r"(?<!%)%f")
+
+# .5M = 15DT5H14M33S
 
 
 def _is_leap_year(year):
@@ -726,8 +728,9 @@ class Duration(  # type: ignore[misc]
             ns = 0
             if match.group("sub_seconds"):
                 ns = int(match.group("sub_seconds")[1:10].ljust(9, "0"))
-            seconds = int(match.group("seconds") or 0)
-            if seconds < 0:
+            seconds_group = match.group("seconds")
+            seconds = int(seconds_group or 0)
+            if seconds_group and seconds_group.startswith("-"):
                 ns *= -1
             return cls(
                 years=int(match.group("years") or 0),
@@ -1698,7 +1701,10 @@ class Time(_time_base_class, metaclass=_TimeType):
 
         :raises ValueError: if the string does not match the required format.
         """
-        from pytz import FixedOffset
+        from pytz import (
+            FixedOffset,
+            UTC,
+        )
 
         m = _TIME_ISO_PATTERN.match(s)
         if m:
@@ -1710,8 +1716,11 @@ class Time(_time_base_class, metaclass=_TimeType):
                 nanosecond = int(nanosecond[1:10].ljust(9, "0"))
             else:
                 nanosecond = 0
+            tzinfo: _tzinfo | None
             if m.group(8) is None:
-                return cls(hour, minute, second, nanosecond)
+                tzinfo = None
+            elif m.group(8) == "Z":
+                tzinfo = UTC
             else:
                 offset_multiplier = 1 if m.group(9) == "+" else -1
                 offset_hour = int(m.group(10))
@@ -1720,8 +1729,8 @@ class Time(_time_base_class, metaclass=_TimeType):
                 # so we can ignore this part
                 # offset_second = float(m.group(13) or 0.0)
                 offset = 60 * offset_hour + offset_minute
-                tz = FixedOffset(offset_multiplier * offset)
-                return cls(hour, minute, second, nanosecond, tzinfo=tz)
+                tzinfo = FixedOffset(offset_multiplier * offset)
+            return cls(hour, minute, second, nanosecond, tzinfo=tzinfo)
         raise ValueError("Time string is not in ISO format")
 
     @classmethod
@@ -2143,10 +2152,12 @@ class Time(_time_base_class, metaclass=_TimeType):
         res = f"{h:02d}:{m:02d}:{s:02d}.{ns:09d}"
         offset = self.utc_offset()
         if offset is not None:
+            offset_total_seconds = offset.total_seconds()
+            sign = "-" if offset_total_seconds < 0 else "+"
             offset_hours, offset_minutes = divmod(
-                int(offset.total_seconds() // 60), 60
+                abs(int(offset_total_seconds // 60)), 60
             )
-            res += f"{offset_hours:+03d}:{offset_minutes:02d}"
+            res += f"{sign}{offset_hours:02d}:{offset_minutes:02d}"
         return res
 
     def __repr__(self) -> str:

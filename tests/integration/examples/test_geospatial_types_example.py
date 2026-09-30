@@ -18,11 +18,14 @@ from __future__ import annotations
 
 import pytest
 
+from ...conftest import mark_requires_tx_support
+
 
 def _echo(tx, x):
     return tx.run("RETURN $x AS fieldName", x=x).single()
 
 
+@mark_requires_tx_support
 def test_cartesian_point(driver):
     # isort: off
     # tag::geospatial-types-cartesian-import[]
@@ -84,6 +87,7 @@ def test_cartesian_point(driver):
     assert point3d == in_point3d
 
 
+@mark_requires_tx_support
 def test_wgs84_point(driver):
     # isort: off
     # tag::geospatial-types-wgs84-import[]

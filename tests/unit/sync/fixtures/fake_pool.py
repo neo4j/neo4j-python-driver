@@ -18,7 +18,7 @@ import pytest
 
 from neo4j._sync.config import PoolConfig
 from neo4j._sync.home_db_cache import HomeDbCache
-from neo4j._sync.io._pool import IOPool
+from neo4j._sync.io._pool import BoltPool
 
 
 __all__ = [
@@ -28,7 +28,7 @@ __all__ = [
 
 @pytest.fixture
 def fake_pool(fake_connection_generator, mocker):
-    pool = mocker.MagicMock(spec=IOPool)
+    pool = mocker.MagicMock(spec=BoltPool)
     assert not hasattr(pool, "acquired_connection_mocks")
     pool.buffered_connection_mocks = []
     pool.acquired_connection_mocks = []
