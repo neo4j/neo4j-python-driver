@@ -39,7 +39,8 @@ class ConfigConnectionTimeoutExample(DriverSetupExample):
     # end::config-connection-timeout[]
 
 
-def test(uri, auth):
+def test(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         ConfigConnectionTimeoutExample.test(uri, auth)
     except ServiceUnavailable as error:

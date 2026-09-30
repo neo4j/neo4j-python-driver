@@ -17,11 +17,13 @@
 import re
 from pathlib import Path
 
+from ..conftest import mark_requires_tx_support
+
 
 # fmt: off
 # ruff: noqa: E303 (too many blank lines, test must match README)
-
-def test_should_run_readme(uri, auth):
+@mark_requires_tx_support
+def test_should_run_readme(uri, auth, patch_driver_factory):
     names = set()
     print = names.add
 
@@ -52,6 +54,9 @@ def test_should_run_readme(uri, auth):
             print(record["friend.name"])
 
 
+    # === END: README ===
+    patch_driver_factory(GraphDatabase)
+    # === START: README ===
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
         # === END: README ===
         pass
@@ -66,7 +71,6 @@ def test_should_run_readme(uri, auth):
         driver.execute_query("MATCH (a) DETACH DELETE a")
 
     assert names == {"Guinevere", "Lancelot", "Merlin"}
-
 # fmt: on
 
 

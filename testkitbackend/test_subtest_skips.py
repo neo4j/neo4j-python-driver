@@ -62,3 +62,19 @@ def dt_conversion(**params):
         fromtestkit.to_param(dt)
     except (pytz.UnknownTimeZoneError, ValueError) as e:
         return f"cannot create desired dt {dt}: {e!r}"
+
+
+def test_date(**params):
+    d = params["x"]
+    try:
+        fromtestkit.to_param(d)
+    except ValueError as e:
+        return f"cannot create desired date {d}: {e!r}"
+
+
+def test_date_time(**params):
+    time = params["x"]
+    try:
+        fromtestkit.to_param(time)
+    except ValueError as e:
+        return f"cannot create desired date {time}: {e!r}"

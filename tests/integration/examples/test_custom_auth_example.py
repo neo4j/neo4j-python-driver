@@ -19,6 +19,8 @@ import pytest
 from neo4j._exceptions import BoltHandshakeError
 from neo4j.exceptions import ServiceUnavailable
 
+from ...conftest import mark_skip_if_scheme
+from ...env import Scheme
 from ._base import DriverSetupExample
 
 
@@ -46,7 +48,11 @@ class CustomAuthExample(DriverSetupExample):
     # end::custom-auth[]
 
 
-def test_example(uri, auth):
+@mark_skip_if_scheme(
+    Scheme.HTTP, reason="Only basic auth supported via HTTP(S)"
+)
+def test_example(uri, auth, patch_driver_factory):
+    patch_driver_factory(GraphDatabase)
     try:
         CustomAuthExample.test(
             uri, auth[0], auth[1], None, "basic", key="value"

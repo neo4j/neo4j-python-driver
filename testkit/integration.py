@@ -14,7 +14,10 @@
 # limitations under the License.
 
 
-from _common import run_python
+from _common import (
+    IS_HTTP,
+    run_python,
+)
 
 
 if __name__ == "__main__":
@@ -22,13 +25,16 @@ if __name__ == "__main__":
         ["-m", "pip", "install", "-U", "--group", "tox"],
         warning_as_error=False,
     )
+    factors = ["integration"]
+    if IS_HTTP:
+        factors = ["integration-http", "integration-allextra"]
+    factor_args = (arg for factor in factors for arg in ("-f", factor))
     run_python(
         [
             "-m",
             "tox",
             "-vv",
-            "-f",
-            "integration",
+            *factor_args,
             "--",
             "-vv",
             "--showlocals",
