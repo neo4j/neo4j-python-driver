@@ -30,8 +30,6 @@ if __name__ == "__main__":
             "-m",
             "tox",
             "-vv",
-            "--parallel",
-            "--parallel-no-spinner",
             *get_tox_factor_args("unit"),
             "--",
             "-vv",
