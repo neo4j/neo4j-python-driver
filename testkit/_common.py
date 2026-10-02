@@ -26,6 +26,8 @@ TEST_BACKEND_VERSION = os.getenv("TEST_BACKEND_VERSION", "python")
 TEST_TOX_FACTORS = os.getenv("TEST_TOX_FACTORS", "")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
 
+COV_FACTOR_ARGS = ("-f", "cov_clean", "-f", "cov_report")
+
 
 def run(args, env=None):
     print(args)

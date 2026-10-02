@@ -15,6 +15,7 @@
 
 
 from _common import (
+    COV_FACTOR_ARGS,
     get_tox_factor_args,
     run_python,
 )
@@ -26,9 +27,10 @@ if __name__ == "__main__":
             "-m",
             "tox",
             "-vv",
+            *COV_FACTOR_ARGS,
+            *get_tox_factor_args("unit"),
             "--parallel",
             "--parallel-no-spinner",
-            *get_tox_factor_args("unit"),
             "--",
             "-vv",
             "--showlocals",
