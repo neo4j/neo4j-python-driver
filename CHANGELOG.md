@@ -2,7 +2,12 @@
 
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
+
 ## NEXT RELEASE
+- No breaking or major changes.
+
+
+## Version 6.4
 - Python 3.15 support added.
 - Deprecate configuring drivers with URIs containing a path (e.g. `neo4://example.com/some/path`) or fragment (e.g. `neo4://example.com#some-fragment`).  
   This information is currently being ignored anyway.
