@@ -57,15 +57,17 @@ ENV PIP_NO_CACHE_DIR=1
 FROM base AS base-py-arg
 # Install all supported Python versions
 ARG PYTHON_VERSIONS="3.13 3.12 3.11 3.10 3.9 3.8 3.7"
+ARG PYTHON_INSTALL_VERSIONS=$PYTHON_VERSIONS
 
 
 FROM base AS base-py-arg-single-python
 # Only install Python 3.7 in time warp mode
 ARG PYTHON_VERSIONS="3.7"
+ARG PYTHON_INSTALL_VERSIONS=$PYTHON_VERSIONS
 
 
 FROM base-py-arg${TIME_WARP:+"-single-python"} AS base-py-install
-RUN for version in $PYTHON_VERSIONS; do \
+RUN for version in $PYTHON_INSTALL_VERSIONS; do \
         pyenv install $version; \
     done
 RUN pyenv rehash
