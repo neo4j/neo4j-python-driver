@@ -28,7 +28,7 @@ if __name__ == "__main__":
     )
     factors = ["integration"]
     if IS_HTTP:
-        factors = ["integration-http", "integration-allextra"]
+        factors = ["integration-http", "integration-allextras"]
     factor_args = (
         arg for factor in factors for arg in get_tox_factor_args(factor)
     )
