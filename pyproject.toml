@@ -67,7 +67,9 @@ pandas = [
 # [bump-pyarrow] search tag when bumping pyarrow
 pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
 http = [
+    # [bump-aiohttp] search tag when bumping aiohttp
     "aiohttp[speedups] >= 3.12.15, < 4.0.0",
+    # [bump-urllib3] search tag when bumping urllib3
     "urllib3 >= 2.0.0, < 3.0.0",
 ]
 
@@ -96,7 +98,7 @@ dev = [
     {include-group = "release"},
 ]
 # tool for runnig test matrix
-tox = ["tox >= 4.61.2"]
+tox = ["tox >= 4.64.5"]
 # run pre-commit hooks (includes linting, formatting, type checking, ...)
 precommit = [
     "pre-commit >= 4.6.2",
@@ -107,27 +109,26 @@ precommit = [
 # auto-generate sync driver from async code
 unasync = [
     "unasync == 0.5.0",
-    "isort >= 9.0.1",
+    "isort >= 9.0.2",
 ]
 # dependencies for running tests
 test = [
-    "coverage[toml] >= 7.16.0",
+    "coverage[toml] >= 7.16.2",
     {include-group = "dep-freezegun"},
     "mock >= 5.2.0",
     "pytest >= 9.1.1",
     "pytest-asyncio >= 1.4.0",
     "pytest-benchmark >= 5.3.0",
     "pytest-cov >= 7.1.0",
-    "pytest-mock >= 3.15.1",
+    "pytest-mock >= 3.16.0",
     "pytest-timeout >= 2.4.0",
-    "mock >= 5.2.0",
-    "tzdata >= 2026.3",
+    "tzdata >= 2026.4",
 ]
 # type checker and type stubs for static type checking
 typing = [
     "mypy >= 2.3.1",
-    "ty >= 0.0.78",
-    "types-pytz >= 2026.3.1.20260727",
+    "ty >= 0.0.84",
+    "types-pytz >= 2026.4.0.20260926",
     "pandas-stubs >= 1.0.0, < 4.0.0",
     "types-mock >= 5.2.0.20260518",
     {include-group = "dep-typing-extensions"},
@@ -156,7 +157,7 @@ testkit = [
 benchkit = ["sanic >= 25.12.1"]
 # building and packaging the driver
 packaging = [
-    "build >= 1.6.0",
+    "build >= 1.6.1",
 ]
 # releasing the packaged driver to PyPI
 release = [
@@ -177,7 +178,9 @@ dep-project-dependencies = [
     {include-group = "dep-http"},
 ]
 dep-http = [
+    # [bump-aiohttp] search tag when bumping aiohttp
     "aiohttp[speedups] >= 3.12.15, < 4.0.0",
+    # [bump-urllib3] search tag when bumping urllib3
     "urllib3 >= 2.0.0, < 3.0.0",
 ]
 
