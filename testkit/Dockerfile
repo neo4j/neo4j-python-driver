@@ -2,15 +2,10 @@ ARG TIME_WARP=""
 FROM ubuntu:26.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=en_US.UTF-8
 RUN apt-get update && \
     apt-get install -y locales && \
     localedef -i en_US -c -f UTF-8 en_US.UTF-8 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-ENV LANG=en_US.UTF-8
-
-# Using apt-get update alone in a RUN statement causes caching issues and subsequent apt-get install instructions fail.
-RUN apt-get update && \
     apt-get install -y \
         software-properties-common \
         bash \
@@ -20,11 +15,6 @@ RUN apt-get update && \
         curl \
         tar \
         wget && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Install Build Tools
-RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         make \
         build-essential \
@@ -51,7 +41,6 @@ RUN apt-get update && \
 RUN git clone https://github.com/pyenv/pyenv.git .pyenv
 ENV PYENV_ROOT=/.pyenv
 ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
-ENV PIP_NO_CACHE_DIR=1
 
 
 FROM base AS base-py-arg
@@ -62,14 +51,15 @@ ARG PYTHON_INSTALL_VERSIONS="3.15.0rc3 3.14 3.13 3.12 3.11 3.10"
 # [bump-pyarrow] search tag when bumping pyarrow
 # Installing pyarrow lib until pre-built wheel for Python 3.15 exists
 # https://github.com/apache/arrow/issues/48172
-RUN apt update && \
-    apt install -y -V wget lsb-release cmake gcc && \
+RUN if [[ ! " ${PYTHON_VERSIONS} " =~ [[:space:]]3.15[[:space:]] ]]; then exit 0; fi && \
+    apt-get update && \
+    apt-get install -y -V wget lsb-release cmake gcc && \
     distro_name=$(lsb_release --id --short | tr 'A-Z' 'a-z') && \
     code_name=$(lsb_release --codename --short) && \
     wget https://apache.jfrog.io/artifactory/arrow/${distro_name}/apache-arrow-apt-source-latest-${code_name}.deb && \
-    apt install -y -V ./apache-arrow-apt-source-latest-${code_name}.deb && \
-    apt update && \
-    apt install -y -V libarrow-dev libarrow-dataset-dev libarrow-flight-dev libarrow-acero-dev && \
+    apt-get install -y -V ./apache-arrow-apt-source-latest-${code_name}.deb && \
+    apt-get update && \
+    apt-get install -y -V libarrow-dev libarrow-dataset-dev libarrow-flight-dev libarrow-acero-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ./apache-arrow-apt-source-latest-${code_name}.deb
 ENV PYARROW_WITH_CUDA=OFF
@@ -79,7 +69,7 @@ ENV PYARROW_WITH_GANDIVA=OFF
 FROM base AS base-py-arg-single-python
 # Only install Python 3.10 in time warp mode
 ARG PYTHON_VERSIONS="3.10"
-ARG PYTHON_INSTALL_VERSIONS=PYTHON_VERSIONS
+ARG PYTHON_INSTALL_VERSIONS=$PYTHON_VERSIONS
 
 
 FROM base-py-arg${TIME_WARP:+"-single-python"} AS base-py-install
