@@ -57,7 +57,7 @@ ENV PIP_NO_CACHE_DIR=1
 FROM base AS base-py-arg
 # Install all supported Python versions
 ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11 3.10"
-ARG PYTHON_INSTALL_VERSIONS="3.15.0rc2 3.14 3.13 3.12 3.11 3.10"
+ARG PYTHON_INSTALL_VERSIONS="3.15.0rc3 3.14 3.13 3.12 3.11 3.10"
 
 # [bump-pyarrow] search tag when bumping pyarrow
 # Installing pyarrow lib until pre-built wheel for Python 3.15 exists
