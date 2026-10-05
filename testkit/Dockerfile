@@ -1,16 +1,11 @@
 ARG TIME_WARP=""
-FROM ubuntu:20.04 AS base
+FROM ubuntu:26.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=en_US.UTF-8
 RUN apt-get update && \
     apt-get install -y locales && \
-    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-ENV LANG=en_US.UTF-8
-
-# Using apt-get update alone in a RUN statement causes caching issues and subsequent apt-get install instructions fail.
-RUN apt-get update && \
+    localedef -i en_US -c -f UTF-8 en_US.UTF-8 && \
     apt-get install -y \
         software-properties-common \
         bash \
@@ -20,11 +15,6 @@ RUN apt-get update && \
         curl \
         tar \
         wget && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Install Build Tools
-RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         make \
         build-essential \
@@ -48,10 +38,16 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install pyenv
-RUN git clone https://github.com/pyenv/pyenv.git .pyenv
+ARG PYENV_VERSION=""
 ENV PYENV_ROOT=/.pyenv
+RUN <<EOF bash -euxo pipefail
+    git clone https://github.com/pyenv/pyenv.git "$PYENV_ROOT"
+    if [[ -n "$PYENV_VERSION" ]]; then
+        pushd "$PYENV_ROOT" && git checkout "$PYENV_VERSION" && popd
+    fi
+    (cd "$PYENV_ROOT" && src/configure && make -C src) || true
+EOF
 ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
-ENV PIP_NO_CACHE_DIR=1
 
 
 FROM base AS base-py-arg
