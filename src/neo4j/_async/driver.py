@@ -1481,11 +1481,14 @@ class AsyncHttpDriver(_Http, AsyncDriver):
           round-trips and overloading the DBMS's HTTP endpoints.
         * :attr:`.ResultSummary.query_type` will always be :data:`None`.
 
-    * Transmitting and receiving :class:`Vector` values is currently not
-      supported.
+    * Transmitting and receiving some value types is currently not supported:
 
-    * The only supported auth schemes (see :ref:`auth-ref`) are ``"basic"`` and
-      ``"bearer"``.
+        * :class:`.vector.Vector`
+        * :class:`uuid.UUID`
+        * :class:`.types.UnsupportedType`
+
+    * The only supported auth schemes (see :ref:`auth-ref`) are ``"basic"``
+      (without ``realm``) and ``"bearer"``.
 
     * Transactions, if not interacted with regularly, will time out.
       How long the server keeps idle transactions around can be configured on
