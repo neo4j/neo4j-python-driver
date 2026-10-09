@@ -17,7 +17,9 @@
     "'stub.http_query.datatypes.test_temporal.TestTemporal.test_zoned_time'":
       "test_subtest_skips.test_date_time",
     "'stub.http_query.datatypes.test_temporal.TestTemporal.test_local_date_time'":
-      "test_subtest_skips.test_date_time"
+      "test_subtest_skips.test_date_time",
+    "'stub.http_query.test_auth.TestAuth.test_bearer_auth'":
+      "Driver needs updating to skip encoding the bearer token"
   },
   "features": {
     "Feature:API:BookmarkManager": true,
