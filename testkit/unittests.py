@@ -37,7 +37,6 @@ if __name__ == "__main__":
             *get_tox_factor_args("unit"),
             "--parallel",
             "--parallel-no-spinner",
-            "-o",
             "--",
             "-vv",
             "--showlocals",
