@@ -15,8 +15,10 @@
 
 
 from _common import (
+    COV_FACTOR_ARGS,
     get_tox_factor_args,
     IS_HTTP,
+    PREP_FACTORS,
     run_python,
 )
 
@@ -28,7 +30,7 @@ if __name__ == "__main__":
     )
     factors = ["integration"]
     if IS_HTTP:
-        factors = ["integration-http", "integration-allextra"]
+        factors = ["integration-http", "integration-allextras"]
     factor_args = (
         arg for factor in factors for arg in get_tox_factor_args(factor)
     )
@@ -37,6 +39,8 @@ if __name__ == "__main__":
             "-m",
             "tox",
             "-vv",
+            *COV_FACTOR_ARGS,
+            *PREP_FACTORS,
             *factor_args,
             "--",
             "-vv",

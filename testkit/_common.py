@@ -27,6 +27,8 @@ TEST_TOX_FACTORS = os.getenv("TEST_TOX_FACTORS", "")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
 IS_HTTP = os.getenv("TEST_NEO4J_SCHEME") in {"http", "https"}
 
+COV_FACTOR_ARGS = ("-f", "cov_clean", "-f", "cov_report")
+
 
 def run(args, env=None):
     print(args)
@@ -63,3 +65,7 @@ def get_tox_factor_args(base_factor: str):
         for factor in TEST_TOX_FACTORS.split()
         for arg in ("-f", f"{factor}-{base_factor}")
     ) or ("-f", base_factor)
+
+
+# [bump-pyarrow] search tag when bumping pyarrow
+PREP_FACTORS = get_tox_factor_args("prepare")
