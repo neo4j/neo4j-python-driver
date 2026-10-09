@@ -55,6 +55,7 @@ jobs:
             python -m tox -vv \
               -f unit-${{ matrix.python-version.tox-factor }} \
               -f cov_clean -f cov_report \
+              -f prepare-${{ matrix.python-version.tox-factor }} \
               --parallel --parallel-no-spinner \
               -- -vv --showlocals --tb=long --log-level DEBUG
           fi
