@@ -169,11 +169,10 @@ async def simple_pool_factory():
         pools.append(pool)
         return pool
 
-    try:
-        yield factory
-    finally:
-        for pool in pools:
-            await pool.close()
+    yield factory
+
+    for pool in pools:
+        await pool.close()
 
 
 TEST_DB1 = AcquisitionDatabase("test_db1")

@@ -258,6 +258,13 @@ class AsyncIOPool(abc.ABC, t.Generic[_TCon]):
             if handled:
                 error._retryable = True
 
+    def _raise_acquisition_timed_out(self, deadline) -> t.Never:
+        log.debug("[#0000]  _: <POOL> acquisition timed out")
+        raise ConnectionAcquisitionTimeoutError(
+            "failed to obtain a connection from the pool within "
+            f"{deadline.original_timeout!r}s (timeout)"
+        )
+
 
 class AsyncBoltPool(AsyncIOPool[AsyncBolt], abc.ABC):
     """A collection of connections to one or more server addresses."""
@@ -346,7 +353,8 @@ class AsyncBoltPool(AsyncIOPool[AsyncBolt], abc.ABC):
                 continue  # try again with a new connection
             else:
                 return connection
-        return None
+        self._raise_acquisition_timed_out(deadline)
+        t.assert_never(None)  # unreachable, fixes false-positive RET503 lint
 
     def _acquire_new_later(self, address, auth, deadline):
         async def connection_creator():
@@ -541,11 +549,8 @@ class AsyncBoltPool(AsyncIOPool[AsyncBolt], abc.ABC):
                     timeout == 0  # deadline expired
                     or not await self.cond.wait(timeout)
                 ):
-                    log.debug("[#0000]  _: <POOL> acquisition timed out")
-                    raise ConnectionAcquisitionTimeoutError(
-                        "failed to obtain a connection from the pool within "
-                        f"{deadline.original_timeout!r}s (timeout)"
-                    )
+                    self._raise_acquisition_timed_out(deadline)
+
         log.debug("[#0000]  _: <POOL> trying to hand out new connection")
         return await connection_creator()
 
@@ -1471,11 +1476,7 @@ class AsyncHttpV2Pool(AsyncIOPool["AsyncHttpConnection"]):
         auth_manager = auth.auth or self.pool_config.auth
 
         if not await async_acquire_bounded_semaphore(self._semaphore, timeout):
-            log.debug("[#0000]  _: <POOL> acquisition timed out")
-            raise ConnectionAcquisitionTimeoutError(
-                "failed to obtain a connection from the pool within "
-                f"{deadline.original_timeout!r}s (timeout)"
-            )
+            self._raise_acquisition_timed_out(deadline)
         try:
             connection = await self.opener(
                 self.address, auth_manager, deadline

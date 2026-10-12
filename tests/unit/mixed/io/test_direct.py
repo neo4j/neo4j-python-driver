@@ -17,6 +17,8 @@
 # ruff: noqa: ASYNC110
 # FIXME: activate lint and fix it
 
+from __future__ import annotations
+
 import asyncio
 import threading
 import time
@@ -33,9 +35,15 @@ import pytest
 from neo4j._async.io._pool import AcquisitionAuth as AsyncAcquisitionAuth
 from neo4j._deadline import Deadline
 from neo4j._sync.io._pool import AcquisitionAuth
+from neo4j.api import READ_ACCESS
+from neo4j.exceptions import ConnectionAcquisitionTimeoutError
 
 from ...._async_util import gather_cancel
-from ...async_.io.test_direct import AsyncFakeBoltPool
+from ...async_.io.test_direct import (
+    ADDRESS1,
+    AsyncFakeBoltPool,
+    TEST_DB1,
+)
 from ...async_.test_auth_management import (
     static_auth_manager as static_async_auth_manager,
 )
@@ -292,3 +300,74 @@ class TestMixedConnectionPoolTestCase:
             async_fake_connection_generator, (), max_connection_pool_size=1
         ) as pool:
             await gather_cancel(acquire1(pool), acquire2(pool))
+
+
+@pytest.mark.asyncio
+async def test_async_bails_on_deadline_expiration_during_wait(
+    async_fake_connection_generator,
+) -> None:
+    deadline = Deadline(float("inf"))
+
+    async def acquire(pool):
+        return await pool.acquire(
+            READ_ACCESS, deadline, TEST_DB1, None, None, None
+        )
+
+    async def release(pool, connection):
+        await pool.release(connection)
+
+    async def timing_out_acquire_and_release(pool):
+        with pytest.raises(ConnectionAcquisitionTimeoutError):
+            await acquire(pool)
+
+    async with AsyncFakeBoltPool(
+        async_fake_connection_generator,
+        ADDRESS1,
+        max_connection_pool_size=1,
+    ) as pool:
+        cx = await acquire(pool)
+        worker = asyncio.create_task(timing_out_acquire_and_release(pool))
+        for _ in range(10):
+            await asyncio.sleep(0)
+        deadline._deadline = time.monotonic() - 1  # expire the deadline
+        await release(pool, cx)
+        await worker
+
+
+def test_sync_bails_on_deadline_expiration_during_wait(
+    fake_connection_generator,
+) -> None:
+    deadline = Deadline(float("inf"))
+    worker_exception: BaseException | None = None
+
+    def acquire(pool):
+        return pool.acquire(READ_ACCESS, deadline, TEST_DB1, None, None, None)
+
+    def release(pool, connection):
+        pool.release(connection)
+
+    def timing_out_acquire_and_release(pool):
+        try:
+            with pytest.raises(ConnectionAcquisitionTimeoutError):
+                acquire(pool)
+        except BaseException as e:
+            nonlocal worker_exception
+            worker_exception = e
+            raise
+
+    with FakeBoltPool(
+        fake_connection_generator,
+        ADDRESS1,
+        max_connection_pool_size=1,
+    ) as pool:
+        cx = acquire(pool)
+        worker = Thread(
+            target=timing_out_acquire_and_release, args=(pool,), daemon=True
+        )
+        worker.start()
+        time.sleep(0.1)
+        deadline._deadline = time.monotonic() - 1  # expire the deadline
+        release(pool, cx)
+        worker.join()
+        if worker_exception is not None:
+            raise RuntimeError("Worker failed") from worker_exception
