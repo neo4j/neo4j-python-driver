@@ -1292,8 +1292,7 @@ def _auth_dict_to_header(
                 f"The parameter '{k}' is not supported for 'bearer' auth "
                 "over Query API/HTTP."
             )
-        token_base64 = base64.b64encode(token.encode()).decode("ascii")
-        return {"Authorization": f"Bearer {token_base64}"}
+        return {"Authorization": f"Bearer {token}"}
     raise ConfigurationError(
         f"The auth scheme '{scheme}' is not supported over Query API/HTTP."
     )
