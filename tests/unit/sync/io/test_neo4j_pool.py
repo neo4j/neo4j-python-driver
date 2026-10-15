@@ -169,11 +169,10 @@ def simple_pool_factory():
         pools.append(pool)
         return pool
 
-    try:
-        yield factory
-    finally:
-        for pool in pools:
-            pool.close()
+    yield factory
+
+    for pool in pools:
+        pool.close()
 
 
 TEST_DB1 = AcquisitionDatabase("test_db1")

@@ -255,6 +255,13 @@ class IOPool(abc.ABC, t.Generic[_TCon]):
             if handled:
                 error._retryable = True
 
+    def _raise_acquisition_timed_out(self, deadline) -> t.Never:
+        log.debug("[#0000]  _: <POOL> acquisition timed out")
+        raise ConnectionAcquisitionTimeoutError(
+            "failed to obtain a connection from the pool within "
+            f"{deadline.original_timeout!r}s (timeout)"
+        )
+
 
 class BoltPool(IOPool[Bolt], abc.ABC):
     """A collection of connections to one or more server addresses."""
@@ -343,7 +350,8 @@ class BoltPool(IOPool[Bolt], abc.ABC):
                 continue  # try again with a new connection
             else:
                 return connection
-        return None
+        self._raise_acquisition_timed_out(deadline)
+        t.assert_never(None)  # unreachable, fixes false-positive RET503 lint
 
     def _acquire_new_later(self, address, auth, deadline):
         def connection_creator():
@@ -538,11 +546,8 @@ class BoltPool(IOPool[Bolt], abc.ABC):
                     timeout == 0  # deadline expired
                     or not self.cond.wait(timeout)
                 ):
-                    log.debug("[#0000]  _: <POOL> acquisition timed out")
-                    raise ConnectionAcquisitionTimeoutError(
-                        "failed to obtain a connection from the pool within "
-                        f"{deadline.original_timeout!r}s (timeout)"
-                    )
+                    self._raise_acquisition_timed_out(deadline)
+
         log.debug("[#0000]  _: <POOL> trying to hand out new connection")
         return connection_creator()
 
@@ -1468,11 +1473,7 @@ class HttpV2Pool(IOPool["HttpConnection"]):
         auth_manager = auth.auth or self.pool_config.auth
 
         if not acquire_bounded_semaphore(self._semaphore, timeout):
-            log.debug("[#0000]  _: <POOL> acquisition timed out")
-            raise ConnectionAcquisitionTimeoutError(
-                "failed to obtain a connection from the pool within "
-                f"{deadline.original_timeout!r}s (timeout)"
-            )
+            self._raise_acquisition_timed_out(deadline)
         try:
             connection = self.opener(
                 self.address, auth_manager, deadline
