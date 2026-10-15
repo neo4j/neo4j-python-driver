@@ -33,9 +33,18 @@ fixture = pytest.fixture
 class AsyncTestDecorators:
     mark_async_only_test = mark_async_test
 
+    @staticmethod
+    def mark_sync_only_test(f):
+        skip_decorator = pytest.mark.skip("Sync only test")
+        return skip_decorator(f)
+
 
 class TestDecorators:
     @staticmethod
     def mark_async_only_test(f):
         skip_decorator = pytest.mark.skip("Async only test")
         return skip_decorator(f)
+
+    @staticmethod
+    def mark_sync_only_test(f):
+        return f

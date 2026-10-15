@@ -192,7 +192,7 @@ class IOPool(abc.ABC):
                 existing_connections.remove(connection)
                 self._ssr_feature_tracker.remove_connection(connection)
 
-    def _acquire_from_pool_checked(
+    def _acquire_from_pool_checked(  # noqa: RET503  - false positive
         self, address, health_check, deadline
     ):
         while not deadline.expired():
@@ -220,7 +220,7 @@ class IOPool(abc.ABC):
                 continue  # try again with a new connection
             else:
                 return connection
-        return None
+        self._raise_acquisition_timed_out(deadline)
 
     def _acquire_new_later(self, address, auth, deadline):
         def connection_creator():
@@ -413,14 +413,18 @@ class IOPool(abc.ABC):
                     timeout == 0  # deadline expired
                     or not self.cond.wait(timeout)
                 ):
-                    log.debug("[#0000]  _: <POOL> acquisition timed out")
-                    # TODO: 6.0 - change this to be a DriverError (or subclass)
-                    raise ClientError(
-                        "failed to obtain a connection from the pool within "
-                        f"{deadline.original_timeout!r}s (timeout)"
-                    )
+                    self._raise_acquisition_timed_out(deadline)
+
         log.debug("[#0000]  _: <POOL> trying to hand out new connection")
         return connection_creator()
+
+    def _raise_acquisition_timed_out(self, deadline) -> t.NoReturn:
+        log.debug("[#0000]  _: <POOL> acquisition timed out")
+        # TODO: 6.0 - change this to be a DriverError (or subclass)
+        raise ClientError(
+            "failed to obtain a connection from the pool within "
+            f"{deadline.original_timeout!r}s (timeout)"
+        )
 
     @abc.abstractmethod
     def acquire(
