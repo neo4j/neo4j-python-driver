@@ -19,6 +19,7 @@
 from _common import (
     DRIVER_TIME_WARP,
     get_python_version,
+    PIP_REQUIREMENT,
     run_python,
 )
 
@@ -26,7 +27,7 @@ from _common import (
 if __name__ == "__main__":
     if not DRIVER_TIME_WARP:
         run_python(
-            ["-m", "pip", "install", "-U", "pip", "build"],
+            ["-m", "pip", "install", "-U", *PIP_REQUIREMENT, "build"],
             warning_as_error=False,
         )
         # Builds on 3.9+ use setuptools 82.0.1+ which has support for
