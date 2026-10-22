@@ -44,21 +44,27 @@ from neo4j.time._arithmetic import (
     round_half_to_even,
 )
 
+from ...._time_warnings import maybe_unsupported_tzinfo_warning
+
 
 timezone_us_eastern = timezone("US/Eastern")
 timezone_utc = timezone("UTC")
 
 
 def make_reduce_times():
+    def time(h, m, s, ns, tzinfo):
+        with maybe_unsupported_tzinfo_warning(tzinfo):
+            return Time(h, m, s, ns, tzinfo=tzinfo)
+
     return (
-        Time(12, 34, 56, 789000001, tzinfo=None),
-        Time(12, 34, 56, 789000001, tzinfo=timezone_utc),
-        Time(12, 34, 56, 789000001, tzinfo=datetime_timezone.utc),
-        Time(13, 34, 56, 789000001, tzinfo=FixedOffset(60)),
-        Time(
+        time(12, 34, 56, 789000001, tzinfo=None),
+        time(12, 34, 56, 789000001, tzinfo=timezone_utc),
+        time(12, 34, 56, 789000001, tzinfo=datetime_timezone.utc),
+        time(13, 34, 56, 789000001, tzinfo=FixedOffset(60)),
+        time(
             13, 34, 56, 789000001, tzinfo=datetime_timezone(timedelta(hours=1))
         ),
-        Time(7, 34, 56, 789000001, tzinfo=timezone_us_eastern),
+        time(7, 34, 56, 789000001, tzinfo=timezone_us_eastern),
     )
 
 
@@ -111,7 +117,8 @@ class TestTime:
         ),
     )
     def test_now(self, tz, expected) -> None:
-        t = Time.now(tz=tz)
+        with maybe_unsupported_tzinfo_warning(tz):
+            t = Time.now(tz=tz)
         assert isinstance(t, Time)
         assert t.hour_minute_second_nanosecond == expected
         assert str(t.tzinfo) == str(tz)

@@ -296,15 +296,15 @@ def _dehydrate_zoned_datetime(
     assert tz is not None
     value = value.replace(tzinfo=None)
     offset: datetime.timedelta | None
-    if isinstance(tz, datetime.timezone):
-        # offset of the timezone is constant, so any date will do
-        offset = tz.utcoffset(_ANY_BUILTIN_DATETIME)
-    else:
+    offset = tz.utcoffset(None)
+    if offset is None:
         offset = tz.utcoffset(value)
-    if not isinstance(offset, datetime.timedelta):
-        raise TypeError(
-            f"Unsupported: date time with unknown offset type: {type(offset)}"
-        )
+        if offset is None:
+            raise ValueError(
+                f"tzinfo {tz!r} was unable to produce a UTC offset given "
+                f"the datetime {value!r}. Therefore, serialization of this "
+                "datetime is not possible."
+            )
     value_str = value.isoformat()
     if zone_name is None:
         tz_str = _format_tz_offset(offset)

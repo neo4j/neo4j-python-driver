@@ -14,19 +14,16 @@
 # limitations under the License.
 
 
-from datetime import (
-    datetime,
-    timezone,
-)
+from datetime import datetime
 
 from ....._optional_deps import pd
 from .....time import (
-    _NANO_SECONDS,
     Date,
     DateTime,
     Time,
 )
 from ....packstream import Structure
+from .._common import warn_unsupported_tzinfo_impl
 from ..v1.temporal import get_date_unix_epoch_ordinal
 
 
@@ -70,10 +67,14 @@ def dehydrate_datetime(value):
     import pytz
 
     def seconds_and_nanoseconds(dt):
+        dt = dt.astimezone(pytz.utc)
         if isinstance(dt, datetime):
-            dt = DateTime.from_native(dt)
-        dt = dt.astimezone(pytz.UTC)
-        utc_epoch = DateTime(1970, 1, 1, tzinfo=pytz.UTC)
+            utc_epoch = pytz.utc.localize(datetime(1970, 1, 1))
+            t = dt - utc_epoch
+            seconds = t.days * 86400 + t.seconds
+            nanoseconds = t.microseconds * 1000
+            return seconds, nanoseconds
+        utc_epoch = DateTime(1970, 1, 1, tzinfo=pytz.utc)
         dt_clock_time = dt._to_clock_time()
         utc_epoch_clock_time = utc_epoch._to_clock_time()
         t = dt_clock_time - utc_epoch_clock_time
@@ -82,25 +83,34 @@ def dehydrate_datetime(value):
     tz = value.tzinfo
     if tz is None:
         # without time zone
-        value = pytz.UTC.localize(value)
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
+        value = pytz.utc.localize(value)
+    seconds, nanoseconds = seconds_and_nanoseconds(value)
+    return _datetime_structure(value, seconds, nanoseconds, tz)
+
+
+def _datetime_structure(value, seconds, nanoseconds, tz):
+    if tz is None:
         return Structure(b"d", seconds, nanoseconds)
     elif hasattr(tz, "zone") and tz.zone and isinstance(tz.zone, str):
         # with named pytz time zone
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"i", seconds, nanoseconds, tz.zone)
     elif hasattr(tz, "key") and tz.key and isinstance(tz.key, str):
         # with named zoneinfo (Python 3.9+) time zone
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"i", seconds, nanoseconds, tz.key)
     else:
         # with time offset
-        if isinstance(tz, timezone):
-            # offset of the timezone is constant, so any date will do
-            offset = tz.utcoffset(datetime(1970, 1, 1))
-        else:
+        offset = tz.utcoffset(None)
+        if offset is None:
+            # Non-constant offset, but we don't have explicit handling for this
+            # tzinfo implementation => we cannot extract the time zone name
+            warn_unsupported_tzinfo_impl(tz)
             offset = tz.utcoffset(value)
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
+            if offset is None:
+                raise ValueError(
+                    f"tzinfo {tz!r} was unable to produce a UTC offset given "
+                    f"the datetime {value!r}. Therefore, serialization of "
+                    "this datetime is not possible."
+                )
         if offset.microseconds:
             raise ValueError(
                 "Bolt protocol does not support sub-second UTC offsets."
@@ -119,24 +129,13 @@ if pd is not None:
         :type value: pandas.Timestamp
         :returns:
         """
-        seconds, nanoseconds = divmod(value.value, _NANO_SECONDS)
-
+        if pd.isna(value):
+            return None
         tz = value.tzinfo
         if tz is None:
-            # without time zone
-            return Structure(b"d", seconds, nanoseconds)
-        elif hasattr(tz, "zone") and tz.zone and isinstance(tz.zone, str):
-            # with named pytz time zone
-            return Structure(b"i", seconds, nanoseconds, tz.zone)
-        elif hasattr(tz, "key") and tz.key and isinstance(tz.key, str):
-            # with named zoneinfo (Python 3.9+) time zone
-            return Structure(b"i", seconds, nanoseconds, tz.key)
-        else:
-            # with time offset
-            offset = tz.utcoffset(value)
-            if offset.microseconds:
-                raise ValueError(
-                    "Bolt protocol does not support sub-second UTC offsets."
-                )
-            offset_seconds = offset.days * 86400 + offset.seconds
-            return Structure(b"I", seconds, nanoseconds, offset_seconds)
+            value = value.tz_localize("UTC")
+        utc_epoch = pd.Timestamp(1970, 1, 1).tz_localize("UTC")
+        t = value - utc_epoch
+        seconds = t.days * 86400 + t.seconds
+        nanoseconds = t.microseconds * 1000 + t.nanoseconds
+        return _datetime_structure(value, seconds, nanoseconds, tz)

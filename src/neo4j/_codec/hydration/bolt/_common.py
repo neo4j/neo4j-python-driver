@@ -17,8 +17,12 @@
 from __future__ import annotations
 
 import abc
+import sys
+import warnings
+from pathlib import Path
 
 from .... import _typing as t
+from ....time import UnsupportedTzinfoWarning
 from ...packstream import Structure
 from .._common import (
     BrokenHydrationObject,
@@ -29,6 +33,8 @@ from .._common import (
 
 
 if t.TYPE_CHECKING:
+    import datetime
+
     from .._common import T_TYPE_MAP_DICT
 
     T_STRUCT_MAP_DICT: t.TypeAlias = dict[bytes, t.Callable[..., t.Any]]
@@ -38,6 +44,7 @@ __all__ = [
     "GraphHydratorBolt",
     "HydrationHandlerBoltBase",
     "HydrationScopeBolt",
+    "warn_unsupported_tzinfo_impl",
 ]
 
 
@@ -107,3 +114,28 @@ class HydrationScopeBolt(HydrationScope):
             if isinstance(v, BrokenHydrationObject):
                 return BrokenHydrationObject(v.error, value)
         return value
+
+
+_warn_skips = (str(Path(__file__).resolve().parents[3]),)
+
+
+def warn_unsupported_tzinfo_impl(tz: datetime.tzinfo) -> None:
+    if tz is None:
+        return
+
+    import pytz
+
+    if not isinstance(tz, pytz.BaseTzInfo):
+        if sys.version_info >= (3, 12):
+            level_kwargs = {"skip_file_prefixes": _warn_skips}
+        else:
+            level_kwargs = {"stacklevel": 2}
+
+        warnings.warn(
+            "The driver does not support the provided datetime.tzinfo"
+            f"implementation: {type(tz)}. This may result in unexpected or "
+            "lossy data transmission. "
+            "This warning may be turned into an error in a future version.",
+            UnsupportedTzinfoWarning,
+            **level_kwargs,
+        )
