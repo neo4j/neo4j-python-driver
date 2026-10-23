@@ -18,4 +18,4 @@ import os
 import sys
 
 
-ENABLED = sys.flags.dev_mode or bool(os.getenv("PYTHONNEO4JDEBUG"))
+DEBUG_ENABLED = sys.flags.dev_mode or bool(os.getenv("PYTHONNEO4JDEBUG"))

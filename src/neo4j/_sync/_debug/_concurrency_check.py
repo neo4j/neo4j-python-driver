@@ -27,7 +27,7 @@ from ..._async_compat.concurrency import (
     RLock,
 )
 from ..._async_compat.util import Util
-from ..._debug import ENABLED
+from ..._debug import DEBUG_ENABLED
 from ..._meta import copy_signature
 
 
@@ -42,7 +42,7 @@ class NonConcurrentMethodError(RuntimeError):
 
 
 class NonConcurrentMethodChecker:
-    if ENABLED:
+    if DEBUG_ENABLED:
 
         def __init__(self):
             self.__lock = RLock()

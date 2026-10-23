@@ -205,13 +205,16 @@ omit = [
 ]
 
 [tool.coverage.report]
-exclude_lines = [
+exclude_also = [
     "pragma: no cover",
     "def __repr__",
     "if self.debug:",
+    "if DEBUG_ENABLED:",
+    "if (_?t(yping)\\.)?TYPE_CHECKING:",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "except ImportError",
+    "@(_?t(yping)?\\.)?overload",
 ]
 
 
