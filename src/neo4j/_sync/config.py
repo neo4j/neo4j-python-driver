@@ -157,7 +157,7 @@ class PoolConfig(Config):
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
             # For recommended security options see
-            # https://docs.python.org/3.10/library/ssl.html#protocol-versions
+            # https://docs.python.org/3.11/library/ssl.html#protocol-versions
             ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
 
             # Follow Python's `create_default_context` and respect the

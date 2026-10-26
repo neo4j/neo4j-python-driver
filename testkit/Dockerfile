@@ -52,7 +52,7 @@ ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
 
 FROM base AS base-py-arg
 # Install all supported Python versions
-ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11 3.10"
+ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11"
 ARG PYTHON_INSTALL_VERSIONS="$PYTHON_VERSIONS"
 
 # [bump-pyarrow] search tag when bumping pyarrow
@@ -74,8 +74,8 @@ EOF
 
 
 FROM base AS base-py-arg-single-python
-# Only install Python 3.10 in time warp mode
-ARG PYTHON_VERSIONS="3.10"
+# Only install Python 3.11 in time warp mode
+ARG PYTHON_VERSIONS="3.11"
 ARG PYTHON_INSTALL_VERSIONS="$PYTHON_VERSIONS"
 
 
