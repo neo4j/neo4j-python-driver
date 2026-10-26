@@ -2,33 +2,33 @@
 -e .[pandas,numpy,pyarrow]
 
 # needed for packaging
-build>=1.1.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+build>=1.6.1
 
 # auto-generate sync driver from async code
 unasync==0.5.0
 # pre-commit hooks and tools
-pre-commit>=2.21.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-isort>=5.11.5  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-mypy>=1.4.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-typing-extensions>=4.7.1
-types-pytz>=2023.3.1.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-types-mock>=5.1.0.3  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-ruff>=0.16.10
+pre-commit>=4.7.0
+isort>=9.0.2
+mypy>=2.4.0
+typing-extensions>=4.16.0
+types-pytz>=pip install types-pytz
+types-mock>=5.2.0.20260518
+ruff>=0.17.2
 
 # needed for running tests
-coverage[toml]>=7.2.7  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-freezegun>=1.5.1
+coverage[toml]>=7.17.0
+freezegun>=1.5.5
 mock>=5.2.0
-pytest>=7.4.4  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-pytest-asyncio~=0.21.2  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-pytest-benchmark>=4.0.0
-pytest-cov>=4.1.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-pytest-mock>=3.11.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-pytest-timeout>=2.4.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-tox>=4.8.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+pytest>=9.1.1
+pytest-asyncio>=1.4.1
+pytest-benchmark>=5.3.0
+pytest-cov>=7.1.0
+pytest-mock>=3.17.0
+pytest-timeout>=2.4.0
+tox>=4.67.1
 
 # needed for building docs
-Sphinx>=5.3.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+Sphinx>=9.2.0
 
 # needed for BenchKit
-sanic>=23.3.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+sanic>=25.12.1
