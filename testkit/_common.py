@@ -25,6 +25,13 @@ TEST_BACKEND_VERSION = os.getenv("TEST_BACKEND_VERSION", "python")
 # Example: `f1-f2 f3` to add `-f f1-f2 -f f3` to each tox invocation.
 TEST_TOX_FACTORS = os.getenv("TEST_TOX_FACTORS", "")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
+# Pip version(s) not vulnerable to broken eMudhra root CAs
+PIP_REQUIREMENT = (
+    "pip>=26.2.2; python_version >= '3.10'",
+    # For Python versions not supporting a patched pip version, we are stuck
+    # with the vulnerability.
+    "pip; python_version < '3.10'",
+)
 
 
 def run(args, env=None):

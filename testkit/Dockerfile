@@ -69,13 +69,35 @@ RUN for version in $PYTHON_INSTALL_VERSIONS; do \
 RUN pyenv rehash
 RUN pyenv global $(pyenv versions --bare --skip-aliases | sort --version-sort --reverse)
 
-# Install Latest pip and setuptools for each environment
+# Install latest pip and setuptools for each environment
 # + tox and tools for starting the tests
 # https://pip.pypa.io/en/stable/news/
-RUN for version in $PYTHON_VERSIONS; do \
-        python$version -m pip install -U pip && \
-        python$version -m pip install -U coverage tox; \
-    done
+# Install latest pip
+RUN <<EOF bash -euxo pipefail
+# https://discuss.python.org/t/avoiding-compromised-certificates-in-pip/109602
+# Make sure to only trust system CAs while upgrading pip.
+# This ensures a safe bootstrapping distrusting revoked eMudhra certs.
+# For pip versions not supporting this kind of CA control, fall back to
+# installing a patched pip version with sha256 verification.
+# For Python versions not supporting a patched pip version, we are stuck with
+# the vulnerability.
+PINNED_PIP_WHEEL="pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+for version in $PYTHON_VERSIONS; do
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+        PIP_USE_DEPRECATED=legacy-certs \
+        python\$version -m pip install -U "\$PINNED_PIP_WHEEL; python_version >= '3.10'" \
+        || python\$version -m pip install -U "\$PINNED_PIP_WHEEL; python_version >= '3.10'"
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+        PIP_USE_DEPRECATED=legacy-certs \
+        python$version -m pip install -U \
+            "pip>=26.2.2; python_version >= '3.10'" \
+            "pip<=25.1.0; python_version < '3.10'" \
+        || python\$version -m pip install -U \
+                "pip>=26.2.2; python_version >= '3.10'" \
+                "pip<=25.1.0; python_version < '3.10'"
+    python\$version -m pip install -U coverage tox
+done
+EOF
 
 ARG TIME_WARP
 ENV DRIVER_TIME_WARP=$TIME_WARP
