@@ -67,5 +67,4 @@ def get_tox_factor_args(base_factor: str):
     ) or ("-f", base_factor)
 
 
-# [bump-pyarrow] search tag when bumping pyarrow
 PREP_FACTORS = get_tox_factor_args("prepare")

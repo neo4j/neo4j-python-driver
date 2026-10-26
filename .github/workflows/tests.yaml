@@ -43,22 +43,12 @@ jobs:
       - name: Run unit tests
         shell: bash
         run: |
-          if [[ '${{ matrix.python-version.semver }}' =~ ^3\.15([^0-9].*)?$ ]]; then
-            # [bump-pyarrow] search tag when bumping pyarrow
-            # Only run tests without extras: pyarrow has not published prebuilt wheels for python 3.15 yet
-            python -m tox -vv \
-              -f unit-${{ matrix.python-version.tox-factor }}-noextras \
-              -f cov_clean -f cov_report \
-              --parallel --parallel-no-spinner \
-              -- -vv --showlocals --tb=long --log-level DEBUG
-          else
-            python -m tox -vv \
-              -f unit-${{ matrix.python-version.tox-factor }} \
-              -f cov_clean -f cov_report \
-              -f prepare-${{ matrix.python-version.tox-factor }} \
-              --parallel --parallel-no-spinner \
-              -- -vv --showlocals --tb=long --log-level DEBUG
-          fi
+          python -m tox -vv \
+            -f unit-${{ matrix.python-version.tox-factor }} \
+            -f cov_clean -f cov_report \
+            -f prepare-${{ matrix.python-version.tox-factor }} \
+            --parallel --parallel-no-spinner \
+            -- -vv --showlocals --tb=long --log-level DEBUG
 
   gha-conclusion:
     name: gha-conclusion

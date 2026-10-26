@@ -55,23 +55,6 @@ FROM base AS base-py-arg
 ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11 3.10"
 ARG PYTHON_INSTALL_VERSIONS="$PYTHON_VERSIONS"
 
-# [bump-pyarrow] search tag when bumping pyarrow
-# Installing pyarrow lib until pre-built wheel for Python 3.15 exists
-# https://github.com/apache/arrow/issues/48172
-RUN <<EOF bash -euxo pipefail
-    if [[ ! " ${PYTHON_VERSIONS} " =~ [[:space:]]3.15[[:space:]] ]]; then exit 0; fi
-    apt-get update
-    apt-get install -y -V wget lsb-release cmake gcc
-    distro_name=$(lsb_release --id --short | tr 'A-Z' 'a-z')
-    code_name=$(lsb_release --codename --short)
-    wget https://apache.jfrog.io/artifactory/arrow/\${distro_name}/apache-arrow-apt-source-latest-\${code_name}.deb
-    apt-get install -y -V ./apache-arrow-apt-source-latest-\${code_name}.deb
-    apt-get update
-    apt-get install -y -V 'libarrow-dev=25.*' 'libarrow-dataset-dev=25.*' 'libarrow-flight-dev=25.*' 'libarrow-acero-dev=25.*' 'libarrow-compute-dev=25.*' 'libparquet-dev=25.*'
-    apt-get  clean
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ./apache-arrow-apt-source-latest-\${code_name}.deb
-EOF
-
 
 FROM base AS base-py-arg-single-python
 # Only install Python 3.10 in time warp mode
@@ -92,22 +75,6 @@ RUN pyenv global $(pyenv versions --bare --skip-aliases | sort --version-sort --
 RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U pip; \
     done
-# [bump-pyarrow] search tag when bumping pyarrow
-# Installing pyarrow lib until pre-built wheel for Python 3.15 exists
-# https://github.com/apache/arrow/issues/48172
-ENV PYARROW_WITH_CUDA=OFF
-ENV PYARROW_WITH_GANDIVA=OFF
-RUN <<EOF bash -euxo pipefail
-   if [[ ! " ${PYTHON_VERSIONS} " =~ [[:space:]]3.15t?[[:space:]] ]]; then exit 0; fi
-    for version in $PYTHON_VERSIONS; do
-        python$version -m venv /tmp/pyarrow-build-env
-        . /tmp/pyarrow-build-env/bin/activate
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade 'pyarrow==25.*'
-        deactivate
-        rm -rf /tmp/pyarrow-build-env
-    done
-EOF
 
 ARG TIME_WARP
 ENV DRIVER_TIME_WARP=$TIME_WARP
