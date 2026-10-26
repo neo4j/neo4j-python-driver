@@ -64,7 +64,7 @@ pandas = [
     "numpy >= 1.21.2, < 3.0.0",
 ]
 # [bump-pyarrow] search tag when bumping pyarrow
-pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
+pyarrow = ["pyarrow >= 6.0.0, < 27.0.0"]
 http = [
     # [bump-aiohttp] search tag when bumping aiohttp
     "aiohttp[speedups] >= 3.12.15, < 4.0.0",
@@ -171,7 +171,7 @@ dep-project-dependencies = [
     # [bump-pandas] search tag when bumping pandas
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     # [bump-pyarrow] search tag when bumping pyarrow
-    "pyarrow >= 6.0.0, < 26.0.0",
+    "pyarrow >= 6.0.0, < 27.0.0",
     {include-group = "dep-http"},
 ]
 dep-http = [
