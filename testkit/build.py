@@ -20,6 +20,7 @@ import sys
 
 from _common import (
     DRIVER_TIME_WARP,
+    PIP_REQUIREMENT,
     run_python,
 )
 
@@ -33,7 +34,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     run_python(
-        ["-m", "pip", "install", "-U", "pip"],
+        ["-m", "pip", "install", "-U", *PIP_REQUIREMENT],
         warning_as_error=False,
     )
     run_python(

@@ -55,23 +55,6 @@ FROM base AS base-py-arg
 ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11 3.10"
 ARG PYTHON_INSTALL_VERSIONS="$PYTHON_VERSIONS"
 
-# [bump-pyarrow] search tag when bumping pyarrow
-# Installing pyarrow lib until pre-built wheel for Python 3.15 exists
-# https://github.com/apache/arrow/issues/48172
-RUN <<EOF bash -euxo pipefail
-    if [[ ! " ${PYTHON_VERSIONS} " =~ [[:space:]]3.15[[:space:]] ]]; then exit 0; fi
-    apt-get update
-    apt-get install -y -V wget lsb-release cmake gcc
-    distro_name=$(lsb_release --id --short | tr 'A-Z' 'a-z')
-    code_name=$(lsb_release --codename --short)
-    wget https://apache.jfrog.io/artifactory/arrow/\${distro_name}/apache-arrow-apt-source-latest-\${code_name}.deb
-    apt-get install -y -V ./apache-arrow-apt-source-latest-\${code_name}.deb
-    apt-get update
-    apt-get install -y -V 'libarrow-dev=25.*' 'libarrow-dataset-dev=25.*' 'libarrow-flight-dev=25.*' 'libarrow-acero-dev=25.*' 'libarrow-compute-dev=25.*' 'libparquet-dev=25.*'
-    apt-get  clean
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ./apache-arrow-apt-source-latest-\${code_name}.deb
-EOF
-
 
 FROM base AS base-py-arg-single-python
 # Only install Python 3.10 in time warp mode
@@ -86,27 +69,21 @@ RUN for version in $PYTHON_INSTALL_VERSIONS; do \
     done
 RUN pyenv rehash
 RUN pyenv global $(pyenv versions --bare --skip-aliases | sort --version-sort --reverse)
-# Install Latest pip and setuptools for each environment
-# + tox and tools for starting the tests
-# https://pip.pypa.io/en/stable/news/
-RUN for version in $PYTHON_VERSIONS; do \
-        python$version -m pip install -U pip; \
-    done
-# [bump-pyarrow] search tag when bumping pyarrow
-# Installing pyarrow lib until pre-built wheel for Python 3.15 exists
-# https://github.com/apache/arrow/issues/48172
-ENV PYARROW_WITH_CUDA=OFF
-ENV PYARROW_WITH_GANDIVA=OFF
+# Install latest pip
 RUN <<EOF bash -euxo pipefail
-   if [[ ! " ${PYTHON_VERSIONS} " =~ [[:space:]]3.15t?[[:space:]] ]]; then exit 0; fi
-    for version in $PYTHON_VERSIONS; do
-        python$version -m venv /tmp/pyarrow-build-env
-        . /tmp/pyarrow-build-env/bin/activate
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade 'pyarrow==25.*'
-        deactivate
-        rm -rf /tmp/pyarrow-build-env
-    done
+# https://discuss.python.org/t/avoiding-compromised-certificates-in-pip/109602
+# Make sure to only trust system CAs while upgrading pip.
+# This ensures a safe bootstrapping distrusting revoked eMudhra certs.
+# For pip versions not supporting this kind of CA control, fall back to
+# installing a patched pip version with sha256 verification.
+PINNED_PIP_WHEEL="pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+for version in $PYTHON_VERSIONS; do
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+        PIP_USE_DEPRECATED=legacy-certs \
+        python$version -m pip install -U "\$PINNED_PIP_WHEEL" \
+        || python$version -m pip install -U "\$PINNED_PIP_WHEEL"
+        python$version -m pip install -U pip>=26.2.2
+done
 EOF
 
 ARG TIME_WARP
