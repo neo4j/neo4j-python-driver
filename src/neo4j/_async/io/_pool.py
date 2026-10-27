@@ -20,7 +20,6 @@ import abc
 import asyncio
 import logging
 import math
-import sys
 from collections import (
     defaultdict,
     deque,
@@ -1144,33 +1143,12 @@ class AsyncRoutedBoltPool(AsyncBoltPool):
 
             # None of the routers have been successful, so just fail
             log.error("Unable to retrieve routing information")
-            if sys.version_info >= (3, 11):
-                e = ExceptionGroup(  # noqa: F821 # version guard in place
-                    "All routing table requests failed", errors
-                )
-            else:
-                e = None
-                for error in errors:
-                    if e is None:
-                        e = error
-                        continue
-                    cause = error
-                    seen_causes = {id(cause)}
-                    while True:
-                        next_cause = getattr(cause, "__cause__", None)
-                        if next_cause is None:
-                            break
-                        if id(next_cause) in seen_causes:
-                            # Avoid infinite recursion in case of circular
-                            # references.
-                            break
-                        cause = next_cause
-                        seen_causes.add(id(cause))
-                    cause.__cause__ = e
-                    e = error
+            exc_group = ExceptionGroup(
+                "All routing table requests failed", errors
+            )
             raise ServiceUnavailable(
                 "Unable to retrieve routing information"
-            ) from e
+            ) from exc_group
 
     async def update_connection_pool(self):
         async with self.refresh_lock:

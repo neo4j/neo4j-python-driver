@@ -173,7 +173,7 @@ class AsyncBoltSocketBase(abc.ABC):
             io_fut = io_async_fn(*args, **kwargs)
         try:
             return await wait_for(io_fut, timeout)
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise to_raise(f"{name} timed out") from e
 
     def get_read_deadline(self):
@@ -277,7 +277,7 @@ class AsyncBoltSocketBase(abc.ABC):
                 local_port = s.getsockname()[1]
 
                 s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if keep_alive else 0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
                 raise ServiceUnavailable(
                     "Timed out trying to establish connection to "

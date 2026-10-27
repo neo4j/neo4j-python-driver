@@ -143,7 +143,7 @@ class AsyncRLock(asyncio.Lock):
                     self._release(me)
                 raise
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
     __aenter__ = acquire
@@ -394,7 +394,7 @@ class AsyncCondition:
             try:
                 await wait_for(fut, timeout)
                 return True
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 return False
             except asyncio.CancelledError:
                 cancelled = True
@@ -504,7 +504,7 @@ async def async_acquire_bounded_semaphore(
         if acquire_finished:
             semaphore.release()
         raise
-    except asyncio.TimeoutError:
+    except TimeoutError:
         if acquire_finished:
             semaphore.release()
     return acquired

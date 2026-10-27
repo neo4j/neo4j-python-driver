@@ -22,10 +22,11 @@ import operator
 import pickle
 import typing as t
 import zoneinfo
-from datetime import (
+from datetime import (  # noqa: N811
     datetime,
     timedelta,
     timezone as datetime_timezone,
+    UTC as datetime_timezone_utc,
 )
 
 import pytest
@@ -183,7 +184,7 @@ class TestDateTime:
 
     def test_now_with_timezone_utc_tz(self) -> None:
         # not fully supported tzinfo implementation
-        t = DateTime.now(datetime_timezone.utc)
+        t = DateTime.now(datetime_timezone_utc)
         assert t.year == 1970
         assert t.month == 1
         assert t.day == 1
@@ -224,7 +225,7 @@ class TestDateTime:
         (
             (None, (1970, 1, 1, 0, 0, 0, 0)),
             (timezone_utc, (1970, 1, 1, 0, 0, 0, 0)),
-            (datetime_timezone.utc, (1970, 1, 1, 0, 0, 0, 0)),
+            (datetime_timezone_utc, (1970, 1, 1, 0, 0, 0, 0)),
             (FixedOffset(60), (1970, 1, 1, 1, 0, 0, 0)),
             (datetime_timezone(timedelta(hours=1)), (1970, 1, 1, 1, 0, 0, 0)),
             (timezone_us_eastern, (1969, 12, 31, 19, 0, 0, 0)),
