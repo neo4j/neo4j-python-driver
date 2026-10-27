@@ -20,7 +20,8 @@ coverage[toml]>=7.2.7  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 freezegun>=1.5.1
 mock>=5.2.0
 pytest>=7.4.4  # TODO: 6.0 - bump when support for Python 3.7 is dropped
-pytest-asyncio~=0.21.2  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+pytest-asyncio~=0.21.2; python_version<="3.10"
+pytest-asyncio>=1.4.0; python_version>"3.10"
 pytest-benchmark>=4.0.0
 pytest-cov>=4.1.0  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 pytest-mock>=3.11.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped

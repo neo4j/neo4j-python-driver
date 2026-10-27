@@ -210,62 +210,64 @@ def watcher():
         yield
 
 
-# On Windows a per-test asyncio event loop exhausts the ephemeral
-# port range. Heavily parametrized async tests churn thousands of short-lived
-# sockets into TIME_WAIT (OSError WinError 10055 / WSAENOBUFS),
-# which manifests as a hung or failing Windows CI job. Sharing one event loop
-# per module on that platform removes the churn; every other platform keeps the
-# default per-test loop.
-_LOOP_SCOPE: te.Literal["module", "function"] = (
-    "module" if env.IS_WIN else "function"
-)
+if sys.version_info < (3, 11):
+    # On Windows a per-test asyncio event loop exhausts the ephemeral
+    # port range. Heavily parametrized async tests churn thousands of
+    # short-lived sockets into TIME_WAIT (OSError WinError 10055 / WSAENOBUFS),
+    # which manifests as a hung or failing Windows CI job. Sharing one event
+    # loop per module on that platform removes the churn; every other platform
+    # keeps the default per-test loop.
+    _LOOP_SCOPE: te.Literal["module", "function"] = (
+        "module" if env.IS_WIN else "function"
+    )
 
+    # TODO: 6.0 -
+    #       when support for Python 3.7 is dropped and pytest-asyncio is bumped
+    #       check if this fixture is still needed
+    @pytest.fixture(scope=_LOOP_SCOPE)
+    def event_loop():
+        # Overwriting the default event loop injected by pytest-asyncio
+        # because its implementation doesn't properly shut down the loop
+        # (e.g., it doesn't call `shutdown_asyncgens`)
+        policy = asyncio.get_event_loop_policy()
+        loop = policy.new_event_loop()
+        yield loop
+        try:
+            _cancel_all_tasks(loop)
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            if sys.version_info >= (3, 9):
+                loop.run_until_complete(loop.shutdown_default_executor())
+        finally:
+            loop.close()
 
-# TODO: 6.0 -
-#       when support for Python 3.7 is dropped and pytest-asyncio is bumped
-#       check if this fixture is still needed
-@pytest.fixture(scope=_LOOP_SCOPE)
-def event_loop():
-    # Overwriting the default event loop injected by pytest-asyncio
-    # because its implementation doesn't properly shut down the loop
-    # (e.g., it doesn't call `shutdown_asyncgens`)
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    try:
-        _cancel_all_tasks(loop)
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        if sys.version_info >= (3, 9):
-            loop.run_until_complete(loop.shutdown_default_executor())
-    finally:
-        loop.close()
+    def _cancel_all_tasks(loop):
+        # Copied from Python 3.13's asyncio package with minor modifications
+        # in exception wording and variable naming and formatting
 
+        # Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
+        # 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020,
+        # 2021, 2022
+        # Python Software Foundation;
+        # All Rights Reserved
+        to_cancel = asyncio.all_tasks(loop)
+        if not to_cancel:
+            return
 
-def _cancel_all_tasks(loop):
-    # Copied from Python 3.13's asyncio package with minor modifications
-    # in exception wording and variable naming
+        for task in to_cancel:
+            task.cancel()
 
-    # Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
-    # 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022
-    # Python Software Foundation;
-    # All Rights Reserved
-    to_cancel = asyncio.all_tasks(loop)
-    if not to_cancel:
-        return
+        loop.run_until_complete(
+            asyncio.gather(*to_cancel, return_exceptions=True)
+        )
 
-    for task in to_cancel:
-        task.cancel()
-
-    loop.run_until_complete(asyncio.gather(*to_cancel, return_exceptions=True))
-
-    for task in to_cancel:
-        if task.cancelled():
-            continue
-        if task.exception() is not None:
-            loop.call_exception_handler(
-                {
-                    "message": "unhandled exception during loop shutdown",
-                    "exception": task.exception(),
-                    "task": task,
-                }
-            )
+        for task in to_cancel:
+            if task.cancelled():
+                continue
+            if task.exception() is not None:
+                loop.call_exception_handler(
+                    {
+                        "message": "unhandled exception during loop shutdown",
+                        "exception": task.exception(),
+                        "task": task,
+                    }
+                )
