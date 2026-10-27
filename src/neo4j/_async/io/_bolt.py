@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import inspect
 import typing as t
 from collections import deque
 from logging import getLogger
@@ -196,7 +197,7 @@ class AsyncBolt:
         )
 
     def __del__(self):
-        if not asyncio.iscoroutinefunction(self.close):
+        if not inspect.iscoroutinefunction(self.close):
             self.close()
 
     @abc.abstractmethod
