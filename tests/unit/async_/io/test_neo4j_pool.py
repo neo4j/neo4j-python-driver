@@ -16,7 +16,6 @@
 
 import contextlib
 import inspect
-import sys
 import time
 from copy import deepcopy
 
@@ -763,29 +762,21 @@ async def test_failed_discovery_chains_errors(custom_routing_opener) -> None:
         await pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
 
     exc = exc_info.value
-    if sys.version_info >= (3, 11):
-        group = exc.__cause__
-        assert isinstance(group, ExceptionGroup)  # noqa: F821
-        assert all(
-            a is b
-            for a, b in zip(
-                group.exceptions,
-                [error1, error2, error3, error4],
-                strict=True,
-            )
+    group = exc.__cause__
+    assert isinstance(group, ExceptionGroup)
+    assert all(
+        a is b
+        for a, b in zip(
+            group.exceptions,
+            [error1, error2, error3, error4],
+            strict=True,
         )
-        assert error4.__cause__ is None
-        assert error3.__cause__ is None
-        assert error2.__cause__ is error2_cause
-        assert error2_cause.__cause__ is None
-        assert error1.__cause__ is None
-    else:
-        assert exc.__cause__ is error4
-        assert error4.__cause__ is error3
-        assert error3.__cause__ is error2
-        assert error2.__cause__ is error2_cause
-        assert error2_cause.__cause__ is error1
-        assert error1.__cause__ is None
+    )
+    assert error4.__cause__ is None
+    assert error3.__cause__ is None
+    assert error2.__cause__ is error2_cause
+    assert error2_cause.__cause__ is None
+    assert error1.__cause__ is None
 
 
 @pytest.mark.parametrize(

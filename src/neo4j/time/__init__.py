@@ -31,8 +31,8 @@ from datetime import (
     datetime as _datetime,
     time as _time,
     timedelta as _timedelta,
-    timezone as _timezone,
     tzinfo as _tzinfo,
+    UTC as _UTC,
 )
 from functools import total_ordering as _total_ordering
 from re import compile as _re_compile
@@ -917,10 +917,7 @@ class Date(_date_base_class, metaclass=_DateType):
             return cls._from_clock_time(_Clock().local_time(), UnixEpoch)
         else:
             return (
-                DateTime.utc_now()
-                .replace(tzinfo=_timezone.utc)
-                .astimezone(tz)
-                .date()
+                DateTime.utc_now().replace(tzinfo=_UTC).astimezone(tz).date()
             )
 
     @classmethod
@@ -1664,10 +1661,7 @@ class Time(_time_base_class, metaclass=_TimeType):
             return cls._from_clock_time(_Clock().local_time(), UnixEpoch)
         else:
             return (
-                DateTime.utc_now()
-                .replace(tzinfo=_timezone.utc)
-                .astimezone(tz)
-                .timetz()
+                DateTime.utc_now().replace(tzinfo=_UTC).astimezone(tz).timetz()
             )
 
     @classmethod
@@ -2365,7 +2359,7 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
         else:
             return (
                 cls.utc_from_timestamp(timestamp)
-                .replace(tzinfo=_timezone.utc)
+                .replace(tzinfo=_UTC)
                 .astimezone(tz)
             )
 

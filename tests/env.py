@@ -87,7 +87,7 @@ def _get_url() -> str:
     )
 
 
-class Scheme(str, enum.Enum):
+class Scheme(enum.StrEnum):
     BOLT = "bolt"
     NEO4J = "neo4j"
     HTTP = "http"

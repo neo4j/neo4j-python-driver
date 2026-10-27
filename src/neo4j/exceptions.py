@@ -180,7 +180,9 @@ _UNKNOWN_GQL_DIAGNOSTIC_RECORD: _t.Final[tuple[tuple[str, _t.Any], ...]] = (
 )
 
 
-class GqlErrorClassification(str, _Enum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class GqlErrorClassification(str, _Enum):  # noqa: UP042
     """
     Server-side GQL error category.
 

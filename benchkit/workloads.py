@@ -588,7 +588,7 @@ class _WorkloadConfig:
                 )
 
 
-class _WorkloadMode(str, enum.Enum):
+class _WorkloadMode(enum.StrEnum):
     SEQUENTIAL_SESSIONS = "sequentialSessions"
     SEQUENTIAL_TRANSACTIONS = "sequentialTransactions"
     SEQUENTIAL_QUERIES = "sequentialQueries"

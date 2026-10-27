@@ -58,7 +58,7 @@ install the pre-commit hooks as described below instead. They will take care of
 updating the code if necessary.
 
 Setting up the development environment:
- * Install Python 3.10+
+ * Install Python 3.11+
  * Install the requirements (needs pip 25.1+)
    ```bash
    # recommended to use a virtual environment

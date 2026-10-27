@@ -4,7 +4,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- Python 3.10 support has been dropped.
 
 
 ## Version 6.4
