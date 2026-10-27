@@ -22,7 +22,7 @@ import contextlib as _contextlib
 import inspect as _inspect
 import struct as _struct
 import sys as _sys
-from enum import StrEnum as _StrEnum
+from enum import Enum as _Enum
 
 from . import _typing as _t
 
@@ -537,7 +537,9 @@ class Vector:
     #   * polars
 
 
-class VectorEndian(_StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class VectorEndian(str, _Enum):  # noqa: UP042
     """
     Data endianness (i.e., byte order) of the elements in a :class:`Vector`.
 
@@ -562,7 +564,9 @@ class VectorEndian(_StrEnum):
 _T_VectorEndian = VectorEndian | _t.Literal["big", "little"]
 
 
-class VectorDType(_StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class VectorDType(str, _Enum):  # noqa: UP042
     """
     The data type of the elements in a :class:`Vector`.
 

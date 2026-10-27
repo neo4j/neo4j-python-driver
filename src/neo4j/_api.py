@@ -18,8 +18,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import (
+    Enum,
     IntEnum,
-    StrEnum,
 )
 from urllib.parse import (
     parse_qs,
@@ -298,7 +298,9 @@ def parse_routing_context(query):
     return context
 
 
-class NotificationMinimumSeverity(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class NotificationMinimumSeverity(str, Enum):  # noqa: UP042
     """
     Filter notifications returned by the server by minimum severity.
 
@@ -340,7 +342,9 @@ if t.TYPE_CHECKING:
     __all__.append("T_NotificationMinimumSeverity")
 
 
-class NotificationSeverity(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class NotificationSeverity(str, Enum):  # noqa: UP042
     """
     Server-side notification severity.
 
@@ -392,7 +396,9 @@ class NotificationSeverity(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-class NotificationDisabledCategory(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class NotificationDisabledCategory(str, Enum):  # noqa: UP042
     """
     Filter notifications returned by the server by category.
 
@@ -439,7 +445,9 @@ class NotificationDisabledCategory(StrEnum):
     SCHEMA = "SCHEMA"
 
 
-class NotificationDisabledClassification(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class NotificationDisabledClassification(str, Enum):  # noqa: UP042
     """
     Identical to :class:`.NotificationDisabledCategory`.
 
@@ -492,7 +500,9 @@ if t.TYPE_CHECKING:
     __all__.append("T_NotificationDisabledClassification")
 
 
-class NotificationCategory(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class NotificationCategory(str, Enum):  # noqa: UP042
     """
     Server-side notification category.
 
@@ -532,7 +542,9 @@ class NotificationCategory(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-class NotificationClassification(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class NotificationClassification(str, Enum):  # noqa: UP042
     """
     Identical to :class:`.NotificationCategory`.
 
@@ -564,7 +576,9 @@ class NotificationClassification(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-class RoutingControl(StrEnum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class RoutingControl(str, Enum):  # noqa: UP042
     """
     Selection which cluster members to route a query connect to.
 
