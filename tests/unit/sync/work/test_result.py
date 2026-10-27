@@ -1155,7 +1155,7 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                 [
                     [
                         pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01").as_unit("ns")
+                            pd.Timestamp("1970-01-01", unit="ns")
                         )
                     ]
                 ],
