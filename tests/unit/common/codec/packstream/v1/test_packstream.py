@@ -200,9 +200,13 @@ def str_type(request):
                 pd.Series,
                 pd.array,
                 pd.arrays.SparseArray,
-                pd.arrays.NumpyExtensionArray,
             )
             if HAS_PD
+            else ()
+        ),
+        *(
+            (pd.arrays.NumpyExtensionArray,)
+            if HAS_PD and int(pd.__version__.split(".", 1)[0]) >= 3
             else ()
         ),
     ),
@@ -215,9 +219,13 @@ def str_type(request):
                 "pd.Series",
                 "pd.array",
                 "pd.arrays.SparseArray",
-                "pd.arrays.NumpyExtensionArray",
             )
             if HAS_PD
+            else ()
+        ),
+        *(
+            ("pd.arrays.NumpyExtensionArray",)
+            if HAS_PD and int(pd.__version__.split(".", 1)[0]) >= 3
             else ()
         ),
     ),
