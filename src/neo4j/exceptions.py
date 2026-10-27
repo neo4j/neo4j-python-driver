@@ -63,7 +63,7 @@ Driver API Errors
 from __future__ import annotations as _
 
 from copy import deepcopy as _deepcopy
-from enum import Enum as _Enum
+from enum import StrEnum as _StrEnum
 
 from . import _typing as _t
 
@@ -180,7 +180,7 @@ _UNKNOWN_GQL_DIAGNOSTIC_RECORD: _t.Final[tuple[tuple[str, _t.Any], ...]] = (
 )
 
 
-class GqlErrorClassification(str, _Enum):
+class GqlErrorClassification(_StrEnum):
     """
     Server-side GQL error category.
 

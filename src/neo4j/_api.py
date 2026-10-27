@@ -17,7 +17,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import (
+    IntEnum,
+    StrEnum,
+)
 from urllib.parse import (
     parse_qs,
     urlparse,
@@ -295,7 +298,7 @@ def parse_routing_context(query):
     return context
 
 
-class NotificationMinimumSeverity(str, Enum):
+class NotificationMinimumSeverity(StrEnum):
     """
     Filter notifications returned by the server by minimum severity.
 
@@ -337,7 +340,7 @@ if t.TYPE_CHECKING:
     __all__.append("T_NotificationMinimumSeverity")
 
 
-class NotificationSeverity(str, Enum):
+class NotificationSeverity(StrEnum):
     """
     Server-side notification severity.
 
@@ -389,7 +392,7 @@ class NotificationSeverity(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class NotificationDisabledCategory(str, Enum):
+class NotificationDisabledCategory(StrEnum):
     """
     Filter notifications returned by the server by category.
 
@@ -436,7 +439,7 @@ class NotificationDisabledCategory(str, Enum):
     SCHEMA = "SCHEMA"
 
 
-class NotificationDisabledClassification(str, Enum):
+class NotificationDisabledClassification(StrEnum):
     """
     Identical to :class:`.NotificationDisabledCategory`.
 
@@ -489,7 +492,7 @@ if t.TYPE_CHECKING:
     __all__.append("T_NotificationDisabledClassification")
 
 
-class NotificationCategory(str, Enum):
+class NotificationCategory(StrEnum):
     """
     Server-side notification category.
 
@@ -529,7 +532,7 @@ class NotificationCategory(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class NotificationClassification(str, Enum):
+class NotificationClassification(StrEnum):
     """
     Identical to :class:`.NotificationCategory`.
 
@@ -561,7 +564,7 @@ class NotificationClassification(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class RoutingControl(str, Enum):
+class RoutingControl(StrEnum):
     """
     Selection which cluster members to route a query connect to.
 
@@ -589,7 +592,7 @@ class RoutingControl(str, Enum):
     WRITE = "w"
 
 
-class TelemetryAPI(int, Enum):
+class TelemetryAPI(IntEnum):
     TX_FUNC = 0
     TX = 1
     AUTO_COMMIT = 2
