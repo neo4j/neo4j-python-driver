@@ -64,7 +64,7 @@ from ..io import ConnectionErrorHandler
 
 
 if t.TYPE_CHECKING:
-    import pandas  # type: ignore[import]
+    import pandas
 
     from ...addressing import Address
     from ...graph import Graph
@@ -898,7 +898,7 @@ class Result(NonConcurrentMethodChecker):
             was obtained has been closed or the Result has been explicitly
             consumed.
         """
-        import pandas as pd  # type: ignore[import]
+        import pandas as pd
         import pytz
 
         if not expand:

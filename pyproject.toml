@@ -59,7 +59,7 @@ Discord = "https://discord.com/invite/neo4j"
 [project.optional-dependencies]
 numpy = ["numpy >= 1.7.0, < 3.0.0"]
 pandas = [
-    "pandas >= 1.1.0, < 3.0.0",
+    "pandas[timezone] >= 1.1.0, < 4.0.0",
     "numpy >= 1.7.0, < 3.0.0",
 ]
 pyarrow = ["pyarrow >= 1.0.0"]
@@ -133,7 +133,6 @@ timeout = 120
 
 [[tool.mypy.overrides]]
 module = [
-    "pandas.*",
     "neo4j._codec.packstream._rust",
     "neo4j._codec.packstream._rust.*",
 ]

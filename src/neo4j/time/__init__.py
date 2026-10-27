@@ -1654,7 +1654,7 @@ class Time(time_base_class, metaclass=TimeType):
 
         :raises ValueError: if the string does not match the required format.
         """
-        from pytz import FixedOffset  # type: ignore
+        from pytz import FixedOffset
 
         m = TIME_ISO_PATTERN.match(s)
         if m:

@@ -73,6 +73,12 @@ if t.TYPE_CHECKING:
     )
 
 
+# https://pandas.pydata.org/docs/user_guide/migration-3-strings.html
+PD_STR_DTYPE = (
+    "object" if int(pd.__version__.split(".", 1)[0]) < 3 else "string"
+)
+
+
 class Records:
     def __init__(self, fields, records):
         self.fields = tuple(fields)
@@ -796,7 +802,12 @@ async def test_to_eager_result(records):
     (
         (["i"], list(zip(range(5))), ["int64"], None),
         (["x"], list(zip((n - 0.5) / 5 for n in range(5))), ["float64"], None),
-        (["s"], list(zip(("foo", "bar", "baz", "foobar"))), ["object"], None),
+        (
+            ["s"],
+            list(zip(("foo", "bar", "baz", "foobar"))),
+            [PD_STR_DTYPE],
+            None,
+        ),
         (["l"], list(zip(([1, 2], [3, 4]))), ["object"], None),
         (
             ["n"],
@@ -906,7 +917,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             list(zip(("foo", "bar", "baz", "foobar"))),
             ["s"],
             [["foo"], ["bar"], ["baz"], ["foobar"]],
-            ["object"],
+            [PD_STR_DTYPE],
         ),
         (
             ["l"],
@@ -953,7 +964,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             list(zip(([{"foo": "bar", "baz": [42, 0.1]}, "foobar"],))),
             ["x[].0{}.foo", "x[].0{}.baz[].0", "x[].0{}.baz[].1", "x[].1"],
             [["bar", 42, 0.1, "foobar"]],
-            ["object", "int64", "float64", "object"],
+            [PD_STR_DTYPE, "int64", "float64", PD_STR_DTYPE],
         ),
         (
             ["n"],
@@ -1004,7 +1015,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
                     3,
                 ],
             ],
-            ["object", "object", "object", "float64", "float64", "int64"],
+            [PD_STR_DTYPE, "object", "object", "float64", "float64", "int64"],
         ),
         (
             ["r"],
@@ -1048,7 +1059,14 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
                 ["r-0", "r-1", "r-2", "TYPE", 1, False],
                 ["r-420", "r-1337", "r-69", "HYPE", None, True],
             ],
-            ["object", "object", "object", "object", "float64", "bool"],
+            [
+                PD_STR_DTYPE,
+                PD_STR_DTYPE,
+                PD_STR_DTYPE,
+                PD_STR_DTYPE,
+                "float64",
+                "bool",
+            ],
         ),
         (
             ["dt"],
@@ -1137,7 +1155,7 @@ DTS_AROUND_SWEDISH_DST_CHANGE: tuple[datetime.datetime, ...] = (
                 [
                     [
                         pytz.timezone("Europe/Stockholm").localize(
-                            pd.Timestamp("1970-01-01")
+                            pd.Timestamp("1970-01-01").as_unit("ns")
                         )
                     ]
                 ],

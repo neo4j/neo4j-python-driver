@@ -13,6 +13,7 @@ mypy>=1.4.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 typing-extensions>=4.7.1
 types-pytz>=2023.3.1.1  # TODO: 6.0 - bump when support for Python 3.7 is dropped
 types-mock>=5.1.0.3  # TODO: 6.0 - bump when support for Python 3.7 is dropped
+pandas-stubs >= 1.0.0, < 4.0.0
 ruff>=0.16.10
 
 # needed for running tests
