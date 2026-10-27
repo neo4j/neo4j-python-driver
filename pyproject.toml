@@ -117,6 +117,7 @@ use_parentheses = true
 [tool.pytest.ini_options]
 mock_use_standalone_module = true
 asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 timeout = 120
 
 
@@ -132,6 +133,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 79
+target-version = "py37"  # LTS: prefer code stability
 extend-exclude = [
     "src/neo4j/_sync",
     "tests/unit/sync",
