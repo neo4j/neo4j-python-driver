@@ -80,9 +80,9 @@ PINNED_PIP_WHEEL="pip @ https://files.pythonhosted.org/packages/3f/06/3e44203023
 for version in $PYTHON_VERSIONS; do
     PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
         PIP_USE_DEPRECATED=legacy-certs \
-        python$version -m pip install -U "\$PINNED_PIP_WHEEL" \
-        || python$version -m pip install -U "\$PINNED_PIP_WHEEL"
-        python$version -m pip install -U pip>=26.2.2
+        python\$version -m pip install -U "\$PINNED_PIP_WHEEL" \
+        || python\$version -m pip install -U "\$PINNED_PIP_WHEEL"
+    python\$version -m pip install -U pip>=26.2.2
 done
 EOF
 
