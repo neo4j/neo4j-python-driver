@@ -83,18 +83,11 @@ RUN <<EOF bash -euxo pipefail
 # the vulnerability.
 PINNED_PIP_WHEEL="pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
 for version in $PYTHON_VERSIONS; do
-    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
-        PIP_USE_DEPRECATED=legacy-certs \
-        python\$version -m pip install -U "\$PINNED_PIP_WHEEL; python_version >= '3.10'" \
-        || python\$version -m pip install -U "\$PINNED_PIP_WHEEL; python_version >= '3.10'"
-    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
-        PIP_USE_DEPRECATED=legacy-certs \
-        python$version -m pip install -U \
-            "pip>=26.2.2; python_version >= '3.10'" \
-            "pip<=25.1.0; python_version < '3.10'" \
-        || python\$version -m pip install -U \
-                "pip>=26.2.2; python_version >= '3.10'" \
-                "pip<=25.1.0; python_version < '3.10'"
+PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    PIP_USE_DEPRECATED=legacy-certs \
+        python\$version -m pip install -U "\$PINNED_PIP_WHEEL" \
+        || python\$version -m pip install -U "\$PINNED_PIP_WHEEL"
+    python\$version -m pip install -U pip>=26.2.2
     python\$version -m pip install -U coverage tox
 done
 EOF

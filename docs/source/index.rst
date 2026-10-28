@@ -21,10 +21,6 @@ Python versions supported:
 * Python 3.13 (added in driver version 5.26.0)
 * Python 3.12 (added in driver version 5.14.0)
 * Python 3.11 (added in driver version 5.3.0)
-* Python 3.10
-* Python 3.9
-* Python 3.8
-* Python 3.7
 
 
 ******
