@@ -14,8 +14,6 @@
 # limitations under the License.
 
 
-import sys
-
 import pytest
 import pytest_asyncio
 
@@ -28,13 +26,10 @@ from ..env import IS_WIN
 # which manifests as a hung or failing Windows CI job. Sharing one event loop
 # per module on that platform removes the churn; every other platform keeps the
 # default per-test loop.
-if IS_WIN and sys.version_info >= (3, 11):
+if IS_WIN:
     mark_async_test = pytest.mark.asyncio(loop_scope="module")
 else:
     mark_async_test = pytest.mark.asyncio
-
-
-mark_async_test = pytest.mark.asyncio
 
 async_fixture = pytest_asyncio.fixture
 

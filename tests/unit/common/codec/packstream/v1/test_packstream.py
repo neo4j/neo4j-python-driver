@@ -200,13 +200,9 @@ def str_type(request):
                 pd.Series,
                 pd.array,
                 pd.arrays.SparseArray,
+                pd.arrays.NumpyExtensionArray,
             )
             if HAS_PD
-            else ()
-        ),
-        *(
-            (pd.arrays.NumpyExtensionArray,)
-            if HAS_PD and int(pd.__version__.split(".", 1)[0]) >= 3
             else ()
         ),
     ),
@@ -219,13 +215,9 @@ def str_type(request):
                 "pd.Series",
                 "pd.array",
                 "pd.arrays.SparseArray",
+                "pd.arrays.NumpyExtensionArray",
             )
             if HAS_PD
-            else ()
-        ),
-        *(
-            ("pd.arrays.NumpyExtensionArray",)
-            if HAS_PD and int(pd.__version__.split(".", 1)[0]) >= 3
             else ()
         ),
     ),
@@ -238,7 +230,7 @@ def sequence_type(request):
                 return pd.Series(dtype=object)
             return pd.Series(value)
 
-    elif request.param is pd.array and pd.__version__ >= "3":
+    elif HAS_PD and request.param is pd.array:
 
         def constructor(value):
             with suppress(ValueError):
