@@ -16,14 +16,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - semver: '3.7'
-            tox-factor: 'py37'
-          - semver: '3.8'
-            tox-factor: 'py38'
-          - semver: '3.9'
-            tox-factor: 'py39'
-          - semver: '3.10'
-            tox-factor: 'py310'
           - semver: '3.11'
             tox-factor: 'py311'
           - semver: '3.12'
