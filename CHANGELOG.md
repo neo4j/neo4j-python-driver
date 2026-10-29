@@ -3,6 +3,7 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
+- Python 3.14 and 3.15 support added
 - Python 3.7, 3.8, 3.9, and 3.10 support has been dropped.
 
 
