@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import inspect
 import platform
 import sys
 import typing as t
@@ -210,7 +210,7 @@ def _make_warning_decorator(
     warning_func: _WarningFunc,
 ) -> t.Callable[[_FuncT], _FuncT]:
     def decorator(f):
-        if asyncio.iscoroutinefunction(f):
+        if inspect.iscoroutinefunction(f):
 
             @wraps(f)
             async def inner(*args, **kwargs):

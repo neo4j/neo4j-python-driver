@@ -77,7 +77,7 @@ class AsyncUtil:
 
     @staticmethod
     def shielded(coro_function):
-        assert asyncio.iscoroutinefunction(coro_function)
+        assert inspect.iscoroutinefunction(coro_function)
 
         @wraps(coro_function)
         async def shielded_function(*args, **kwargs):

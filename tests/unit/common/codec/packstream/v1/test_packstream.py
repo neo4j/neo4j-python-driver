@@ -17,6 +17,7 @@
 import struct
 import sys
 import typing
+from contextlib import suppress
 from io import BytesIO
 from math import (
     isnan,
@@ -50,7 +51,7 @@ standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
 SKIP_PANDAS_INT_AS_INT64 = (
     HAS_PD
-    and pd.Series([], dtype=int).dtype.itemsize < 8
+    and pd.Series([], dtype=int).dtype.itemsize < 8  # type: ignore[union-attr]
     and sys.version_info < (3, 9)
     and sys.platform == "win32"
 )
@@ -199,11 +200,27 @@ def str_type(request):
                 pd.Series,
                 pd.array,
                 pd.arrays.SparseArray,
+                pd.arrays.NumpyExtensionArray,
             )
             if HAS_PD
             else ()
         ),
-    )
+    ),
+    ids=(
+        "list",
+        "tuple",
+        "np.array",
+        *(
+            (
+                "pd.Series",
+                "pd.array",
+                "pd.arrays.SparseArray",
+                "pd.arrays.NumpyExtensionArray",
+            )
+            if HAS_PD
+            else ()
+        ),
+    ),
 )
 def sequence_type(request):
     if HAS_PD and request.param is pd.Series:
@@ -213,8 +230,22 @@ def sequence_type(request):
                 return pd.Series(dtype=object)
             return pd.Series(value)
 
-        return constructor
-    return request.param
+    elif HAS_PD and request.param is pd.array:
+
+        def constructor(value):
+            with suppress(ValueError):
+                return pd.array(value)
+            return pd.array(value, dtype=object)
+
+    elif HAS_PD and request.param is pd.arrays.NumpyExtensionArray:
+
+        def constructor(value):
+            return pd.arrays.NumpyExtensionArray(np.array(value))
+
+    else:
+        constructor = request.param
+
+    return constructor
 
 
 class TestPackStream:
@@ -611,9 +642,13 @@ class TestPackStream:
             nums_typed, b"\xd6\x00\x01\x38\x80" + (b"\x01" * 80000), nums
         )
 
-    def test_nested_lists(self, sequence_type, assert_packable):
+    @pytest.mark.parametrize("inner_as_list", (True, False))
+    def test_nested_lists(self, sequence_type, inner_as_list, assert_packable):
         list_ = [[[]]]
-        l_typed = sequence_type([sequence_type([sequence_type([])])])
+        if inner_as_list:
+            l_typed = sequence_type(list_)
+        else:
+            l_typed = sequence_type([sequence_type([sequence_type([])])])
         assert_packable(l_typed, b"\x91\x91\x90", list_)
 
     @pytest.mark.skipif(pd is None, reason="pandas not installed")
