@@ -16,7 +16,7 @@
 [project]
 name = "neo4j"
 description = "Neo4j Bolt driver for Python"
-license = {text = "Apache License, Version 2.0"}
+license = "Apache-2.0 AND Python-2.0"
 #TODO: 6.0 - static readme
 #readme = "README.rst"
 authors = [
@@ -29,7 +29,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: AsyncIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

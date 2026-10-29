@@ -15,7 +15,6 @@
 
 
 import struct
-import sys
 import typing
 from contextlib import suppress
 from io import BytesIO
@@ -49,12 +48,6 @@ else:
 
 standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
-SKIP_PANDAS_INT_AS_INT64 = (
-    HAS_PD
-    and pd.Series([], dtype=int).dtype.itemsize < 8  # type: ignore[union-attr]
-    and sys.version_info < (3, 9)
-    and sys.platform == "win32"
-)
 
 
 @pytest.fixture
@@ -365,13 +358,7 @@ class TestPackStream:
     @pytest.mark.parametrize(
         "dtype",
         (
-            pytest.param(
-                int,
-                marks=pytest.mark.skipif(
-                    SKIP_PANDAS_INT_AS_INT64,
-                    reason="Legacy pandas treating int as int32",
-                ),
-            ),
+            int,
             np.int64,
             np.longlong,
             np.uint64,
@@ -406,13 +393,7 @@ class TestPackStream:
     @pytest.mark.parametrize(
         "dtype",
         (
-            pytest.param(
-                int,
-                marks=pytest.mark.skipif(
-                    SKIP_PANDAS_INT_AS_INT64,
-                    reason="Legacy pandas treating int as int32",
-                ),
-            ),
+            int,
             np.int64,
             np.longlong,
             *((pd.Int64Dtype(),) if HAS_PD else ()),
