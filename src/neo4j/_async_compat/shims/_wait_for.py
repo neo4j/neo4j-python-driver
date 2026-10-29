@@ -82,7 +82,7 @@ if (3, 12) > sys.version_info >= (3, 8):
             try:
                 return fut.result()
             except asyncio.CancelledError as exc:
-                raise asyncio.TimeoutError from exc
+                raise TimeoutError from exc
 
         waiter = loop.create_future()
         timeout_handle = loop.call_later(timeout, _release_waiter, waiter)
@@ -128,7 +128,7 @@ if (3, 12) > sys.version_info >= (3, 8):
                 try:
                     return fut.result()
                 except asyncio.CancelledError as exc:
-                    raise asyncio.TimeoutError from exc
+                    raise TimeoutError from exc
         finally:
             timeout_handle.cancel()
 else:

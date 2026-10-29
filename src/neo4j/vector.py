@@ -537,7 +537,9 @@ class Vector:
     #   * polars
 
 
-class VectorEndian(str, _Enum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class VectorEndian(str, _Enum):  # noqa: UP042
     """
     Data endianness (i.e., byte order) of the elements in a :class:`Vector`.
 
@@ -562,7 +564,9 @@ class VectorEndian(str, _Enum):
 _T_VectorEndian = VectorEndian | _t.Literal["big", "little"]
 
 
-class VectorDType(str, _Enum):
+# TODO: 7.0 - use enum.StrEnum instead;
+#             marginal potential to be a breaking change
+class VectorDType(str, _Enum):  # noqa: UP042
     """
     The data type of the elements in a :class:`Vector`.
 

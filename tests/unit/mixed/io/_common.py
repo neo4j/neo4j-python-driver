@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import asyncio
 import time
 from asyncio import (
     Condition as AsyncCondition,
@@ -118,5 +117,5 @@ class AsyncMultiEvent:
                         return False
                 try:
                     await wait_for(self._cond.wait(), time_left)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     return False

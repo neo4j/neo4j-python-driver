@@ -26,14 +26,13 @@ authors = [
     {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
 ]
 dependencies = ["pytz"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["neo4j", "graph", "database"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: AsyncIO",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -65,7 +64,7 @@ pandas = [
     "numpy >= 1.21.2, < 3.0.0",
 ]
 # [bump-pyarrow] search tag when bumping pyarrow
-pyarrow = ["pyarrow >= 6.0.0, < 26.0.0"]
+pyarrow = ["pyarrow >= 6.0.0, < 27.0.0"]
 http = [
     # [bump-aiohttp] search tag when bumping aiohttp
     "aiohttp[speedups] >= 3.12.15, < 4.0.0",
@@ -141,8 +140,7 @@ typing = [
 ]
 # generate documentation
 docs = [
-    "Sphinx >= 8.1.3; python_version <= '3.10'",  # dropped support for Python 3.10 in 8.2.0
-    "Sphinx >= 9.0.4; python_version == '3.11'",  # dropped support for Python 3.11 in 9.1.0
+    "Sphinx >= 9.0.4; python_version <= '3.11'",  # dropped support for Python 3.11 in 9.1.0
     "Sphinx >= 9.1.0; python_version >= '3.12'",
     {include-group = "dep-typing-extensions"},
     {include-group = "dep-project-dependencies"},
@@ -173,7 +171,7 @@ dep-project-dependencies = [
     # [bump-pandas] search tag when bumping pandas
     "pandas[timezone] >= 1.1.0, < 4.0.0",
     # [bump-pyarrow] search tag when bumping pyarrow
-    "pyarrow >= 6.0.0, < 26.0.0",
+    "pyarrow >= 6.0.0, < 27.0.0",
     {include-group = "dep-http"},
 ]
 dep-http = [
@@ -347,6 +345,10 @@ extend-ignore = [
     # conclusion: not doing it now, but maybe in the future
     # [ruff-rule-codes] search tag for switching from rule codes to rule names
     "RUF105",
+
+    # Allow `timeout` parameters for async functions.
+    # This is needed because the sync code is generated from the async code.
+    "ASYNC109",
 ]
 select = [
     # ruff
