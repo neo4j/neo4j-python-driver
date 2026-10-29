@@ -27,7 +27,7 @@ TEST_TOX_FACTORS = os.getenv("TEST_TOX_FACTORS", "")
 DRIVER_TIME_WARP = os.getenv("DRIVER_TIME_WARP")
 IS_HTTP = os.getenv("TEST_NEO4J_SCHEME") in {"http", "https"}
 # Pip version(s) not vulnerable to broken eMudhra root CAs
-PIP_REQUIREMENT = ("pip>=26.2.2; python_version >= '3.10'",)
+PIP_REQUIREMENT = ("pip>=26.2.2",)
 
 COV_FACTOR_ARGS = ("-f", "cov_clean", "-f", "cov_report")
 
