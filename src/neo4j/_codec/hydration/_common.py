@@ -189,17 +189,17 @@ def warn_unsupported_tzinfo_impl(tz: datetime.tzinfo) -> None:
 
     import pytz
 
-    if not isinstance(tz, pytz.BaseTzInfo):
-        if sys.version_info >= (3, 12):
-            level_kwargs = {"skip_file_prefixes": _warn_skips}
-        else:
-            level_kwargs = {"stacklevel": 2}
+    if isinstance(tz, pytz.BaseTzInfo):
+        return
 
-        warnings.warn(
-            "The driver does not support the provided datetime.tzinfo"
-            f"implementation: {type(tz)}. This may result in unexpected or "
-            "lossy data transmission. "
-            "This warning may be turned into an error in a future version.",
-            UnsupportedTzinfoWarning,
-            **level_kwargs,
-        )
+    msg = (
+        "The driver does not support the provided datetime.tzinfo"
+        f"implementation: {type(tz)}. This may result in unexpected or "
+        "lossy data transmission. "
+        "This warning may be turned into an error in a future version."
+    )
+    warn_cls = UnsupportedTzinfoWarning
+    if sys.version_info >= (3, 12):
+        warnings.warn(msg, warn_cls, skip_file_prefixes=_warn_skips)
+    else:
+        warnings.warn(msg, warn_cls, stacklevel=2)

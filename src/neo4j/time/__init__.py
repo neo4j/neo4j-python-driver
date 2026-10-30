@@ -243,19 +243,20 @@ def _check_supported_tzinfo_impl(tz: _tzinfo | None) -> None:
     import pytz
 
     if not isinstance(tz, pytz.BaseTzInfo):
-        sys = _sys  # helps mypy
-        if sys.version_info >= (3, 12):
-            level_kwargs = {"skip_file_prefixes": _warn_skips}
-        else:
-            level_kwargs = {"stacklevel": 2}
-        _warnings.warn(
-            "The driver and its temporal types were designed to be used with "
-            "pytz. Other datetime.tzinfo implementations are not supported "
-            f"and are unlikely to work well. Found {type(tz)}. "
-            "This warning may be turned into an error in a future version.",
-            UnsupportedTzinfoWarning,
-            **level_kwargs,
-        )
+        return
+
+    msg = (
+        "The driver and its temporal types were designed to be used with "
+        "pytz. Other datetime.tzinfo implementations are not supported "
+        f"and are unlikely to work well. Found {type(tz)}. "
+        "This warning may be turned into an error in a future version."
+    )
+    warn_cls = UnsupportedTzinfoWarning
+    sys = _sys  # help mypy
+    if sys.version_info >= (3, 12):
+        _warnings.warn(msg, warn_cls, skip_file_prefixes=_warn_skips)
+    else:
+        _warnings.warn(msg, warn_cls, stacklevel=2)
 
 
 # TODO: 7.0 - make private
