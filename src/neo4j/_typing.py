@@ -35,20 +35,24 @@ from collections.abc import (
     ValuesView,
 )
 from contextlib import AbstractContextManager
-from importlib.util import find_spec as _find_spec
 from types import EllipsisType
 from typing import (
     Any,
+    assert_never,
     cast,
     ClassVar,
     Concatenate,
     Final,
     Generic,
     Literal,
+    LiteralString,
     NamedTuple,
+    Never,
+    NotRequired,
     overload,
     ParamSpec,
     Protocol,
+    Self,
     SupportsIndex,
     TextIO,
     TYPE_CHECKING,
@@ -81,10 +85,14 @@ __all__: list[str] = [
     "Iterator",
     "KeysView",
     "Literal",
+    "LiteralString",
     "Mapping",
     "NamedTuple",
+    "Never",
+    "NotRequired",
     "ParamSpec",
     "Protocol",
+    "Self",
     "Sequence",
     "Set",
     "Sized",
@@ -100,34 +108,3 @@ __all__: list[str] = [
     "cast",
     "overload",
 ]
-
-
-_te_available = _find_spec("typing_extensions") is not None
-
-if TYPE_CHECKING or _te_available:
-    from typing_extensions import assert_never  # Python 3.11+
-    from typing_extensions import LiteralString  # Python 3.11+
-    from typing_extensions import Never  # Python 3.11+
-    from typing_extensions import NotRequired  # Python 3.11+
-    from typing_extensions import Self  # Python 3.11+
-    from typing_extensions import TypeVarTuple  # Python 3.11+
-    from typing_extensions import Unpack  # Python 3.11+
-
-    __all__ = [  # noqa: PLE0604 false positive
-        *__all__,
-        "LiteralString",
-        "Never",
-        "Self",
-        "NotRequired",
-        "Unpack",
-        "TypeVarTuple",
-    ]
-else:
-
-    def assert_never(arg: Any, /) -> None:
-        value = repr(arg)
-        if len(value) > 100:
-            value = value[:100] + "..."
-        raise AssertionError(
-            f"Expected code to be unreachable, but got: {value}"
-        )

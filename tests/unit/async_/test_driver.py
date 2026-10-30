@@ -47,7 +47,7 @@ from neo4j._async.io._pool import (
     AsyncRoutedBoltPool,
 )
 from neo4j._async_compat.util import AsyncUtil
-from neo4j._debug import ENABLED as DEBUG_ENABLED
+from neo4j._debug import DEBUG_ENABLED
 from neo4j.api import (
     AsyncBookmarkManager,
     BookmarkManager,

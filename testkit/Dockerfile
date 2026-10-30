@@ -52,13 +52,13 @@ ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
 
 FROM base AS base-py-arg
 # Install all supported Python versions
-ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11 3.10"
+ARG PYTHON_VERSIONS="3.15 3.14 3.13 3.12 3.11"
 ARG PYTHON_INSTALL_VERSIONS="$PYTHON_VERSIONS"
 
 
 FROM base AS base-py-arg-single-python
-# Only install Python 3.10 in time warp mode
-ARG PYTHON_VERSIONS="3.10"
+# Only install Python 3.11 in time warp mode
+ARG PYTHON_VERSIONS="3.11"
 ARG PYTHON_INSTALL_VERSIONS="$PYTHON_VERSIONS"
 
 
@@ -80,9 +80,9 @@ PINNED_PIP_WHEEL="pip @ https://files.pythonhosted.org/packages/3f/06/3e44203023
 for version in $PYTHON_VERSIONS; do
     PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
         PIP_USE_DEPRECATED=legacy-certs \
-        python$version -m pip install -U "\$PINNED_PIP_WHEEL" \
-        || python$version -m pip install -U "\$PINNED_PIP_WHEEL"
-        python$version -m pip install -U pip>=26.2.2
+        python\$version -m pip install -U "\$PINNED_PIP_WHEEL" \
+        || python\$version -m pip install -U "\$PINNED_PIP_WHEEL"
+    python\$version -m pip install -U pip>=26.2.2
 done
 EOF
 

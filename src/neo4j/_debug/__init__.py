@@ -14,11 +14,11 @@
 # limitations under the License.
 
 
-from ._config import ENABLED
+from ._config import DEBUG_ENABLED
 from ._notification_printer import NotificationPrinter
 
 
 __all__ = [
-    "ENABLED",
+    "DEBUG_ENABLED",
     "NotificationPrinter",
 ]

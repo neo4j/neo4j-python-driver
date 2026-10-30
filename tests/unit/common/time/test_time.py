@@ -20,10 +20,11 @@ import copy
 import itertools
 import operator
 import pickle
-from datetime import (
+from datetime import (  # noqa: N811
     time,
     timedelta,
     timezone as datetime_timezone,
+    UTC as datetime_timezone_utc,
 )
 
 import pytest
@@ -59,7 +60,7 @@ def make_reduce_times():
     return (
         time(12, 34, 56, 789000001, tzinfo=None),
         time(12, 34, 56, 789000001, tzinfo=timezone_utc),
-        time(12, 34, 56, 789000001, tzinfo=datetime_timezone.utc),
+        time(12, 34, 56, 789000001, tzinfo=datetime_timezone_utc),
         time(13, 34, 56, 789000001, tzinfo=FixedOffset(60)),
         time(
             13, 34, 56, 789000001, tzinfo=datetime_timezone(timedelta(hours=1))
@@ -110,7 +111,7 @@ class TestTime:
         (
             (None, (12, 34, 56, 789000001)),
             (timezone_utc, (12, 34, 56, 789000001)),
-            (datetime_timezone.utc, (12, 34, 56, 789000001)),
+            (datetime_timezone_utc, (12, 34, 56, 789000001)),
             (FixedOffset(60), (13, 34, 56, 789000001)),
             (datetime_timezone(timedelta(hours=1)), (13, 34, 56, 789000001)),
             (timezone_us_eastern, (7, 34, 56, 789000001)),

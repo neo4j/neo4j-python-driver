@@ -39,7 +39,7 @@ from neo4j import (
 )
 from neo4j._api import TelemetryAPI
 from neo4j._async_compat.util import Util
-from neo4j._debug import ENABLED as DEBUG_ENABLED
+from neo4j._debug import DEBUG_ENABLED
 from neo4j._sync.auth_management import _StaticClientCertificateProvider
 from neo4j._sync.config import PoolConfig
 from neo4j._sync.driver import _work

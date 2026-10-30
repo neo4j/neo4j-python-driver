@@ -41,7 +41,7 @@ from .._conf import (
     TrustStore,
     WorkspaceConfig,
 )
-from .._debug import ENABLED as DEBUG_ENABLED
+from .._debug import DEBUG_ENABLED
 from .._warnings import (
     deprecation_warn,
     preview_warn,
