@@ -233,7 +233,7 @@ if np is not None:
         if np.isnat(value):
             return None
         if not _NP_YEAR_MIN <= value.astype(_NP_YEAR_DTYPE) < _NP_YEAR_MAX:
-            # while we could encode years outside the range, they would fail
+            # While we could encode years outside the range, they would fail
             # when retrieved from the database.
             raise ValueError(
                 f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
@@ -258,6 +258,15 @@ if pd is not None:
         """
         if pd.isna(value):
             return None
+        if not MIN_YEAR <= value.year <= MAX_YEAR:
+            # While we could encode years outside the range, they would fail
+            # when retrieved from the database.
+            # At the time of writing, pandas itself restricts the years to this
+            # range. However, this might change in the future without it being
+            # a breaking change.
+            raise ValueError(
+                f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
+            )
         tz = value.tzinfo
         if tz is not None:
             value = value.tz_localize(None)

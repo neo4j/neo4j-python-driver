@@ -295,6 +295,19 @@ def _dehydrate_zoned_datetime(
 ) -> ValueDict[str]:
     tz = value.tzinfo
     assert tz is not None
+    if (
+        pd is not None
+        and isinstance(value, pd.Timestamp)
+        and not MIN_YEAR <= value.year <= MAX_YEAR
+    ):
+        # While we could encode years outside the range, they would fail
+        # when retrieved from the database.
+        # At the time of writing, pandas itself restricts the years to this
+        # range. However, this might change in the future without it being
+        # a breaking change.
+        raise ValueError(
+            f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
+        )
     value = value.replace(tzinfo=None)
     offset: datetime.timedelta | None
     offset = tz.utcoffset(None)

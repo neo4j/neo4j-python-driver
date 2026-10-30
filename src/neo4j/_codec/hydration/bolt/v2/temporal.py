@@ -20,6 +20,8 @@ from ....._optional_deps import pd
 from .....time import (
     Date,
     DateTime,
+    MAX_YEAR,
+    MIN_YEAR,
     Time,
 )
 from ....packstream import Structure
@@ -131,6 +133,15 @@ if pd is not None:
         """
         if pd.isna(value):
             return None
+        if not MIN_YEAR <= value.year <= MAX_YEAR:
+            # While we could encode years outside the range, they would fail
+            # when retrieved from the database.
+            # At the time of writing, pandas itself restricts the years to this
+            # range. However, this might change in the future without it being
+            # a breaking change.
+            raise ValueError(
+                f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
+            )
         tz = value.tzinfo
         if tz is None:
             value = value.tz_localize("UTC")
