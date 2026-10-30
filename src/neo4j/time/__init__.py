@@ -242,7 +242,7 @@ def _check_supported_tzinfo_impl(tz: _tzinfo | None) -> None:
 
     import pytz
 
-    if not isinstance(tz, pytz.BaseTzInfo):
+    if isinstance(tz, pytz.BaseTzInfo):
         return
 
     msg = (
