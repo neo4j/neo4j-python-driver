@@ -36,6 +36,7 @@ from .....time import (
     MIN_YEAR,
     Time,
 )
+from ..._common import warn_unsupported_tzinfo_impl
 from .._common import (
     make_value_dict,
     value_as_str,
@@ -298,6 +299,8 @@ def _dehydrate_zoned_datetime(
     offset: datetime.timedelta | None
     offset = tz.utcoffset(None)
     if offset is None:
+        if zone_name is None:
+            warn_unsupported_tzinfo_impl(tz)
         offset = tz.utcoffset(value)
         if offset is None:
             raise ValueError(
@@ -327,7 +330,11 @@ def _format_tzinfo(
 def _format_tz_offset(
     offset: datetime.timedelta,
 ) -> str:
-    total_seconds = int(offset.total_seconds())
+    if offset.microseconds:
+        raise ValueError(
+            "HTTP/Query API does not support sub-second UTC offsets."
+        )
+    total_seconds = offset.days * 86400 + offset.seconds
     if not -64800 <= total_seconds <= 64800:
         raise ValueError("Unsupported: timezone offset outside valid range")
     if total_seconds < 0:

@@ -23,7 +23,7 @@ from .....time import (
     Time,
 )
 from ....packstream import Structure
-from .._common import warn_unsupported_tzinfo_impl
+from ..._common import warn_unsupported_tzinfo_impl
 from ..v1.temporal import get_date_unix_epoch_ordinal
 
 

@@ -33,7 +33,7 @@ from .....time import (
     Time,
 )
 from ....packstream import Structure
-from .._common import warn_unsupported_tzinfo_impl
+from ..._common import warn_unsupported_tzinfo_impl
 
 
 def get_date_unix_epoch():
