@@ -15,6 +15,7 @@
 
 
 import datetime
+import zoneinfo
 
 import pytest
 import pytz
@@ -37,6 +38,7 @@ from ......._optional_deps import (
     np,
     pd,
 )
+from ......._time_warnings import unsupported_tzinfo_warning
 from .._base import HydrationHandlerTestBase
 
 
@@ -144,13 +146,25 @@ class TestTimeDehydration(HydrationHandlerTestBase):
 
     def test_date_time_fixed_native_offset(self, assert_transforms):
         tz = datetime.timezone(datetime.timedelta(minutes=60))
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
-        assert_transforms(dt, Structure(b"F", 1539344261, 474716862, 3600))
+        with unsupported_tzinfo_warning(tz):
+            dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
+            assert_transforms(dt, Structure(b"F", 1539344261, 474716862, 3600))
 
     def test_native_date_time_fixed_native_offset(self, assert_transforms):
         tz = datetime.timezone(datetime.timedelta(minutes=60))
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
         assert_transforms(dt, Structure(b"F", 1539344261, 474716000, 3600))
+
+    def test_native_date_time_fixed_native_offset_s(self, assert_transforms):
+        tz = datetime.timezone(datetime.timedelta(minutes=60, seconds=30))
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
+        assert_transforms(dt, Structure(b"F", 1539344261, 474716000, 3630))
+
+    def test_native_date_time_fixed_native_offset_ms(self, transformer):
+        tz = datetime.timezone(datetime.timedelta(minutes=60, microseconds=30))
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716, tz)
+        with pytest.raises(ValueError, match=r"\bsub-second\b.*\boffsets?\b"):
+            transformer(dt)
 
     @mark_skip_without_optional_dependency(pd)
     def test_pandas_date_time_fixed_offset(self, assert_transforms):
@@ -169,8 +183,12 @@ class TestTimeDehydration(HydrationHandlerTestBase):
 
     def test_date_time_fixed_negative_native_offset(self, assert_transforms):
         tz = datetime.timezone(datetime.timedelta(minutes=-60))
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
-        assert_transforms(dt, Structure(b"F", 1539344261, 474716862, -3600))
+        with unsupported_tzinfo_warning(tz):
+            dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
+            assert_transforms(
+                dt,
+                Structure(b"F", 1539344261, 474716862, -3600),
+            )
 
     def test_native_date_time_fixed_negative_native_offset(
         self, assert_transforms
@@ -198,6 +216,15 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         assert_transforms(
             dt, Structure(b"f", 1539344261, 474716000, "Europe/Stockholm")
         )
+
+    @pytest.mark.parametrize("fold", (0, 1))
+    def test_native_zone_info_zone_id(self, assert_transforms, fold):
+        tz = zoneinfo.ZoneInfo("Europe/Berlin")
+        dt = datetime.datetime(
+            2026, 10, 25, 2, 30, 5, 474716, fold=fold, tzinfo=tz
+        )
+        seconds = 1792895405  # 2026-10-25 02:30:05 as UNIX timestamp
+        assert_transforms(dt, Structure(b"f", seconds, 474716000, tz.key))
 
     @pytest.mark.parametrize(
         ("dt", "fields"),
@@ -229,6 +256,16 @@ class TestTimeDehydration(HydrationHandlerTestBase):
                     tz="Europe/London",
                 ),
                 ((1032 * 24 + 2) * 3600 + 1, 1000001, "Europe/London"),
+            ),
+            (
+                pd.Timestamp(
+                    "9999-12-31T23:59:59.999999+0100", tz="Etc/GMT-1"
+                ),
+                (253402300799, 999999000, "Etc/GMT-1"),
+            ),
+            (
+                pd.Timestamp("0001-01-01T00:00:00-0100", tz="Etc/GMT+1"),
+                (-62135596800, 0, "Etc/GMT+1"),
             ),
         ),
     )

@@ -34,6 +34,7 @@ class UTCPatchedTimeDehydrationMeta(type):
             "test_native_date_time_fixed_offset",
             "test_date_time_fixed_native_offset",
             "test_native_date_time_fixed_native_offset",
+            "test_native_date_time_fixed_native_offset_s",
             "test_pandas_date_time_fixed_offset",
             "test_date_time_fixed_negative_offset",
             "test_native_date_time_fixed_negative_offset",
@@ -42,6 +43,7 @@ class UTCPatchedTimeDehydrationMeta(type):
             "test_pandas_date_time_fixed_negative_offset",
             "test_date_time_zone_id",
             "test_native_date_time_zone_id",
+            "test_native_zone_info_zone_id",
             "test_pandas_date_time_zone_id",
         ):
             if not hasattr(_TestTimeDehydrationV2, test_func):
