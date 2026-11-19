@@ -75,7 +75,7 @@ http = [
 
 [build-system]
 requires = [
-    "setuptools == 84.0.0",
+    "setuptools == 84.1.0",
 ]
 build-backend = "setuptools.build_meta"
 
