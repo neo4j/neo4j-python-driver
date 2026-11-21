@@ -116,11 +116,17 @@ def dehydrate_time(value):
         )
     else:
         raise TypeError("Value must be a neo4j.time.Time or a datetime.time")
+
     if value.tzinfo:
+        if isinstance(value, Time):
+            utc_offset = value.utc_offset()
+        else:
+            utc_offset = value.utcoffset()
+
         return Structure(
             b"T",
             nanoseconds,
-            int(value.tzinfo.utcoffset(value).total_seconds()),
+            int(utc_offset.total_seconds()),
         )
     else:
         return Structure(b"t", nanoseconds)
