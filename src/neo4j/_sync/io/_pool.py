@@ -1143,9 +1143,16 @@ class RoutedBoltPool(BoltPool):
             exc_group = ExceptionGroup(
                 "All routing table requests failed", errors
             )
-            raise ServiceUnavailable(
-                "Unable to retrieve routing information"
-            ) from exc_group
+            if len(errors) == 1:
+                msg = f"Unable to retrieve routing information: {errors[0]}"
+            elif errors:
+                msg = (
+                    f"Unable to retrieve routing information "
+                    f"(all {len(errors)} router requests failed)"
+                )
+            else:
+                msg = "Unable to retrieve routing information"
+            raise ServiceUnavailable(msg) from exc_group
 
     def update_connection_pool(self):
         with self.refresh_lock:

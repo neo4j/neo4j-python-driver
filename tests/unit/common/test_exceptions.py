@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import contextlib
+import ssl
 import traceback
 import typing as t
 
@@ -24,9 +25,11 @@ import pytest
 
 import neo4j.exceptions
 from neo4j._exceptions import (
+    BoltConnectionError,
     BoltError,
     BoltHandshakeError,
     BoltProtocolError,
+    BoltSecurityError,
 )
 from neo4j._sync.io import Bolt
 from neo4j.exceptions import (
@@ -57,6 +60,46 @@ def test_bolt_error():
         e.match("FAIL!")
 
     assert e.match("Error Message")
+
+
+def test_bolt_connection_error_with_ssl_error():
+    ssl_error = ssl.SSLError(1, "SSL handshake failed")
+    error = BoltConnectionError(
+        "Failed to connect", address=("localhost", 7687)
+    )
+    error.__cause__ = ssl_error
+    assert error.errno is None
+    assert "code 1" not in str(error)
+    assert "Operation not permitted" not in str(error)
+
+
+def test_bolt_security_error_with_ssl_cert_verification_error():
+    cert_error = ssl.SSLCertVerificationError(
+        1,
+        "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)",
+    )
+    error = BoltSecurityError(
+        "Failed to establish encrypted connection.",
+        address=("localhost", 7687),
+    )
+    error.__cause__ = cert_error
+    assert error.errno is None
+    error_str = str(error)
+    assert "SSLCertVerificationError" in error_str
+    assert "Failed to establish encrypted connection." in error_str
+    assert "certificate verify failed" in error_str
+    assert "code 1" not in error_str
+    assert "Operation not permitted" not in error_str
+    assert "Please ensure that your database is listening" not in error_str
+
+
+def test_bolt_security_error_without_cause():
+    error = BoltSecurityError(
+        "Failed to establish encrypted connection.",
+        address=("localhost", 7687),
+    )
+    assert error.errno is None
+    assert str(error) == "Failed to establish encrypted connection."
 
 
 def test_bolt_protocol_error():

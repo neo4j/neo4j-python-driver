@@ -762,6 +762,10 @@ def test_failed_discovery_chains_errors(custom_routing_opener) -> None:
         pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
 
     exc = exc_info.value
+    assert (
+        str(exc)
+        == "Unable to retrieve routing information (all 4 router requests failed)"
+    )
     group = exc.__cause__
     assert isinstance(group, ExceptionGroup)
     assert all(
@@ -777,6 +781,31 @@ def test_failed_discovery_chains_errors(custom_routing_opener) -> None:
     assert error2.__cause__ is error2_cause
     assert error2_cause.__cause__ is None
     assert error1.__cause__ is None
+
+
+@mark_sync_test
+def test_handles_errors_from_routers_single_router_error(
+    custom_routing_opener,
+):
+    error1 = ServiceUnavailable(
+        "Couldn't connect to server: certificate verify failed"
+    )
+    opener = custom_routing_opener([error1])
+    pool = RoutedBoltPool(
+        opener,
+        _pool_config(),
+        WorkspaceConfig(),
+        ResolvedAddress(("1.2.3.1", 9999), host_name="host"),
+    )
+
+    with pytest.raises(ServiceUnavailable) as exc_info:
+        pool.acquire(READ_ACCESS, 30, TEST_DB1, None, None, None)
+
+    exc = exc_info.value
+    assert str(exc) == f"Unable to retrieve routing information: {error1}"
+    group = exc.__cause__
+    assert isinstance(group, ExceptionGroup)
+    assert list(group.exceptions) == [error1]
 
 
 @pytest.mark.parametrize(
