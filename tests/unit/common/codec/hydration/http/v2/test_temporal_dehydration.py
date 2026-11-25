@@ -38,6 +38,7 @@ from ......._optional_deps import (
     np,
     pd,
 )
+from ......._time_warnings import unsupported_tzinfo_warning
 from .._base import HydrationHandlerTestBase
 
 
@@ -224,8 +225,9 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         self, transformer: T_Transformer
     ) -> None:
         tz = datetime.timezone(datetime.timedelta(minutes=60))
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
-        encoded = transformer(dt)
+        with unsupported_tzinfo_warning(tz):
+            dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
+            encoded = transformer(dt)
         assert encoded == {
             "$type": "OffsetDateTime",
             "_value": "2018-10-12T11:37:41.474716862+01:00",
@@ -279,8 +281,9 @@ class TestTimeDehydration(HydrationHandlerTestBase):
         self, transformer: T_Transformer
     ) -> None:
         tz = datetime.timezone(datetime.timedelta(minutes=-60))
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
-        encoded = transformer(dt)
+        with unsupported_tzinfo_warning(tz):
+            dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862, tz)
+            encoded = transformer(dt)
         assert encoded == {
             "$type": "OffsetDateTime",
             "_value": "2018-10-12T11:37:41.474716862-01:00",

@@ -32,6 +32,8 @@ from neo4j.time import (
     ZeroDate,
 )
 
+from ...._time_warnings import maybe_unsupported_tzinfo_warning
+
 
 timezone_eastern = pytz.timezone("US/Eastern")
 timezone_utc = pytz.utc
@@ -600,7 +602,8 @@ class TestDate:
     ),
 )
 def test_today(tz, expected) -> None:
-    d = Date.today(tz=tz)
+    with maybe_unsupported_tzinfo_warning(tz):
+        d = Date.today(tz=tz)
     assert isinstance(d, Date)
     assert d.year_month_day == expected
 

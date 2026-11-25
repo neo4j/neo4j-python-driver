@@ -20,17 +20,18 @@ import copy
 import itertools
 import operator
 import pickle
-import typing as t
 import zoneinfo
 from datetime import (  # noqa: N811
     datetime,
     timedelta,
     timezone as datetime_timezone,
+    tzinfo as datetime_tzinfo,
     UTC as datetime_timezone_utc,
 )
 
 import pytest
 from pytz import (
+    BaseTzInfo,
     FixedOffset,
     timezone,
     utc,
@@ -48,16 +49,25 @@ from neo4j.time._arithmetic import (
     nano_div,
 )
 
-
-if t.TYPE_CHECKING:
-    from pytz import BaseTzInfo
+from ...._time_warnings import (
+    maybe_unsupported_tzinfo_warning,
+    unsupported_tzinfo_warning,
+)
 
 
 timezone_us_eastern = timezone("US/Eastern")
 timezone_london = timezone("Europe/London")
 timezone_berlin = timezone("Europe/Berlin")
 timezone_utc = timezone("UTC")
-timezone_utc_p2 = FixedOffset(120)
+timezone_utc_p2h = FixedOffset(120)
+zoneinfo_berlin = zoneinfo.ZoneInfo("Europe/Berlin")
+datetime_timezone_p2h = datetime_timezone(timedelta(hours=2))
+datetime_timezone_p1s = datetime_timezone(timedelta(seconds=1))
+
+
+def make_datetime(y, mo, d, h, m, s, ns, tz):
+    with maybe_unsupported_tzinfo_warning(tz):
+        return DateTime(y, mo, d, h, m, s, ns, tzinfo=tz)
 
 
 def make_reduce_datetimes():
@@ -184,7 +194,9 @@ class TestDateTime:
 
     def test_now_with_timezone_utc_tz(self) -> None:
         # not fully supported tzinfo implementation
-        t = DateTime.now(datetime_timezone_utc)
+        tz = datetime_timezone_utc
+        with unsupported_tzinfo_warning(tz):
+            t = DateTime.now(tz)
         assert t.year == 1970
         assert t.month == 1
         assert t.day == 1
@@ -197,7 +209,9 @@ class TestDateTime:
         assert t.tzname() == "UTC"
 
     def test_now_with_zoneinfo_utc_tz(self) -> None:
-        t = DateTime.now(zoneinfo.ZoneInfo("UTC"))
+        tz = zoneinfo.ZoneInfo("UTC")
+        with unsupported_tzinfo_warning(tz):
+            t = DateTime.now(tz)
         assert t.year == 1970
         assert t.month == 1
         assert t.day == 1
@@ -232,7 +246,8 @@ class TestDateTime:
         ),
     )
     def test_from_timestamp(self, tz, expected) -> None:
-        t = DateTime.from_timestamp(0, tz=tz)
+        with maybe_unsupported_tzinfo_warning(tz):
+            t = DateTime.from_timestamp(0, tz=tz)
         assert t.year_month_day == expected[:3]
         assert t.hour_minute_second_nanosecond == expected[3:]
         assert str(t.tzinfo) == str(tz)
@@ -265,6 +280,42 @@ class TestDateTime:
         delta = timedelta(days=1)
         dt2 = dt1 + delta
         assert dt2 == DateTime(2018, 4, 27, 23, 0, 17, 914390409)
+
+    @pytest.mark.parametrize("dt_cls", (DateTime, datetime))
+    def test_add_timedelta_zone(self, dt_cls) -> None:
+        dt1 = timezone_berlin.localize(
+            dt_cls(2026, 10, 25, 2, 30, 0, 0), is_dst=True
+        )
+        delta = timedelta(hours=1)
+        dt2 = dt1 + delta
+        assert dt2.year == 2026
+        assert dt2.month == 10
+        assert dt2.day == 25
+        assert dt2.hour == 3
+        assert dt2.minute == 30
+        assert dt2.second == 0
+        assert dt2.utcoffset() == timedelta(hours=2)
+        assert dt2 == timezone_berlin.localize(
+            dt_cls(2026, 10, 25, 2, 30, 0, 0), is_dst=False
+        )
+
+    @pytest.mark.parametrize("dt_cls", (DateTime, datetime))
+    def test_pytz_normalize(self, dt_cls) -> None:
+        dt1 = timezone_berlin.localize(
+            dt_cls(2026, 10, 25, 2, 30, 0, 0), is_dst=True
+        )
+        delta = timedelta(hours=1)
+        dt2 = timezone_berlin.normalize(dt1 + delta)
+        assert dt2.year == 2026
+        assert dt2.month == 10
+        assert dt2.day == 25
+        assert dt2.hour == 2
+        assert dt2.minute == 30
+        assert dt2.second == 0
+        assert dt2.utcoffset() == timedelta(hours=1)
+        assert dt2 == timezone_berlin.localize(
+            dt_cls(2026, 10, 25, 2, 30, 0, 0), is_dst=False
+        )
 
     def test_subtract_datetime_1(self) -> None:
         dt1 = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
@@ -336,7 +387,7 @@ class TestDateTime:
     )
     @pytest.mark.parametrize(
         "tz",
-        (None, timezone_utc, timezone_utc_p2, timezone_berlin),
+        (None, timezone_utc, timezone_utc_p2h, timezone_berlin),
     )
     def test_add_duration(
         self,
@@ -497,7 +548,7 @@ class TestDateTime:
                 )
                 for native in (True, False)
                 for tz1, tz2 in itertools.combinations_with_replacement(
-                    (timezone_utc, timezone_utc_p2, timezone_berlin), 2
+                    (timezone_utc, timezone_utc_p2h, timezone_berlin), 2
                 )
             ),
         ),
@@ -798,17 +849,75 @@ def test_from_native_case_2() -> None:
     assert dt.tzinfo == FixedOffset(0)
 
 
+@pytest.mark.parametrize(
+    ("native", "expected"),
+    (
+        (
+            datetime(2018, 10, 1, 12, 34, 56, 789123),
+            DateTime(2018, 10, 1, 12, 34, 56, 789123000),
+        ),
+        (
+            datetime(2018, 10, 1, 12, 34, 56, 789123, FixedOffset(0)),
+            DateTime(2018, 10, 1, 12, 34, 56, 789123000, FixedOffset(0)),
+        ),
+        (
+            datetime(2018, 10, 1, 12, 34, 56, 789123, FixedOffset(1439)),
+            DateTime(2018, 10, 1, 12, 34, 56, 789123000, FixedOffset(1439)),
+        ),
+        (
+            datetime(2018, 10, 1, 12, 34, 56, 789123, FixedOffset(-1439)),
+            DateTime(2018, 10, 1, 12, 34, 56, 789123000, FixedOffset(-1439)),
+        ),
+        (
+            datetime(2018, 10, 1, 12, 34, 56, 789123, datetime_timezone_p2h),
+            make_datetime(
+                2018, 10, 1, 12, 34, 56, 789123000, datetime_timezone_p2h
+            ),
+        ),
+        (
+            datetime(2026, 10, 25, 2, 30, 0, 0, zoneinfo_berlin, fold=0),
+            make_datetime(2026, 10, 25, 2, 30, 0, 0, zoneinfo_berlin),
+        ),
+        (
+            datetime(2026, 10, 25, 2, 30, 0, 0, zoneinfo_berlin, fold=1),
+            make_datetime(2026, 10, 25, 2, 30, 0, 0, zoneinfo_berlin),
+        ),
+        (
+            datetime(2018, 10, 1, 12, 34, 56, 789123, datetime_timezone_p1s),
+            make_datetime(
+                2018, 10, 1, 12, 34, 56, 789123000, datetime_timezone_p1s
+            ),
+        ),
+    ),
+)
+def test_from_native(native: datetime, expected: DateTime) -> None:
+    import warnings
+
+    warnings.simplefilter("ignore")
+    with maybe_unsupported_tzinfo_warning(native.tzinfo):
+        dt = DateTime.from_native(native)
+    assert dt.year == expected.year
+    assert dt.month == expected.month
+    assert dt.day == expected.day
+    assert dt.hour == expected.hour
+    assert dt.minute == expected.minute
+    assert dt.second == expected.second
+    assert dt.nanosecond == expected.nanosecond
+    assert dt.tzinfo == expected.tzinfo
+
+
+@pytest.mark.parametrize("tzinfo", (datetime_timezone_p2h, zoneinfo_berlin))
+def test_warns_of_unsupported_tzinfo_impl(tzinfo: datetime_tzinfo) -> None:
+    with unsupported_tzinfo_warning(tzinfo):
+        DateTime(2024, 1, 1, 0, 0, 0, tzinfo=tzinfo)
+
+
 @pytest.mark.parametrize("datetime_cls", (DateTime, datetime))
 @pytest.mark.parametrize(
     "utc_impl",
     (utc, datetime_timezone(timedelta(0))),
 )
-@pytest.mark.parametrize(
-    "tz", (timezone_berlin, datetime_timezone(timedelta(hours=-1)))
-)
-def test_transition_to_summertime_in_utc_space(
-    datetime_cls, utc_impl, tz
-) -> None:
+def test_transition_to_summertime_in_utc_space(datetime_cls, utc_impl) -> None:
     if datetime_cls == DateTime:
         dt = datetime_cls(2022, 3, 27, 1, 30, 1, 123456789)
     else:
@@ -823,13 +932,15 @@ def test_transition_to_summertime_in_utc_space(
     else:
         assert time.microsecond == 123456
 
-    dt = dt.astimezone(utc_impl)
+    with maybe_unsupported_tzinfo_warning(utc_impl, typ=datetime_cls):
+        dt = dt.astimezone(utc_impl)
     assert isinstance(dt, datetime_cls)
     assert dt.utcoffset() == timedelta(0)
     time = dt.time()
     assert (time.hour, time.minute) == (0, 30)
 
-    dt += timedelta(hours=1)
+    with maybe_unsupported_tzinfo_warning(utc_impl, typ=datetime_cls):
+        dt += timedelta(hours=1)
     assert isinstance(dt, datetime_cls)
     assert dt.utcoffset() == timedelta(0)
     time = dt.time()

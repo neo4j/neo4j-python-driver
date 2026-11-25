@@ -17,7 +17,6 @@
 from datetime import (
     datetime,
     time,
-    timezone,
 )
 
 from ....._optional_deps import (
@@ -34,9 +33,7 @@ from .....time import (
     Time,
 )
 from ....packstream import Structure
-
-
-ANY_BUILTIN_DATETIME = datetime(1970, 1, 1)
+from ..._common import warn_unsupported_tzinfo_impl
 
 
 def get_date_unix_epoch():
@@ -168,7 +165,11 @@ def dehydrate_datetime(value):
 
     def seconds_and_nanoseconds(dt):
         if isinstance(dt, datetime):
-            dt = DateTime.from_native(dt)
+            utc_epoch = datetime(1970, 1, 1)
+            t = dt.replace(tzinfo=None) - utc_epoch
+            seconds = t.days * 86400 + t.seconds
+            nanoseconds = t.microseconds * 1000
+            return seconds, nanoseconds
         zone_epoch = DateTime(1970, 1, 1, tzinfo=dt.tzinfo)
         dt_clock_time = dt._to_clock_time()
         zone_epoch_clock_time = zone_epoch._to_clock_time()
@@ -181,27 +182,39 @@ def dehydrate_datetime(value):
         from pytz import utc
 
         value = utc.localize(value)
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
+    seconds, nanoseconds = seconds_and_nanoseconds(value)
+    return _datetime_structure(value, seconds, nanoseconds, tz)
+
+
+def _datetime_structure(value, seconds, nanoseconds, tz):
+    if tz is None:
         return Structure(b"d", seconds, nanoseconds)
     elif hasattr(tz, "zone") and tz.zone and isinstance(tz.zone, str):
         # with named pytz time zone
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"f", seconds, nanoseconds, tz.zone)
     elif hasattr(tz, "key") and tz.key and isinstance(tz.key, str):
         # with named zoneinfo (Python 3.9+) time zone
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"f", seconds, nanoseconds, tz.key)
     else:
-        if isinstance(tz, timezone):
-            # offset of the timezone is constant, so any date will do
-            offset = tz.utcoffset(ANY_BUILTIN_DATETIME)
-        else:
-            offset = tz.utcoffset(value)
         # with time offset
-        seconds, nanoseconds = seconds_and_nanoseconds(value)
-        return Structure(
-            b"F", seconds, nanoseconds, int(offset.total_seconds())
-        )
+        offset = tz.utcoffset(None)
+        if offset is None:
+            # Non-constant offset, but we don't have explicit handling for this
+            # tzinfo implementation => we cannot extract the time zone name
+            warn_unsupported_tzinfo_impl(tz)
+            offset = tz.utcoffset(value)
+            if offset is None:
+                raise ValueError(
+                    f"tzinfo {tz!r} was unable to produce a UTC offset given "
+                    f"the datetime {value!r}. Therefore, serialization of "
+                    "this datetime is not possible."
+                )
+        if offset.microseconds:
+            raise ValueError(
+                "Bolt protocol does not support sub-second UTC offsets."
+            )
+        offset_seconds = offset.days * 86400 + offset.seconds
+        return Structure(b"F", seconds, nanoseconds, offset_seconds)
 
 
 if np is not None:
@@ -220,7 +233,7 @@ if np is not None:
         if np.isnat(value):
             return None
         if not _NP_YEAR_MIN <= value.astype(_NP_YEAR_DTYPE) < _NP_YEAR_MAX:
-            # while we could encode years outside the range, they would fail
+            # While we could encode years outside the range, they would fail
             # when retrieved from the database.
             raise ValueError(
                 f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
@@ -230,7 +243,7 @@ if np is not None:
             value.astype(np.dtype("datetime64[ns]")).astype(np.int64)
             % _NANO_SECONDS
         )
-        return Structure(b"d", seconds, nanoseconds)
+        return _datetime_structure(value, seconds, nanoseconds, None)
 
 
 if pd is not None:
@@ -243,18 +256,25 @@ if pd is not None:
         :type value: pandas.Timestamp
         :returns:
         """
-        return dehydrate_datetime(
-            DateTime(
-                value.year,
-                value.month,
-                value.day,
-                value.hour,
-                value.minute,
-                value.second,
-                value.microsecond * 1000 + value.nanosecond,
-                value.tzinfo,
+        if pd.isna(value):
+            return None
+        if not MIN_YEAR <= value.year <= MAX_YEAR:
+            # While we could encode years outside the range, they would fail
+            # when retrieved from the database.
+            # At the time of writing, pandas itself restricts the years to this
+            # range. However, this might change in the future without it being
+            # a breaking change.
+            raise ValueError(
+                f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
             )
-        )
+        tz = value.tzinfo
+        if tz is not None:
+            value = value.tz_localize(None)
+        local_epoch = pd.Timestamp(1970, 1, 1)
+        t = value - local_epoch
+        seconds = t.days * 86400 + t.seconds
+        nanoseconds = t.microseconds * 1000 + t.nanoseconds
+        return _datetime_structure(value, seconds, nanoseconds, tz)
 
 
 def hydrate_duration(months, days, seconds, nanoseconds):

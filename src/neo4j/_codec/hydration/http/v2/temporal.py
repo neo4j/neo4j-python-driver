@@ -36,6 +36,7 @@ from .....time import (
     MIN_YEAR,
     Time,
 )
+from ..._common import warn_unsupported_tzinfo_impl
 from .._common import (
     make_value_dict,
     value_as_str,
@@ -294,17 +295,32 @@ def _dehydrate_zoned_datetime(
 ) -> ValueDict[str]:
     tz = value.tzinfo
     assert tz is not None
+    if (
+        pd is not None
+        and isinstance(value, pd.Timestamp)
+        and not MIN_YEAR <= value.year <= MAX_YEAR
+    ):
+        # While we could encode years outside the range, they would fail
+        # when retrieved from the database.
+        # At the time of writing, pandas itself restricts the years to this
+        # range. However, this might change in the future without it being
+        # a breaking change.
+        raise ValueError(
+            f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) found {value}"
+        )
     value = value.replace(tzinfo=None)
     offset: datetime.timedelta | None
-    if isinstance(tz, datetime.timezone):
-        # offset of the timezone is constant, so any date will do
-        offset = tz.utcoffset(_ANY_BUILTIN_DATETIME)
-    else:
+    offset = tz.utcoffset(None)
+    if offset is None:
+        if zone_name is None:
+            warn_unsupported_tzinfo_impl(tz)
         offset = tz.utcoffset(value)
-    if not isinstance(offset, datetime.timedelta):
-        raise TypeError(
-            f"Unsupported: date time with unknown offset type: {type(offset)}"
-        )
+        if offset is None:
+            raise ValueError(
+                f"tzinfo {tz!r} was unable to produce a UTC offset given "
+                f"the datetime {value!r}. Therefore, serialization of this "
+                "datetime is not possible."
+            )
     value_str = value.isoformat()
     if zone_name is None:
         tz_str = _format_tz_offset(offset)
@@ -327,7 +343,11 @@ def _format_tzinfo(
 def _format_tz_offset(
     offset: datetime.timedelta,
 ) -> str:
-    total_seconds = int(offset.total_seconds())
+    if offset.microseconds:
+        raise ValueError(
+            "HTTP/Query API does not support sub-second UTC offsets."
+        )
+    total_seconds = offset.days * 86400 + offset.seconds
     if not -64800 <= total_seconds <= 64800:
         raise ValueError("Unsupported: timezone offset outside valid range")
     if total_seconds < 0:

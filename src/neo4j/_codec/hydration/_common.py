@@ -16,16 +16,32 @@
 
 from __future__ import annotations
 
+import sys
+import warnings
 from copy import copy
 from dataclasses import dataclass
+from pathlib import Path
 
 from ... import _typing as t
 from ...graph import Graph
+from ...time import UnsupportedTzinfoWarning
 
 
 if t.TYPE_CHECKING:
+    import datetime
+
     T_TYPE_MAP_DICT: t.TypeAlias = dict[type, t.Callable[[t.Any], t.Any]]
     T_VALUE_MAP_DICT: t.TypeAlias = dict[t.Any, t.Callable[[t.Any], t.Any]]
+
+
+__all__ = [
+    "BrokenHydrationObject",
+    "DehydrationHooks",
+    "ExactValueKey",
+    "GraphHydrator",
+    "HydrationScope",
+    "warn_unsupported_tzinfo_impl",
+]
 
 
 @dataclass
@@ -162,3 +178,28 @@ class HydrationScope:
 
     def get_graph(self):
         return self._graph_hydrator.graph
+
+
+_warn_skips = (str(Path(__file__).resolve().parents[3]),)
+
+
+def warn_unsupported_tzinfo_impl(tz: datetime.tzinfo) -> None:
+    if tz is None:
+        return
+
+    import pytz
+
+    if isinstance(tz, pytz.BaseTzInfo):
+        return
+
+    msg = (
+        "The driver does not support the provided datetime.tzinfo"
+        f"implementation: {type(tz)}. This may result in unexpected or "
+        "lossy data transmission. "
+        "This warning may be turned into an error in a future version."
+    )
+    warn_cls = UnsupportedTzinfoWarning
+    if sys.version_info >= (3, 12):
+        warnings.warn(msg, warn_cls, skip_file_prefixes=_warn_skips)
+    else:
+        warnings.warn(msg, warn_cls, stacklevel=2)

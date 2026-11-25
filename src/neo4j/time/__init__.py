@@ -25,14 +25,17 @@ as a number of utility functions.
 
 from __future__ import annotations as _
 
+import os as _os
 import re as _re
+import sys as _sys
+import warnings as _warnings
 from datetime import (
     date as _date,
     datetime as _datetime,
     time as _time,
     timedelta as _timedelta,
+    timezone as _timezone,
     tzinfo as _tzinfo,
-    UTC as _UTC,
 )
 from functools import total_ordering as _total_ordering
 from re import compile as _re_compile
@@ -41,6 +44,7 @@ from time import (
     mktime as _mktime,
     struct_time as _struct_time,
 )
+from zoneinfo import ZoneInfo as _ZoneInfo
 
 from .. import _typing as _t
 from .._warnings import deprecation_warn as _deprecation_warn
@@ -81,6 +85,8 @@ __all__ = [
     "UnixEpoch",
     "ZeroDate",
 ]
+
+_warn_skips = (_os.path.dirname(__file__),)
 
 
 MIN_INT64: _t.Final[int] = -(2**63)
@@ -218,6 +224,39 @@ def _normalize_day(year, month, day):
     raise ValueError(
         f"Day {day} out of range (1..{days_in_month}, -1, -2 ,-3)"
     )
+
+
+class UnsupportedTzinfoWarning(Warning):
+    """
+    Warning used for unsupported tzinfo implementations.
+
+    The driver's temporal types were designed to be used with pytz.
+    Other datetime.tzinfo implementations are not supported and are unlikely
+    to work well. This warning may be turned into an error in a future version.
+    """
+
+
+def _check_supported_tzinfo_impl(tz: _tzinfo | None) -> None:
+    if tz is None:
+        return
+
+    import pytz
+
+    if isinstance(tz, pytz.BaseTzInfo):
+        return
+
+    msg = (
+        "The driver and its temporal types were designed to be used with "
+        "pytz. Other datetime.tzinfo implementations are not supported "
+        f"and are unlikely to work well. Found {type(tz)}. "
+        "This warning may be turned into an error in a future version."
+    )
+    warn_cls = UnsupportedTzinfoWarning
+    sys = _sys  # help mypy
+    if sys.version_info >= (3, 12):
+        _warnings.warn(msg, warn_cls, skip_file_prefixes=_warn_skips)
+    else:
+        _warnings.warn(msg, warn_cls, stacklevel=2)
 
 
 # TODO: 7.0 - make private
@@ -916,9 +955,9 @@ class Date(_date_base_class, metaclass=_DateType):
         if tz is None:
             return cls._from_clock_time(_Clock().local_time(), UnixEpoch)
         else:
-            return (
-                DateTime.utc_now().replace(tzinfo=_UTC).astimezone(tz).date()
-            )
+            from pytz import utc
+
+            return DateTime.utc_now().replace(tzinfo=utc).astimezone(tz).date()
 
     @classmethod
     def utc_today(cls) -> Date:
@@ -1613,6 +1652,7 @@ class Time(_time_base_class, metaclass=_TimeType):
             + nanosecond
         )
         self.__unchecked_init(ticks, hour, minute, second, nanosecond, tzinfo)
+        _check_supported_tzinfo_impl(tzinfo)
 
     @classmethod
     def __unchecked_new(
@@ -1660,8 +1700,10 @@ class Time(_time_base_class, metaclass=_TimeType):
         if tz is None:
             return cls._from_clock_time(_Clock().local_time(), UnixEpoch)
         else:
+            from pytz import utc
+
             return (
-                DateTime.utc_now().replace(tzinfo=_UTC).astimezone(tz).timetz()
+                DateTime.utc_now().replace(tzinfo=utc).astimezone(tz).timetz()
             )
 
     @classmethod
@@ -1745,6 +1787,7 @@ class Time(_time_base_class, metaclass=_TimeType):
         """
         if not isinstance(ticks, int):
             raise TypeError("Ticks must be int")
+        _check_supported_tzinfo_impl(tz)
         if 0 <= ticks < 86400000000000:
             second, nanosecond = divmod(ticks, _NANO_SECONDS)
             minute, second = divmod(second, 60)
@@ -2357,9 +2400,11 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
                 _ClockTime(timestamp) + _Clock().local_offset(), UnixEpoch
             )
         else:
+            from pytz import utc
+
             return (
                 cls.utc_from_timestamp(timestamp)
-                .replace(tzinfo=_UTC)
+                .replace(tzinfo=utc)
                 .astimezone(tz)
             )
 
@@ -2413,11 +2458,40 @@ class DateTime(_date_time_base_class, metaclass=_DateTimeType):
         """
         Convert from a native Python :class:`datetime.datetime` value.
 
+        If the give class:`datetime.datetime` contains :attr:`datetime.tzinfo`
+        and that ``tzinfo` is not a subclass of :class:`pytz.BaseTzInfo` a
+        conversion on a best-effort basis is attempted. Failing that
+
         :param dt: the datetime to convert
         """
+        # dt = cls._normalize_pytz_tzinfo(dt)
         return cls.combine(
             Date.from_native(dt.date()), Time.from_native(dt.timetz())
         )
+
+    @classmethod
+    def _normalize_pytz_tzinfo(cls, dt: _datetime) -> _datetime:
+        import pytz
+
+        utc_offset = None if dt.tzinfo is None else dt.tzinfo.utcoffset(dt)
+        if utc_offset is None or isinstance(dt.tzinfo, pytz.BaseTzInfo):
+            return dt
+        if isinstance(dt.tzinfo, _timezone):
+            utc_offset_sec = utc_offset.days * 86400 + utc_offset.seconds
+            utc_offset_min, utc_offset_sec = divmod(utc_offset_sec, 60)
+            if utc_offset.microseconds or utc_offset_sec != 0:
+                raise ValueError(
+                    "Timezone offset must be a whole number of minutes"
+                )
+            return dt.replace(tzinfo=pytz.FixedOffset(utc_offset_min))
+        if isinstance(dt.tzinfo, _ZoneInfo):
+            try:
+                new_tz = pytz.timezone(dt.tzinfo.key)
+            except pytz.UnknownTimeZoneError:
+                return dt
+            return dt.astimezone(new_tz)
+        # any other tzinfo implementation => don't attempt to normalize
+        return dt
 
     # TODO: 7.0 - remove public alias (copy over docstring)
     @classmethod
