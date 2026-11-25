@@ -17,6 +17,7 @@
 """Internal module for all internal exception classes."""
 
 from os import strerror
+from ssl import SSLError
 
 
 class BoltError(Exception):
@@ -50,6 +51,8 @@ class BoltConnectionError(BoltError):
 
     @property
     def errno(self):
+        if isinstance(self.__cause__, SSLError):
+            return None
         try:
             return self.__cause__.errno
         except AttributeError:
@@ -59,8 +62,22 @@ class BoltConnectionError(BoltError):
 class BoltSecurityError(BoltConnectionError):
     """Raised when a connection fails for security reasons."""
 
+    def __init__(self, message, address):
+        super(BoltConnectionError, self).__init__(message, address)
+
     def __str__(self):
-        return f"[{self.__cause__.__class__.__name__}] {super().__str__()}"
+        cause = self.__cause__
+        if cause is not None:
+            cause_name = cause.__class__.__name__
+            cause_msg = str(cause)
+            if cause_msg:
+                return f"[{cause_name}] {super().__str__()} ({cause_msg})"
+            return f"[{cause_name}] {super().__str__()}"
+        return super().__str__()
+
+    @property
+    def errno(self):
+        return None
 
 
 class BoltHandshakeError(BoltError):
